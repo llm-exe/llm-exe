@@ -10,6 +10,10 @@ const ollamaChatV1: Config = {
   }/api/chat`,
   options: {
     prompt: {},
+    temperature: {},
+    topP: {},
+    maxTokens: {},
+    stopSequences: {},
   },
   method: "POST",
   headers: `{"Content-Type": "application/json" }`,
@@ -25,6 +29,18 @@ const ollamaChatV1: Config = {
     },
     model: {
       key: "model",
+    },
+    temperature: {
+      key: "options.temperature",
+    },
+    topP: {
+      key: "options.top_p",
+    },
+    maxTokens: {
+      key: "options.num_predict",
+    },
+    stopSequences: {
+      key: "options.stop",
     },
   },
   transformResponse: OutputOllamaChat,

@@ -72,7 +72,7 @@ const response = await piiDetector(input)
  * Output:
  *
  * {
- *   emailAddress: false,
+ *   emailAddresses: false,
  *   socialSecurityNumber: false,
  *   creditCardNumber: true
  * }

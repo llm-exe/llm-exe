@@ -95,4 +95,74 @@ describe("llm-exe:output/BaseLlmOutput", () => {
     expect(result1).toEqual(result2);
     expect(result1).not.toBe(result2); // Different object references
   });
+
+  it("propagates name, usage, and stopReason exactly", () => {
+    const output = BaseLlmOutput(mockResult);
+    const result = output.getResult();
+    expect(result.name).toBe("test-model");
+    expect(result.usage).toEqual({
+      input_tokens: 10,
+      output_tokens: 20,
+      total_tokens: 30,
+    });
+    expect(result.stopReason).toBe("stop");
+  });
+
+  it("getResultText returns the text from content[0] by default", () => {
+    const output = BaseLlmOutput(mockResult);
+    expect(output.getResultText()).toBe("Test content");
+  });
+
+  it("getResultText with index > 0 returns text from options[index][0]", () => {
+    const mockWithOptions = {
+      ...mockResult,
+      options: [
+        [{ type: "text", text: "primary" }] as OutputResultContent[],
+        [{ type: "text", text: "alternative-1" }] as OutputResultContent[],
+        [{ type: "text", text: "alternative-2" }] as OutputResultContent[],
+      ],
+    };
+    const output = BaseLlmOutput(mockWithOptions);
+    expect(output.getResultText(1)).toBe("alternative-1");
+    expect(output.getResultText(2)).toBe("alternative-2");
+    // index 0 falls back to content[0]
+    expect(output.getResultText(0)).toBe("Test content");
+  });
+
+  it("defensively copies content so external mutation does not affect output", () => {
+    const externalContent = [{ type: "text" as const, text: "before" }];
+    const output = BaseLlmOutput({ ...mockResult, content: externalContent });
+    externalContent.push({ type: "text" as const, text: "added later" });
+    const result = output.getResult();
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0]).toEqual({ type: "text", text: "before" });
+  });
+
+  it("defensively copies options so external mutation does not affect output", () => {
+    const externalOptions = [
+      [{ type: "text", text: "option-a" }] as OutputResultContent[],
+    ];
+    const output = BaseLlmOutput({ ...mockResult, options: externalOptions });
+    externalOptions.push([{ type: "text", text: "extra" } as OutputResultContent]);
+    const result = output.getResult();
+    expect(result.options).toHaveLength(1);
+  });
+
+  it("treats undefined options as empty array", () => {
+    const output = BaseLlmOutput({ ...mockResult, options: undefined });
+    expect(output.getResult().options).toEqual([]);
+  });
+
+  it("returned getResult exposes the same id on each call (stable identity)", () => {
+    const output = BaseLlmOutput(mockResult);
+    const id1 = output.getResult().id;
+    const id2 = output.getResult().id;
+    expect(id1).toBe(id2);
+  });
+
+  it("generates distinct ids between separate BaseLlmOutput invocations without an id", () => {
+    const a = BaseLlmOutput(mockResult).getResult();
+    const b = BaseLlmOutput(mockResult).getResult();
+    expect(a.id).not.toBe(b.id);
+  });
 });

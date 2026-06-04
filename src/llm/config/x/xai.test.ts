@@ -78,6 +78,8 @@ describe("openai configuration", () => {
       ["xai.grok-4-fast", "grok-4-fast-non-reasoning"],
       ["xai.grok-4-1-fast", "grok-4-1-fast-non-reasoning"],
       ["xai.grok-4.3", "grok-4.3"],
+      ["xai.grok-4.20", "grok-4.20-0309-non-reasoning"],
+      ["xai.grok-4.20-reasoning", "grok-4.20-0309-reasoning"],
     ] as const)(
       "%s should resolve to %s and share base config",
       (shorthand, expectedModel) => {
@@ -112,6 +114,8 @@ describe("openai configuration", () => {
         "grok-4",
         "grok-4-fast-non-reasoning",
         "grok-4-1-fast-non-reasoning",
+        "grok-4.20-0309-non-reasoning",
+        "grok-4.20-0309-reasoning",
       ]) {
         expect(transform("low", { model })).toBeUndefined();
         expect(transform("high", { model })).toBeUndefined();
@@ -133,5 +137,6 @@ describe("openai configuration", () => {
       expect(transform("xhigh", { model: "grok-4.3" })).toBeUndefined();
       expect(transform(123, { model: "grok-4.3" })).toBeUndefined();
     });
+
   });
 });

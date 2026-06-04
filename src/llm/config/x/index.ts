@@ -7,7 +7,8 @@ const xaiChatV1: Config = createOpenAiCompatibleConfiguration({
   provider: "xai.chat",
   endpoint: `https://api.x.ai/v1/chat/completions`,
   apiKeyMapping: ["xAiApiKey", "XAI_API_KEY"],
-  isReasoningModel: (model) => model === "grok-4.3",
+  isReasoningModel: (model) =>
+    model === "grok-4.3" || model === "grok-4.20-0309-reasoning",
 });
 
 export const xai = {
@@ -19,4 +20,9 @@ export const xai = {
   "xai.grok-4-fast": withDefaultModel(xaiChatV1, "grok-4-fast-non-reasoning"),
   "xai.grok-4-1-fast": withDefaultModel(xaiChatV1, "grok-4-1-fast-non-reasoning"),
   "xai.grok-4.3": withDefaultModel(xaiChatV1, "grok-4.3"),
+  "xai.grok-4.20": withDefaultModel(xaiChatV1, "grok-4.20-0309-non-reasoning"),
+  "xai.grok-4.20-reasoning": withDefaultModel(
+    xaiChatV1,
+    "grok-4.20-0309-reasoning"
+  ),
 };

@@ -232,6 +232,70 @@ describe("openai configuration", () => {
     );
   });
 
+  describe("all shorthands resolve to expected default model", () => {
+    it.each([
+      ["openai.gpt-5.2", "gpt-5.2"],
+      ["openai.gpt-5-mini", "gpt-5-mini"],
+      ["openai.gpt-5-nano", "gpt-5-nano"],
+      ["openai.gpt-4.1", "gpt-4.1"],
+      ["openai.gpt-4.1-mini", "gpt-4.1-mini"],
+      ["openai.gpt-4.1-nano", "gpt-4.1-nano"],
+      ["openai.o3", "o3"],
+      ["openai.gpt-4", "gpt-4"],
+      ["openai.gpt-4o", "gpt-4o"],
+      ["openai.gpt-4o-mini", "gpt-4o-mini"],
+      ["openai.o4-mini", "o4-mini"],
+    ] as const)(
+      "%s should resolve to %s and share base config",
+      (shorthand, expectedModel) => {
+        const cfg = openai[shorthand] as Config;
+        expect(cfg).toBeDefined();
+        expect(cfg.options.model.default).toBe(expectedModel);
+        expect(cfg.mapBody.model).toEqual({
+          default: expectedModel,
+          key: "model",
+        });
+        // All shorthands should inherit base provider/endpoint/method/headers
+        expect(cfg.key).toBe(openAiChatV1.key);
+        expect(cfg.provider).toBe(openAiChatV1.provider);
+        expect(cfg.endpoint).toBe(openAiChatV1.endpoint);
+        expect(cfg.method).toBe(openAiChatV1.method);
+        expect(cfg.headers).toBe(openAiChatV1.headers);
+      }
+    );
+
+    it("reasoning models receive effort, non-reasoning shorthands do not", () => {
+      const effortTransform = openAiChatV1.mapBody.effort.transform as (
+        v: any,
+        s: any
+      ) => any;
+      const reasoningShorthands = [
+        "openai.gpt-5.2",
+        "openai.gpt-5-mini",
+        "openai.gpt-5-nano",
+        "openai.o3",
+        "openai.o4-mini",
+      ] as const;
+      const nonReasoningShorthands = [
+        "openai.gpt-4.1",
+        "openai.gpt-4.1-mini",
+        "openai.gpt-4.1-nano",
+        "openai.gpt-4",
+        "openai.gpt-4o",
+        "openai.gpt-4o-mini",
+      ] as const;
+
+      for (const key of reasoningShorthands) {
+        const model = (openai[key] as Config).options.model.default as string;
+        expect(effortTransform("high", { model })).toBe("high");
+      }
+      for (const key of nonReasoningShorthands) {
+        const model = (openai[key] as Config).options.model.default as string;
+        expect(effortTransform("high", { model })).toBeUndefined();
+      }
+    });
+  });
+
   describe("openai.gpt-4o", () => {
     it("should be based on openAiChatV1 configuration", () => {
       expect(openAiGpt4o.endpoint).toEqual(openAiChatV1.endpoint);

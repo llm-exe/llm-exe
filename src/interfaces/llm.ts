@@ -712,6 +712,12 @@ export type AllUseLlmOptions = AllLlm & {
   "xai.grok-4.3": {
     input: Omit<XAiRequest, "model">;
   };
+  "xai.grok-4.20": {
+    input: Omit<XAiRequest, "model">;
+  };
+  "xai.grok-4.20-reasoning": {
+    input: Omit<XAiRequest, "model">;
+  };
 
   // Ollama
   "ollama.deepseek-r1": {
@@ -739,6 +745,15 @@ export type AllUseLlmOptions = AllLlm & {
     input: GenericLLm;
   };
   "ollama.qwen3": {
+    input: GenericLLm;
+  };
+  "ollama.qwen3.5": {
+    input: GenericLLm;
+  };
+  "ollama.gemma4": {
+    input: GenericLLm;
+  };
+  "ollama.gpt-oss": {
     input: GenericLLm;
   };
 

@@ -69,36 +69,35 @@ describe("openai configuration", () => {
     });
   });
 
-  describe("xai.grok-4.20", () => {
-    const config = xai["xai.grok-4.20"] as Config;
-
-    it("should have the correct default model", () => {
-      expect(config.options.model.default).toBe(
-        "grok-4.20-0309-non-reasoning"
-      );
-    });
-
-    it("should have the correct key, provider, endpoint, and method", () => {
-      expect(config.key).toBe("xai.chat.v1");
-      expect(config.provider).toBe("xai.chat");
-      expect(config.endpoint).toBe("https://api.x.ai/v1/chat/completions");
-      expect(config.method).toBe("POST");
-    });
-  });
-
-  describe("xai.grok-4.20-reasoning", () => {
-    const config = xai["xai.grok-4.20-reasoning"] as Config;
-
-    it("should have the correct default model", () => {
-      expect(config.options.model.default).toBe("grok-4.20-0309-reasoning");
-    });
-
-    it("should have the correct key, provider, endpoint, and method", () => {
-      expect(config.key).toBe("xai.chat.v1");
-      expect(config.provider).toBe("xai.chat");
-      expect(config.endpoint).toBe("https://api.x.ai/v1/chat/completions");
-      expect(config.method).toBe("POST");
-    });
+  describe("all shorthands resolve to expected default model", () => {
+    it.each([
+      ["xai.grok-2", "grok-2-latest"],
+      ["xai.grok-3", "grok-3"],
+      ["xai.grok-3-mini", "grok-3-mini"],
+      ["xai.grok-4", "grok-4"],
+      ["xai.grok-4-fast", "grok-4-fast-non-reasoning"],
+      ["xai.grok-4-1-fast", "grok-4-1-fast-non-reasoning"],
+      ["xai.grok-4.3", "grok-4.3"],
+      ["xai.grok-4.20", "grok-4.20-0309-non-reasoning"],
+      ["xai.grok-4.20-reasoning", "grok-4.20-0309-reasoning"],
+    ] as const)(
+      "%s should resolve to %s and share base config",
+      (shorthand, expectedModel) => {
+        const cfg = xai[shorthand] as Config;
+        expect(cfg).toBeDefined();
+        expect(cfg.options.model.default).toBe(expectedModel);
+        expect(cfg.mapBody.model).toEqual({
+          default: expectedModel,
+          key: "model",
+        });
+        // Inherits base provider/endpoint/method/headers
+        expect(cfg.key).toBe(xAiChatV1.key);
+        expect(cfg.provider).toBe(xAiChatV1.provider);
+        expect(cfg.endpoint).toBe(xAiChatV1.endpoint);
+        expect(cfg.method).toBe(xAiChatV1.method);
+        expect(cfg.headers).toBe(xAiChatV1.headers);
+      }
+    );
   });
 
   describe("effort transform", () => {
@@ -116,6 +115,7 @@ describe("openai configuration", () => {
         "grok-4-fast-non-reasoning",
         "grok-4-1-fast-non-reasoning",
         "grok-4.20-0309-non-reasoning",
+        "grok-4.20-0309-reasoning",
       ]) {
         expect(transform("low", { model })).toBeUndefined();
         expect(transform("high", { model })).toBeUndefined();
@@ -138,21 +138,5 @@ describe("openai configuration", () => {
       expect(transform(123, { model: "grok-4.3" })).toBeUndefined();
     });
 
-    it("passes through valid effort values for grok-4.20-0309-reasoning", () => {
-      for (const value of ["minimal", "low", "medium", "high"]) {
-        expect(
-          transform(value, { model: "grok-4.20-0309-reasoning" })
-        ).toBe(value);
-      }
-    });
-
-    it("drops invalid effort values for grok-4.20-0309-reasoning", () => {
-      expect(
-        transform("none", { model: "grok-4.20-0309-reasoning" })
-      ).toBeUndefined();
-      expect(
-        transform(123, { model: "grok-4.20-0309-reasoning" })
-      ).toBeUndefined();
-    });
   });
 });

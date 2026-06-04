@@ -7,8 +7,7 @@ const xaiChatV1: Config = createOpenAiCompatibleConfiguration({
   provider: "xai.chat",
   endpoint: `https://api.x.ai/v1/chat/completions`,
   apiKeyMapping: ["xAiApiKey", "XAI_API_KEY"],
-  isReasoningModel: (model) =>
-    model === "grok-4.3" || model === "grok-4.20-0309-reasoning",
+  isReasoningModel: (model) => model === "grok-4.3",
 });
 
 export const xai = {

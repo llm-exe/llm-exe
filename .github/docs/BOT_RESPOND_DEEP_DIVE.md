@@ -48,7 +48,7 @@ flowchart LR
     end
 
     subgraph A["bot-respond.yml"]
-        R["respond job\ntimeout 20m, max-turns 50"]:::job
+        R["respond job\ntimeout 20m, max-turns 90"]:::job
     end
 
     subgraph S["Secrets and Identity"]
@@ -156,7 +156,7 @@ flowchart TB
         s3["Checkout fetch-depth: 0\nwith bot token"]:::step
         s4["actions/setup-node@v4\nnode-version: 20, cache: npm"]:::step
         s5["npm ci"]:::step
-        s6["Respond step\nclaude-code-action@v1\nmax-turns 50, model configurable"]:::step
+        s6["Respond step\nclaude-code-action@v1\nmax-turns 90, model configurable"]:::step
         s1 --> s2 --> s3 --> s4 --> s5 --> s6
     end
 ```
@@ -368,7 +368,7 @@ flowchart LR
     end
 
     subgraph During["While the bot runs"]
-        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)\ncost meter: --max-turns 50"]:::llm
+        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)\ncost meter: --max-turns 90"]:::llm
         d2["api.github.com (gh CLI)\nauth: bot token\nwhy: pr view, pr diff, pr checkout,\nissue comment, /pulls/N/reviews"]:::gh
         d3["origin remote (git push)\nauth: bot token\nwhy: push commits to existing PR branch\n(write mode only)"]:::gh
     end
@@ -382,11 +382,11 @@ Tool allowlist passed to `claude-code-action@v1`:
 
 ```
 --allowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch"
---max-turns 50
+--max-turns 90
 --model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 ```
 
-Same allowlist and turn budget as `agent-run.yml` (both 50). Earlier this workflow ran with a tighter budget of 30, but conversational fixes and multi-step PR revisions outgrew that ceiling.
+Same allowlist as `agent-run.yml`, higher turn budget (90 vs 50) to absorb multi-step write-mode work (checkout, read diff, edit, test, typecheck, commit, push) without truncating mid-flight.
 
 [Back to top](#navigate)
 
@@ -499,7 +499,7 @@ stateDiagram-v2
     Committing --> Pushing: commit without Co-Authored-By
     Pushing --> Replying
     Replying --> Done: reply comment posted
-    Writing --> TimedOut: 20-minute job timeout OR max-turns 50
+    Writing --> TimedOut: 20-minute job timeout OR max-turns 90
     Editing --> TimedOut
     Verifying --> TimedOut
     TimedOut --> Done: action exits, no further reply guaranteed
@@ -539,7 +539,7 @@ flowchart TB
     F4 --> F4E["job fails before action starts\nno reply, maintainer sees red X on the comment workflow"]:::effect
     F4E --> F4X["check package-lock alignment"]:::fix
 
-    F5["Action hits --max-turns 50"]:::fail
+    F5["Action hits --max-turns 90"]:::fail
     F5 --> F5E["bot returns whatever it has\nmay be partial work in write mode"]:::effect
     F5E --> F5X["re-mention to continue\nor break ask into smaller pieces"]:::fix
 
@@ -583,7 +583,7 @@ flowchart LR
     K6["Concurrency"]:::k --- V6["none declared (parallel mentions allowed)"]:::v
     K7["Identity"]:::k --- V7["llm-exe-bot[bot] via App token"]:::v
     K8["Model"]:::k --- V8["vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6"]:::v
-    K9["Max turns"]:::k --- V9["50"]:::v
+    K9["Max turns"]:::k --- V9["90"]:::v
     K10["Tool allowlist"]:::k --- V10["Bash, Read, Write, Edit, Glob, Grep, WebFetch, WebSearch"]:::v
     K11["Prompt source"]:::k --- V11["inline in yml (no template file)"]:::v
     K12["Modes"]:::k --- V12["1 dispatch review pipeline, 2 read-only Q and A, 3 write to existing PR"]:::v

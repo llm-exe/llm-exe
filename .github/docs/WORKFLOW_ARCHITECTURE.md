@@ -478,7 +478,7 @@ Read the file /tmp/agent-prompt.txt for your full instructions. Follow them exac
 | personas (each) | same | 40 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | curator | same | 40 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | reviewer | `Bash,Read,Glob,Grep,WebFetch` (read-only set) | 30 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
-| bot-respond | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch` | 30 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
+| bot-respond | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch` | 90 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | docs-sync | `Bash,Read,Write,Edit,Glob,Grep,WebFetch` | 80 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | digest | `Bash,Read,Glob,Grep,Write` | 15 | `claude-sonnet-4-6` |
 
@@ -734,7 +734,7 @@ Body must be HTML fragment (no `<html>` / `<body>` tags) and must be the only th
 | Trigger | `issue_comment` `created` |
 | Filter | Comment body contains `@llm-exe-bot`, comment author is not the bot itself, and author association is `OWNER`, `MEMBER`, or `COLLABORATOR`. Public users cannot summon the bot. |
 | Timeout | 20 minutes |
-| Tools | Full write set (`Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch`); 30 turns; `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
+| Tools | Full write set (`Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch`); 90 turns; `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | Rules baked into the prompt | Three modes: (1) dispatch review pipeline via `gh workflow run agent-review-pr.yml` when a review is requested, (2) read-only Q-and-A, (3) write-mode revision. Write mode is allowed only on explicit ask. Must check out the existing PR branch with `gh pr checkout <N>`, must push to that branch, must NOT create new PRs or branches, must NOT add `Co-Authored-By` lines, must run `npm test` and `npm run typecheck` before committing. |
 
 ### 9.7. `tests.yml` - Jest matrix on PRs

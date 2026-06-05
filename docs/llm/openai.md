@@ -27,8 +27,8 @@ const llm = useLlm("openai.gpt-4o", {
 
 To authenticate, you need to provide an OpenAi API Key. You can provide the API key various ways, depending on your use case.
 
-1. Pass in as execute options using `openAIApiKey`
-2. Pass in as setup options using `openAIApiKey`
+1. Pass in as execute options using `openAiApiKey`
+2. Pass in as setup options using `openAiApiKey`
 3. Use a default key by setting an environment variable of `OPENAI_API_KEY`
 
 Generally you pass the LLM instance off to an LLM Executor and call that. However, it is possible to interact with the LLM object directly, if you wanted.
@@ -45,7 +45,7 @@ In addition to the [generic options](/llm/generic.html), the following options a
 | Option           | Type    | Default     | Description                                                    |
 | ---------------- | ------- | ----------- | -------------------------------------------------------------- |
 | model            | string  | —           | The model to use. Must be specified when using `openai.chat.v1`. Can be any valid chat model. See OpenAI Docs |
-| openAIApiKey     | string  | undefined   | API key for OpenAi. See [authentication](/llm/openai#authentication)   |
+| openAiApiKey     | string  | undefined   | API key for OpenAi. See [authentication](/llm/openai#authentication)   |
 | topP             | number  | undefined   | Maps to `top_p`. See OpenAI Docs                               |
 | stopSequences    | array   | undefined   | Maps to `stop`. See OpenAI Docs                                |
 | frequencyPenalty | number  | undefined   | Maps to `frequency_penalty`. See OpenAI Docs                   |

@@ -339,8 +339,8 @@ const llm = useLlm("openai.gpt-4o", {
 
 To authenticate, you need to provide an OpenAi API Key. You can provide the API key various ways, depending on your use case.
 
-1. Pass in as execute options using `openAIApiKey`
-2. Pass in as setup options using `openAIApiKey`
+1. Pass in as execute options using `openAiApiKey`
+2. Pass in as setup options using `openAiApiKey`
 3. Use a default key by setting an environment variable of `OPENAI_API_KEY`
 
 Generally you pass the LLM instance off to an LLM Executor and call that. However, it is possible to interact with the LLM object directly, if you wanted.
@@ -357,7 +357,7 @@ In addition to the generic options, the following options are OpenAi-specific an
 | Option           | Type    | Default     | Description                                                    |
 | ---------------- | ------- | ----------- | -------------------------------------------------------------- |
 | model            | string  | —           | The model to use. Must be specified when using `openai.chat.v1`. Can be any valid chat model. See OpenAI Docs |
-| openAIApiKey     | string  | undefined   | API key for OpenAi. See [authentication](/llm/openai#authentication)   |
+| openAiApiKey     | string  | undefined   | API key for OpenAi. See [authentication](/llm/openai#authentication)   |
 | topP             | number  | undefined   | Maps to `top_p`. See OpenAI Docs                               |
 | stopSequences    | array   | undefined   | Maps to `stop`. See OpenAI Docs                                |
 | frequencyPenalty | number  | undefined   | Maps to `frequency_penalty`. See OpenAI Docs                   |
@@ -468,7 +468,7 @@ In addition to the generic options, the following options are Gemini-specific an
 | ------------ | ------ | ---------------- | -------------------------------------------------------------------- |
 | model        | string | —                | The model to use. Must be specified when using `google.chat.v1`. See Google Gemini Docs |
 | geminiApiKey | string | undefined        | API key for Google. See [authentication](/llm/gemini#authentication) |
-| effort       | string | undefined        | Maps to `thinkingConfig.thinkingBudget`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only supported with reasoning models (e.g. gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-light). |
+| effort       | string | undefined        | Maps to `thinkingConfig.thinkingBudget`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only supported with reasoning models (e.g. gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite). |
 
 > [!NOTE]
 > The Gemini provider currently maps `model`, `geminiApiKey`, and `effort`. Generic options like `temperature`, `maxTokens`, and `topP` are not mapped to the Gemini API at this time.
@@ -582,6 +582,21 @@ In addition to the generic options, the following options are available for Meta
 # xAI
 
 When using xAI models, llm-exe will make POST requests to `https://api.x.ai/v1/chat/completions`. All models are supported if you pass `xai.chat.v1` as the first argument, and then specify a model in the options.
+
+llm-exe ships typed shorthands for the most common xAI models so you do not have to remember the exact model strings:
+
+| Shorthand                  | Default model                       |
+| -------------------------- | ----------------------------------- |
+| `xai.chat.v1`              | _none — set `model`_                |
+| `xai.grok-2`               | `grok-2-latest`                     |
+| `xai.grok-3`               | `grok-3`                            |
+| `xai.grok-3-mini`          | `grok-3-mini`                       |
+| `xai.grok-4`               | `grok-4`                            |
+| `xai.grok-4-fast`          | `grok-4-fast-non-reasoning`         |
+| `xai.grok-4-1-fast`        | `grok-4-1-fast-non-reasoning`       |
+| `xai.grok-4.3`             | `grok-4.3` (reasoning model)        |
+| `xai.grok-4.20`            | `grok-4.20-0309-non-reasoning`      |
+| `xai.grok-4.20-reasoning`  | `grok-4.20-0309-reasoning`          |
 
 ## Basic Usage
 

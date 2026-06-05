@@ -49,7 +49,7 @@ All providers accept the [generic options](/llm/generic.html) (timeout, retries,
 Each provider requires an API key. You can provide it in three ways:
 
 1. **Environment variable** — set the provider's default env var (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`)
-2. **Setup options** — pass the key when creating the LLM (e.g., `{ openAIApiKey: "sk-..." }`)
+2. **Setup options** — pass the key when creating the LLM (e.g., `{ openAiApiKey: "sk-..." }`)
 3. **Execute options** — pass the key at execution time
 
 See the individual provider pages for the exact option names and env var names.

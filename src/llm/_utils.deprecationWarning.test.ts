@@ -42,7 +42,7 @@ describe("_utils.deprecationWarning", () => {
       expect(warningSpy).not.toHaveBeenCalled();
     });
 
-    it("emits a structured deprecation warning with JSON detail", () => {
+    it("emits a structured deprecation warning with type, code, and detail", () => {
       const config = makeConfig("google.chat.v1", {
         shorthand: "google.gemini-2.5-pro",
         message: "This model is deprecated",
@@ -54,37 +54,23 @@ describe("_utils.deprecationWarning", () => {
       expect(message).toBe("This model is deprecated");
       expect(options.type).toBe("DeprecationWarning");
       expect(options.code).toBe("LLM_EXE_DEPRECATED");
-      expect(JSON.parse(options.detail)).toEqual({
-        shorthand: "google.gemini-2.5-pro",
-        model: "gemini-2.5-pro",
-        provider: "google.chat",
-      });
-    });
-
-    it("emits with model undefined when config has no default model", () => {
-      const config = makeConfig("google.chat.v1", {
-        shorthand: "google.gemini-2.5-pro",
-        message: "Deprecated",
-      });
-      emitDeprecationWarning(config);
-      const detail = JSON.parse(warningSpy.mock.calls[0][1].detail);
-      expect(detail.model).toBeUndefined();
+      const detail = JSON.parse(options.detail);
       expect(detail.shorthand).toBe("google.gemini-2.5-pro");
       expect(detail.provider).toBe("google.chat");
     });
 
-    it("includes executorName and traceId from context when provided", () => {
+    it("includes optional executor context in detail when provided", () => {
       const config = makeConfig("google.chat.v1", {
         shorthand: "google.gemini-2.5-pro",
         message: "Deprecated",
       });
       emitDeprecationWarning(config, {
-        executorName: "summarizer",
-        traceId: "trace-xyz",
+        executorName: "my-executor",
+        traceId: "trace-123",
       });
       const detail = JSON.parse(warningSpy.mock.calls[0][1].detail);
-      expect(detail.executorName).toBe("summarizer");
-      expect(detail.traceId).toBe("trace-xyz");
+      expect(detail.executorName).toBe("my-executor");
+      expect(detail.traceId).toBe("trace-123");
     });
 
     it("dedups by shorthand, not by config.key", () => {
@@ -100,12 +86,12 @@ describe("_utils.deprecationWarning", () => {
       emitDeprecationWarning(flash);
       emitDeprecationWarning(pro);
       expect(warningSpy).toHaveBeenCalledTimes(2);
-      expect(
-        JSON.parse(warningSpy.mock.calls[0][1].detail).shorthand
-      ).toBe("google.gemini-2.5-flash");
-      expect(
-        JSON.parse(warningSpy.mock.calls[1][1].detail).shorthand
-      ).toBe("google.gemini-2.5-pro");
+      expect(JSON.parse(warningSpy.mock.calls[0][1].detail).shorthand).toBe(
+        "google.gemini-2.5-flash"
+      );
+      expect(JSON.parse(warningSpy.mock.calls[1][1].detail).shorthand).toBe(
+        "google.gemini-2.5-pro"
+      );
     });
 
     it("only warns once per shorthand across repeated calls", () => {

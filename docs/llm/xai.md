@@ -2,6 +2,21 @@
 
 When using xAI models, llm-exe will make POST requests to `https://api.x.ai/v1/chat/completions`. All models are supported if you pass `xai.chat.v1` as the first argument, and then specify a model in the options.
 
+llm-exe ships typed shorthands for the most common xAI models so you do not have to remember the exact model strings:
+
+| Shorthand                  | Default model                       |
+| -------------------------- | ----------------------------------- |
+| `xai.chat.v1`              | _none — set `model`_                |
+| `xai.grok-2`               | `grok-2-latest`                     |
+| `xai.grok-3`               | `grok-3`                            |
+| `xai.grok-3-mini`          | `grok-3-mini`                       |
+| `xai.grok-4`               | `grok-4`                            |
+| `xai.grok-4-fast`          | `grok-4-fast-non-reasoning`         |
+| `xai.grok-4-1-fast`        | `grok-4-1-fast-non-reasoning`       |
+| `xai.grok-4.3`             | `grok-4.3` (reasoning model)        |
+| `xai.grok-4.20`            | `grok-4.20-0309-non-reasoning`      |
+| `xai.grok-4.20-reasoning`  | `grok-4.20-0309-reasoning`          |
+
 ## Basic Usage
 
 ### xAI Chat

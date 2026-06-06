@@ -399,6 +399,10 @@ export default defineConfig({
           //   link: "/misc/comparing-langchain.html",
           // },
           {
+            text: "v2 to v3 Migration",
+            link: "/misc/v2-to-v3-migration-guide.html",
+          },
+          {
             text: "Working With JSON",
             link: "/examples/concepts/working-with-json.html",
           },

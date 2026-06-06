@@ -5,7 +5,7 @@ import {
   createCustomParser,
   createLlmExecutor,
 } from "llm-exe";
-import type { IChatMessages, ExecutorContext } from "llm-exe";
+import type { IChatMessages, ExecutionContext } from "llm-exe";
 
 function snakeCase(str: string) {
   return str;
@@ -87,9 +87,9 @@ export const parser = createCustomParser<IdentifyIntentOutput>(
   "IntentParser",
   (
     input,
-    context: ExecutorContext<IdentifyIntentInput, IdentifyIntentOutput>
+    context: ExecutionContext<IdentifyIntentInput, IdentifyIntentOutput>
   ) => {
-    const { intents: inputIntents } = context.input;
+    const { intents: inputIntents } = context.execution.input;
     const cleanResponse = input.trim();
     const regex = /{[\s\S]+?}/g;
     const jsonStrArray = cleanResponse.match(regex);

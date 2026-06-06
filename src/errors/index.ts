@@ -46,6 +46,7 @@ export type {
   ParserParseFailedContext,
   PromptInputContext,
   PromptMessagesContext,
+  PromptMissingTemplateVariableContext,
   EmbeddingDimensionsContext,
   ExecutorErrorContext,
   ExecutorHookContext,

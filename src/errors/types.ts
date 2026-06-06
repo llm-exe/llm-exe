@@ -94,6 +94,12 @@ export type PromptMessagesContext = BaseErrorContext & {
   provider?: string;
 };
 
+export type PromptMissingTemplateVariableContext = BaseErrorContext & {
+  promptType?: string;
+  missingVariables: string[];
+  missingHelpers: string[];
+};
+
 export type NormalizedProviderError = {
   message?: string;
   providerType?: string;
@@ -188,6 +194,7 @@ export type ErrorContextByCode = {
   "parser.schema_validation_failed": ParserSchemaValidationContext;
   "prompt.missing_input": PromptInputContext;
   "prompt.invalid_messages": PromptMessagesContext;
+  "prompt.missing_template_variable": PromptMissingTemplateVariableContext;
   "llm.provider_http_error": ProviderErrorContext;
   "llm.provider_rate_limited": ProviderErrorContext;
   "llm.provider_auth_failed": ProviderErrorContext;

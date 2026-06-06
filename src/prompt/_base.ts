@@ -1,5 +1,6 @@
 import { replaceTemplateString } from "@/utils/modules/replaceTemplateString";
 import { replaceTemplateStringAsync } from "@/utils/modules/replaceTemplateStringAsync";
+import { hbs } from "@/utils/modules/handlebars";
 import {
   IChatMessages,
   PromptOptions,
@@ -8,8 +9,14 @@ import {
   PromptHelper,
   IPromptMessages,
   IPromptChatMessages,
+  ValidateInputMode,
 } from "@/types";
-import { LlmExeError } from "@/errors";
+import { LlmExeError, isLlmExeError } from "@/errors";
+import {
+  validateTemplateInputReferences,
+  TemplateInputReference,
+} from "./_templateValidation";
+import { missingTemplateReferencesError } from "./errors";
 
 /**
  * BasePrompt should be extended.
@@ -21,6 +28,8 @@ export abstract class BasePrompt<I extends Record<string, any>> {
 
   public partials: PromptPartial[] = [];
   public helpers: PromptHelper[] = [];
+
+  public validateInput: ValidateInputMode = false;
 
   public replaceTemplateString = replaceTemplateString;
   public replaceTemplateStringAsync = replaceTemplateStringAsync;
@@ -57,6 +66,9 @@ export abstract class BasePrompt<I extends Record<string, any>> {
       }
       if (options.replaceTemplateString) {
         this.replaceTemplateString = options.replaceTemplateString;
+      }
+      if (options.validateInput !== undefined) {
+        this.validateInput = options.validateInput;
       }
     }
   }
@@ -119,12 +131,57 @@ export abstract class BasePrompt<I extends Record<string, any>> {
   }
 
   /**
+   * Returns the Handlebars-bearing strings that should be validated, along
+   * with a location label used for error context. Subclasses with structured
+   * message content (e.g. ChatPrompt) should override.
+   */
+  protected getTemplateContents(): { content: string; location: string }[] {
+    return this.messages
+      .map((message, index) => {
+        if (!message.content || Array.isArray(message.content)) {
+          return null;
+        }
+        return {
+          content: message.content as string,
+          location: `messages[${index}].content`,
+        };
+      })
+      .filter(
+        (entry): entry is { content: string; location: string } => entry !== null
+      );
+  }
+
+  protected preflightValidate(values: I): void {
+    if (this.validateInput === false || !this.validateInput) {
+      return;
+    }
+    try {
+      this.validate(values);
+    } catch (error) {
+      if (
+        this.validateInput === "warn" &&
+        isLlmExeError(error, "prompt.missing_template_variable")
+      ) {
+        if (
+          typeof process === "object" &&
+          typeof process?.emitWarning === "function"
+        ) {
+          process.emitWarning(error);
+        }
+        return;
+      }
+      throw error;
+    }
+  }
+
+  /**
    * format description
    * @param values The message content
    * @param separator The separator between messages. defaults to "\n\n"
    * @return returns messages formatted with template replacement
    */
   format(values: I, separator: string = "\n\n"): string | IChatMessages {
+    this.preflightValidate(values);
     const replacements = this.getReplacements(values);
     /* istanbul ignore next */
     const messages = this.messages
@@ -152,6 +209,7 @@ export abstract class BasePrompt<I extends Record<string, any>> {
    * @return returns messages formatted with template replacement
    */
   async formatAsync(values: I, separator: string = "\n\n"): Promise<string | IChatMessages> {
+    this.preflightValidate(values);
     const replacements = this.getReplacements(values);
     const _messages = await Promise.all(this.messages
       .map((message) => {
@@ -212,10 +270,55 @@ export abstract class BasePrompt<I extends Record<string, any>> {
   }
 
   /**
-   * Validates the prompt structure.
-   * @return {boolean} Returns false if the prompt has no messages defined.
+   * Validates that `input` provides every variable referenced by this prompt's
+   * templates, and that every identifiable helper call is registered.
+   *
+   * @breaking v3: previously returned `this.messages.length > 0` with no
+   * `input` parameter. For the old behavior, read `prompt.messages.length > 0`
+   * directly.
+   *
+   * @throws LlmExeError with code `"prompt.missing_template_variable"` listing
+   * all missing variables and helpers.
    */
-  validate(): boolean {
-    return this.messages.length > 0;
+  validate(input: I): void {
+    const allMissingVariables: TemplateInputReference[] = [];
+    const allMissingHelpers = new Set<string>();
+    const registeredHelpers = this.helpers.reduce<Record<string, unknown>>(
+      (acc, h) => {
+        acc[h.name] = h.handler;
+        return acc;
+      },
+      {}
+    );
+    const knownHelpers: Record<string, unknown> = {
+      ...(hbs.handlebars as any).helpers,
+      ...registeredHelpers,
+    };
+
+    for (const template of this.getTemplateContents()) {
+      const result = validateTemplateInputReferences(template.content, input, {
+        helpers: knownHelpers,
+        location: template.location,
+      });
+      allMissingVariables.push(...result.missingVariables);
+      for (const helper of result.missingHelpers) {
+        allMissingHelpers.add(helper);
+      }
+    }
+
+    if (allMissingVariables.length === 0 && allMissingHelpers.size === 0) {
+      return;
+    }
+
+    const dedupedVariables = Array.from(
+      new Set(allMissingVariables.map((r) => r.path))
+    );
+
+    throw missingTemplateReferencesError({
+      operation: "Prompt.validate",
+      promptType: this.type,
+      missingVariables: dedupedVariables,
+      missingHelpers: Array.from(allMissingHelpers),
+    });
   }
 }

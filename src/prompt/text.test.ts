@@ -138,13 +138,13 @@ describe("llm-exe:prompt/TextPrompt", () => {
     expect(textPrompt.helpers[0]).toEqual(helper);
   });
 
-  test("validate returns true when prompt has messages", () => {
-    const textPrompt = new TextPrompt("Hello");
-    expect(textPrompt.validate()).toBe(true);
-  });
-  test("validate returns false when prompt has no messages", () => {
-    const textPrompt = new TextPrompt();
-    expect(textPrompt.validate()).toBe(false);
+  // v3: validate() now takes input and asserts template variables are present.
+  // Old shape-check semantics are equivalent to `prompt.messages.length > 0`.
+  test("messages.length > 0 reports whether prompt has content (replaces v2 validate())", () => {
+    const withContent = new TextPrompt("Hello");
+    expect(withContent.messages.length > 0).toBe(true);
+    const empty = new TextPrompt();
+    expect(empty.messages.length > 0).toBe(false);
   });
 
   it("can add pre filters that run _before_ replacements", () => {

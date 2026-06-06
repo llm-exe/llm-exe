@@ -12,6 +12,7 @@ const ALL_CODES = [
   "parser.schema_validation_failed",
   "prompt.missing_input",
   "prompt.invalid_messages",
+  "prompt.missing_template_variable",
   "llm.provider_http_error",
   "llm.provider_rate_limited",
   "llm.provider_auth_failed",

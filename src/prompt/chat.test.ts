@@ -230,13 +230,13 @@ describe("llm-exe:prompt/ChatPrompt", () => {
       { content: "World", role: "assistant" },
     ]);
   });
-  it("validate returns true when prompt has messages", () => {
-    const prompt = new ChatPrompt("Hello");
-    expect(prompt.validate()).toEqual(true);
-  });
-  it("validate returns false when prompt has no messages", () => {
-    const prompt = new ChatPrompt();
-    expect(prompt.validate()).toEqual(false);
+  // v3: validate() now takes input and asserts template variables are present.
+  // Old shape-check semantics are equivalent to `prompt.messages.length > 0`.
+  it("messages.length > 0 reports whether prompt has content (replaces v2 validate())", () => {
+    const withContent = new ChatPrompt("Hello");
+    expect(withContent.messages.length > 0).toEqual(true);
+    const empty = new ChatPrompt();
+    expect(empty.messages.length > 0).toEqual(false);
   });
 
   it("addToPrompt to add assistant message", () => {

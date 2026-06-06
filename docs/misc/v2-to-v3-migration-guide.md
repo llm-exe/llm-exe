@@ -8,7 +8,25 @@ description: "Migration guide for parser and output-boundary changes when upgrad
 Status: draft
 Milestone: v3.0.0
 
-This guide currently covers only the parser and output-boundary changes represented in this branch. It should grow as additional v3 changes land.
+This guide covers the v3 behavior changes that may require application updates.
+
+## v3 Overview
+
+v3 is stricter about parser output, prompt input, execution metadata, and provider errors.
+
+The main changes are:
+
+- Parsers throw when they cannot parse the requested output.
+- The JSON parser validates against the provided schema by default.
+- llm-exe errors use `LlmExeError` with `code`, `category`, `context`, and `cause`.
+- Provider HTTP failures map to llm-exe error codes.
+- Prompts can check template variables and helpers before rendering.
+- Custom parser callbacks receive `ExecutionContext`.
+- Deprecated provider/model shorthands still work, but emit process warnings.
+
+Most migrations are small code updates: handle parser errors instead of fallback values, call `prompt.validate(input)` with input, read parser context from `context.execution`, and branch on `LlmExeError` codes when needed.
+
+The benefit is a clearer contract between your code and the model. Prompt inputs are checked earlier, parser output is enforced more consistently, provider failures carry structured error data, and execution metadata is easier to pass through logs, hooks, and custom parsers.
 
 ## Parser Failures No Longer Return Fallback Values
 
@@ -58,6 +76,35 @@ try {
 ```
 
 Parser errors do not include raw model/user output by default. Use metadata such as `inputLength`, `expected`, `received`, `reason`, and `schemaErrors`. Debug excerpts are available only behind debug behavior such as `LLM_EXE_DEBUG`.
+
+## Error Handling
+
+v3 uses `LlmExeError` for llm-exe errors. These errors expose:
+
+- `code`
+- `category`
+- `context`
+- `cause`
+
+Migration:
+
+```ts
+import { isLlmExeError, formatLlmExeErrorForLog } from "llm-exe";
+
+try {
+  await executor.execute(input);
+} catch (error) {
+  if (isLlmExeError(error, "llm.provider_rate_limited")) {
+    // Queue, retry later, or fall back.
+  }
+
+  logger.error(formatLlmExeErrorForLog(error));
+}
+```
+
+Provider HTTP failures use codes such as `llm.provider_rate_limited`, `llm.provider_auth_failed`, `llm.provider_invalid_request`, `llm.provider_unavailable`, and `llm.provider_http_error`.
+
+See [Error Handling](/misc/errors.html).
 
 ## JSON Parser Is Strict
 
@@ -310,10 +357,69 @@ Migration:
 - Use `listToKeyValue` when duplicate keys are meaningful.
 - Make list prompts consistently marked or consistently unmarked.
 
+## Prompt validate() Checks Template Input
+
+In 2.x, `prompt.validate()` could be used as a prompt-existence check. In 3.x, `validate(input)` checks prompt template variables and helpers.
+
+```ts
+const prompt = createChatPrompt<{ name: string }>("Hello {{name}}");
+
+prompt.validate({ name: "Greg" });
+// ok
+
+prompt.validate({});
+// throws LlmExeError with code "prompt.missing_template_variable"
+```
+
+Migration:
+
+- Replace `prompt.validate()` existence checks with `prompt.messages.length > 0`.
+- Pass the same input object you would pass to `format()` or `executor.execute()` when calling `prompt.validate(input)`.
+- Catch `prompt.missing_template_variable` when missing prompt input should be handled programmatically.
+
+```ts
+const hasPromptContent = prompt.messages.length > 0;
+```
+
+Prompts can also validate before rendering:
+
+```ts
+const prompt = createChatPrompt<{ name: string }>("Hello {{name}}", {
+  validateInput: "strict",
+});
+
+prompt.format({});
+// throws prompt.missing_template_variable before rendering
+```
+
+Use `validateInput: "warn"` to emit a warning and continue rendering.
+
+See [Prompt Validation](/prompt/validation.html).
+
+## Deprecation Warnings
+
+Deprecated LLM shorthands still resolve, but emit a Node `DeprecationWarning` with code `LLM_EXE_DEPRECATED` on first use in the current process.
+
+Migration:
+
+- Move deprecated shorthands to an active shorthand or explicit provider/model config.
+- Listen for `process.on("warning")` if your application needs to route these warnings into logging.
+- Do not parse docs for deprecated model lists manually; provider model lists are generated.
+
+```ts
+process.on("warning", (warning) => {
+  if (warning.code === "LLM_EXE_DEPRECATED") {
+    console.warn(warning.message);
+  }
+});
+```
+
+See [Deprecation Warnings](/llm/deprecations.html).
+
 
 ## Custom Parser Context Is Now ExecutionContext
 
-Custom parser callbacks now receive `ExecutionContext` instead of the old `ExecutorContext` shape.
+Custom parser callbacks now receive `ExecutionContext` instead of the old `ExecutorContext` object.
 
 In 2.x, custom parsers were typed as though execution metadata fields were available at the top level of the second argument:
 
@@ -332,7 +438,7 @@ const parser = createCustomParser("example", (
 });
 ```
 
-In 3.x, execution metadata is nested under `context.execution`, stable executor metadata is under `context.executor`, and the resolved trace ID is available as `context.traceId`:
+In 3.x, execution metadata is under `context.execution`, executor metadata is under `context.executor`, and the resolved trace ID is available as `context.traceId`:
 
 ```ts
 import type { ExecutionContext } from "llm-exe";
@@ -356,7 +462,9 @@ Migration:
 - Move execution metadata reads from `context.input`, `context.handlerInput`, `context.handlerOutput`, and `context.output` to `context.execution.input`, `context.execution.handlerInput`, `context.execution.handlerOutput`, and `context.execution.output`.
 - Move executor metadata reads from `context.metadata` to `context.executor`.
 - Use `context.traceId` for the resolved per-call trace ID.
-- `ExecutorContext` may still exist as a compatibility type, but it is no longer the runtime shape passed to custom parsers.
+- `ExecutorContext` may still exist as a compatibility type, but it is no longer the runtime object passed to custom parsers.
+
+See [ExecutionContext](/executor/execution-context.html).
 
 ## Parser Type Inference
 

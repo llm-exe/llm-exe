@@ -197,6 +197,11 @@ export default defineConfig({
             link: "/llm/custom.html",
             items: [],
           },
+          {
+            text: "Deprecation Warnings",
+            link: "/llm/deprecations.html",
+            items: [],
+          },
         ],
       },
       {
@@ -211,6 +216,11 @@ export default defineConfig({
           {
             text: "Chat Prompt",
             link: "/prompt/chat.html",
+            items: [],
+          },
+          {
+            text: "Validation",
+            link: "/prompt/validation.html",
             items: [],
           },
           {
@@ -277,6 +287,10 @@ export default defineConfig({
           {
             text: "Options",
             link: "/executor/options.html",
+          },
+          {
+            text: "ExecutionContext",
+            link: "/executor/execution-context.html",
           },
           {
             text: "Functions (tools)",
@@ -401,6 +415,10 @@ export default defineConfig({
           {
             text: "v2 to v3 Migration",
             link: "/misc/v2-to-v3-migration-guide.html",
+          },
+          {
+            text: "Error Handling",
+            link: "/misc/errors.html",
           },
           {
             text: "Working With JSON",

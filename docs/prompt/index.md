@@ -21,6 +21,7 @@ See:
 
 - [Text Prompt](/prompt/text.html)
 - [Chat Prompt](/prompt/chat.html)
+- [Prompt Validation](/prompt/validation.html)
 
 ## Basic Replacements
 
@@ -32,6 +33,12 @@ The object that you pass to `prompt.format` (or `.execute` when a prompt is part
 </GenericOutput>
 
 For advanced uses and working with custom helpers/partials, [see here](/prompt/advanced.html).
+
+## Validating Template Inputs
+
+Prompts can validate that required template variables and helpers are available before rendering. Use `prompt.validate(input)` directly, or set `validateInput: "strict"` / `"warn"` on a prompt to check calls to `format()`.
+
+See [Prompt Validation](/prompt/validation.html).
 
 ## Using Types with Prompts
 

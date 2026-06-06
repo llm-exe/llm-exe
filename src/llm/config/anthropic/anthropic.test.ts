@@ -146,4 +146,89 @@ describe("anthropic config", () => {
       expect(body.top_k).toBe(40);
     });
   });
+
+  describe("mapOptions.functionCall", () => {
+    const functionCall = config.mapOptions!.functionCall!;
+
+    it("returns _clearFunctions sentinel for 'none'", () => {
+      expect(functionCall("none", {})).toEqual({ _clearFunctions: true });
+    });
+
+    it("wraps 'auto' as anthropic tool_choice object", () => {
+      expect(functionCall("auto", {})).toEqual({
+        tool_choice: { type: "auto" },
+      });
+    });
+
+    it("wraps 'any' as anthropic tool_choice object", () => {
+      expect(functionCall("any", {})).toEqual({
+        tool_choice: { type: "any" },
+      });
+    });
+
+    it("passes through specific function name unchanged", () => {
+      expect(functionCall("my_func" as any, {})).toEqual({
+        tool_choice: "my_func",
+      });
+    });
+  });
+
+  describe("mapOptions.functions", () => {
+    const functions = config.mapOptions!.functions!;
+
+    it("maps each function to anthropic's tools shape (name, description, input_schema)", () => {
+      const result = functions(
+        [
+          {
+            name: "lookup_weather",
+            description: "Get weather for a city",
+            parameters: {
+              type: "object",
+              properties: { city: { type: "string" } },
+              required: ["city"],
+            },
+          },
+        ],
+        {}
+      );
+
+      expect(result).toEqual({
+        tools: [
+          {
+            name: "lookup_weather",
+            description: "Get weather for a city",
+            input_schema: expect.objectContaining({
+              type: "object",
+              properties: { city: { type: "string" } },
+            }),
+          },
+        ],
+      });
+      // Anthropic uses input_schema, not parameters — guard against regression
+      expect(result.tools[0]).not.toHaveProperty("parameters");
+      // Anthropic does NOT take a top-level `type: "function"` like OpenAI
+      expect(result.tools[0]).not.toHaveProperty("type");
+    });
+
+    it("maps multiple functions in order", () => {
+      const result = functions(
+        [
+          {
+            name: "a",
+            description: "first",
+            parameters: { type: "object", properties: {} },
+          },
+          {
+            name: "b",
+            description: "second",
+            parameters: { type: "object", properties: {} },
+          },
+        ],
+        {}
+      );
+      expect(result.tools).toHaveLength(2);
+      expect(result.tools[0].name).toBe("a");
+      expect(result.tools[1].name).toBe("b");
+    });
+  });
 });

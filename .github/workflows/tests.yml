@@ -4,6 +4,12 @@ on:
   workflow_dispatch:
   pull_request:
     branches: ["main"]
+  # Push to main runs the test matrix so the coverallsapp upload (gated to node 24.x below)
+  # produces a coverage record tagged for the `main` branch. Without this, the Coveralls
+  # badge on the docs site filters with ?branch=main and renders "unknown" because every
+  # prior upload was tagged with the PR's HEAD branch (development / feature branches).
+  push:
+    branches: ["main"]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

@@ -2,6 +2,15 @@
 
 When using Deepseek models, llm-exe will make POST requests to `https://api.deepseek.com/v1/chat/completions`. All models are supported if you pass `deepseek.chat.v1` as the first argument, and then specify a model in the options.
 
+llm-exe ships typed shorthands for the most common Deepseek models so you do not have to remember the exact model strings:
+
+| Shorthand              | Default model        |
+| ---------------------- | -------------------- |
+| `deepseek.chat.v1`     | _none — set `model`_ |
+| `deepseek.chat`        | `deepseek-chat`      |
+| `deepseek.v4-flash`    | `deepseek-v4-flash`  |
+| `deepseek.v4-pro`      | `deepseek-v4-pro`    |
+
 ## Basic Usage
 
 ### Deepseek Chat
@@ -25,6 +34,13 @@ const llm = useLlm("deepseek.chat", {
 const llm = useLlm("deepseek.v4-flash", {
   // other options,
   // no model needed, using deepseek-v4-flash model
+});
+```
+
+```ts
+const llm = useLlm("deepseek.v4-pro", {
+  // other options,
+  // no model needed, using deepseek-v4-pro model
 });
 ```
 

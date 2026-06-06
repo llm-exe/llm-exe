@@ -275,10 +275,12 @@ sequenceDiagram
     J->>B: npm run build:package (tsup CJS + ESM + DTS, externals listed)
     B-->>J: dist/ ready
     J->>J: read package.json version
-    alt version contains "beta"
-        J->>R: npm publish --provenance --tag beta
-    else
-        J->>R: npm publish --provenance
+    alt version has -CHANNEL (e.g. -beta.0, -rc.1, -alpha.2)
+        J->>R: npm publish --provenance --tag CHANNEL
+    else version has "-" but no alphabetic channel
+        J->>J: exit 1 (refuse to publish, would clobber 'latest')
+    else stable version (no "-")
+        J->>R: npm run publish-main (npm publish --provenance)
     end
     R->>S: request provenance attestation
     S-->>R: signed attestation (OIDC id-token)
@@ -293,30 +295,35 @@ Source: [publish-release.yml](../workflows/publish-release.yml) lines 27-121.
 
 ## 6. Version routing
 
-The published package.json version string determines the npm dist-tag.
+The published package.json version string determines the npm dist-tag. Any semver pre-release suffix (anything after a `-`) routes to a named dist-tag derived from the first alphabetic chunk.
 
 ```mermaid
 flowchart LR
     classDef read fill:#1e3a8a,color:#fff,stroke:#000
     classDef dec fill:#7c2d12,color:#fff,stroke:#000
     classDef main fill:#064e3b,color:#fff,stroke:#000
-    classDef beta fill:#581c87,color:#fff,stroke:#000
+    classDef pre fill:#581c87,color:#fff,stroke:#000
+    classDef refuse fill:#991b1b,color:#fff,stroke:#000
 
     A["node -p require('./package.json').version"]:::read
-    A --> D{version string\ncontains 'beta'?}
-
-    D -->|yes\ne.g. 2.4.0-beta.1| B1["echo Publishing beta version"]:::beta
-    B1 --> B2["npm run publish-beta\n= npm publish --provenance --tag beta"]:::beta
-    B2 --> B3["dist-tag: beta\nlatest unchanged"]:::beta
+    A --> D{version contains '-'?}
 
     D -->|no\ne.g. 2.3.6| M1["echo Publishing main version"]:::main
     M1 --> M2["npm run publish-main\n= npm publish --provenance"]:::main
     M2 --> M3["dist-tag: latest\n(default)"]:::main
+
+    D -->|yes| C{regex -([a-zA-Z]+)\nmatches alphabetic channel?}
+    C -->|yes\ne.g. -beta.0, -rc.1, -alpha.2| B1["TAG = first alphabetic chunk\n(beta, rc, alpha, ...)"]:::pre
+    B1 --> B2["npm publish --provenance --tag $TAG\n(no package.json script)"]:::pre
+    B2 --> B3["dist-tag: $TAG\nlatest unchanged"]:::pre
+
+    C -->|no\ne.g. 3.0.0-1234 with no letters| R1["exit 1\n'pre-release has no alphabetic channel'"]:::refuse
+    R1 --> R2["refuse to publish\n(would silently clobber 'latest')"]:::refuse
 ```
 
-Source: [publish-release.yml](../workflows/publish-release.yml) lines 110-121. Scripts in [package.json](../../package.json).
+Source: [publish-release.yml](../workflows/publish-release.yml) lines 110-131. Stable script in [package.json](../../package.json).
 
-Why this matters: `npm publish --provenance` with no `--tag` flag overwrites the `latest` dist-tag. Beta releases must use `--tag beta` so they do not become the default install for `npm i llm-exe`. Both scripts pass `--provenance` explicitly to request OIDC-based supply-chain attestation (this will error if the environment lacks `id-token: write`). The beta/main check is a plain substring match; a version like `2.3.6-beta.0` matches, while `2.3.6` does not.
+Why this matters: `npm publish --provenance` with no `--tag` flag overwrites the `latest` dist-tag. Any pre-release must use `--tag CHANNEL` so it does not become the default install for `npm i llm-exe`. The workflow infers the channel from the version: `3.0.0-beta.0` -> `beta`, `3.0.0-rc.1` -> `rc`, `3.0.0-alpha.2` -> `alpha`. A version with a `-` but no alphabetic channel (e.g. `3.0.0-1234`) is refused outright rather than risk publishing to `latest`. All publish paths pass `--provenance` to request OIDC-based supply-chain attestation (errors if the environment lacks `id-token: write`).
 
 [Back to top](#navigate)
 
@@ -473,13 +480,15 @@ stateDiagram-v2
     Installing --> Building: npm run build:package
     Building --> BuildFailed: tsup error
     BuildFailed --> RollbackEligible
-    Building --> Routing: read version, branch on 'beta'
-    Routing --> PublishingMain: no 'beta' substring
-    Routing --> PublishingBeta: contains 'beta'
+    Building --> Routing: read version, branch on '-' suffix
+    Routing --> PublishingMain: no '-' (stable)
+    Routing --> PublishingPreRelease: '-' with alphabetic channel
+    Routing --> RefusedPreRelease: '-' with no alphabetic channel
+    RefusedPreRelease --> PublishFailed: exit 1 (would clobber latest)
     PublishingMain --> PublishFailed: registry error
-    PublishingBeta --> PublishFailed
+    PublishingPreRelease --> PublishFailed
     PublishingMain --> Published: 200 OK + provenance
-    PublishingBeta --> Published
+    PublishingPreRelease --> Published: 200 OK on $TAG dist-tag
     PublishFailed --> RollbackEligible
     RollbackEligible --> Drafted: event_name == release, PATCH 200
     RollbackEligible --> DraftFailed: dispatch OR PATCH non-200
@@ -530,6 +539,11 @@ flowchart TB
     F5X["bump version, recreate release\n(npm versions are immutable)"]:::fix
     F5E --> F5X
 
+    F5b["Pre-release version with no alphabetic channel\n(e.g. 3.0.0-1234)"]:::fail
+    F5b --> F5bE["publish step exits 1 before npm is called\nrollback fires on release event\ntarball NOT live"]:::effect
+    F5bX["use a named channel (-beta.X, -rc.X, -alpha.X)\nrecut release after fixing package.json"]:::fix
+    F5bE --> F5bX
+
     F6["OIDC provenance fails\nbut tarball already published"]:::fail
     F6 --> F6E["step exit non-zero,\nrollback flips release to draft,\nbut npm tarball is live"]:::effect
     F6X["unpublish within 72h or publish patch\nthat supersedes; investigate id-token perms"]:::fix
@@ -568,9 +582,9 @@ flowchart LR
     K8["Registry"]:::k --- V8["registry.npmjs.org"]:::v
     K9["Cache"]:::k --- V9["~/.npm and node_modules (composite)"]:::v
     K10["Build"]:::k --- V10["npm run build:package (tsup CJS+ESM+DTS)"]:::v
-    K11["Publish (main)"]:::k --- V11["npm publish --provenance (latest dist-tag)"]:::v
-    K12["Publish (beta)"]:::k --- V12["npm publish --provenance --tag beta"]:::v
-    K13["Routing key"]:::k --- V13["substring 'beta' in package.json version"]:::v
+    K11["Publish (stable)"]:::k --- V11["npm run publish-main = npm publish --provenance (latest dist-tag)"]:::v
+    K12["Publish (pre-release)"]:::k --- V12["npm publish --provenance --tag $CHANNEL (beta, rc, alpha, ...)"]:::v
+    K13["Routing key"]:::k --- V13["first alphabetic chunk after '-' in package.json version; no '-' = stable; '-' without letters = refuse"]:::v
     K14["Provenance"]:::k --- V14["OIDC id-token, automatic on publish"]:::v
     K15["Bot identity"]:::k --- V15["llm-exe-bot[bot] via App token"]:::v
     K16["Rollback"]:::k --- V16["PATCH releases/:id draft=true, banner + original body"]:::v

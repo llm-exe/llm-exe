@@ -168,6 +168,26 @@ describe("google configuration", () => {
     });
   });
 
+  describe("gemini-3.5-flash", () => {
+    const googleGemini35Flash = google["google.gemini-3.5-flash"] as Config;
+
+    it("should be based on googleChatV1 configuration", () => {
+      expect(googleGemini35Flash.endpoint).toEqual(googleChatV1.endpoint);
+      expect(googleGemini35Flash.method).toEqual(googleChatV1.method);
+      expect(googleGemini35Flash.headers).toEqual(googleChatV1.headers);
+    });
+
+    it("should override model in mapBody and options as gemini-3.5-flash", () => {
+      expect(googleGemini35Flash.mapBody.model).toEqual({
+        default: "gemini-3.5-flash",
+        key: "model",
+      });
+      expect(googleGemini35Flash.options.model).toEqual({
+        default: "gemini-3.5-flash",
+      });
+    });
+  });
+
   describe("gemini-2.0-flash", () => {
     it("should be based on googleChatV1 configuration", () => {
       expect(googleGemini2Flash.endpoint).toEqual(googleChatV1.endpoint);

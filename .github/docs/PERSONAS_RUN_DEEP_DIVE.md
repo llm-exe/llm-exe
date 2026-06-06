@@ -65,7 +65,7 @@ flowchart LR
 
     subgraph X["External"]
         gh["GitHub API (gh CLI)\nissues, comments, search"]:::ext
-        ant["Anthropic Claude\nclaude-opus-4-6"]:::ext
+        ant["Anthropic Claude\nvars.ANTHROPIC_OPUS_LATEST\n(default: claude-opus-4-6)"]:::ext
     end
 
     subgraph O["Outputs"]
@@ -311,7 +311,7 @@ sequenceDiagram
         RP->>FS: sed sub LOG_FILE then bash sub PERSONA
         RP->>FS: append Time Budget, write /tmp/agent-prompt.txt
         RP->>CCA: prompt = Read /tmp/agent-prompt.txt
-        CCA->>API: streaming inference (claude-opus-4-6)
+        CCA->>API: streaming inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)
         API-->>CCA: tool calls (Bash, Read, Write, Edit, Glob, Grep, WebFetch, WebSearch)
         Note over CCA: persona writes findings to its log file ONLY (no PRs, no issues)
         RP->>C: clock_out (always) stamps status
@@ -492,7 +492,7 @@ flowchart LR
     end
 
     subgraph During["While the LLM runs (persona OR curator)"]
-        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (claude-opus-4-6)\ncost meter: --max-turns 40"]:::llm
+        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)\ncost meter: --max-turns 40"]:::llm
         d2["api.github.com (gh CLI)\nauth: bot token\nused by: curator only\ncalls: gh issue list, gh search issues, gh issue create, gh issue comment"]:::gh
         d3["origin remote (git push)\nauth: bot token\nused by: both (branch push for log commits)"]:::gh
     end
@@ -509,7 +509,7 @@ Tool allowlist passed to `claude-code-action@v1` (identical for persona and cura
 ```
 --allowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch"
 --max-turns 40
---model claude-opus-4-6
+--model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 ```
 
 Note the lower `--max-turns 40` here vs `50` in [agent-run.yml](../workflows/agent-run.yml): personas and curator do less coordination work per session than the docs/tester/scout agents.
@@ -680,7 +680,7 @@ flowchart LR
     K8["Matrix parallelism"]:::k --- V8["max-parallel: 1 (strictly serial)"]:::v
     K9["Curator condition"]:::k --- V9["always() && proceed && != cancelled"]:::v
     K10["Identity"]:::k --- V10["llm-exe-bot[bot] via App token"]:::v
-    K11["Model"]:::k --- V11["claude-opus-4-6"]:::v
+    K11["Model"]:::k --- V11["vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6"]:::v
     K12["Max turns"]:::k --- V12["40"]:::v
     K13["Tool allowlist"]:::k --- V13["Bash, Read, Write, Edit, Glob, Grep, WebFetch, WebSearch"]:::v
     K14["Gate caps"]:::k --- V14["bot PRs &lt;= 20, open issues &lt;= 40"]:::v

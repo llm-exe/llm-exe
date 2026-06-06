@@ -285,15 +285,18 @@ llm-exe attempts to normalize the inputs for various llm vendors, providing a si
 
 ## Options
 
-| Option        | Type             | Default | Description                                                                                                |
-| ------------- | ---------------- | ------- | ---------------------------------------------------------------------------------------------------------- |
-| timeout       | number           | 30000   | Max execution time of API call to the LLM, in milliseconds.                                                |
-| maxDelay      | number           | 5000    | Used for retry back-off. Max time to wait between attempts when timeout has been reached, in milliseconds. |
-| numOfAttempts | number           | 0       | Used for retry. How many attempts should be made before throwing error                                     |
-| jitter        | "none" \| "full" | none    | Used for retry back-off.                                                                                   |
-| temperature   | number           | 0       | Used by model.                                                                                             |
-| maxTokens     | number           | 500     | Used by model.                                                                                             |
-| stream        | boolean \| null  | null    | Note: Not supported yet.                                                                                   |
+| Option        | Type             | Default   | Description                                                                                                |
+| ------------- | ---------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
+| timeout       | number           | 30000     | Max execution time of API call to the LLM, in milliseconds.                                                |
+| maxDelay      | number           | 5000      | Used for retry back-off. Max time to wait between attempts when timeout has been reached, in milliseconds. |
+| numOfAttempts | number           | 2         | Used for retry. How many attempts should be made before throwing error                                     |
+| jitter        | "none" \| "full" | none      | Used for retry back-off.                                                                                   |
+| temperature   | number           | undefined | Maps to provider-specific temperature parameter.                                                           |
+| maxTokens     | number           | undefined | Maps to provider-specific max tokens parameter.                                                            |
+| topP          | number           | undefined | Maps to provider-specific top_p parameter.                                                                 |
+| stopSequences | string[]         | undefined | Maps to provider-specific stop sequences parameter.                                                        |
+| effort        | string           | undefined | Maps to reasoning effort. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only supported by providers/models that support reasoning effort (e.g. OpenAI gpt-5, Google Gemini 2.5). |
+| stream        | boolean \| null  | null      | Note: Not supported yet.                                                                                   |
 
 > [!NOTE]
 > Different vendors will allow (and may require) additional options.
@@ -304,22 +307,6 @@ llm-exe attempts to normalize the inputs for various llm vendors, providing a si
 > - [Deepseek Chat Model Options](/llm/deepseek#deepseek-specific-options)
 > - [Ollama Chat Model Options](/llm/ollama#ollama-specific-options)
 > - [AWS Bedrock Chat Model Options](/llm/bedrock/index.html)
-
-<!-- 
-| Option           | Type            | Default       | Description                                                                                                                             |
-| ---------------- | --------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| openAIApiKey     | string          | undefined     | API key for OpenAI. Optionally can be set using process.env.OPENAI_API_KEY                                                             |
-| model            | string          | gpt-3.5-turbo | The model to use. Can be any one of: gpt-4o, gpt-4o-mini, gpt-4, gpt-3.5-turbo, davinci, text-curie-001, text-babbage-001, text-ada-001 |
-| temperature      | number          | 0             | See OpenAI Docs                                                                                                                         |
-| maxTokens        | number          | 500           | See OpenAI Docs                                                                                                                         |
-| topP             | number \| null  | null          | See OpenAI Docs                                                                                                                         |
-| n                | number \| null  | null          | See OpenAI Docs                                                                                                                         |
-| stream           | boolean \| null | null          | See OpenAI Docs. Note: Not supported yet.                                                                                               |
-| stop             | ?               | null          | See OpenAI Docs                                                                                                                         |
-| presencePenalty  | number \| null  | null          | See OpenAI Docs                                                                                                                         |
-| frequencyPenalty | number \| null  | null          | See OpenAI Docs                                                                                                                         |
-| logitBias        | object \| null  | null          | See OpenAI Docs                                                                                                                         |
-| user             | string \| null  | null          | See OpenAI Docs                                                                                                                         | -->
 
 ---
 
@@ -352,8 +339,8 @@ const llm = useLlm("openai.gpt-4o", {
 
 To authenticate, you need to provide an OpenAi API Key. You can provide the API key various ways, depending on your use case.
 
-1. Pass in as execute options using `openAIApiKey`
-2. Pass in as setup options using `openAIApiKey`
+1. Pass in as execute options using `openAiApiKey`
+2. Pass in as setup options using `openAiApiKey`
 3. Use a default key by setting an environment variable of `OPENAI_API_KEY`
 
 Generally you pass the LLM instance off to an LLM Executor and call that. However, it is possible to interact with the LLM object directly, if you wanted.
@@ -369,11 +356,14 @@ In addition to the generic options, the following options are OpenAi-specific an
 
 | Option           | Type    | Default     | Description                                                    |
 | ---------------- | ------- | ----------- | -------------------------------------------------------------- |
-| model            | string  | gpt-4o-mini | The model to use. Can be any valid chat model. See OpenAI Docs |
-| openAIApiKey     | string  | undefined   | API key for OpenAi. See [authentication](/llm/openai#authentication)   |
+| model            | string  | —           | The model to use. Must be specified when using `openai.chat.v1`. Can be any valid chat model. See OpenAI Docs |
+| openAiApiKey     | string  | undefined   | API key for OpenAi. See [authentication](/llm/openai#authentication)   |
 | topP             | number  | undefined   | Maps to `top_p`. See OpenAI Docs                               |
+| stopSequences    | array   | undefined   | Maps to `stop`. See OpenAI Docs                                |
+| frequencyPenalty | number  | undefined   | Maps to `frequency_penalty`. See OpenAI Docs                   |
+| logitBias        | object  | undefined   | Maps to `logit_bias`. See OpenAI Docs                          |
 | useJson          | boolean | undefined   | When `true`, sets `response_format` to `json_object`           |
-| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only supported with reasoning models (e.g. o-series). |
+| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only supported with reasoning models (e.g. gpt-5). |
 
 See [OpenAI API Reference](https://platform.openai.com/docs/api-reference/chat) for details on these parameters.
 
@@ -476,13 +466,14 @@ In addition to the generic options, the following options are Gemini-specific an
 
 | Option       | Type   | Default          | Description                                                          |
 | ------------ | ------ | ---------------- | -------------------------------------------------------------------- |
-| model        | string | gemini-2.0-flash | The model to use. Can be any valid chat model. See Google Gemini Docs       |
+| model        | string | —                | The model to use. Must be specified when using `google.chat.v1`. See Google Gemini Docs |
 | geminiApiKey | string | undefined        | API key for Google. See [authentication](/llm/gemini#authentication) |
-| temperature  | number | undefined        | Maps to temperature.\*                                               |
-| maxTokens    | number | undefined        | Maps to max_tokens. See Google Gemini Docs                                  |
-| topP         | number | undefined        | Maps to top_p. See Google Gemini Docs                                       |
+| effort       | string | undefined        | Maps to `thinkingConfig.thinkingBudget`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only supported with reasoning models (e.g. gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite). |
 
-\* Google Gemini Docs: [link](https://ai.google.dev/gemini-api/docs)
+> [!NOTE]
+> The Gemini provider currently maps `model`, `geminiApiKey`, and `effort`. Generic options like `temperature`, `maxTokens`, and `topP` are not mapped to the Gemini API at this time.
+
+See [Google Gemini API Reference](https://ai.google.dev/gemini-api/docs) for details.
 
 ---
 
@@ -541,9 +532,22 @@ const llm = useLlm("amazon:anthropic.chat.v1", {
 });
 ```
 
-## Anthropic-Specific Options
+## Bedrock Anthropic Options
 
-<!--@include: ../anthropic.options.part.md-->
+In addition to the [generic options](/llm/generic.html), the following options are available for Anthropic models on Bedrock.
+
+| Option      | Type   | Default   | Description                                                              |
+| ----------- | ------ | --------- | ------------------------------------------------------------------------ |
+| model       | string | —         | The Bedrock model id. Must be specified. See AWS Bedrock Docs            |
+| maxTokens   | number | 10000     | Maps to `max_tokens`. See Anthropic Docs                                 |
+| topP        | number | undefined | Maps to `top_p`. See Anthropic Docs                                      |
+| awsRegion   | string | undefined | AWS Region. Can be set via `AWS_REGION` environment variable             |
+| awsSecretKey| string | undefined | AWS Secret Key. Can be set via `AWS_SECRET_ACCESS_KEY` environment variable |
+| awsAccessKey| string | undefined | AWS Access Key. Can be set via `AWS_ACCESS_KEY_ID` environment variable  |
+
+> [!NOTE]
+> The Bedrock Anthropic provider maps a subset of the direct Anthropic provider options. Options like `temperature`, `topK`, `stopSequences`, `metadata`, and `serviceTier` are not mapped for the Bedrock variant at this time.
+
 ---
 
 # Meta
@@ -578,6 +582,21 @@ In addition to the generic options, the following options are available for Meta
 # xAI
 
 When using xAI models, llm-exe will make POST requests to `https://api.x.ai/v1/chat/completions`. All models are supported if you pass `xai.chat.v1` as the first argument, and then specify a model in the options.
+
+llm-exe ships typed shorthands for the most common xAI models so you do not have to remember the exact model strings:
+
+| Shorthand                  | Default model                       |
+| -------------------------- | ----------------------------------- |
+| `xai.chat.v1`              | _none — set `model`_                |
+| `xai.grok-2`               | `grok-2-latest`                     |
+| `xai.grok-3`               | `grok-3`                            |
+| `xai.grok-3-mini`          | `grok-3-mini`                       |
+| `xai.grok-4`               | `grok-4`                            |
+| `xai.grok-4-fast`          | `grok-4-fast-non-reasoning`         |
+| `xai.grok-4-1-fast`        | `grok-4-1-fast-non-reasoning`       |
+| `xai.grok-4.3`             | `grok-4.3` (reasoning model)        |
+| `xai.grok-4.20`            | `grok-4.20-0309-non-reasoning`      |
+| `xai.grok-4.20-reasoning`  | `grok-4.20-0309-reasoning`          |
 
 ## Basic Usage
 
@@ -619,22 +638,18 @@ await llm.call(prompt);
 
 In addition to the generic options, the following options are xAI-specific and can be passed in when creating a llm function.
 
-| Option           | Type    | Default     | Description                                                 |
-| ---------------- | ------- | ----------- | ----------------------------------------------------------- |
-| model            | string  | —           | The model to use. Must be specified. See xAI Docs               |
-| xAiApiKey        | string  | undefined   | API key for xAI.                                            |
-| temperature      | number  | undefined   | Maps to temperature.\*                                      |
-| maxTokens        | number  | undefined   | Maps to max_tokens. See xAI Docs                            |
-| topP             | number  | undefined   | Maps to top_p. See xAI Docs                                 |
-| n                | number  | undefined   | Maps to n. See xAI Docs                                     |
-| stream           | boolean | undefined   | See xAI Docs. Note: Not supported yet.                      |
-| stop             | ?       | undefined   | Maps to stop. See xAI Docs                                  |
-| presencePenalty  | number  | undefined   | Maps to presence_penalty. See xAI Docs                      |
-| frequencyPenalty | number  | undefined   | Maps to frequency_penalty. See xAI Docs                     |
-| logitBias        | object  | undefined   | Maps to logit_bias. See xAI Docs                            |
-| user             | string  | undefined   | Maps to user. See xAI Docs                                  |
+| Option           | Type    | Default     | Description                                                    |
+| ---------------- | ------- | ----------- | -------------------------------------------------------------- |
+| model            | string  | —           | The model to use. Must be specified when using `xai.chat.v1`.  |
+| xAiApiKey        | string  | undefined   | API key for xAI. Optionally can be set using process.env.XAI_API_KEY |
+| topP             | number  | undefined   | Maps to `top_p`. See xAI Docs                                 |
+| stopSequences    | array   | undefined   | Maps to `stop`. See xAI Docs                                  |
+| frequencyPenalty | number  | undefined   | Maps to `frequency_penalty`. See xAI Docs                     |
+| logitBias        | object  | undefined   | Maps to `logit_bias`. See xAI Docs                            |
+| useJson          | boolean | undefined   | When `true`, sets `response_format` to `json_object`           |
+| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Currently not supported by any available xAI model and will be silently ignored. |
 
-\* xAI Docs: [link](https://docs.x.ai/docs/overview)
+See [xAI API Reference](https://docs.x.ai/docs/overview) for details on these parameters.
 
 ---
 
@@ -676,14 +691,14 @@ await llm.call(prompt);
 
 In addition to the generic options, the following options are Ollama-specific and can be passed in when creating a llm function.
 
-| Option           | Type    | Default     | Description                                                    |
-| ---------------- | ------- | ----------- | -------------------------------------------------------------- |
-| model            | string  | —           | The model to use. Must be specified. See Ollama Docs             |
-| temperature      | number  | undefined   | Maps to temperature.*                          |
-| maxTokens        | number  | undefined   | Maps to max_tokens. See Ollama Docs                            |
-| topP             | number  | undefined   | Maps to top_p. See Ollama Docs                                 |
+| Option | Type   | Default   | Description                                                    |
+| ------ | ------ | --------- | -------------------------------------------------------------- |
+| model  | string | —         | The model to use. Must be specified when using `ollama.chat.v1`. |
 
-\* Ollama Docs: [link](https://ollama.com/)
+> [!NOTE]
+> The Ollama provider currently maps `model` and `prompt` only. Generic options like `temperature`, `maxTokens`, and `topP` are not mapped to the Ollama API at this time. The Ollama request body is sent directly to the `/api/chat` endpoint.
+
+See [Ollama Docs](https://ollama.com/) for details.
 
 ---
 
@@ -731,18 +746,18 @@ await llm.call(prompt);
 
 In addition to the generic options, the following options are Deepseek-specific and can be passed in when creating a llm function.
 
-| Option           | Type    | Default     | Description                                                    |
-| ---------------- | ------- | ----------- | -------------------------------------------------------------- |
-| model            | string  | deepseek-chat | The model to use. Can be any valid chat model. See Deepseek Docs |
-| deepseekApiKey     | string  | undefined   | API key for Deepseek. See [authentication](/llm/deepseek#authentication)   |
-| temperature      | number  | undefined   | Maps to temperature.*                          |
-| maxTokens        | number  | undefined   | Maps to max_tokens. See Deepseek Docs                            |
-| topP             | number  | undefined   | Maps to top_p. See Deepseek Docs                                 |
-| n                | number  | undefined   | Maps to n. See Deepseek Docs                                     |
-| stream           | boolean | undefined   | See Deepseek Docs. Note: Not supported yet.                      |
+| Option           | Type    | Default       | Description                                                    |
+| ---------------- | ------- | ------------- | -------------------------------------------------------------- |
+| model            | string  | —             | The model to use. Must be specified when using `deepseek.chat.v1`. Can be any valid chat model. See Deepseek Docs |
+| deepseekApiKey   | string  | undefined     | API key for Deepseek. See [authentication](/llm/deepseek#authentication) |
+| topP             | number  | undefined     | Maps to `top_p`. See Deepseek Docs                             |
+| stopSequences    | array   | undefined     | Maps to `stop`. See Deepseek Docs                              |
+| frequencyPenalty | number  | undefined     | Maps to `frequency_penalty`. See Deepseek Docs                 |
+| logitBias        | object  | undefined     | Maps to `logit_bias`. See Deepseek Docs                        |
+| useJson          | boolean | undefined     | When `true`, sets `response_format` to `json_object`           |
+| effort           | string  | undefined     | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Currently not supported by Deepseek models and will be silently ignored. |
 
-
-\* Deepseek Docs: [link](https://api-docs.deepseek.com/)
+See [Deepseek API Reference](https://api-docs.deepseek.com/) for details on these parameters.
 
 ---
 
@@ -1736,9 +1751,9 @@ const parsed = parser.parse(exampleOutputFromLlm);
 When instructing the LLM to respond with json or a format that can be parsed to json, it can be helpful to define schema. This allows you to validate, provide default values, and have a fully-typed response. In fact, the JSON Schema you define can be really useful (and re-used!) in your prompt. [See tips](/examples/concepts/working-with-json) for working with JSON.
 
 ```ts
-import { utils, createParser } from "llm-exe";
+import { defineSchema, createParser } from "llm-exe";
 
-const schema = utils.defineSchema({
+const schema = defineSchema({
   type: "object",
   properties: {
     statement: { type: "string", default: "" },
@@ -2005,13 +2020,28 @@ function subtract(a: number, b: number){
 ## Replace String Template
 
 `replaceStringTemplate`
-Uses handlebars to parse the output.
-Returns string.
+Runs Handlebars substitution on the LLM's output, using the executor's input attributes as template data. This lets the LLM return a template string that gets filled in with the original input variables before being returned to the caller.
+
+Returns: string
+
+**Use case:** The LLM generates a response containing placeholders, and the parser fills them in with known values from the executor input — useful for personalized messages, dynamic templates, or mail-merge patterns.
+
+```ts
+const parser = createParser("replaceStringTemplate");
+```
 
 ## List to JSON
 
 `listToJson`
-Converts a list of key: value pairs (separated by \n) to an object.
+Parses key:value lines (separated by newlines) into a **single flat object**. Each line becomes one property — the key is derived from the text before the first colon, and the value is the text after it. Keys are camelCased by default.
+
+Returns: object (flat key-value pairs)
+
+Options:
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `keyTransform` | `"camelCase" \| "preserve"` | `"camelCase"` | How to transform keys. `"camelCase"` converts keys like "First Name" to "firstName". `"preserve"` keeps the original key text (trimmed). |
+| `schema` | `JSONSchema` | `undefined` | Optional JSON Schema to validate and enforce types on the output. |
 
 > **Example Prompt:** <br>You need to extract the following information. Reply only with: Color: the color\nName: the name\nType: the type
 

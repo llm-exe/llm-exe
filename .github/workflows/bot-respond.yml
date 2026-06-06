@@ -109,5 +109,5 @@ jobs:
             - Be conversational and concise. Reference actual code (file paths, line numbers) when relevant.
           claude_args: |
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch"
-            --max-turns 30
-            --model claude-opus-4-6
+            --max-turns 90
+            --model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}

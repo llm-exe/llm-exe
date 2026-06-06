@@ -61,7 +61,7 @@ flowchart LR
     end
 
     subgraph O["Outputs"]
-        o1["one draft release\ntag vMAJOR.MINOR.PATCH\ntarget main"]:::out
+        o1["one draft release\ntag vMAJOR.MINOR.PATCH (optionally -PRERELEASE)\ntarget main\nprerelease flag set when version has -suffix"]:::out
     end
 
     subgraph H["Human gate"]
@@ -149,8 +149,8 @@ flowchart TB
         s0["actions/checkout@v4"]:::step
         s1["Get all draft releases\ngh api ... | jq draft==true ids\nwrite release_ids.txt"]:::step
         s2["Delete old draft releases\nloop: gh api -X DELETE"]:::step
-        s3["Determine next semantic version\njq -r .version package.json\nregex MAJOR.MINOR.PATCH\nformat vMAJOR.MINOR.PATCH\nexport NEW_VERSION"]:::step
-        s4["Create Draft Release on GitHub\nPOST /releases\ngenerate_release_notes: true\nsave release_id + release_url\nwrite release_body.txt"]:::step
+        s3["Determine next semantic version\njq -r .version package.json\nregex MAJOR.MINOR.PATCH(-PRERELEASE)?\nformat vMAJOR.MINOR.PATCH (preserve -suffix)\nexport NEW_VERSION + IS_PRERELEASE"]:::step
+        s4["Create Draft Release on GitHub\nPOST /releases\nprerelease: IS_PRERELEASE\nmake_latest: legacy (stable) or false (prerelease)\ngenerate_release_notes: true\nsave release_id + release_url\nwrite release_body.txt"]:::step
         s5["Clean up release notes\nsed: drop 4 patterns\nstrip by @user in\nwrite cleaned_body.txt"]:::step
         s6["Update Draft Release with cleaned notes\nPATCH /releases/(id)\nbody: jq -Rs cleaned_body.txt"]:::step
         s0 --> s1 --> s2 --> s3 --> s4 --> s5 --> s6
@@ -188,11 +188,12 @@ sequenceDiagram
         API-->>R: 204 No Content
     end
     R->>PKG: jq -r .version package.json
-    PKG-->>R: e.g. 2.3.4
-    R->>R: regex extract MAJOR.MINOR.PATCH
-    R->>R: NEW_VERSION = vMAJOR.MINOR.PATCH
-    R->>R: export NEW_VERSION via GITHUB_ENV
-    R->>API: POST /releases (tag NEW_VERSION, target main, draft true, generate_release_notes true)
+    PKG-->>R: e.g. 2.3.4 or 3.0.0-beta.0
+    R->>R: regex validate MAJOR.MINOR.PATCH with optional -PRERELEASE suffix
+    R->>R: NEW_VERSION = v + full version (including any -suffix)
+    R->>R: IS_PRERELEASE = true if version contains "-", else false
+    R->>R: export NEW_VERSION + IS_PRERELEASE via GITHUB_ENV
+    R->>API: POST /releases (tag NEW_VERSION, target main, draft true, prerelease IS_PRERELEASE, make_latest legacy or false, generate_release_notes true)
     API-->>R: 201 with id, html_url, auto-generated body
     R->>FS: release_body.txt = body
     R->>FS: sed drop 4 patterns then strip " by @user in" then cleaned_body.txt
@@ -317,7 +318,7 @@ flowchart LR
     subgraph During["GitHub Releases API"]
         a1["GET /repos/(repo)/releases\nauth: GITHUB_TOKEN\nwhy: list all releases to find drafts"]:::api
         a2["DELETE /repos/(repo)/releases/(id)\nauth: GITHUB_TOKEN\nwhy: wipe each existing draft"]:::api
-        a3["POST /repos/(repo)/releases\nauth: GITHUB_TOKEN\nbody: tag_name, target_commitish main, draft true, generate_release_notes true\nwhy: create the new draft and let GitHub generate notes"]:::api
+        a3["POST /repos/(repo)/releases\nauth: GITHUB_TOKEN\nbody: tag_name, target_commitish main, draft true,\nprerelease (true if -suffix), make_latest (legacy or false),\ngenerate_release_notes true\nwhy: create the new draft and let GitHub generate notes"]:::api
         a4["PATCH /repos/(repo)/releases/(id)\nauth: GITHUB_TOKEN\nbody: tag_name, target_commitish main, body (cleaned)\nwhy: replace auto notes with cleaned version"]:::api
     end
 
@@ -423,7 +424,7 @@ flowchart TB
     F1E --> F1X["expected on a clean repo or after manual cleanup, not a failure"]:::fix
 
     F2["package.json version missing or malformed"]:::fail
-    F2 --> F2E["fallback sets v0.0.0 if empty\nregex fails for non-semver, exit 1"]:::effect
+    F2 --> F2E["empty version exits 1 with explicit error\nregex (MAJOR.MINOR.PATCH with optional -PRERELEASE)\nfails for non-semver, exit 1"]:::effect
     F2X["fix package.json and re-run via workflow_dispatch"]:::fix
     F2E --> F2X
 
@@ -473,12 +474,13 @@ flowchart LR
     K5["Permissions"]:::k --- V5["contents: write, id-token: write"]:::v
     K6["Runner"]:::k --- V6["ubuntu-latest"]:::v
     K7["Step count"]:::k --- V7["6 (after checkout)"]:::v
-    K8["Version source"]:::k --- V8["package.json .version, formatted as vMAJOR.MINOR.PATCH"]:::v
+    K8["Version source"]:::k --- V8["package.json .version, formatted as vMAJOR.MINOR.PATCH (preserves -PRERELEASE suffix)"]:::v
     K9["Notes source"]:::k --- V9["GitHub auto-generate (POST generate_release_notes: true)"]:::v
     K10["Lines dropped"]:::k --- V10["chore: bump version, Draft PR for release, Bump Version on PR to Main, docs: sync"]:::v
     K11["Pattern stripped"]:::k --- V11["' by @user in' segments inline"]:::v
     K12["Invariant"]:::k --- V12["exactly one draft release after success"]:::v
     K13["Target commitish"]:::k --- V13["main"]:::v
+    K13b["Pre-release flag"]:::k --- V13b["prerelease true when version has -suffix; make_latest=false for prereleases, legacy for stable"]:::v
     K14["Idempotent"]:::k --- V14["yes (wipe-and-recreate is safe to repeat)"]:::v
     K15["Cascade trigger"]:::k --- V15["maintainer clicks Publish, fires release: published"]:::v
     K16["Concurrency"]:::k --- V16["none declared (idempotency relied on instead)"]:::v

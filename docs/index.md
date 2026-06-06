@@ -53,7 +53,7 @@ features:
 ```typescript
 // Every LLM project starts like this...
 const response = await openai.chat.completions.create({
-  model: "gpt-4",
+  model: "gpt-4o",
   messages: [{ role: "user", content: makePrompt(data) }],
   response_format: { type: "json_object" },
 });

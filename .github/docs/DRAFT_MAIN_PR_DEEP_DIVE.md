@@ -260,8 +260,11 @@ flowchart TB
     B["jq -r .version &lt; package.json"]:::in
     B --> B1["PACKAGE_VERSION"]:::calc
 
+    B1 --> PRE{PACKAGE_VERSION\ncontains '-'?\n(pre-release suffix)}:::dec
+    PRE -->|yes| PR1["IS_PRERELEASE=true\nBUMP_VERSION=false\nCURRENT_VERSION=PACKAGE_VERSION\nNEW_VERSION = v + full version (with -suffix)\nskip rest of compare"]:::out
+    PRE -->|no| CV2["awk -F. '{ printf %d%03d%03d, $1,$2,$3 }'\non PACKAGE_VERSION"]:::calc
+
     A4 --> CV1["awk -F. '{ printf %d%03d%03d, $1,$2,$3 }'\non LATEST_VERSION"]:::calc
-    B1 --> CV2["awk -F. '{ printf %d%03d%03d, $1,$2,$3 }'\non PACKAGE_VERSION"]:::calc
 
     CV1 --> EX1["LATEST_VERSION_NUM\nexample: 2.13.4 -&gt; 2013004"]:::calc
     CV2 --> EX2["PACKAGE_VERSION_NUM\nexample: 2.13.4 -&gt; 2013004"]:::calc
@@ -276,11 +279,13 @@ flowchart TB
     O2 --> N2["parse CURRENT_VERSION via regex\nPATCH unchanged\nNEW_VERSION = vMAJOR.MINOR.PATCH"]:::calc
 ```
 
+The pre-release branch is the maintainer's manual lane: when `package.json` declares a `-beta.X` / `-rc.X` / `-alpha.X` version, the workflow never auto-bumps and never enters the patch-increment path. The maintainer drives `beta.0 -> beta.1 -> ... -> final` by hand. The draft PR title still updates with the current pre-release version.
+
 Why `%03d` zero-padding works: `1.9.0` becomes `1009000`, `1.10.0` becomes `1010000`. Without padding, lexical string comparison would put `1.10.0` before `1.9.0`. With three-digit zero-padding, integer comparison is correct for any `MINOR` or `PATCH` under 1000.
 
-Limits: any segment at or above 1000 overflows into the next field and breaks ordering. For `llm-exe` this is fine.
+Limits: any segment at or above 1000 overflows into the next field and breaks ordering. For `llm-exe` this is fine. The awk compare is only used for stable releases; pre-releases short-circuit before it ever runs.
 
-Source: lines 35-99.
+Source: lines 54-117 (including pre-release short-circuit at lines 60-67 and 96-100).
 
 [Back to top](#navigate)
 
@@ -299,7 +304,7 @@ flowchart TB
 
     A([step 10 starts])
     A --> G1{BUMP_VERSION == true\nAND\nNEW_COMMITS == true?}:::cond
-    G1 -->|no| OUT1([all 5 sub-steps skipped]):::skip
+    G1 -->|no (skipped on pre-release or already-ahead version)| OUT1([all 5 sub-steps skipped]):::skip
     G1 -->|yes| S1["re-read latest tag\nparse MAJOR/MINOR/PATCH\nPATCH = PATCH + 1\nNEW_VERSION = MAJOR.MINOR.PATCH (no v)"]:::step
     S1 --> S2["jq write package.json\ngit config github-actions[bot]\ngit add + commit\n'chore: bump version number on PR to main'"]:::step
     S2 --> S3["git checkout -b bump-version-branch\n(or checkout if already exists)\ngit pull origin bump-version-branch || true"]:::step
@@ -527,9 +532,12 @@ stateDiagram-v2
     SkipChecking --> Booting: real event
     Booting --> Setup: checkout + token
     Setup --> VersionRead: read tags + package.json
-    VersionRead --> Compared: awk packed integer compare
+    VersionRead --> PreReleaseCheck: package.json version has -suffix?
+    PreReleaseCheck --> PreReleaseLane: yes (IS_PRERELEASE=true, BUMP_VERSION=false)
+    PreReleaseCheck --> Compared: no (awk packed integer compare)
     Compared --> BumpDecided: BUMP_VERSION set
     BumpDecided --> NextVersionSet: NEW_VERSION computed
+    PreReleaseLane --> NextVersionSet: NEW_VERSION = v + full pre-release version
     NextVersionSet --> PRChecked: gh pr list result -&gt; PR_EXISTS
     PRChecked --> TitlesFetched: PR_TITLES + PR_COUNT
     TitlesFetched --> CommitsChecked: NEW_COMMITS set
@@ -613,6 +621,11 @@ flowchart TB
     F8X["intentional: lets a maintainer hand-bump for minor/major\nworkflow respects it"]:::fix
     F8E --> F8X
 
+    F8b["Pre-release version in package.json\n(e.g. 3.0.0-beta.0)"]:::fail
+    F8b --> F8bE["IS_PRERELEASE=true, BUMP_VERSION=false\nbump path skipped entirely\nNEW_VERSION preserves the full -suffix\ndraft PR title shows the pre-release version"]:::effect
+    F8bX["intentional: maintainer drives beta.0 -> beta.1 -> ... -> final manually\nworkflow respects every hand-set pre-release version"]:::fix
+    F8bE --> F8bX
+
     F9["Skip gate misses an edge case\n(bot identity rename, branch rename)"]:::fail
     F9 --> F9E["bump merge re-triggers workflow\ninfinite loop possible"]:::effect
     F9X["audit line 21 condition\nany change to bump-version-branch name\nmust update the gate"]:::fix
@@ -643,7 +656,8 @@ flowchart LR
     K6["Jobs"]:::k --- V6["one job, ~12 sequential steps"]:::v
     K7["Identity"]:::k --- V7["llm-exe-bot[bot] via App token"]:::v
     K8["Checkout depth"]:::k --- V8["fetch-depth: 0 (need tags + history)"]:::v
-    K9["Version compare"]:::k --- V9["awk printf %d%03d%03d packed integer"]:::v
+    K9["Version compare"]:::k --- V9["awk printf %d%03d%03d packed integer (stable only)"]:::v
+    K9b["Pre-release lane"]:::k --- V9b["package.json version with '-' suffix skips auto-bump entirely; NEW_VERSION preserves full -PRERELEASE suffix"]:::v
     K10["Bump branch"]:::k --- V10["bump-version-branch (force-push fallback)"]:::v
     K11["Bump PR merge"]:::k --- V11["gh pr merge --admin --squash --delete-branch"]:::v
     K12["Release PR base"]:::k --- V12["main, head: development, draft"]:::v

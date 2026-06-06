@@ -66,7 +66,7 @@ flowchart LR
 
     subgraph X["External"]
         gh["GitHub API\n(PRs, optionally issues)"]:::ext
-        ant["Anthropic Claude\nclaude-opus-4-6"]:::ext
+        ant["Anthropic Claude\nvars.ANTHROPIC_OPUS_LATEST\n(default: claude-opus-4-6)"]:::ext
     end
 
     subgraph DOWN["Downstream"]
@@ -206,7 +206,7 @@ flowchart TB
         r6["Detect changed files\n(writes /tmp/changed-files.txt)"]:::step
         r7["Skip if nothing relevant changed"]:::step
         r8["Build prompt\n(only if count != 0)"]:::step
-        r9["Run docs-sync agent\nclaude-code-action@v1\nopus-4-6 max-turns 80"]:::step
+        r9["Run docs-sync agent\nclaude-code-action@v1\nmodel configurable, max-turns 80"]:::step
         r10["Upload agent prompt\n(artifact, 7-day retention)"]:::step
         r11["Clock out (if: always())"]:::step
         r1 --> r2 --> r3 --> r4 --> r5 --> r6 --> r7 --> r8 --> r9 --> r10 --> r11
@@ -258,7 +258,7 @@ sequenceDiagram
     C->>CF: cat changed-files.txt
     C->>TMP: write prompt + prior context + time budget + changed files
     J->>CCA: run with /tmp/agent-prompt.txt
-    CCA->>API: streaming inference (claude-opus-4-6)
+    CCA->>API: streaming inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)
     API-->>CCA: tool calls (Read, Edit, Bash, Grep)
     CCA->>CCA: map source files to deep dives via lookup table
     CCA->>CCA: Edit deep dive sections in place
@@ -440,7 +440,7 @@ flowchart LR
     end
 
     subgraph During["While the agent runs"]
-        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nmodel: claude-opus-4-6\n--max-turns 80"]:::llm
+        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nmodel: vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6\n--max-turns 80"]:::llm
         d2["api.github.com (gh CLI)\nauth: bot token\nwhy: gh pr create, optionally gh issue create"]:::gh
         d3["origin remote (git push)\nauth: bot token\nwhy: push agent/docs-sync/&lt;date&gt;"]:::gh
     end
@@ -449,7 +449,7 @@ flowchart LR
     d1 --> d3
 ```
 
-Tool allowlist: `Bash,Read,Write,Edit,Glob,Grep,WebFetch`. No `WebSearch` is needed; the agent only reads local files.
+Tool allowlist: `Bash,Read,Write,Edit,Glob,Grep,WebFetch`. No `WebSearch` is needed; the agent only reads local files. Model is configurable via `vars.ANTHROPIC_OPUS_LATEST`, defaulting to `claude-opus-4-6`.
 
 [Back to top](#navigate)
 
@@ -584,7 +584,7 @@ flowchart LR
     K6["Timeout"]:::k --- V6["30 minutes"]:::v
     K7["Concurrency"]:::k --- V7["docs-sync, no cancel"]:::v
     K8["Identity"]:::k --- V8["llm-exe-bot[bot] via App token"]:::v
-    K9["Model"]:::k --- V9["claude-opus-4-6"]:::v
+    K9["Model"]:::k --- V9["vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6"]:::v
     K10["Max turns"]:::k --- V10["80"]:::v
     K11["Tool allowlist"]:::k --- V11["Bash, Read, Write, Edit, Glob, Grep, WebFetch"]:::v
     K12["Branch"]:::k --- V12["agent/docs-sync/&lt;YYYY-MM-DD&gt;"]:::v

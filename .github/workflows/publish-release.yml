@@ -111,11 +111,22 @@ jobs:
         id: npm-publish
         run: |
           version=$(node -p "require('./package.json').version")
-          if [[ "$version" == *"beta"* ]]; then
-            echo "Publishing beta version"
-            npm run publish-beta
+          # Semver pre-release: anything after a "-" (e.g. 3.0.0-beta.0, 3.0.0-rc.1, 3.0.0-alpha.2).
+          # The channel name is the first alphabetic chunk after the "-" and becomes the npm dist-tag.
+          # If the version has a "-" but no alphabetic channel (e.g. 3.0.0-1234), refuse to publish —
+          # otherwise we'd silently push the pre-release to the "latest" dist-tag.
+          if [[ "$version" == *-* ]]; then
+            if [[ "$version" =~ -([a-zA-Z]+) ]]; then
+              TAG="${BASH_REMATCH[1]}"
+              echo "Publishing pre-release version $version with npm dist-tag: $TAG"
+              npm publish --provenance --tag "$TAG"
+            else
+              echo "Error: pre-release version $version has no alphabetic channel (expected -beta.X, -rc.X, -alpha.X, etc.)"
+              echo "Refusing to publish to avoid clobbering the 'latest' npm dist-tag."
+              exit 1
+            fi
           else
-            echo "Publishing main version"
+            echo "Publishing main version $version"
             npm run publish-main
           fi
 

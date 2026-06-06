@@ -33,6 +33,7 @@ flowchart LR
     subgraph T["Triggers"]
         t1["pull_request\nbase: main"]:::trig
         t2["workflow_dispatch\n(manual)"]:::trig
+        t3["push\nbranches: main"]:::trig
     end
 
     subgraph A["tests.yml"]
@@ -61,6 +62,7 @@ flowchart LR
 
     t1 --> BY
     t2 --> BY
+    t3 --> BY
     BY -->|not bump-version-branch| M
     BY -.->|bump-version-branch on development| skip(["job skipped"])
     M --> c1
@@ -78,12 +80,13 @@ flowchart LR
 
 ## 2. Triggers
 
-Two entry points. Both go through one bypass gate.
+Three entry points. All go through one bypass gate.
 
 ```mermaid
 flowchart TB
     classDef pr fill:#0e7490,color:#fff,stroke:#000
     classDef manual fill:#9333ea,color:#fff,stroke:#000
+    classDef push fill:#0f766e,color:#fff,stroke:#000
     classDef gate fill:#7c2d12,color:#fff,stroke:#000
     classDef out fill:#1f2937,color:#fff,stroke:#000
 
@@ -92,9 +95,13 @@ flowchart TB
 
     ev -->|pull_request| pr1{base.ref == main?}
     ev -->|workflow_dispatch| disp[manual run, no filter]:::manual
+    ev -->|push| pu1{ref == refs/heads/main?}:::push
 
     pr1 -->|main| bypass
     pr1 -->|other| ignore([workflow not triggered])
+
+    pu1 -->|main| bypass
+    pu1 -->|other| ignore
 
     disp --> bypass
 
@@ -103,9 +110,11 @@ flowchart TB
     bypass -->|no| runJob([matrix runs across 4 node versions]):::out
 ```
 
-The bypass exists so release version-bump PRs don't re-run the suite that already passed on the source branch. It checks `base == development AND head == bump-version-branch` as a pair, so a stray branch named `bump-version-branch` targeting main still runs.
+The bypass exists so release version-bump PRs don't re-run the suite that already passed on the source branch. It checks `base == development AND head == bump-version-branch` as a pair, so a stray branch named `bump-version-branch` targeting main still runs. On `push` and `workflow_dispatch` events `pull_request` is null, so the bypass evaluates to false and the matrix always runs.
 
-Source: [.github/workflows/tests.yml](../workflows/tests.yml) lines 3-5 (triggers) and line 15 (bypass `if`).
+The `push` trigger on `main` exists for Coveralls: the docs-site badge filters with `?branch=main`, so without a coverage upload tagged for `main` the badge renders "unknown". Every prior upload was tagged with the PR head branch (development / feature branches). Pushing to `main` (always via `auto-merge-main-pr.yml`) now produces one Coveralls record tagged for `main`, on the Node 24.x leg.
+
+Source: [.github/workflows/tests.yml](../workflows/tests.yml) lines 3-12 (triggers) and line 22 (bypass `if`).
 
 Note: tests for PRs targeting `development` are now handled by [agent-review-pr.yml](../workflows/agent-review-pr.yml), which runs a parallel test matrix on opened and synchronize events.
 
@@ -184,7 +193,7 @@ sequenceDiagram
 
 The Coverage step uses `if: ${{ matrix.node-version == '24.x' }}` so it runs exactly once per workflow run, on the newest Node. The other three legs skip it.
 
-Source: [.github/workflows/tests.yml](../workflows/tests.yml) lines 21-42.
+Source: [.github/workflows/tests.yml](../workflows/tests.yml) lines 27-47.
 
 [Back to top](#navigate)
 
@@ -280,13 +289,13 @@ flowchart LR
     TST["tests.yml\nrun completes"]:::src
 
     TST --> O1["CI / Tests status check\n(one per matrix leg, 4 total)"]:::out
-    TST --> O2["coveralls report\n(Node 24.x only)"]:::out
+    TST --> O2["coveralls report\n(Node 24.x only)\ntagged by triggering branch"]:::out
 
     O1 --> C1["auto-merge-main-pr.yml\nblocks until CI / Tests is green"]:::cons
     O1 --> C2["branch protection on main / development\nrequires CI / Tests passing"]:::cons
     O1 --> C3["maintainer / reviewer\nlooks at red/green in PR UI"]:::human
 
-    O2 --> C4["coveralls badge in README\n+ historical trend"]:::cons
+    O2 --> C4["coveralls badge on docs site\nfilters with ?branch=main\n(requires push trigger)"]:::cons
     O2 --> C5["PR comment from coverallsapp\nwith line-level diff"]:::cons
 ```
 
@@ -355,7 +364,7 @@ flowchart LR
     classDef v fill:#374151,color:#fff,stroke:#000
 
     K1["File"]:::k --- V1[".github/workflows/tests.yml"]:::v
-    K2["Triggers"]:::k --- V2["pull_request (main) + workflow_dispatch"]:::v
+    K2["Triggers"]:::k --- V2["pull_request (main) + push (main) + workflow_dispatch"]:::v
     K3["Bypass"]:::k --- V3["head==bump-version-branch AND base==development"]:::v
     K4["Runner"]:::k --- V4["ubuntu-latest"]:::v
     K5["Matrix"]:::k --- V5["node 18.x, 20.x, 22.x, 24.x"]:::v

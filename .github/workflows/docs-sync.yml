@@ -163,7 +163,7 @@ jobs:
           claude_args: |
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch"
             --max-turns 80
-            --model claude-opus-4-6
+            --model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 
       - name: Upload agent prompt
         if: steps.prompt.outputs.log_file != ''

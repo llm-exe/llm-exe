@@ -60,7 +60,7 @@ flowchart LR
 
     subgraph X["External"]
         gh["GitHub API\n(issues, PRs, comments)"]:::ext
-        ant["Anthropic Claude\nclaude-opus-4-6"]:::ext
+        ant["Anthropic Claude\nvars.ANTHROPIC_OPUS_LATEST\n(default: claude-opus-4-6)"]:::ext
     end
 
     subgraph O["Outputs"]
@@ -267,7 +267,7 @@ sequenceDiagram
         L-->>C: prior text
         C->>TMP: write template + prior + Time Budget + Assigned Issue
         J->>CCA: prompt = "Read /tmp/agent-prompt.txt"
-        CCA->>API: streaming inference (claude-opus-4-6)
+        CCA->>API: streaming inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)
         API-->>CCA: tool calls
         CCA->>API: gh issue view N (per Assigned Issue block)
         CCA->>API: gh issue comment N (plan)
@@ -364,7 +364,7 @@ flowchart LR
     end
 
     subgraph During["While the agent runs (per leg)"]
-        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: claude-opus-4-6 inference\ncost meter: --max-turns 50"]:::llm
+        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)\ncost meter: --max-turns 50"]:::llm
         d2["gh issue view N\nauth: bot token\nwhy: read assigned issue"]:::gh
         d3["gh issue comment N (plan)\nauth: bot token\nwhy: visible thinking before code"]:::gh
         d4["gh search issues (dedup)\nauth: bot token\nwhy: out-of-scope findings"]:::gh
@@ -390,7 +390,7 @@ Tool allowlist passed to `claude-code-action@v1`:
 ```
 --allowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch"
 --max-turns 50
---model claude-opus-4-6
+--model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 ```
 
 WebFetch and WebSearch are allowed but unused for the coder path. They are inherited from the shared tool allowlist convention.
@@ -643,7 +643,7 @@ flowchart LR
 
     subgraph Shared["Shared between both workflows"]
         s1["scripts/agents/config.sh helpers\ncreate_agent_branch, clock_in, clock_out,\nbuild_prior_context"]:::same
-        s2["claude-code-action@v1\nclaude-opus-4-6, --max-turns 50"]:::same
+        s2["claude-code-action@v1\nvars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6, --max-turns 50"]:::same
         s3["bot identity via App token"]:::same
         s4["log files committed to git"]:::same
         s5["base branch development"]:::same
@@ -706,7 +706,7 @@ flowchart LR
     K6["Timeout (per leg)"]:::k --- V6["30 minutes"]:::v
     K7["Concurrency"]:::k --- V7["none at workflow level; matrix has max-parallel 1"]:::v
     K8["Identity"]:::k --- V8["llm-exe-bot[bot] via App token"]:::v
-    K9["Model"]:::k --- V9["claude-opus-4-6"]:::v
+    K9["Model"]:::k --- V9["vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6"]:::v
     K10["Max turns"]:::k --- V10["50"]:::v
     K11["Tool allowlist"]:::k --- V11["Bash, Read, Write, Edit, Glob, Grep, WebFetch, WebSearch"]:::v
     K12["Gate caps"]:::k --- V12["bot PRs <= 20, open issues <= 40 (cron only)"]:::v

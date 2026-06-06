@@ -40,20 +40,27 @@ jobs:
     - name: Determine next semantic version for release
       run: |
         PACKAGE_VERSION=$(jq -r '.version' package.json)
-        if [ -z "$PACKAGE_VERSION" ]; then
-          PACKAGE_VERSION="v0.0.0"
-        fi
-
-        if [[ $PACKAGE_VERSION =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(.*)$ ]]; then
-          MAJOR=${BASH_REMATCH[1]}
-          MINOR=${BASH_REMATCH[2]}
-          PATCH=${BASH_REMATCH[3]}
-        else
-          echo "Invalid version format. Expected format: MAJOR.MINOR.PATCH"
+        if [ -z "$PACKAGE_VERSION" ] || [ "$PACKAGE_VERSION" = "null" ]; then
+          echo "No version found in package.json"
           exit 1
         fi
-        NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+
+        # Validate MAJOR.MINOR.PATCH with optional semver pre-release suffix (e.g. -beta.0, -rc.1)
+        if [[ ! $PACKAGE_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+          echo "Invalid version format ($PACKAGE_VERSION). Expected MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-PRERELEASE"
+          exit 1
+        fi
+
+        # Preserve the full version (including any -beta.X / -rc.X suffix) in the tag
+        NEW_VERSION="v${PACKAGE_VERSION}"
         echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+
+        # A pre-release suffix (anything after a "-") makes this a GitHub pre-release
+        if [[ "$PACKAGE_VERSION" == *-* ]]; then
+          echo "IS_PRERELEASE=true" >> $GITHUB_ENV
+        else
+          echo "IS_PRERELEASE=false" >> $GITHUB_ENV
+        fi
 
     - name: Create Draft Release on GitHub
       id: create_release
@@ -66,6 +73,8 @@ jobs:
             "tag_name": "'"${NEW_VERSION}"'",
             "target_commitish": "main",
             "draft": true,
+            "prerelease": '"${IS_PRERELEASE}"',
+            "make_latest": "'"$([ "${IS_PRERELEASE}" = "true" ] && echo false || echo legacy)"'",
             "generate_release_notes": true
           }')
 

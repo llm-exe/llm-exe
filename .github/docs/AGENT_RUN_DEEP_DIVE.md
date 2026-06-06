@@ -62,7 +62,7 @@ flowchart LR
 
     subgraph X["External"]
         gh["GitHub API\n(issues, PRs, comments)"]:::ext
-        ant["Anthropic Claude\nclaude-opus-4-6"]:::ext
+        ant["Anthropic Claude\nvars.ANTHROPIC_OPUS_LATEST\n(default: claude-opus-4-6)"]:::ext
         web["Provider docs sites\n(scout only)"]:::ext
     end
 
@@ -275,7 +275,7 @@ sequenceDiagram
     L-->>C: prior text
     C->>TMP: write template + prior + Time Budget + maintainer instructions
     J->>CCA: run prompt = "Read /tmp/agent-prompt.txt"
-    CCA->>API: streaming inference (claude-opus-4-6)
+    CCA->>API: streaming inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)
     API-->>CCA: tool calls (Bash, Read, Write, Edit, Glob, Grep, WebFetch, WebSearch)
     CCA->>G: git add/commit/push origin (branch)
     CCA->>API: gh pr create / gh issue create
@@ -394,7 +394,7 @@ flowchart LR
     end
 
     subgraph During["While the agent runs"]
-        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (claude-opus-4-6)\ncost meter: --max-turns 50"]:::llm
+        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)\ncost meter: --max-turns 50"]:::llm
         d2["api.github.com (gh CLI)\nauth: bot token\nwhy: create PR, file issue, comment, list/view"]:::gh
         d3["origin remote (git push)\nauth: bot token\nwhy: push agent/&lt;role&gt;/&lt;date&gt; branch"]:::gh
         d4["provider docs sites\nauth: anonymous\nused by: scout only\nURLs: hard-coded in scout.md"]:::web
@@ -413,7 +413,7 @@ Tool allowlist passed to `claude-code-action@v1`:
 ```
 --allowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch"
 --max-turns 50
---model claude-opus-4-6
+--model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 ```
 
 The action enforces the allowlist. Anything not listed cannot be called.
@@ -630,7 +630,7 @@ flowchart LR
     K5["Timeout"]:::k --- V5["30 minutes"]:::v
     K6["Concurrency"]:::k --- V6["agent-&lt;agent or schedule&gt;, no cancel"]:::v
     K7["Identity"]:::k --- V7["llm-exe-bot[bot] via App token"]:::v
-    K8["Model"]:::k --- V8["claude-opus-4-6"]:::v
+    K8["Model"]:::k --- V8["vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6"]:::v
     K9["Max turns"]:::k --- V9["50"]:::v
     K10["Tool allowlist"]:::k --- V10["Bash, Read, Write, Edit, Glob, Grep, WebFetch, WebSearch"]:::v
     K11["Gate caps"]:::k --- V11["bot PRs <= 20, open issues <= 40"]:::v

@@ -68,7 +68,7 @@ flowchart LR
 
     subgraph X["External"]
         gh["GitHub API\n(pr diff, pr view, review, close)"]:::ext
-        ant["Anthropic Claude\nclaude-opus-4-6"]:::ext
+        ant["Anthropic Claude\nvars.ANTHROPIC_OPUS_LATEST\n(default: claude-opus-4-6)"]:::ext
     end
 
     subgraph O["Outputs"]
@@ -249,7 +249,7 @@ sequenceDiagram
     P-->>C: rendered template
     C->>TMP: write rendered prompt
     J->>CCA: run prompt = "Read /tmp/review-prompt.txt"
-    CCA->>API: streaming inference (claude-opus-4-6)
+    CCA->>API: streaming inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)
     API-->>CCA: tool calls (Bash, Read, Glob, Grep, WebFetch)
     CCA->>API: gh pr diff N
     CCA->>API: gh pr view N
@@ -369,7 +369,7 @@ flowchart LR
     end
 
     subgraph During["While the reviewer runs"]
-        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (claude-opus-4-6)\ncost meter: --max-turns 30"]:::llm
+        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)\ncost meter: --max-turns 30"]:::llm
         d2["api.github.com (gh CLI)\nauth: review bot token\nwhy: gh pr diff/view/review/close"]:::gh
         d3["allowed_bots: llm-exe-bot[bot]\nwhy: lets the action operate on bot PRs\n(default action behavior skips bot PRs)"]:::gh
         d4["WebFetch (allowed but rarely used)\nauth: anonymous\nwhy: external link verification only"]:::web
@@ -388,7 +388,7 @@ Tool allowlist passed to `claude-code-action@v1`:
 ```
 --allowedTools "Bash,Read,Glob,Grep,WebFetch"
 --max-turns 30
---model claude-opus-4-6
+--model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 ```
 
 The `allowed_bots: "llm-exe-bot[bot]"` input is the load-bearing piece: by default the action refuses to run on PRs authored by bots. This explicit allowlist lets it review the very PRs `agent-run.yml` produces. Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) line 129.
@@ -603,7 +603,7 @@ flowchart LR
     K5["Timeouts"]:::k --- V5["tests: 20m, review: 15m, decide: 5m"]:::v
     K6["Concurrency"]:::k --- V6["none (parallel reviews allowed)"]:::v
     K7["Identity"]:::k --- V7["llm-exe-review-bot[bot] for reviews; llm-exe-bot[bot] only for gh pr ready"]:::v
-    K8["Model"]:::k --- V8["claude-opus-4-6"]:::v
+    K8["Model"]:::k --- V8["vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6"]:::v
     K9["Max turns"]:::k --- V9["30 (review job only)"]:::v
     K10["Tool allowlist"]:::k --- V10["Bash, Read, Glob, Grep, WebFetch (read-only)"]:::v
     K11["allowed_bots"]:::k --- V11["llm-exe-bot[bot]"]:::v

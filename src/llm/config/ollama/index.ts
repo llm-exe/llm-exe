@@ -41,4 +41,7 @@ export const ollama = {
   "ollama.mistral": withDefaultModel(ollamaChatV1, "mistral"),
   "ollama.qwen2.5": withDefaultModel(ollamaChatV1, "qwen2.5"),
   "ollama.qwen3": withDefaultModel(ollamaChatV1, "qwen3"),
+  "ollama.qwen3.5": withDefaultModel(ollamaChatV1, "qwen3.5"),
+  "ollama.gemma4": withDefaultModel(ollamaChatV1, "gemma4"),
+  "ollama.gpt-oss": withDefaultModel(ollamaChatV1, "gpt-oss"),
 };

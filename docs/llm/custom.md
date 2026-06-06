@@ -66,7 +66,7 @@ const customLlm = useLlmConfiguration({
 // Use it like any other LLM
 const llm = customLlm({
   apiKey: process.env.CUSTOM_API_KEY,
-  model: "gpt-4-turbo",
+  model: "gpt-4o",
 } as any); // Note: Use 'as any' for custom options that aren't in base types
 
 const response = await llm.call("Hello, how are you?");

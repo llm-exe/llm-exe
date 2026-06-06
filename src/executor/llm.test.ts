@@ -77,7 +77,12 @@ describe("llm-exe:executor/LlmExecutor", () => {
         getResultText: expect.any(Function),
       }),
       expect.objectContaining({ input }),
-      undefined
+      undefined,
+      expect.objectContaining({
+        executor: expect.objectContaining({ type: "llm-executor" }),
+        execution: expect.objectContaining({ input }),
+        attributes: {},
+      })
     );
   });
   it("MockExecutor returns correct result from execute", async () => {
@@ -222,7 +227,12 @@ describe("llm-exe:executor/LlmExecutor", () => {
       [{ content: "This is a prompt.", role: "system" }],
       {
         jsonSchema: schema,
-      }
+      },
+      expect.objectContaining({
+        executor: expect.objectContaining({ type: "llm-executor" }),
+        execution: expect.objectContaining({ input }),
+        attributes: {},
+      })
     );
   });
 

@@ -1,7 +1,7 @@
 import { JSONSchema } from "json-schema-to-ts";
 import {
   CreateParserType,
-  ExecutorContext,
+  ExecutionContext,
   JsonParserOptions,
   ListToJsonParserOptions,
 } from "@/types";
@@ -151,7 +151,7 @@ export function createParser<const A extends CreateParserArgs>(
 
 export function createCustomParser<O>(
   name: string,
-  parserFn: (text: string, inputValues: ExecutorContext<any, any>) => O
+  parserFn: (text: string, context: ExecutionContext<any, any>) => O
 ): CustomParser<ReturnType<typeof parserFn>> {
   return new CustomParser<ReturnType<typeof parserFn>>(name, parserFn);
 }

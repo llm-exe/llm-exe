@@ -64,6 +64,7 @@ export type {
   OpenAIModelName,
   IChatMessages,
   ExecutorContext,
+  ExecutionContext,
   ExecutorExecutionMetadata,
   HookErrorRecord,
   LlmProviderKey,

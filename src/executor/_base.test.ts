@@ -48,7 +48,16 @@ describe("llm-exe:executor/BaseExecutor", () => {
     expect(executor.getHandlerInput).toHaveBeenCalledWith({
       input: "input-value",
     },  expect.objectContaining({input}), undefined);
-    expect(executor.getHandlerOutput).toHaveBeenCalledWith({ result: "Success" }, expect.objectContaining({input}), undefined);
+    expect(executor.getHandlerOutput).toHaveBeenCalledWith(
+      { result: "Success" },
+      expect.objectContaining({ input }),
+      undefined,
+      expect.objectContaining({
+        executor: expect.objectContaining({ name: "mock-executor" }),
+        execution: expect.objectContaining({ input }),
+        attributes: {},
+      })
+    );
   });
 
   it("MockExecutor returns correct result from execute", async () => {

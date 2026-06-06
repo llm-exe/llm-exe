@@ -98,6 +98,19 @@ export interface ExecutorContext<I = any, O = any, A = Record<string, any>>
   attributes: A;
 }
 
+/**
+ * Per-call execution context. Built by `BaseExecutor.execute()` and threaded
+ * through `handler()`, `llm.call()`, parsers, and warnings. Provides a single
+ * place to read the resolved trace ID, stable executor identity, and the
+ * mutable execution state for the current run.
+ */
+export interface ExecutionContext<I = any, O = any, A = Record<string, any>> {
+  traceId?: string;
+  executor: ExecutorMetadata;
+  execution: ExecutorExecutionMetadata<I, O>;
+  attributes: A;
+}
+
 export interface BaseExecutorHooks {
   [hookOnError]: ListenerFunction[];
   [hookOnSuccess]: ListenerFunction[];

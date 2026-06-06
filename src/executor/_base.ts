@@ -7,6 +7,7 @@ import {
   ExecutorExecutionMetadata,
   CoreExecutorExecuteOptions,
   BaseExecutorHooks,
+  ExecutionContext,
 } from "@/types";
 import { pick } from "@/utils/modules/pick";
 import { ensureInputIsObject } from "@/utils/modules/ensureInputIsObject";
@@ -85,7 +86,27 @@ export abstract class BaseExecutor<
     }
   }
 
-  abstract handler(input: I, _options?: any): Promise<any>;
+  abstract handler(
+    input: I,
+    _options?: any,
+    _context?: ExecutionContext<I, O>
+  ): Promise<any>;
+
+  /**
+   * Build a per-call execution context snapshot. Captures the current
+   * execution metadata so the snapshot reflects state at the time it was
+   * taken (e.g. `handlerInput` becomes available after `getHandlerInput`).
+   */
+  protected snapshotContext(
+    execution: ExecutorExecutionMetadata<I, O>
+  ): ExecutionContext<I, O> {
+    return {
+      traceId: this.getTraceId() ?? undefined,
+      executor: this.getMetadata(),
+      execution,
+      attributes: {},
+    };
+  }
 
   /**
    *
@@ -127,7 +148,8 @@ export abstract class BaseExecutor<
   getHandlerOutput(
     out: any,
     _metadata: ExecutorExecutionMetadata<any, O>,
-    _options?: any
+    _options?: any,
+    _context?: ExecutionContext<I, O>
   ): O {
     return out as O;
   }
@@ -153,14 +175,19 @@ export abstract class BaseExecutor<
 
       _metadata.setItem({ handlerInput: input });
 
-      let result = await this.handler(input, _options);
+      let result = await this.handler(
+        input,
+        _options,
+        this.snapshotContext(_metadata.asPlainObject())
+      );
 
       _metadata.setItem({ handlerOutput: result });
 
       const output = this.getHandlerOutput(
         result,
         _metadata.asPlainObject(),
-        _options
+        _options,
+        this.snapshotContext(_metadata.asPlainObject())
       );
       _metadata.setItem({ output });
 

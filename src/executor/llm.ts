@@ -5,6 +5,7 @@ import {
   CoreExecutorExecuteOptions,
   ExecutorWithLlmOptions,
   ExecutorExecutionMetadata,
+  ExecutionContext,
   LlmExecutorHooks,
   LlmExecutorExecuteOptions,
   BaseLlCall,
@@ -83,8 +84,12 @@ export class LlmExecutor<
     return super.execute(_input, _options);
   }
 
-  async handler(_input: PromptInput<Prompt>, ..._args: any[]) {
-    const call = await this.llm.call(_input, ..._args);
+  async handler(
+    _input: PromptInput<Prompt>,
+    _options?: LlmExecutorExecuteOptions,
+    _context?: ExecutionContext<PromptInput<Prompt>, ParserOutput<Parser>>
+  ) {
+    const call = await this.llm.call(_input, _options, _context);
     return call;
   }
 
@@ -123,7 +128,9 @@ export class LlmExecutor<
     _metadata: ExecutorExecutionMetadata<
       PromptInput<Prompt>,
       ParserOutput<Parser>
-    >
+    >,
+    _options?: LlmExecutorExecuteOptions,
+    _context?: ExecutionContext<PromptInput<Prompt>, ParserOutput<Parser>>
   ): ParserOutput<Parser> {
     // depending on out parser type, and result obj (out)
     // we should use different methods here
@@ -132,12 +139,15 @@ export class LlmExecutor<
     const parse = (
       this.parser as BaseParser<ParserOutput<Parser>, string | OutputResult>
     ).parse.bind(this.parser);
+    // Pass the full ExecutionContext to the parser when available; otherwise
+    // fall back to the execution metadata for back-compat.
+    const parserArg = _context ?? _metadata;
     if (this.parser.target === "function_call") {
       const outToStr = out.getResult();
-      return parse(outToStr, _metadata);
+      return parse(outToStr, parserArg);
     } else {
       const outToStr = out.getResultText();
-      return parse(outToStr, _metadata);
+      return parse(outToStr, parserArg);
     }
   }
 

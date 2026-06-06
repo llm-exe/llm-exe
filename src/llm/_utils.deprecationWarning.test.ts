@@ -47,6 +47,7 @@ describe("_utils.deprecationWarning", () => {
         shorthand: "google.gemini-2.5-pro",
         message: "This model is deprecated",
       });
+      config.options.model = { default: "gemini-2.5-pro" };
       emitDeprecationWarning(config);
       expect(warningSpy).toHaveBeenCalledTimes(1);
       const [message, options] = warningSpy.mock.calls[0];

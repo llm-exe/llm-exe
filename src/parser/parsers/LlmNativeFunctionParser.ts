@@ -24,7 +24,7 @@ export class LlmFunctionParser<T extends BaseParser<any, any>> extends BaseParse
   }
   parse(text: OutputResult, _options?: Record<string, any>) {
     if (typeof text === "string") {
-      return this.parser.parse(text) as ParserOutput<T>;
+      return this.parser.parse(text, _options) as ParserOutput<T>;
     }
     const { content } = text;
     const functionUses =
@@ -32,7 +32,7 @@ export class LlmFunctionParser<T extends BaseParser<any, any>> extends BaseParse
 
     if (functionUses.length === 0) {
       const [item] = content;
-      return this.parser.parse(item.text!) as ParserOutput<T>;
+      return this.parser.parse(item.text!, _options) as ParserOutput<T>;
     }
 
     // we pass the output response through, its been formatted by output
@@ -55,11 +55,11 @@ export class LlmNativeFunctionParser<
   }
   parse(text: OutputResult, _options?: Record<string, any>) {
     if (typeof text === "string") {
-      return this.parser.parse(text) as ParserOutput<T>;
+      return this.parser.parse(text, _options) as ParserOutput<T>;
     }
 
     if (typeof (text as any)?.text === "string") {
-      return this.parser.parse((text as any).text) as ParserOutput<T>;
+      return this.parser.parse((text as any).text, _options) as ParserOutput<T>;
     }
 
     const { content } = text;
@@ -74,7 +74,7 @@ export class LlmNativeFunctionParser<
     const textContent = content?.find(
       (item) => item.type === "text" && typeof item.text === "string"
     );
-    return this.parser.parse(textContent?.text as any) as ParserOutput<T>;
+    return this.parser.parse(textContent?.text as any, _options) as ParserOutput<T>;
   }
 }
 

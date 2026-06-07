@@ -1,4 +1,4 @@
-import { JsonParserOptions } from "@/types";
+import { ParserSchemaOptions } from "@/types";
 import { FromSchema, JSONSchema } from "json-schema-to-ts";
 
 /**
@@ -35,7 +35,7 @@ export abstract class BaseParserWithJson<
   public schema: S;
   public validateSchema: boolean;
 
-  constructor(name: string, options: JsonParserOptions<S>) {
+  constructor(name: string, options: ParserSchemaOptions<S>) {
     super(name);
 
     const { schema, validateSchema } = options;

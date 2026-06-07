@@ -9,10 +9,7 @@ import { useLlm } from "@/llm";
 import { createChatPrompt } from "@/prompt";
 import { createParser, createCustomParser } from "@/parser";
 import { JsonParser } from "@/parser";
-import {
-  createLlmExecutor,
-  createCoreExecutor,
-} from "@/executor/_functions";
+import { createLlmExecutor, createCoreExecutor } from "@/executor/_functions";
 import { createDialogue, createState } from "@/state";
 import { BaseLlmOutput } from "@/llm/output/base";
 import { defineSchema } from "@/utils/modules/defineSchema";
@@ -39,9 +36,7 @@ import {
 describe("Scenario: BaseLlmOutput wrapping", () => {
   it("wraps simple text and exposes getResultText", () => {
     const wrapped = BaseLlmOutput(SIMPLE_TEXT);
-    expect(wrapped.getResultText()).toEqual(
-      "The capital of France is Paris."
-    );
+    expect(wrapped.getResultText()).toEqual("The capital of France is Paris.");
   });
 
   it("wraps function call and exposes getResult", () => {
@@ -104,9 +99,7 @@ describe("Scenario: Dialogue management", () => {
       dialogue
         .setSystemMessage("You are a helpful assistant.")
         .setUserMessage("What is TypeScript?")
-        .setAssistantMessage(
-          "TypeScript is a typed superset of JavaScript."
-        );
+        .setAssistantMessage("TypeScript is a typed superset of JavaScript.");
 
       const history = dialogue.getHistory();
       expect(history).toHaveLength(3);
@@ -128,7 +121,7 @@ describe("Scenario: Dialogue management", () => {
         .setFunctionMessage(
           '{"temp": 65, "condition": "foggy"}',
           "get_weather",
-          "call_100"
+          "call_100",
         )
         .setAssistantMessage("It's 65°F and foggy in San Francisco.");
 
@@ -240,12 +233,12 @@ describe("Scenario: Dialogue management", () => {
       dialogue.setFunctionMessage(
         '{"temp": 65, "condition": "foggy"}',
         "get_weather",
-        "call_001"
+        "call_001",
       );
       dialogue.setFunctionMessage(
         '{"temp": 45, "condition": "clear"}',
         "get_weather",
-        "call_002"
+        "call_002",
       );
 
       // Turn 4: LLM summarizes
@@ -344,7 +337,7 @@ describe("Scenario: Parser with mock outputs", () => {
     expect(parser.parse(PARSER_INPUTS.number)).toEqual(42);
   });
 
-  it("BooleanParser extracts boolean", () => {
+  it("BooleanParser parses boolean tokens", () => {
     const parser = createParser("boolean");
     expect(parser.parse(PARSER_INPUTS.booleanTrue)).toEqual(true);
     expect(parser.parse(PARSER_INPUTS.booleanFalse)).toEqual(false);
@@ -378,7 +371,7 @@ describe("Scenario: Parser with mock outputs", () => {
 
   it("CustomParser applies custom logic", () => {
     const parser = createCustomParser("upper", (input: string) =>
-      input.toUpperCase()
+      input.toUpperCase(),
     );
     expect(parser.parse("hello world", {} as any)).toEqual("HELLO WORLD");
   });
@@ -389,28 +382,26 @@ describe("Scenario: Parser with mock outputs", () => {
 describe("Scenario: ChatPrompt templates", () => {
   it("renders system message with template variables", () => {
     const prompt = createChatPrompt(
-      "You are helping {{name}} with their question."
+      "You are helping {{name}} with their question.",
     );
     const messages = prompt.format(TEMPLATE_INPUTS.simple);
     expect(messages).toHaveLength(1);
     expect(messages[0].content).toEqual(
-      "You are helping Alice with their question."
+      "You are helping Alice with their question.",
     );
   });
 
   it("renders with nested object access", () => {
     const prompt = createChatPrompt(
-      "Respond in {{user.preferences.language}} with a {{user.preferences.tone}} tone."
+      "Respond in {{user.preferences.language}} with a {{user.preferences.tone}} tone.",
     );
     const messages = prompt.format(TEMPLATE_INPUTS.withNested);
-    expect(messages[0].content).toEqual(
-      "Respond in en with a formal tone."
-    );
+    expect(messages[0].content).toEqual("Respond in en with a formal tone.");
   });
 
   it("renders with each helper for arrays", () => {
     const prompt = createChatPrompt(
-      "Items: {{#each items}}{{this}}, {{/each}}"
+      "Items: {{#each items}}{{this}}, {{/each}}",
     );
     const messages = prompt.format(TEMPLATE_INPUTS.withArray);
     expect(messages[0].content).toContain("apple");
@@ -468,7 +459,7 @@ describe("Scenario: LlmExecutor with mock LLM", () => {
     const onComplete = jest.fn();
     const executor = createLlmExecutor(
       { llm, prompt },
-      { hooks: { onSuccess, onComplete } }
+      { hooks: { onSuccess, onComplete } },
     );
 
     await executor.execute({});
@@ -483,7 +474,7 @@ describe("Scenario: LlmExecutor with mock LLM", () => {
 
     const executor = createLlmExecutor(
       { llm, prompt: undefined as any },
-      { hooks: { onError, onComplete } }
+      { hooks: { onError, onComplete } },
     );
 
     await expect(executor.execute({})).rejects.toThrow();
@@ -497,18 +488,16 @@ describe("Scenario: LlmExecutor with mock LLM", () => {
 describe("Scenario: CoreExecutor for non-LLM handlers", () => {
   it("wraps a sync handler", async () => {
     const executor = createCoreExecutor(
-      (input: { x: number; y: number }) => input.x + input.y
+      (input: { x: number; y: number }) => input.x + input.y,
     );
     const result = await executor.execute({ x: 3, y: 4 });
     expect(result).toEqual(7);
   });
 
   it("wraps an async handler", async () => {
-    const executor = createCoreExecutor(
-      async (input: { query: string }) => {
-        return { results: [`Found: ${input.query}`] };
-      }
-    );
+    const executor = createCoreExecutor(async (input: { query: string }) => {
+      return { results: [`Found: ${input.query}`] };
+    });
     const result = await executor.execute({ query: "test" });
     expect(result).toEqual({ results: ["Found: test"] });
   });

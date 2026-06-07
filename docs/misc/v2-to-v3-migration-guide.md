@@ -108,7 +108,7 @@ See [Error Handling](/misc/errors.html).
 
 ## JSON Parser Is Strict
 
-`createParser("json")` now parses whole-output JSON object or array values.
+`createParser("json")` now parses exact JSON object or array responses by default.
 
 Accepted:
 
@@ -134,7 +134,14 @@ Migration:
 
 - Use `string`, `number`, or `boolean` parsers for primitive outputs.
 - Ask the model for a JSON object or array when using the JSON parser.
-- If the model returns prose around JSON, change the prompt or add an explicit extraction step before the JSON parser.
+- If the model returns prose around JSON, change the prompt or set `match: "extract"`.
+
+```ts
+createParser("json", { match: "extract" }).parse(
+  "Here is JSON:\n```json\n{\"name\":\"Greg\"}\n```"
+);
+// 3.x: { name: "Greg" }
+```
 
 ## JSON Schema Validation Defaults to On
 
@@ -235,14 +242,14 @@ Migration:
 - Keep `json` for strict JSON object/array parsing.
 - Use `validateSchema: false` only when preserving old filter/default-only behavior is intentional.
 
-## Boolean Parser Is Whole-Output Strict
+## Boolean Parser Is Exact by Default
 
 The boolean parser accepts only documented boolean literals after trimming and lowercasing:
 
 - truthy: `true`, `yes`, `y`, `1`
 - falsy: `false`, `no`, `n`, `0`
 
-It does not extract booleans from prose.
+By default, it does not extract booleans from prose.
 
 ```ts
 createParser("boolean").parse("false");
@@ -255,7 +262,12 @@ createParser("boolean").parse("The answer is true.");
 Migration:
 
 - Prompt for only the boolean token.
-- Use a custom parser or preprocessing step if prose extraction is required.
+- Use `match: "extract"` when the model may return prose.
+
+```ts
+createParser("boolean", { match: "extract" }).parse("The answer is true.");
+// 3.x: true
+```
 
 ## stringExtract Defaults Changed
 
@@ -264,6 +276,12 @@ Migration:
 ```ts
 createParser("stringExtract", { enum: ["yes"] }).parse("ayesha");
 // 3.x: throws parser.parse_failed
+
+createParser("stringExtract", {
+  enum: ["yes"],
+  match: "word",
+}).parse("yes please");
+// 3.x: "yes"
 
 createParser("stringExtract", {
   enum: ["yes"],
@@ -276,6 +294,7 @@ Migration:
 
 - Use the default `word` matching for enum extraction from prose.
 - Set `match: "substring"` when preserving legacy contains behavior.
+- Set `match: "exact"` when surrounding text should fail.
 - Set `ignoreCase: false` when case-sensitive matching is required.
 
 ## Number Parser Rejects Ambiguous or Invalid Numeric Text
@@ -293,17 +312,17 @@ createParser("number").parse("1,00,000");
 // 3.x: throws parser.parse_failed
 ```
 
-Use `match: "whole"` to require the entire input to be a numeric token.
+Use `match: "exact"` to require the entire input to be a numeric token.
 
 ```ts
-createParser("number", { match: "whole" }).parse("5 dollars");
+createParser("number", { match: "exact" }).parse("5 dollars");
 // 3.x: throws parser.parse_failed
 ```
 
 Migration:
 
 - Use default extraction for one-number prose.
-- Use `match: "whole"` when surrounding text should fail.
+- Use `match: "exact"` when surrounding text should fail.
 - Clean or normalize non-US comma grouping before parsing if needed.
 
 ## Markdown Code Block Parsers Are Explicit

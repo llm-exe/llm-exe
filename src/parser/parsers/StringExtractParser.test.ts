@@ -70,7 +70,7 @@ describe("llm-exe:parser/StringExtractParser", () => {
     const parser = new StringExtractParser({ enum: ["Hello"] });
     expect(() => parser.parse("Yo!!")).toThrow(LlmExeError);
     expect(() => parser.parse("Yo!!")).toThrow(
-      "No matching enum value found in input."
+      "No matching enum value found in input.",
     );
   });
 
@@ -78,14 +78,14 @@ describe("llm-exe:parser/StringExtractParser", () => {
     const parser = new StringExtractParser({ enum: ["Hello"] });
     const badValue = ["Hello"] as unknown as string;
     expect(() => parser.parse(badValue)).toThrow(
-      "Invalid input. Expected string. Received array."
+      "Invalid input. Expected string. Received array.",
     );
   });
 
   it("throws for null input", () => {
     const parser = new StringExtractParser({ enum: ["Hello"] });
     expect(() => parser.parse(null as any)).toThrow(
-      "Invalid input. Expected string. Received null."
+      "Invalid input. Expected string. Received null.",
     );
   });
 
@@ -93,7 +93,7 @@ describe("llm-exe:parser/StringExtractParser", () => {
     const parser = new StringExtractParser({ enum: ["Hello"] });
     const badValue = { hello: "world" } as unknown as string;
     expect(() => parser.parse(badValue)).toThrow(
-      "Invalid input. Expected string. Received object."
+      "Invalid input. Expected string. Received object.",
     );
   });
 
@@ -281,11 +281,11 @@ describe("llm-exe:parser/StringExtractParser", () => {
     });
   });
 
-  describe("match: whole", () => {
+  describe("match: exact", () => {
     it("accepts input that equals the enum value", () => {
       const parser = new StringExtractParser({
         enum: ["yes", "no"],
-        match: "whole",
+        match: "exact",
       });
       expect(parser.parse("yes")).toEqual("yes");
     });
@@ -293,7 +293,7 @@ describe("llm-exe:parser/StringExtractParser", () => {
     it("accepts input after trimming whitespace", () => {
       const parser = new StringExtractParser({
         enum: ["yes"],
-        match: "whole",
+        match: "exact",
       });
       expect(parser.parse("  yes  ")).toEqual("yes");
     });
@@ -301,7 +301,7 @@ describe("llm-exe:parser/StringExtractParser", () => {
     it("rejects input that contains the value with extra content", () => {
       const parser = new StringExtractParser({
         enum: ["yes"],
-        match: "whole",
+        match: "exact",
       });
       try {
         parser.parse("yes please");
@@ -309,23 +309,23 @@ describe("llm-exe:parser/StringExtractParser", () => {
       } catch (e) {
         expect((e as LlmExeError).context).toMatchObject({
           reason: "no_enum_match",
-          match: "whole",
+          match: "exact",
         });
       }
     });
 
-    it("does not let empty enum value match in whole mode", () => {
+    it("does not let empty enum value match in exact mode", () => {
       const parser = new StringExtractParser({
         enum: ["", "yes"],
-        match: "whole",
+        match: "exact",
       });
       expect(parser.parse("yes")).toEqual("yes");
     });
 
-    it("respects ignoreCase: false in whole mode", () => {
+    it("respects ignoreCase: false in exact mode", () => {
       const parser = new StringExtractParser({
         enum: ["Yes"],
-        match: "whole",
+        match: "exact",
         ignoreCase: false,
       });
       expect(parser.parse("Yes")).toEqual("Yes");
@@ -373,27 +373,27 @@ describe("llm-exe:parser/StringExtractParser", () => {
       const parser = new StringExtractParser({ enum: ["a"] });
       const badValue = null as unknown as string;
       expect(() => parser.parse(badValue)).toThrow(
-        "Invalid input. Expected string. Received null."
+        "Invalid input. Expected string. Received null.",
       );
     });
 
-    it('throws on undefined input', () => {
+    it("throws on undefined input", () => {
       const parser = new StringExtractParser({ enum: ["a"] });
       const badValue = undefined as unknown as string;
       expect(() => parser.parse(badValue)).toThrow(
-        "Invalid input. Expected string. Received undefined."
+        "Invalid input. Expected string. Received undefined.",
       );
     });
 
-    it('throws on number input', () => {
+    it("throws on number input", () => {
       const parser = new StringExtractParser({ enum: ["a"] });
       const badValue = 42 as unknown as string;
       expect(() => parser.parse(badValue)).toThrow(
-        "Invalid input. Expected string. Received number."
+        "Invalid input. Expected string. Received number.",
       );
     });
 
-    it('throws on empty input when enum values exist', () => {
+    it("throws on empty input when enum values exist", () => {
       const parser = new StringExtractParser({ enum: ["yes"] });
       expect(() => parser.parse("")).toThrow(LlmExeError);
     });

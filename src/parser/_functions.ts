@@ -7,7 +7,7 @@ import {
 } from "@/types";
 import { LlmExeError } from "@/errors";
 import { StringParser } from "./parsers/StringParser";
-import { BooleanParser } from "./parsers/BooleanParser";
+import { BooleanParser, BooleanParserOptions } from "./parsers/BooleanParser";
 import { NumberParser } from "./parsers/NumberParser";
 import { JsonParser } from "./parsers/JsonParser";
 import { ListToJsonParser } from "./parsers/ListToJsonParser";
@@ -47,7 +47,7 @@ export type ParserMap<S extends JSONSchema | undefined = undefined> = {
  */
 export type CreateParserArgs =
   | [type: "string", options?: never]
-  | [type: "boolean", options?: never]
+  | [type: "boolean", options?: BooleanParserOptions]
   | [type: "listToArray", options?: never]
   | [type: "markdownCodeBlock", options?: never]
   | [type: "markdownCodeBlocks", options?: never]
@@ -59,7 +59,10 @@ export type CreateParserArgs =
       type: "listToJson",
       options?: ListToJsonParserOptions<JSONSchema | undefined>,
     ]
-  | [type: "stringExtract", options: StringExtractParserOptions<readonly string[]>];
+  | [
+      type: "stringExtract",
+      options: StringExtractParserOptions<readonly string[]>,
+    ];
 
 /**
  * Maps a concrete argument tuple back to the parser instance type, preserving
@@ -67,30 +70,43 @@ export type CreateParserArgs =
  * stringExtract.
  */
 export type CreateParserReturn<A extends readonly unknown[]> =
-  A extends readonly ["string", ...unknown[]] ? StringParser
-  : A extends readonly ["boolean", ...unknown[]] ? BooleanParser
-  : A extends readonly ["number", ...unknown[]] ? NumberParser
-  : A extends readonly ["listToArray", ...unknown[]] ? ListToArrayParser
-  : A extends readonly ["listToKeyValue", ...unknown[]] ? ListToKeyValueParser
-  : A extends readonly ["markdownCodeBlock", ...unknown[]]
-    ? MarkdownCodeBlockParser
-  : A extends readonly ["markdownCodeBlocks", ...unknown[]]
-    ? MarkdownCodeBlocksParser
-  : A extends readonly ["replaceStringTemplate", ...unknown[]]
-    ? ReplaceStringTemplateParser
-  : A extends readonly ["json"] | readonly ["json", undefined]
-    ? JsonParser<undefined>
-  : A extends readonly ["json", JsonParserOptions<infer S>] ? JsonParser<S>
-  : A extends readonly ["listToJson"] | readonly ["listToJson", undefined]
-    ? ListToJsonParser<undefined>
-  : A extends readonly ["listToJson", ListToJsonParserOptions<infer S>]
-    ? ListToJsonParser<S>
-  : A extends readonly [
-      "stringExtract",
-      StringExtractParserOptions<infer E extends readonly string[]>,
-    ]
-    ? StringExtractParser<E>
-  : never;
+  A extends readonly ["string", ...unknown[]]
+    ? StringParser
+    : A extends readonly ["boolean", ...unknown[]]
+      ? BooleanParser
+      : A extends readonly ["number", ...unknown[]]
+        ? NumberParser
+        : A extends readonly ["listToArray", ...unknown[]]
+          ? ListToArrayParser
+          : A extends readonly ["listToKeyValue", ...unknown[]]
+            ? ListToKeyValueParser
+            : A extends readonly ["markdownCodeBlock", ...unknown[]]
+              ? MarkdownCodeBlockParser
+              : A extends readonly ["markdownCodeBlocks", ...unknown[]]
+                ? MarkdownCodeBlocksParser
+                : A extends readonly ["replaceStringTemplate", ...unknown[]]
+                  ? ReplaceStringTemplateParser
+                  : A extends readonly ["json"] | readonly ["json", undefined]
+                    ? JsonParser<undefined>
+                    : A extends readonly ["json", JsonParserOptions<infer S>]
+                      ? JsonParser<S>
+                      : A extends
+                            | readonly ["listToJson"]
+                            | readonly ["listToJson", undefined]
+                        ? ListToJsonParser<undefined>
+                        : A extends readonly [
+                              "listToJson",
+                              ListToJsonParserOptions<infer S>,
+                            ]
+                          ? ListToJsonParser<S>
+                          : A extends readonly [
+                                "stringExtract",
+                                StringExtractParserOptions<
+                                  infer E extends readonly string[]
+                                >,
+                              ]
+                            ? StringExtractParser<E>
+                            : never;
 
 export function createParser<const A extends CreateParserArgs>(
   ...args: A
@@ -115,43 +131,40 @@ export function createParser<const A extends CreateParserArgs>(
     case "replaceStringTemplate":
       return new ReplaceStringTemplateParser() as CreateParserReturn<A>;
     case "boolean":
-      return new BooleanParser() as CreateParserReturn<A>;
+      return new BooleanParser(options) as CreateParserReturn<A>;
     case "number":
       return new NumberParser(options) as CreateParserReturn<A>;
     case "string":
       return new StringParser() as CreateParserReturn<A>;
     default:
-      throw new LlmExeError(
-        `Invalid parser type: "${type}"`,
-        {
-          code: "parser.invalid_type",
-          context: {
-            operation: "createParser",
-            parser: type,
-            availableParsers: [
-              "json",
-              "string",
-              "boolean",
-              "number",
-              "stringExtract",
-              "listToArray",
-              "listToJson",
-              "listToKeyValue",
-              "replaceStringTemplate",
-              "markdownCodeBlock",
-              "markdownCodeBlocks",
-            ],
-            resolution:
-              "Use a registered parser type, or define a custom parser.",
-          },
-        }
-      );
+      throw new LlmExeError(`Invalid parser type: "${type}"`, {
+        code: "parser.invalid_type",
+        context: {
+          operation: "createParser",
+          parser: type,
+          availableParsers: [
+            "json",
+            "string",
+            "boolean",
+            "number",
+            "stringExtract",
+            "listToArray",
+            "listToJson",
+            "listToKeyValue",
+            "replaceStringTemplate",
+            "markdownCodeBlock",
+            "markdownCodeBlocks",
+          ],
+          resolution:
+            "Use a registered parser type, or define a custom parser.",
+        },
+      });
   }
 }
 
 export function createCustomParser<O>(
   name: string,
-  parserFn: (text: string, context: ExecutionContext<any, any>) => O
+  parserFn: (text: string, context: ExecutionContext<any, any>) => O,
 ): CustomParser<ReturnType<typeof parserFn>> {
   return new CustomParser<ReturnType<typeof parserFn>>(name, parserFn);
 }

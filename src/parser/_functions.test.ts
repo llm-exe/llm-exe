@@ -24,6 +24,11 @@ describe("createParser", () => {
     expect(parser).toBeInstanceOf(BooleanParser);
   });
 
+  it("passes options to BooleanParser", () => {
+    const parser = createParser("boolean", { match: "extract" });
+    expect(parser.parse("The answer is true.")).toBe(true);
+  });
+
   it("creates a NumberParser for type 'number'", () => {
     const parser = createParser("number");
     expect(parser).toBeInstanceOf(NumberParser);
@@ -42,6 +47,13 @@ describe("createParser", () => {
     } as const;
     const parser = createParser("json", { schema });
     expect(parser).toBeInstanceOf(JsonParser);
+  });
+
+  it("passes match options to JsonParser", () => {
+    const parser = createParser("json", { match: "extract" });
+    expect(parser.parse('Here is JSON: {"name":"Greg"}')).toEqual({
+      name: "Greg",
+    });
   });
 
   it("creates a ListToJsonParser for type 'listToJson'", () => {
@@ -123,7 +135,7 @@ describe("createParser", () => {
           "replaceStringTemplate",
           "markdownCodeBlock",
           "markdownCodeBlocks",
-        ])
+        ]),
       );
     }
   });
@@ -131,14 +143,16 @@ describe("createParser", () => {
 
 describe("createCustomParser", () => {
   it("creates a CustomParser with the given name and function", () => {
-    const parser = createCustomParser("my-parser", (text) => text.toUpperCase());
+    const parser = createCustomParser("my-parser", (text) =>
+      text.toUpperCase(),
+    );
     expect(parser).toBeInstanceOf(CustomParser);
     expect(parser.name).toBe("my-parser");
   });
 
   it("parser function is invoked correctly", () => {
     const parser = createCustomParser("reverse", (text) =>
-      text.split("").reverse().join("")
+      text.split("").reverse().join(""),
     );
     const result = parser.parse("hello", {} as any);
     expect(result).toBe("olleh");
@@ -158,7 +172,10 @@ describe("createCustomParser", () => {
   it("can return complex types", () => {
     const parser = createCustomParser("json-extract", (text) => {
       const parsed = JSON.parse(text);
-      return { items: parsed.items as string[], count: parsed.items.length as number };
+      return {
+        items: parsed.items as string[],
+        count: parsed.items.length as number,
+      };
     });
     const result = parser.parse('{"items": ["a", "b", "c"]}', {} as any);
     expect(result).toEqual({ items: ["a", "b", "c"], count: 3 });

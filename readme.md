@@ -85,7 +85,7 @@ Welcome back!
 ```ts
 createParser("string");              // pass-through, returns string
 createParser("json", { schema });    // JSON with optional schema validation
-createParser("boolean");             // extracts boolean from response
+createParser("boolean");             // parses a boolean token
 createParser("number");              // extracts number from response
 createParser("stringExtract", { enum: ["yes", "no"] }); // match one of the enum values
 createParser("listToArray");         // newline-separated list → string[]

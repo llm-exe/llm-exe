@@ -1,7 +1,7 @@
 import { BaseParser } from "../_base";
 import { LlmExeError } from "@/errors";
 
-export type StringExtractMatch = "word" | "whole" | "substring";
+export type StringExtractMatch = "exact" | "word" | "substring";
 
 export interface StringExtractParserOptions<
   E extends readonly string[] = readonly string[],
@@ -46,7 +46,7 @@ export class StringExtractParser<
    * Mode: configured value extraction
    *
    * Returns the single configured enum value found in input. Matching is
-   * word-bounded by default; pass match: "whole" to require exact input or
+   * word-bounded by default; pass match: "exact" to require exact input or
    * match: "substring" for legacy contains() behavior. Case-insensitive by
    * default.
    *
@@ -65,7 +65,7 @@ export class StringExtractParser<
             expected: "string",
             received,
           },
-        }
+        },
       );
     }
 
@@ -136,8 +136,8 @@ export class StringExtractParser<
 
   private findMatches(text: string): string[] {
     switch (this.match) {
-      case "whole":
-        return this.matchWhole(text);
+      case "exact":
+        return this.matchExact(text);
       case "substring":
         return this.matchSubstring(text);
       case "word":
@@ -146,7 +146,7 @@ export class StringExtractParser<
     }
   }
 
-  private matchWhole(text: string): string[] {
+  private matchExact(text: string): string[] {
     const candidate = this.ignoreCase ? text.trim().toLowerCase() : text.trim();
     return this.enum.filter((option) => {
       if (option === "") return false;
@@ -170,7 +170,7 @@ export class StringExtractParser<
       if (option === "") return false;
       const pattern = new RegExp(
         `(?<!${WORD_CHAR})${escapeRegex(option)}(?!${WORD_CHAR})`,
-        flags
+        flags,
       );
       return pattern.test(text);
     });

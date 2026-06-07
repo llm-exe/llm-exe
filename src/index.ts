@@ -70,4 +70,15 @@ export type {
   LlmProviderKey,
   EmbeddingProviderKey,
   UseLlmKey,
+  JsonParserMatch,
+  JsonParserOptions,
 } from "./interfaces";
+
+export type {
+  BooleanParserMatch,
+  BooleanParserOptions,
+  NumberParserMatch,
+  NumberParserOptions,
+  StringExtractMatch,
+  StringExtractParserOptions,
+} from "./parser";

@@ -6,22 +6,34 @@ const BOOLEAN_VALUES = ["true", "false", "yes", "no", "y", "n", "1", "0"];
 const TRUTHY_VALUES = new Set(["true", "yes", "y", "1"]);
 const FALSY_VALUES = new Set(["false", "no", "n", "0"]);
 const MAX_ERROR_INPUT_EXCERPT_LENGTH = 500;
+const BOOLEAN_TOKEN_PATTERN =
+  /(?<![\p{L}\p{N}])(?:true|false|yes|no|y|n|1|0)(?![\p{L}\p{N}])/giu;
+
+export type BooleanParserMatch = "exact" | "extract";
+
+export interface BooleanParserOptions {
+  match?: BooleanParserMatch;
+}
 
 /**
  * v3 parser contract:
  * Category: strict
- * Mode: whole-output
+ * Mode: exact
  *
  * Accepts only documented boolean literals after trim/lowercase.
- * Returns true/false only when input is recognized.
- * Throws LlmExeError(parser.parse_failed) for empty, invalid-type, or
- * unrecognized input. Does not extract booleans from prose.
+ * Returns true/false only when input is recognized. Pass match: "extract" to
+ * extract one documented boolean literal from surrounding text.
+ * Throws LlmExeError(parser.parse_failed) for empty or unrecognized input.
+ * Invalid input types throw LlmExeError(parser.invalid_input).
  * Error context does not include input content unless LLM_EXE_DEBUG is enabled.
  *
  */
 export class BooleanParser extends BaseParser<boolean> {
-  constructor() {
+  private match: BooleanParserMatch;
+
+  constructor(options?: BooleanParserOptions) {
     super("boolean");
+    this.match = options?.match ?? "exact";
   }
 
   private getInputErrorContext(text: string) {
@@ -57,7 +69,7 @@ export class BooleanParser extends BaseParser<boolean> {
             expected: "string",
             received: text === null ? "null" : typeof text,
           },
-        }
+        },
       );
     }
 
@@ -82,6 +94,39 @@ export class BooleanParser extends BaseParser<boolean> {
       return false;
     }
 
+    if (this.match === "extract") {
+      const matches = Array.from(
+        text.toLowerCase().matchAll(BOOLEAN_TOKEN_PATTERN),
+      ).map((match) => match[0]);
+      const values = Array.from(
+        new Set(
+          matches.map((match) => {
+            if (TRUTHY_VALUES.has(match)) return true;
+            return false;
+          }),
+        ),
+      );
+
+      if (values.length === 1) {
+        return values[0];
+      }
+
+      if (values.length > 1) {
+        throw new LlmExeError(`Multiple boolean values found in input.`, {
+          code: "parser.parse_failed",
+          context: {
+            operation: "BooleanParser.parse",
+            parser: "boolean",
+            reason: "ambiguous_boolean",
+            expected: "one boolean value",
+            match: this.match,
+            matchCount: values.length,
+            ...this.getInputErrorContext(text),
+          },
+        });
+      }
+    }
+
     throw new LlmExeError(`No boolean value found in input.`, {
       code: "parser.parse_failed",
       context: {
@@ -89,6 +134,7 @@ export class BooleanParser extends BaseParser<boolean> {
         parser: "boolean",
         reason: "unrecognized_boolean",
         expected: BOOLEAN_VALUES,
+        match: this.match,
         ...this.getInputErrorContext(text),
       },
     });

@@ -174,4 +174,117 @@ describe("serializeLlmExeError", () => {
     });
     expect(() => JSON.stringify(out)).not.toThrow();
   });
+
+  it("serializes a Response when it appears as a nested value (not the top-level error)", () => {
+    if (typeof Response === "undefined") {
+      return;
+    }
+    const response = new Response("body", {
+      status: 503,
+      statusText: "Down",
+    });
+    const err = new LlmExeError("wrapped", {
+      code: "parser.parse_failed",
+      context: { upstream: response },
+    });
+    const out = serializeLlmExeError(err) as Record<string, any>;
+    expect(out.context.upstream).toEqual({
+      name: "Response",
+      status: 503,
+      statusText: "Down",
+      url: "",
+    });
+  });
+
+  it("serializes a custom-class instance with own enumerable keys", () => {
+    class CustomThing {
+      constructor(public a: number, public b: string) {}
+    }
+    const err = new LlmExeError("wrapped", {
+      code: "parser.parse_failed",
+      context: { thing: new CustomThing(1, "two") },
+    });
+    const out = serializeLlmExeError(err) as Record<string, any>;
+    expect(out.context.thing).toEqual({ a: 1, b: "two" });
+  });
+
+  it("collapses a custom-class instance with no own enumerable keys to its [object Object] tag", () => {
+    class EmptyThing {}
+    const err = new LlmExeError("wrapped", {
+      code: "parser.parse_failed",
+      context: { thing: new EmptyThing() },
+    });
+    const out = serializeLlmExeError(err) as Record<string, any>;
+    // Default `Object.prototype.toString.call` tag for any plain class without
+    // Symbol.toStringTag is "Object" — describeOpaque returns "[object Object]".
+    expect(out.context.thing).toBe("[object Object]");
+  });
+
+  it("preserves the Symbol.toStringTag for a custom-class instance with no own keys", () => {
+    class Tagged {
+      get [Symbol.toStringTag]() {
+        return "Tagged";
+      }
+    }
+    const err = new LlmExeError("wrapped", {
+      code: "parser.parse_failed",
+      context: { thing: new Tagged() },
+    });
+    const out = serializeLlmExeError(err) as Record<string, any>;
+    expect(out.context.thing).toBe("[object Tagged]");
+  });
+
+  it("truncates a generic Error-like cause chain that exceeds MAX_CAUSE_DEPTH", () => {
+    // MAX_CAUSE_DEPTH = 5. Build a 6-deep chain so the truncation marker fires.
+    let chain: any = { name: "Leaf", message: "leaf" };
+    for (let i = 0; i < 6; i++) {
+      chain = { name: "Wrap", message: `wrap ${i}`, cause: chain };
+    }
+    const out = serializeLlmExeError(chain) as any;
+    let walker = out;
+    // Five hops descend through Wrap layers before the cap fires on the next cause.
+    for (let i = 0; i < 4; i++) {
+      walker = walker.cause;
+    }
+    expect(walker.cause).toEqual({ truncated: true });
+  });
+
+  it("truncates an LlmExeError cause chain that exceeds MAX_CAUSE_DEPTH", () => {
+    let chain: any = new LlmExeError("leaf", { code: "parser.parse_failed" });
+    for (let i = 0; i < 6; i++) {
+      chain = new LlmExeError(`wrap ${i}`, {
+        code: "parser.parse_failed",
+        cause: chain,
+      });
+    }
+    const out = serializeLlmExeError(chain) as any;
+    let walker = out;
+    for (let i = 0; i < 4; i++) {
+      walker = walker.cause;
+    }
+    expect(walker.cause).toEqual({ truncated: true });
+  });
+
+  it("safeValue iterates arrays passed in context", () => {
+    const err = new LlmExeError("with array", {
+      code: "parser.parse_failed",
+      context: { items: [1, "two", { three: 3 }] },
+    });
+    const out = serializeLlmExeError(err) as Record<string, any>;
+    expect(out.context.items).toEqual([1, "two", { three: 3 }]);
+  });
+
+  it("includes stack on a generic Error-like value when includeStack is true", () => {
+    const plainErr = {
+      name: "TypeError",
+      message: "boom",
+      stack: "TypeError: boom\n    at synthetic\n",
+    };
+    const out = serializeLlmExeError(plainErr, { includeStack: true }) as Record<
+      string,
+      any
+    >;
+    expect(out.name).toBe("TypeError");
+    expect(out.stack).toBe(plainErr.stack);
+  });
 });

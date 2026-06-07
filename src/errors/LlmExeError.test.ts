@@ -189,4 +189,14 @@ describe("LlmExeError", () => {
     });
     expect(String(err)).toBe("LlmExeError: the message");
   });
+
+  it("falls back to internal.invariant_failed when constructed with no options", () => {
+    const err = new (LlmExeError as any)("no options at all");
+    expect(err.code).toBe("internal.invariant_failed");
+    expect(err.category).toBe("internal");
+    expect(err.context).toEqual({
+      invariant: "invalid_error_code",
+      received: undefined,
+    });
+  });
 });

@@ -491,3 +491,109 @@ describe("readStringOrNumberField", () => {
     expect(readStringOrNumberField("x", "code")).toBeUndefined();
   });
 });
+
+describe("safeProviderErrorBody scalar branches", () => {
+  it("converts a bigint value to its decimal string", () => {
+    const out = safeProviderErrorBody({ count: 123n }) as Record<string, unknown>;
+    expect(out.count).toBe("123");
+  });
+
+  it("stringifies a symbol value", () => {
+    const sym = Symbol("test");
+    const out = safeProviderErrorBody({ marker: sym }) as Record<string, unknown>;
+    expect(out.marker).toBe(String(sym));
+  });
+
+  it("replaces a function value with [Function]", () => {
+    const out = safeProviderErrorBody({ fn: () => 1 }) as Record<string, unknown>;
+    expect(out.fn).toBe("[Function]");
+  });
+
+  it("returns null and undefined values unchanged", () => {
+    const out = safeProviderErrorBody({ a: null, b: undefined }) as Record<
+      string,
+      unknown
+    >;
+    expect(out.a).toBeNull();
+    expect(out.b).toBeUndefined();
+  });
+
+  it("returns [deep] once the recursion depth limit is exceeded", () => {
+    // MAX_SCRUB_DEPTH = 8. Build 9 wrapper objects so the 8th-level scrub
+    // call hits the depth guard and yields the [deep] sentinel.
+    let nested: any = "leaf";
+    for (let i = 0; i < 9; i++) {
+      nested = { nested };
+    }
+    const out = safeProviderErrorBody({ root: nested }) as Record<string, any>;
+    let walker: any = out.root;
+    // out.root traverses 7 .nested hops before the depth guard fires.
+    for (let i = 0; i < 7; i++) {
+      walker = walker.nested;
+    }
+    expect(walker).toBe("[deep]");
+  });
+
+  it("returns [Circular] when a cycle is detected during scrubbing", () => {
+    const a: any = { name: "a" };
+    a.self = a;
+    const out = safeProviderErrorBody(a) as Record<string, unknown>;
+    expect(out.self).toBe("[Circular]");
+  });
+
+  it("recurses through arrays", () => {
+    const out = safeProviderErrorBody([
+      { token: "syntheticBearerToken" },
+      "plain",
+    ]) as unknown[];
+    expect(Array.isArray(out)).toBe(true);
+    expect((out[0] as Record<string, unknown>).token).toBe("[redacted]");
+    expect(out[1]).toBe("plain");
+  });
+});
+
+describe("parseRetryAfter whitespace and Infinity branches", () => {
+  it("returns undefined for whitespace-only input", () => {
+    expect(parseRetryAfter("   \t\n  ")).toBeUndefined();
+  });
+
+  it("returns undefined when the numeric value overflows to Infinity", () => {
+    // Regex matches \d+(\.\d+)? but Number() of a very large numeric string
+    // returns Infinity, which must fall through to undefined.
+    const huge = "1" + "0".repeat(400);
+    expect(parseRetryAfter(huge)).toBeUndefined();
+  });
+});
+
+describe("parseProviderErrorGeneric input shape fallbacks", () => {
+  it("reads status/statusText from input.response when top-level fields are absent", () => {
+    const out = parseProviderErrorGeneric({
+      response: { status: 503, statusText: "Service Unavailable" },
+    });
+    expect(out.status).toBe(503);
+    expect(out.statusText).toBe("Service Unavailable");
+    expect(out.retryable).toBe(true);
+  });
+
+  it("treats absent headers as an empty record (no retry-after parsing)", () => {
+    const out = parseProviderErrorGeneric({ status: 429 });
+    expect(out.retryAfterMs).toBeUndefined();
+    expect(out.retryable).toBe(true);
+  });
+
+  it("uses bodyJson.error directly when it is a string", () => {
+    const out = parseProviderErrorGeneric({
+      status: 500,
+      bodyJson: { error: "Server exploded" },
+    });
+    expect(out.message).toBe("Server exploded");
+  });
+
+  it("leaves message undefined when bodyJson.error is a non-string primitive", () => {
+    const out = parseProviderErrorGeneric({
+      status: 500,
+      bodyJson: { error: 42 },
+    });
+    expect(out.message).toBeUndefined();
+  });
+});

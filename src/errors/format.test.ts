@@ -124,4 +124,27 @@ describe("formatLlmExeErrorForLog", () => {
     expect(formatLlmExeErrorForLog("just text")).toBe(`"just text"`);
     expect(formatLlmExeErrorForLog(42)).toBe("42");
   });
+
+  it("uses category in the header when code is absent but category is present", () => {
+    const err = {
+      name: "WeirdError",
+      message: "ouch",
+      category: "parser",
+    };
+    expect(formatLlmExeErrorForLog(err)).toBe("WeirdError [parser]: ouch");
+  });
+});
+
+describe("formatErrorValue throw-fallback path", () => {
+  it("falls back to [object Tag] when JSON.stringify throws", () => {
+    // A getter that throws causes JSON.stringify to throw; the catch block
+    // returns undefined and the formatter falls through to the tag fallback.
+    const obj = {
+      get explode() {
+        throw new Error("nope");
+      },
+    };
+    const out = formatErrorValue(obj);
+    expect(out).toBe("[object Object]");
+  });
 });

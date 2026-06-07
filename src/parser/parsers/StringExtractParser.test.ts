@@ -334,34 +334,46 @@ describe("llm-exe:parser/StringExtractParser", () => {
   });
 
   describe("multiple enum values and match priority", () => {
-    it('returns the first enum entry that matches (enum order, not text order)', () => {
-      // "no" is listed first; even though "yes" also appears in input, "no" wins
+    it("throws parser.parse_failed when multiple enum values match in input", () => {
       const parser = new StringExtractParser({ enum: ["no", "yes"] });
-      expect(parser.parse("yes and no")).toEqual("no");
+      try {
+        parser.parse("yes and no");
+        fail("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toEqual("parser.parse_failed");
+        expect((e as LlmExeError).context).toMatchObject({
+          operation: "StringExtractParser.parse",
+          parser: "stringExtract",
+          reason: "ambiguous_enum_match",
+        });
+      }
     });
 
-    it('returns first enum entry case-insensitively when ignoreCase is set', () => {
+    it("matches case-insensitively by default", () => {
       const parser = new StringExtractParser({
         enum: ["Approve", "Reject"],
-        ignoreCase: true,
       });
       expect(parser.parse("Final decision: REJECT")).toEqual("Reject");
       expect(parser.parse("approve please")).toEqual("Approve");
     });
 
-    it('throws when input does not contain any enum value (case-sensitive)', () => {
-      const parser = new StringExtractParser({ enum: ["Yes", "No"] });
-      // lowercase "yes" should not match capitalized "Yes" without ignoreCase
+    it("throws when input does not contain any enum value (case-sensitive)", () => {
+      const parser = new StringExtractParser({
+        enum: ["Yes", "No"],
+        ignoreCase: false,
+      });
+      // lowercase "yes" should not match capitalized "Yes" with ignoreCase: false
       expect(() => parser.parse("yes please")).toThrow(LlmExeError);
     });
   });
 
   describe("edge cases on input shape", () => {
-    it('throws on null input with the expected type message', () => {
+    it("throws on null input with the expected type message", () => {
       const parser = new StringExtractParser({ enum: ["a"] });
       const badValue = null as unknown as string;
       expect(() => parser.parse(badValue)).toThrow(
-        "Invalid input. Expected string. Received object."
+        "Invalid input. Expected string. Received null."
       );
     });
 
@@ -387,20 +399,26 @@ describe("llm-exe:parser/StringExtractParser", () => {
     });
   });
 
-  describe("partial match behavior (locks in current regex semantics)", () => {
-    it('matches enum value as a substring (not whole-word)', () => {
+  describe("word-boundary matching (v3 default)", () => {
+    it("does not match an enum value that appears inside a longer word", () => {
       const parser = new StringExtractParser({ enum: ["yes"] });
-      // "yes" appears inside "yesterday" — matches because the regex has no boundaries
+      // "yes" inside "yesterday" should not match in default word mode
+      expect(() => parser.parse("yesterday is over")).toThrow(LlmExeError);
+    });
+
+    it("matches as a substring when match: 'substring' is opted into", () => {
+      const parser = new StringExtractParser({
+        enum: ["yes"],
+        match: "substring",
+      });
       expect(parser.parse("yesterday is over")).toEqual("yes");
     });
 
-    it('treats enum entries as raw regex source (not escaped)', () => {
-      // The implementation passes the enum value straight into RegExp().
-      // This documents that current behavior — special chars are treated as regex,
-      // which is a footgun callers should be aware of.
+    it("escapes regex metacharacters in enum entries", () => {
+      // "a.b" should be matched literally; the dot is NOT a regex wildcard
       const parser = new StringExtractParser({ enum: ["a.b"] });
-      // "a.b" as regex matches "axb" (dot = any char)
-      expect(parser.parse("axb")).toEqual("a.b");
+      expect(() => parser.parse("axb")).toThrow(LlmExeError);
+      expect(parser.parse("a.b")).toEqual("a.b");
     });
   });
 });

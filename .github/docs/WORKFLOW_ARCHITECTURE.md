@@ -329,8 +329,8 @@ The minimal tree, annotated with why each path exists. A replica must reproduce 
 .
 ├── .github/
 │   ├── actions/
-│   │   ├── cache/action.yml              composite action: caches ~/.npm and node_modules keyed on matrix.node-version plus hashFiles('**/package.json')
-│   │   └── setup-node/action.yml         composite action: actions/setup-node@v4 pinned to 24.x with registry-url https://registry.npmjs.org
+│   │   ├── cache/action.yml              composite action: caches node_modules keyed on matrix.node-version plus hashFiles('**/package.json'); ~/.npm is handled by actions/setup-node@v6 with cache: npm
+│   │   └── setup-node/action.yml         composite action: actions/setup-node@v6 pinned to 24.x with cache: npm and registry-url https://registry.npmjs.org
 │   ├── workflows/
 │   │   ├── agent-run.yml                 task agents (docs, tester, coder, scout) on cron plus dispatch
 │   │   ├── coder-run.yml                 fans the coder out across up to 5 unclaimed issues in a matrix
@@ -426,7 +426,7 @@ sequenceDiagram
     App-->>Runner: short-lived token for llm-exe-bot[bot]
     Runner->>Git: checkout fetch-depth: 0 using bot token
     Runner->>Runner: git config user.name llm-exe-bot[bot]
-    Runner->>Runner: setup-node@v4 node-version 20 cache npm
+    Runner->>Runner: setup-node@v6 node-version 24 cache npm
     Runner->>Runner: npm ci
     Runner->>Cfg: source scripts/agents/config.sh
     Cfg->>Cfg: create_agent_branch "<role>" [suffix]
@@ -614,7 +614,7 @@ flowchart LR
     C --> D[mint bot token]
     D --> E[checkout fetch-depth 0]
     E --> F[git config bot identity]
-    F --> G[setup-node 20 cache npm]
+    F --> G[setup-node 24 cache npm]
     G --> H[npm ci]
     H --> I{event is schedule?}
     I -->|yes| J[Pick agent from cron string]
@@ -745,7 +745,7 @@ Body must be HTML fragment (no `<html>` / `<body>` tags) and must be the only th
 | Push rationale | Coverage upload is gated to Node 24.x. Without a `push` event on `main`, every Coveralls record is tagged with the source PR head branch (development / feature branches), so the docs-site badge that filters with `?branch=main` renders "unknown". The `push` trigger on `main` (always reached via `auto-merge-main-pr.yml`) produces a Coveralls record tagged for `main`. |
 | Bypass | Job-level `if` skips when `pull_request.base.ref == 'development' && pull_request.head.ref == 'bump-version-branch'`. On `push` and `workflow_dispatch` `pull_request` is null, so the bypass is false and the matrix runs. |
 | Matrix | Node 18, 20, 22, 24 |
-| Steps | `actions/checkout@v4` -> `actions/setup-node@v4` with `cache: npm` -> reusable cache action -> `npm install` -> `npm run test` -> coverage upload on Node 24 only |
+| Steps | `actions/checkout@v4` -> `actions/setup-node@v6` with `cache: npm` -> reusable cache action -> `npm install` -> `npm run test` -> coverage upload on Node 24 only |
 
 Note: this workflow does not use the App token. It only needs reads.
 
@@ -1251,26 +1251,22 @@ description: "Setup Node.js environment"
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@v6
       with:
         node-version: 24.x
+        cache: 'npm'
         registry-url: 'https://registry.npmjs.org'
 ```
 
 `.github/actions/cache/action.yml`:
 ```yaml
-name: 'Cache npm dependencies and node modules'
-description: 'Cache npm dependencies and node modules'
+name: 'Cache node modules'
+description: 'Cache node_modules directory. npm global cache (~/.npm) is handled by actions/setup-node cache: npm.'
 runs:
   using: 'composite'
   steps:
-    - uses: actions/cache@v4
-      with:
-        path: ~/.npm
-        key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-${{ matrix.node-version }}-
-    - uses: actions/cache@v4
+    - name: Cache node modules
+      uses: actions/cache@v4
       with:
         path: node_modules
         key: ${{ runner.os }}-nodeModules-${{ matrix.node-version }}-${{ hashFiles('**/package.json') }}
@@ -1278,7 +1274,7 @@ runs:
           ${{ runner.os }}-nodeModules-${{ matrix.node-version }}-
 ```
 
-Note: `cache/action.yml` references `matrix.node-version`. It only makes sense when used inside a matrixed job (like `tests.yml`). Calling it from a non-matrix job results in an empty matrix variable and a cache key the runner accepts but that will not hit on subsequent runs.
+Note: `cache/action.yml` references `matrix.node-version`. It only makes sense when used inside a matrixed job (like `tests.yml`). Calling it from a non-matrix job results in an empty matrix variable and a cache key the runner accepts but that will not hit on subsequent runs. The `~/.npm` cache entry previously in this action was removed in v6 — `actions/setup-node@v6` with `cache: 'npm'` handles that, keying on `package-lock.json`.
 
 ## Appendix C: Why these choices
 

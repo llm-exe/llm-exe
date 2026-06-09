@@ -185,10 +185,10 @@ describe("serializeLlmExeError", () => {
     });
     const err = new LlmExeError("wrapped", {
       code: "parser.parse_failed",
-      context: { upstream: response },
+      context: { received: response },
     });
     const out = serializeLlmExeError(err) as Record<string, any>;
-    expect(out.context.upstream).toEqual({
+    expect(out.context.received).toEqual({
       name: "Response",
       status: 503,
       statusText: "Down",
@@ -202,22 +202,22 @@ describe("serializeLlmExeError", () => {
     }
     const err = new LlmExeError("wrapped", {
       code: "parser.parse_failed",
-      context: { thing: new CustomThing(1, "two") },
+      context: { received: new CustomThing(1, "two") },
     });
     const out = serializeLlmExeError(err) as Record<string, any>;
-    expect(out.context.thing).toEqual({ a: 1, b: "two" });
+    expect(out.context.received).toEqual({ a: 1, b: "two" });
   });
 
   it("collapses a custom-class instance with no own enumerable keys to its [object Object] tag", () => {
     class EmptyThing {}
     const err = new LlmExeError("wrapped", {
       code: "parser.parse_failed",
-      context: { thing: new EmptyThing() },
+      context: { received: new EmptyThing() },
     });
     const out = serializeLlmExeError(err) as Record<string, any>;
     // Default `Object.prototype.toString.call` tag for any plain class without
     // Symbol.toStringTag is "Object" — describeOpaque returns "[object Object]".
-    expect(out.context.thing).toBe("[object Object]");
+    expect(out.context.received).toBe("[object Object]");
   });
 
   it("preserves the Symbol.toStringTag for a custom-class instance with no own keys", () => {
@@ -228,10 +228,10 @@ describe("serializeLlmExeError", () => {
     }
     const err = new LlmExeError("wrapped", {
       code: "parser.parse_failed",
-      context: { thing: new Tagged() },
+      context: { received: new Tagged() },
     });
     const out = serializeLlmExeError(err) as Record<string, any>;
-    expect(out.context.thing).toBe("[object Tagged]");
+    expect(out.context.received).toBe("[object Tagged]");
   });
 
   it("truncates a generic Error-like cause chain that exceeds MAX_CAUSE_DEPTH", () => {
@@ -268,10 +268,10 @@ describe("serializeLlmExeError", () => {
   it("safeValue iterates arrays passed in context", () => {
     const err = new LlmExeError("with array", {
       code: "parser.parse_failed",
-      context: { items: [1, "two", { three: 3 }] },
+      context: { input: [1, "two", { three: 3 }] },
     });
     const out = serializeLlmExeError(err) as Record<string, any>;
-    expect(out.context.items).toEqual([1, "two", { three: 3 }]);
+    expect(out.context.input).toEqual([1, "two", { three: 3 }]);
   });
 
   it("includes stack on a generic Error-like value when includeStack is true", () => {

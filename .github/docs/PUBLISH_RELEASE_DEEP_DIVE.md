@@ -175,7 +175,7 @@ flowchart TB
         s1["actions/checkout@v4"]:::step
         s2["Validate Publisher\n(actor allowlist)"]:::gate
         s3["./.github/actions/setup-node\n(Node 24.x + npm registry-url)"]:::step
-        s4["./.github/actions/cache\n(~/.npm + node_modules)"]:::step
+        s4["./.github/actions/cache\n(node_modules)"]:::step
         s5["npm install"]:::step
         s6["npm run build:package\n(tsup CJS+ESM+DTS)"]:::step
         s7["Publish (route by version)"]:::step
@@ -270,7 +270,7 @@ sequenceDiagram
     J->>J: Validate Publisher (actor in allowlist)
     J->>N: setup-node composite (Node 24.x, registry-url npmjs.org)
     Note over N: registry-url makes npm write an .npmrc with NODE_AUTH_TOKEN
-    J->>N: cache restore (~/.npm + node_modules)
+    J->>N: cache restore (node_modules)
     J->>N: npm install
     J->>B: npm run build:package (tsup CJS + ESM + DTS, externals listed)
     B-->>J: dist/ ready
@@ -580,7 +580,7 @@ flowchart LR
     K6b["Examples tests"]:::k --- V6b["Node 22.x, Examples Test env,\nreal provider keys, npm run test-examples"]:::v
     K7["Node version (publish)"]:::k --- V7["24.x via ./.github/actions/setup-node"]:::v
     K8["Registry"]:::k --- V8["registry.npmjs.org"]:::v
-    K9["Cache"]:::k --- V9["~/.npm and node_modules (composite)"]:::v
+    K9["Cache"]:::k --- V9["node_modules (composite); ~/.npm via setup-node@v6 cache: npm"]:::v
     K10["Build"]:::k --- V10["npm run build:package (tsup CJS+ESM+DTS)"]:::v
     K11["Publish (stable)"]:::k --- V11["npm run publish-main = npm publish --provenance (latest dist-tag)"]:::v
     K12["Publish (pre-release)"]:::k --- V12["npm publish --provenance --tag $CHANNEL (beta, rc, alpha, ...)"]:::v

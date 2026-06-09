@@ -201,7 +201,7 @@ sequenceDiagram
     E->>J: gate check (actor + environment)
     J->>FS: checkout repo at ref
     J->>N: setup-node@v6 (22.x, cache: npm)
-    J->>N: ./.github/actions/cache (warm ~/.npm + node_modules)
+    J->>N: ./.github/actions/cache (warm node_modules)
     J->>N: npm install (dev deps for build)
     J->>B: npm run build:package (tsup, external deps)
     B-->>FS: dist/index.js, dist/index.mjs, dist/index.d.ts

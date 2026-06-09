@@ -329,8 +329,8 @@ The minimal tree, annotated with why each path exists. A replica must reproduce 
 .
 ├── .github/
 │   ├── actions/
-│   │   ├── cache/action.yml              composite action: caches ~/.npm and node_modules keyed on matrix.node-version plus hashFiles('**/package.json')
-│   │   └── setup-node/action.yml         composite action: actions/setup-node@v6 pinned to 24.x with registry-url https://registry.npmjs.org
+│   │   ├── cache/action.yml              composite action: caches node_modules keyed on matrix.node-version plus hashFiles('**/package.json'); ~/.npm is handled by actions/setup-node@v6 with cache: npm
+│   │   └── setup-node/action.yml         composite action: actions/setup-node@v6 pinned to 24.x with cache: npm and registry-url https://registry.npmjs.org
 │   ├── workflows/
 │   │   ├── agent-run.yml                 task agents (docs, tester, coder, scout) on cron plus dispatch
 │   │   ├── coder-run.yml                 fans the coder out across up to 5 unclaimed issues in a matrix
@@ -1254,23 +1254,19 @@ runs:
     - uses: actions/setup-node@v6
       with:
         node-version: 24.x
+        cache: 'npm'
         registry-url: 'https://registry.npmjs.org'
 ```
 
 `.github/actions/cache/action.yml`:
 ```yaml
-name: 'Cache npm dependencies and node modules'
-description: 'Cache npm dependencies and node modules'
+name: 'Cache node modules'
+description: 'Cache node_modules directory. npm global cache (~/.npm) is handled by actions/setup-node cache: npm.'
 runs:
   using: 'composite'
   steps:
-    - uses: actions/cache@v4
-      with:
-        path: ~/.npm
-        key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-${{ matrix.node-version }}-
-    - uses: actions/cache@v4
+    - name: Cache node modules
+      uses: actions/cache@v4
       with:
         path: node_modules
         key: ${{ runner.os }}-nodeModules-${{ matrix.node-version }}-${{ hashFiles('**/package.json') }}
@@ -1278,7 +1274,7 @@ runs:
           ${{ runner.os }}-nodeModules-${{ matrix.node-version }}-
 ```
 
-Note: `cache/action.yml` references `matrix.node-version`. It only makes sense when used inside a matrixed job (like `tests.yml`). Calling it from a non-matrix job results in an empty matrix variable and a cache key the runner accepts but that will not hit on subsequent runs.
+Note: `cache/action.yml` references `matrix.node-version`. It only makes sense when used inside a matrixed job (like `tests.yml`). Calling it from a non-matrix job results in an empty matrix variable and a cache key the runner accepts but that will not hit on subsequent runs. The `~/.npm` cache entry previously in this action was removed in v6 — `actions/setup-node@v6` with `cache: 'npm'` handles that, keying on `package-lock.json`.
 
 ## Appendix C: Why these choices
 

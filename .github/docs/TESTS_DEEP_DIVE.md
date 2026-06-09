@@ -43,7 +43,7 @@ flowchart LR
 
     subgraph C["Caches"]
         c1["setup-node built-in\n(npm cache)"]:::out
-        c2["./.github/actions/cache\n~/.npm + node_modules\nkeyed on matrix.node-version"]:::out
+        c2["./.github/actions/cache\nnode_modules\nkeyed on matrix.node-version"]:::out
     end
 
     subgraph X["External"]
@@ -180,7 +180,7 @@ sequenceDiagram
     R->>SN: setup-node@v6, node-version, cache: npm
     SN-->>R: node + npm installed, ~/.npm primed
     R->>CA: composite cache action
-    CA-->>R: ~/.npm and node_modules restored if hit
+    CA-->>R: node_modules restored if hit
     R->>NPM: npm install (not ci)
     NPM-->>R: node_modules ready
     R->>J: npm run test (Jest with coverage, forceExit)
@@ -219,14 +219,9 @@ flowchart LR
     end
 
     subgraph L2["Layer 2: ./.github/actions/cache (composite)"]
-        l2a["actions/cache@v4 (entry A)"]:::comp
-        l2b["actions/cache@v4 (entry B)"]:::comp
-        l2ap["~/.npm"]:::path
+        l2b["actions/cache@v4"]:::comp
         l2bp["node_modules"]:::path
-        l2ak["os-node-{matrix.node-version}-hash(package.json)"]:::key
         l2bk["os-nodeModules-{matrix.node-version}-hash(package.json)"]:::key
-        l2a --> l2ap
-        l2a --> l2ak
         l2b --> l2bp
         l2b --> l2bk
     end
@@ -237,7 +232,7 @@ flowchart LR
 
 Two things to know:
 
-1. The composite action keys on `hashFiles('**/package.json')`, not `package-lock.json`. setup-node's built-in cache keys on `package-lock.json`. They are not redundant, they target different miss patterns.
+1. The composite action keys on `hashFiles('**/package.json')`, not `package-lock.json`. setup-node's built-in cache (Layer 1) keys on `package-lock.json`. The two layers target different miss patterns and cover different paths — there is no overlap.
 2. `npm install` (not `npm ci`) means the workflow will reconcile the lockfile if it drifts from `package.json`. This is intentional given the multi-version matrix but trades strictness for resilience.
 
 Source: [.github/actions/cache/action.yml](../actions/cache/action.yml).
@@ -373,7 +368,7 @@ flowchart LR
     K8["Install"]:::k --- V8["npm install (not ci)"]:::v
     K9["Test"]:::k --- V9["npm run test (Jest, coverage, forceExit)"]:::v
     K10["Cache layer 1"]:::k --- V10["setup-node built-in (~/.npm by lockfile hash)"]:::v
-    K11["Cache layer 2"]:::k --- V11["composite (~/.npm + node_modules by package.json hash)"]:::v
+    K11["Cache layer 2"]:::k --- V11["composite (node_modules by package.json hash)"]:::v
     K12["Coverage upload"]:::k --- V12["coverallsapp/github-action@v1, Node 24.x only"]:::v
     K13["Status checks"]:::k --- V13["one per matrix leg, required by branch protection"]:::v
 ```

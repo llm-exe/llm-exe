@@ -50,7 +50,7 @@ flowchart LR
     subgraph X["External"]
         x1["actions/checkout@v4"]:::ext
         x2["actions/setup-node@v6\nNode 24.x"]:::ext
-        x3["actions/cache@v4\n~/.npm + node_modules"]:::ext
+        x3["actions/cache@v4\nnode_modules"]:::ext
         x4["actions/upload-artifact@v4"]:::ext
         x5["registry.npmjs.org\n(install only)"]:::ext
     end
@@ -136,7 +136,7 @@ flowchart TB
         direction TB
         s1["actions/checkout@v4"]:::step
         s2["./.github/actions/setup-node\nNode 24.x"]:::step
-        s3["./.github/actions/cache\n~/.npm + node_modules"]:::step
+        s3["./.github/actions/cache\nnode_modules"]:::step
         s4["npm install"]:::step
         s5["npm run build:package"]:::step
         s6["npm pack"]:::step
@@ -176,7 +176,7 @@ sequenceDiagram
     CO-->>FS: working tree at merge commit
     J->>SN: setup-node@v6 (Node 24.x, npm registry)
     SN-->>J: node and npm on PATH
-    J->>CA: restore ~/.npm and node_modules by hash(package.json)
+    J->>CA: restore node_modules by hash(package.json)
     CA-->>FS: cache hit or miss (warm start either way)
     J->>NPM: npm install
     NPM-->>FS: node_modules populated
@@ -336,7 +336,7 @@ flowchart LR
     K4["Permissions"]:::k --- V4["id-token: write, contents: read"]:::v
     K5["Runner"]:::k --- V5["ubuntu-latest"]:::v
     K6["Node"]:::k --- V6["24.x via setup-node composite"]:::v
-    K7["Cache"]:::k --- V7["~/.npm + node_modules keyed by package.json hash"]:::v
+    K7["Cache"]:::k --- V7["node_modules keyed by package.json hash; ~/.npm via setup-node@v6 cache: npm"]:::v
     K8["Build script"]:::k --- V8["npm run build:package (tsup with externals)"]:::v
     K9["Pack command"]:::k --- V9["npm pack"]:::v
     K10["Artifact name"]:::k --- V10["package"]:::v

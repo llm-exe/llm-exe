@@ -54,7 +54,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
@@ -92,7 +92,7 @@ jobs:
           token: ${{ steps.review-bot-token.outputs.token }}
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm

@@ -157,7 +157,7 @@ flowchart TB
     subgraph J["Job: test-package (ubuntu-latest, env: Examples Test)"]
         direction TB
         s1["Checkout repository\nactions/checkout@v4"]:::step
-        s2["Use Latest Node.js 22.x\nactions/setup-node@v4 (cache: npm)"]:::step
+        s2["Use Latest Node.js 22.x\nactions/setup-node@v6 (cache: npm)"]:::step
         s3["Cache npm dependencies\n./.github/actions/cache"]:::step
         s4["Install dependencies\nnpm install"]:::step
         s5["Build package and pack package\nnpm run build:package &amp;&amp; npm pack"]:::step
@@ -200,7 +200,7 @@ sequenceDiagram
     U->>E: workflow_dispatch (actor=gregreindel)
     E->>J: gate check (actor + environment)
     J->>FS: checkout repo at ref
-    J->>N: setup-node@v4 (22.x, cache: npm)
+    J->>N: setup-node@v6 (22.x, cache: npm)
     J->>N: ./.github/actions/cache (warm ~/.npm + node_modules)
     J->>N: npm install (dev deps for build)
     J->>B: npm run build:package (tsup, external deps)
@@ -352,7 +352,7 @@ flowchart LR
 
     subgraph Pre["Before tests"]
         c1["actions/checkout@v4\nauth: GITHUB_TOKEN\nwhy: get source"]:::pre
-        c2["actions/setup-node@v4\nauth: none\nwhy: Node 22.x install"]:::pre
+        c2["actions/setup-node@v6\nauth: none\nwhy: Node 22.x install"]:::pre
         c3["registry.npmjs.org\nauth: none\nwhy: npm install (dev deps + examples deps)"]:::reg
     end
 

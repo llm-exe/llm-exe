@@ -241,7 +241,7 @@ sequenceDiagram
     J->>T: create-github-app-token@v1 (LLM_EXE_REVIEW_BOT_APP_ID, key)
     T-->>J: review bot token (short-lived)
     J->>G: checkout fetch-depth 0 with review bot token
-    J->>N: setup-node@v4 + npm ci
+    J->>N: setup-node@v6 + npm ci
     J->>C: source scripts/agents/config.sh
     C->>L: clock_in "reviewer" "PR #N" writes skeleton .md
     L-->>C: log file path
@@ -365,7 +365,7 @@ flowchart LR
     subgraph Pre["Before the reviewer starts"]
         c1["actions/create-github-app-token@v1\nauth: LLM_EXE_REVIEW_BOT_APP_ID + key\nwhy: review bot identity to post reviews"]:::pre
         c2["actions/checkout@v4\nauth: review bot token\nwhy: full history (depth 0)"]:::pre
-        c3["actions/setup-node@v4\nauth: none\nwhy: prime npm cache (used by tools)"]:::pre
+        c3["actions/setup-node@v6\nauth: none\nwhy: prime npm cache (used by tools)"]:::pre
     end
 
     subgraph During["While the reviewer runs"]

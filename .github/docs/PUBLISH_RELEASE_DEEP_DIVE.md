@@ -157,7 +157,7 @@ flowchart TB
     subgraph J2["Job: run-examples-tests (ubuntu-latest, Examples Test env)"]
         direction TB
         e1["actions/checkout@v4"]:::step
-        e2["setup-node@v4 Node 22.x"]:::step
+        e2["setup-node@v6 Node 22.x"]:::step
         e3["./.github/actions/cache"]:::step
         e4["npm install"]:::step
         e5["npm run build:package && npm pack"]:::step
@@ -342,13 +342,13 @@ flowchart LR
 
     subgraph ExTest["Examples tests job"]
         e1["actions/checkout@v4\nauth: GITHUB_TOKEN (default)\nwhy: source for build + pack"]:::test
-        e2["actions/setup-node@v4\nauth: none\nwhy: Node 22.x"]:::test
+        e2["actions/setup-node@v6\nauth: none\nwhy: Node 22.x"]:::test
         e3["Provider APIs (OpenAI, Anthropic,\nGemini, xAI, DeepSeek)\nauth: per-provider API keys\nwhy: real integration tests"]:::test
     end
 
     subgraph Pre["Publish job setup"]
         c1["actions/checkout@v4\nauth: GITHUB_TOKEN (default)\nwhy: source for build"]:::pre
-        c2["actions/setup-node@v4 (composite)\nauth: none\nwhy: Node 24.x + npm registry-url"]:::pre
+        c2["actions/setup-node@v6 (composite)\nauth: none\nwhy: Node 24.x + npm registry-url"]:::pre
         c3["actions/cache@v4 (composite)\nauth: none\nwhy: speed up npm install"]:::pre
     end
 

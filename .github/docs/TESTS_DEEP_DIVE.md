@@ -168,7 +168,7 @@ sequenceDiagram
     participant E as Event
     participant R as Runner (ubuntu-latest)
     participant CO as actions/checkout@v4
-    participant SN as actions/setup-node@v4
+    participant SN as actions/setup-node@v6
     participant CA as ./.github/actions/cache
     participant NPM as npm
     participant J as Jest
@@ -177,7 +177,7 @@ sequenceDiagram
     E->>R: matrix leg starts (node 18/20/22/24)
     R->>CO: actions/checkout@v4
     CO-->>R: working tree at PR HEAD
-    R->>SN: setup-node@v4, node-version, cache: npm
+    R->>SN: setup-node@v6, node-version, cache: npm
     SN-->>R: node + npm installed, ~/.npm primed
     R->>CA: composite cache action
     CA-->>R: ~/.npm and node_modules restored if hit
@@ -210,8 +210,8 @@ flowchart LR
     classDef path fill:#374151,color:#fff,stroke:#000
     classDef key fill:#581c87,color:#fff,stroke:#000
 
-    subgraph L1["Layer 1: setup-node@v4 (cache: npm)"]
-        l1act["actions/setup-node@v4"]:::builtin
+    subgraph L1["Layer 1: setup-node@v6 (cache: npm)"]
+        l1act["actions/setup-node@v6"]:::builtin
         l1path["~/.npm"]:::path
         l1key["key: hash of package-lock.json"]:::key
         l1act --> l1path
@@ -256,7 +256,7 @@ flowchart LR
 
     subgraph Setup
         s1["actions/checkout@v4\nauth: GITHUB_TOKEN\nwhy: get PR HEAD"]:::setup
-        s2["actions/setup-node@v4\nauth: none\nwhy: install Node, prime npm cache"]:::setup
+        s2["actions/setup-node@v6\nauth: none\nwhy: install Node, prime npm cache"]:::setup
         s3["actions/cache@v4 (x2)\nauth: GITHUB_TOKEN\nwhy: persist deps across runs"]:::setup
     end
 

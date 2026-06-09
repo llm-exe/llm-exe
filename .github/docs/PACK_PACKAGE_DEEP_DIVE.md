@@ -49,7 +49,7 @@ flowchart LR
 
     subgraph X["External"]
         x1["actions/checkout@v4"]:::ext
-        x2["actions/setup-node@v4\nNode 24.x"]:::ext
+        x2["actions/setup-node@v6\nNode 24.x"]:::ext
         x3["actions/cache@v4\n~/.npm + node_modules"]:::ext
         x4["actions/upload-artifact@v4"]:::ext
         x5["registry.npmjs.org\n(install only)"]:::ext
@@ -174,7 +174,7 @@ sequenceDiagram
     Note over J: bypass gate evaluated on job.if
     J->>CO: checkout default ref
     CO-->>FS: working tree at merge commit
-    J->>SN: setup-node@v4 (Node 24.x, npm registry)
+    J->>SN: setup-node@v6 (Node 24.x, npm registry)
     SN-->>J: node and npm on PATH
     J->>CA: restore ~/.npm and node_modules by hash(package.json)
     CA-->>FS: cache hit or miss (warm start either way)

@@ -232,7 +232,7 @@ flowchart LR
 
 Two things to know:
 
-1. The composite action keys on `hashFiles('**/package.json')`, not `package-lock.json`. setup-node's built-in cache (Layer 1) keys on `package-lock.json`. The two layers target different miss patterns and cover different paths — there is no overlap.
+1. The composite action keys on `hashFiles('**/package.json')`, not `package-lock.json`. setup-node's built-in cache (Layer 1) keys on `package-lock.json`. The two layers target different miss patterns and cover different paths, so there is no overlap.
 2. `npm install` (not `npm ci`) means the workflow will reconcile the lockfile if it drifts from `package.json`. This is intentional given the multi-version matrix but trades strictness for resilience.
 
 Source: [.github/actions/cache/action.yml](../actions/cache/action.yml).

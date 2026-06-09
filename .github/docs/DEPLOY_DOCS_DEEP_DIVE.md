@@ -148,7 +148,7 @@ flowchart TB
         direction TB
         s1["checkout@v4 (default GITHUB_TOKEN)"]:::step
         s2["./.github/actions/setup-node (Node 24.x)"]:::step
-        s3["./.github/actions/cache (npm + node_modules)"]:::step
+        s3["./.github/actions/cache (node_modules)"]:::step
         s4["npm install"]:::step
         s5["read package.json version"]:::step
         s6["compute PACKAGE_ID = version-timestamp"]:::step
@@ -327,7 +327,7 @@ flowchart LR
     subgraph Pre["Before AWS"]
         c1["actions/checkout@v4\nauth: default GITHUB_TOKEN\nwhy: clone repo at the dispatched ref"]:::pre
         c2["./.github/actions/setup-node\nauth: none\nwhy: install Node 24.x + npm registry"]:::pre
-        c3["./.github/actions/cache\nauth: none\nwhy: warm ~/.npm and node_modules"]:::pre
+        c3["./.github/actions/cache\nauth: none\nwhy: warm node_modules"]:::pre
         c4["npm registry\nauth: anonymous\nwhy: npm install"]:::build
     end
 
@@ -554,7 +554,7 @@ flowchart LR
     K5["Branch guard (dispatch)"]:::k --- V5["GITHUB_REF in development|main"]:::v
     K6["Jobs"]:::k --- V6["check-deploy-branch, deploy-docs (needs guard)"]:::v
     K7["Node version"]:::k --- V7["24.x (./.github/actions/setup-node)"]:::v
-    K8["Cache"]:::k --- V8["~/.npm and node_modules (./.github/actions/cache)"]:::v
+    K8["Cache"]:::k --- V8["node_modules (./.github/actions/cache); ~/.npm via setup-node@v6 cache: npm"]:::v
     K9["Build commands"]:::k --- V9["npm run docs:update-providers + docs:build"]:::v
     K10["Build output"]:::k --- V10["docs/.vitepress/dist/"]:::v
     K11["PACKAGE_ID"]:::k --- V11["(package.json version)-(unix timestamp)"]:::v

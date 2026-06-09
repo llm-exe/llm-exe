@@ -1,16 +1,8 @@
-name: 'Cache npm dependencies and node modules'
-description: 'Cache npm dependencies and node modules'
+name: 'Cache node modules'
+description: 'Cache node_modules directory. npm global cache (~/.npm) is handled by actions/setup-node cache: npm.'
 runs:
   using: 'composite'
   steps:
-    - name: Cache npm dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.npm
-        key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-${{ matrix.node-version }}-
-
     - name: Cache node modules
       uses: actions/cache@v4
       with:

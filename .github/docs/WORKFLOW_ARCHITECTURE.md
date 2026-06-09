@@ -1274,7 +1274,7 @@ runs:
           ${{ runner.os }}-nodeModules-${{ matrix.node-version }}-
 ```
 
-Note: `cache/action.yml` references `matrix.node-version`. It only makes sense when used inside a matrixed job (like `tests.yml`). Calling it from a non-matrix job results in an empty matrix variable and a cache key the runner accepts but that will not hit on subsequent runs. The `~/.npm` cache entry previously in this action was removed in v6 — `actions/setup-node@v6` with `cache: 'npm'` handles that, keying on `package-lock.json`.
+Note: `cache/action.yml` references `matrix.node-version`. It only makes sense when used inside a matrixed job (like `tests.yml`). Calling it from a non-matrix job results in an empty matrix variable and a cache key the runner accepts but that will not hit on subsequent runs. The `~/.npm` cache entry previously in this action has been removed; `actions/setup-node@v6` with `cache: 'npm'` now handles that, keying on `package-lock.json`.
 
 ## Appendix C: Why these choices
 

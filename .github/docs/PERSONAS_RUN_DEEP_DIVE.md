@@ -488,7 +488,7 @@ flowchart LR
     subgraph Pre["Each job startup (gate, pick, every matrix slot, curator)"]
         c1["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: short-lived bot token per job"]:::pre
         c2["actions/checkout@v4\nauth: bot token\nfetch-depth: 0 (full history for branch ops)"]:::pre
-        c3["actions/setup-node@v6\nnode-version: 20, cache: npm"]:::pre
+        c3["actions/setup-node@v6\nnode-version: 24, cache: npm"]:::pre
     end
 
     subgraph During["While the LLM runs (persona OR curator)"]

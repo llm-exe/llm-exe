@@ -191,7 +191,7 @@ flowchart TB
         r1["Generate bot token"]:::step
         r2["Checkout fetch-depth 0"]:::step
         r3["Configure git\nuser.name = llm-exe-bot[bot]"]:::step
-        r4["setup-node@v6\nnode 20, cache npm"]:::step
+        r4["setup-node@v6\nnode 24, cache npm"]:::step
         r5["npm ci"]:::step
         r6["Build prompt step\n(branch, log, prompt assembly,\nAssigned Issue block)"]:::step
         r7["Run coder step\nanthropics/claude-code-action@v1"]:::step
@@ -360,7 +360,7 @@ flowchart LR
         c3["gh issue list --json number,labels (find-issues)\nauth: bot token\nwhy: candidate set"]:::pre
         c4["gh pr list --author app/llm-exe-bot (find-issues)\nauth: bot token\nwhy: claimed detection"]:::pre
         c5["actions/checkout@v4 fetch-depth 0\nauth: bot token\nwhy: full history for branch ops"]:::pre
-        c6["actions/setup-node@v6 + npm ci\nauth: none\nwhy: Node 20, prime npm cache"]:::pre
+        c6["actions/setup-node@v6 + npm ci\nauth: none\nwhy: Node 24, prime npm cache"]:::pre
     end
 
     subgraph During["While the agent runs (per leg)"]

@@ -426,7 +426,7 @@ sequenceDiagram
     App-->>Runner: short-lived token for llm-exe-bot[bot]
     Runner->>Git: checkout fetch-depth: 0 using bot token
     Runner->>Runner: git config user.name llm-exe-bot[bot]
-    Runner->>Runner: setup-node@v6 node-version 20 cache npm
+    Runner->>Runner: setup-node@v6 node-version 24 cache npm
     Runner->>Runner: npm ci
     Runner->>Cfg: source scripts/agents/config.sh
     Cfg->>Cfg: create_agent_branch "<role>" [suffix]
@@ -614,7 +614,7 @@ flowchart LR
     C --> D[mint bot token]
     D --> E[checkout fetch-depth 0]
     E --> F[git config bot identity]
-    F --> G[setup-node 20 cache npm]
+    F --> G[setup-node 24 cache npm]
     G --> H[npm ci]
     H --> I{event is schedule?}
     I -->|yes| J[Pick agent from cron string]

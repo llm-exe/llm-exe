@@ -154,7 +154,7 @@ flowchart TB
         s1["Generate bot token\ncreate-github-app-token@v1"]:::step
         s2["Configure git\nuser.name = llm-exe-bot[bot]\nuser.email = APP_ID+...@users.noreply.github.com"]:::step
         s3["Checkout fetch-depth: 0\nwith bot token"]:::step
-        s4["actions/setup-node@v6\nnode-version: 20, cache: npm"]:::step
+        s4["actions/setup-node@v6\nnode-version: 24, cache: npm"]:::step
         s5["npm ci"]:::step
         s6["Respond step\nclaude-code-action@v1\nmax-turns 90, model configurable"]:::step
         s1 --> s2 --> s3 --> s4 --> s5 --> s6
@@ -363,7 +363,7 @@ flowchart LR
     subgraph Pre["Before the bot starts"]
         c1["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: mint bot identity"]:::pre
         c2["actions/checkout@v4\nauth: bot token\nwhy: full history, fetch-depth 0"]:::pre
-        c3["actions/setup-node@v6\nauth: none\nwhy: Node 20, npm cache"]:::pre
+        c3["actions/setup-node@v6\nauth: none\nwhy: Node 24, npm cache"]:::pre
         c4["npm ci\nauth: none\nwhy: install deps so npm test runs"]:::pre
     end
 

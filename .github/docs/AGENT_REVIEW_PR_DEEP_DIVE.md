@@ -189,7 +189,7 @@ flowchart TB
         direction TB
         s1["Generate review bot token"]:::step
         s2["Checkout (fetch-depth: 0)"]:::step
-        s3["Setup Node 20"]:::step
+        s3["Setup Node 24"]:::step
         s4["npm ci"]:::step
         s5["Build review prompt\nclock_in + perl substitution"]:::step
         s6["Review PR\nclaude-code-action@v1\n(max-turns 30)"]:::step

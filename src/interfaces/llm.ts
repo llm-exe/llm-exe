@@ -398,6 +398,9 @@ export interface GenericEmbeddingOptions extends BaseLlmOptions {
 export interface OpenAiEmbeddingOptions extends GenericEmbeddingOptions {
   model?: string;
   openAiApiKey?: string;
+  // Base URL for any OpenAI-compatible embeddings server
+  // Defaults to https://api.openai.com/v1
+  baseUrl?: string;
 }
 
 export interface AmazonEmbeddingOptions extends GenericEmbeddingOptions {

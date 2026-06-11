@@ -253,7 +253,7 @@ flowchart TB
         c1["Generate bot token"]:::step
         c2["Checkout fetch-depth: 0"]:::step
         c3["Configure git"]:::step
-        c4["setup-node@v4 + npm ci"]:::step
+        c4["setup-node@v6 + npm ci"]:::step
         c5["Build curator prompt"]:::step
         c6["Run curator\nclaude-code-action@v1"]:::step
         c7["Clock out (if: always())"]:::step
@@ -488,7 +488,7 @@ flowchart LR
     subgraph Pre["Each job startup (gate, pick, every matrix slot, curator)"]
         c1["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: short-lived bot token per job"]:::pre
         c2["actions/checkout@v4\nauth: bot token\nfetch-depth: 0 (full history for branch ops)"]:::pre
-        c3["actions/setup-node@v4\nnode-version: 20, cache: npm"]:::pre
+        c3["actions/setup-node@v6\nnode-version: 24, cache: npm"]:::pre
     end
 
     subgraph During["While the LLM runs (persona OR curator)"]

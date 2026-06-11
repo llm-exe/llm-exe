@@ -222,7 +222,7 @@ flowchart TB
         r1["Generate bot token"]:::step
         r2["Checkout fetch-depth: 0\nwith bot token"]:::step
         r3["Configure git\nuser.name = llm-exe-bot[bot]"]:::step
-        r4["actions/setup-node@v4\nnode-version: 20, cache: npm"]:::step
+        r4["actions/setup-node@v6\nnode-version: 24, cache: npm"]:::step
         r5["npm ci"]:::step
         r6["Pick agent for scheduled runs\n(only if event_name=schedule)"]:::step
         r7["Build prompt step\n(branch, log, prompt assembly)"]:::step
@@ -262,7 +262,7 @@ sequenceDiagram
     T-->>J: bot token (short-lived)
     J->>G: checkout fetch-depth 0 with bot token
     J->>G: git config llm-exe-bot[bot]
-    J->>N: setup-node@v4 + npm ci
+    J->>N: setup-node@v6 + npm ci
     Note over J: if event_name=schedule, map cron to agent
     J->>C: source scripts/agents/config.sh
     C->>G: create_agent_branch (checkout development, pull, checkout -b)
@@ -390,7 +390,7 @@ flowchart LR
     subgraph Pre["Before the agent starts"]
         c1["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: bot identity so writes trigger downstream"]:::pre
         c2["actions/checkout@v4\nauth: bot token\nwhy: fetch full history (depth 0) for git operations"]:::pre
-        c3["actions/setup-node@v4\nauth: none\nwhy: install Node 20, prime npm cache"]:::pre
+        c3["actions/setup-node@v6\nauth: none\nwhy: install Node 24, prime npm cache"]:::pre
     end
 
     subgraph During["While the agent runs"]

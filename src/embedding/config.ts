@@ -7,7 +7,9 @@ export const embeddingConfigs: {
   "openai.embedding.v1": {
     key: "openai.embedding.v1",
     provider: "openai.embedding",
-    endpoint: `https://api.openai.com/v1/embeddings`,
+    // Templated host: `baseUrl` defaults to OpenAI. Override to point at any
+    // OpenAI-compatible embeddings server (Baseten, vLLM, TEI, Together, etc.).
+    endpoint: `{{baseUrl}}/embeddings`,
     method: "POST",
     headers: `{"Authorization":"Bearer {{openAiApiKey}}", "Content-Type": "application/json" }`,
     options: {
@@ -18,6 +20,9 @@ export const embeddingConfigs: {
       encodingFormat: {},
       openAiApiKey: {
         default: getEnvironmentVariable("OPENAI_API_KEY"),
+      },
+      baseUrl: {
+        default: "https://api.openai.com/v1",
       },
     },
     mapBody: {

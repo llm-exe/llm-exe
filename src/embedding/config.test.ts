@@ -75,7 +75,7 @@ describe("embeddingConfigs", () => {
     expect(config).toEqual({
       key: "openai.embedding.v1",
       provider: "openai.embedding",
-      endpoint: "https://api.openai.com/v1/embeddings",
+      endpoint: "{{baseUrl}}/embeddings",
       method: "POST",
       headers: `{"Authorization":"Bearer {{openAiApiKey}}", "Content-Type": "application/json" }`,
       options: {
@@ -85,6 +85,9 @@ describe("embeddingConfigs", () => {
         },
         encodingFormat: {},
         openAiApiKey: {},
+        baseUrl: {
+          default: "https://api.openai.com/v1",
+        },
       },
       mapBody: {
         input: {

@@ -1,4 +1,5 @@
 import { google } from "@/llm/config/google";
+import { mapBody } from "@/llm/_utils.mapBody";
 import { Config } from "@/types";
 
 describe("google configuration", () => {
@@ -31,6 +32,52 @@ describe("google configuration", () => {
       expect(transformPrompt([{ role: "user", content: "Hello" }])).toEqual([
         { parts: [{ text: "Hello" }], role: "user" },
       ]);
+    });
+  });
+
+  describe("google.chat.v1 sampling options", () => {
+    it("declares sampling options", () => {
+      expect(googleChatV1.options).toMatchObject({
+        temperature: {},
+        topP: {},
+        maxTokens: {},
+        stopSequences: {},
+      });
+    });
+
+    it("maps sampling params into generationConfig.*", () => {
+      expect(googleChatV1.mapBody.temperature).toEqual({
+        key: "generationConfig.temperature",
+      });
+      expect(googleChatV1.mapBody.topP).toEqual({
+        key: "generationConfig.topP",
+      });
+      expect(googleChatV1.mapBody.maxTokens).toEqual({
+        key: "generationConfig.maxOutputTokens",
+      });
+      expect(googleChatV1.mapBody.stopSequences).toEqual({
+        key: "generationConfig.stopSequences",
+      });
+    });
+
+    it("produces a body with generationConfig when sampling params are set", () => {
+      // Gemini puts the model in the URL path, not the body — only generationConfig is asserted.
+      const body = mapBody(googleChatV1.mapBody, {
+        model: "gemini-2.0-flash",
+        prompt: "hi",
+        temperature: 0,
+        topP: 0.9,
+        maxTokens: 256,
+        stopSequences: ["\n"],
+      });
+      expect(body).toMatchObject({
+        generationConfig: {
+          temperature: 0,
+          topP: 0.9,
+          maxOutputTokens: 256,
+          stopSequences: ["\n"],
+        },
+      });
     });
   });
 

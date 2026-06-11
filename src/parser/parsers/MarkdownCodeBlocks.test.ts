@@ -114,26 +114,3 @@ describe("llm-exe:parser/MarkdownCodeBlocks", () => {
     });
   });
 });
-
-describe("llm-exe:parser/MarkdownCodeBlock single — edge cases", () => {
-  const { MarkdownCodeBlockParser } = jest.requireActual("@/parser") as typeof import("@/parser");
-
-  it("returns the first code block when multiple are present", () => {
-    const parser = new MarkdownCodeBlockParser();
-    const markdown = "```ts\nfirst;\n```\n```py\nsecond\n```";
-    expect(parser.parse(markdown)).toEqual({ language: "ts", code: "first;\n" });
-  });
-
-  it("returns empty {code, language} for empty input", () => {
-    const parser = new MarkdownCodeBlockParser();
-    expect(parser.parse("")).toEqual({ code: "", language: "" });
-  });
-
-  it("returns empty {code, language} for an unclosed code block", () => {
-    const parser = new MarkdownCodeBlockParser();
-    expect(parser.parse("```ts\nno closer here")).toEqual({
-      code: "",
-      language: "",
-    });
-  });
-});

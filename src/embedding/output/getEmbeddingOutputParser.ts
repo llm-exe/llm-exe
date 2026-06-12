@@ -8,7 +8,8 @@ export function getEmbeddingOutputParser(
     model?: string;
     key: EmbeddingProviderKey;
   },
-  response: any
+  response: any,
+  headers?: Record<string, string>
 ) {
   switch (config.key) {
     case "openai.embedding.v1":
@@ -16,7 +17,7 @@ export function getEmbeddingOutputParser(
     case "amazon.embedding.v1":
       return AmazonTitanEmbedding(response, config);
     case "amazon:cohere.embedding.v1":
-      return CohereBedrockEmbedding(response, config);
+      return CohereBedrockEmbedding(response, config, headers);
     default:
       throw new Error("Unsupported provider");
   }

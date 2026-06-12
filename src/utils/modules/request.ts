@@ -1,12 +1,25 @@
 import { debug } from "./debug";
 import { isValidUrl } from "./isValidUrl";
 
+export interface ApiRequestResponse<T> {
+  data: T;
+  headers: Record<string, string>;
+}
+
+export function headersToRecord(headers: Headers): Record<string, string> {
+  const record: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    record[key.toLowerCase()] = value;
+  });
+  return record;
+}
+
 /**
  * Makes an API request with the given URL and options, using a persistent HTTPS agent.
  *
  * @param {string} url - The endpoint to which the request is sent.
  * @param {RequestInit} [options] - Optional custom request options.
- * @returns {Promise<T>} The parsed JSON response wrapped in a Promise.
+ * @returns {Promise<ApiRequestResponse<T>>} The parsed body + headers
  * @throws Will throw an error if the HTTP request fails.
  */
 export async function apiRequest<T extends Record<string, any> | null>(
@@ -14,14 +27,14 @@ export async function apiRequest<T extends Record<string, any> | null>(
   options?: Omit<RequestInit, "headers"> & {
     headers: Record<string, any>;
   }
-): Promise<T> {
+): Promise<ApiRequestResponse<T>> {
   const finalOptions: RequestInit = {
     ...options,
   };
 
   try {
     debug(url, finalOptions);
-    
+
     if(!url || !isValidUrl(url)) {
       throw new Error("Invalid URL");
     }
@@ -55,15 +68,18 @@ export async function apiRequest<T extends Record<string, any> | null>(
     }
 
     const contentType = response.headers.get("content-type");
-    
+
     if (contentType?.includes("application/json")) {
       const responseData = await response.json();
-      return responseData as T;
+      return { data: responseData as T, headers: headersToRecord(response.headers) };
     } else {
       // Handle non-JSON responses as text for backward compatibility
       // Callers expecting objects should handle string responses appropriately
       const responseData = await response.text();
-      return responseData as unknown as T;
+      return {
+        data: responseData as unknown as T,
+        headers: headersToRecord(response.headers),
+      };
     }
   } catch (error: unknown) {
     /* istanbul ignore next */

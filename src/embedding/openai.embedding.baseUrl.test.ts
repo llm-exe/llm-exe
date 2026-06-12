@@ -17,7 +17,10 @@ const okEmbeddingResponse = {
 describe("openai.embedding.v1 baseUrl override", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    apiRequestMock.mockResolvedValue(okEmbeddingResponse);
+    apiRequestMock.mockResolvedValue({
+      data: okEmbeddingResponse,
+      headers: {},
+    });
   });
 
   it("defaults to OpenAI when baseUrl is omitted", async () => {

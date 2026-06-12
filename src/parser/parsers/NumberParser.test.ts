@@ -172,15 +172,17 @@ describe("llm-exe:parser/NumberParser", () => {
     }
   });
 
-  describe("multi-number text (locks in first-match semantics)", () => {
-    it("returns the first number when multiple are present", () => {
+  describe("multi-number text", () => {
+    it("throws for multiple integers instead of guessing which one to use", () => {
       const parser = new NumberParser();
-      expect(parser.parse("first 7, then 12, then 99")).toEqual(7);
+      expect(() => parser.parse("first 7 then 12 then 99")).toThrow(
+        LlmExeError
+      );
     });
 
-    it("returns the first decimal when multiple decimals are present", () => {
+    it("throws for multiple decimals instead of guessing which one to use", () => {
       const parser = new NumberParser();
-      expect(parser.parse("price 3.14 sale 9.99")).toEqual(3.14);
+      expect(() => parser.parse("price 3.14 sale 9.99")).toThrow(LlmExeError);
     });
 
     it("matches a negative number embedded in text", () => {
@@ -195,17 +197,16 @@ describe("llm-exe:parser/NumberParser", () => {
     });
   });
 
-  describe("edge cases (locks in current regex behavior)", () => {
+  describe("edge cases", () => {
     it("ignores leading plus sign and matches digits only", () => {
       // The regex /-?\d+(\.\d+)?/ has no `+?` so a plus prefix is dropped.
       const parser = new NumberParser();
       expect(parser.parse("+42")).toEqual(42);
     });
 
-    it("does not parse scientific notation as a single number", () => {
-      // The regex doesn't include the 'e' exponent, so "1e5" extracts just 1.
+    it("parses scientific notation as a single number", () => {
       const parser = new NumberParser();
-      expect(parser.parse("answer is 1e5")).toEqual(1);
+      expect(parser.parse("answer is 1e5")).toEqual(100000);
     });
 
     it("throws on empty string input", () => {
@@ -239,11 +240,9 @@ describe("llm-exe:parser/NumberParser", () => {
       expect(parser.parse("1234.5678")).toEqual(1234.5678);
     });
 
-    it("matches a negative number even when prefixed by a non-digit hyphen pattern", () => {
-      // "answer--5" — first hyphen sits before another hyphen+digit.
-      // regex finds the second `-5` token.
+    it("throws when a negative number and another number are both present", () => {
       const parser = new NumberParser();
-      expect(parser.parse("answer--5 not 3")).toEqual(-5);
+      expect(() => parser.parse("answer--5 not 3")).toThrow(LlmExeError);
     });
   });
 });

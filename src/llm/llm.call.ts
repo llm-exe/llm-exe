@@ -74,7 +74,9 @@ export async function useLlm_call(
       body: body,
       headers: headers,
     });
-    return BaseLlmOutput(transformResponse(response, config, response.headers));
+    return BaseLlmOutput(
+      transformResponse(response.data, config, response.headers)
+    );
   } catch (e) {
     // apiRequest stays generic and throws request.http_error. Re-throw as the
     // matching llm.provider_* code so consumers can branch on err.code.

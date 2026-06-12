@@ -90,7 +90,7 @@ export interface Config<Pk = LlmProviderKey> {
       transform?: (
         value: any,
         state: Record<string, any>,
-        config: Record<string, any>
+        config: Record<string, any>,
       ) => any;
     };
   };
@@ -111,7 +111,7 @@ export interface Config<Pk = LlmProviderKey> {
       schema: any,
       options: any,
       currentInput?: Record<string, any>,
-      config?: Config
+      config?: Config,
     ) => Record<string, any>;
 
     /**
@@ -126,7 +126,7 @@ export interface Config<Pk = LlmProviderKey> {
       call: any,
       options?: any,
       currentInput?: Record<string, any>,
-      config?: Config
+      config?: Config,
     ) => Record<string, any>;
 
     /**
@@ -141,7 +141,7 @@ export interface Config<Pk = LlmProviderKey> {
       functions: any[],
       options?: any,
       currentInput?: Record<string, any>,
-      config?: Config
+      config?: Config,
     ) => Record<string, any>;
   };
   /**
@@ -150,7 +150,11 @@ export interface Config<Pk = LlmProviderKey> {
    * Embedding configs do not use this — their flow dispatches via
    * `getEmbeddingOutputParser` instead.
    */
-  transformResponse?: (result: any, _config?: Config<any>) => OutputResult;
+  transformResponse?: (
+    result: any,
+    _config?: Config<any>,
+    headers?: Record<string, string>,
+  ) => OutputResult;
   /**
    * Marks this config as deprecated. When set, useLlm() will emit a one-time
    * deprecation warning to inform users about upcoming model shutdowns.

@@ -9,15 +9,29 @@ import {
 } from "@/errors";
 import { safeRequestUrl } from "./redactSecrets";
 
+export interface ApiRequestResponse<T> {
+  data: T;
+  headers: Record<string, string>;
+}
+
+export function headersToRecord(headers: Headers): Record<string, string> {
+  const record: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    record[key.toLowerCase()] = value;
+  });
+  return record;
+}
+
 /**
  * Makes an API request with the given URL and options.
  *
- * Throws an `LlmExeError` with code `request.invalid_url` for URL validation
- * failures and `request.http_error` for fetch failures and non-OK HTTP
- * responses. Non-OK responses preserve `status`, `statusText`, `url`, safe
- * `responseHeaders`, scrubbed `providerErrorBody` / `providerErrorRaw`, and a
- * normalized `providerError` in context. The thrown error stays generic —
- * callers (llm.call.ts, embedding.call.ts) decide whether to re-wrap as a
+ * Returns the parsed body plus response headers. Throws an `LlmExeError` with
+ * code `request.invalid_url` for URL validation failures and
+ * `request.http_error` for fetch failures and non-OK HTTP responses. Non-OK
+ * responses preserve `status`, `statusText`, `url`, safe `responseHeaders`,
+ * scrubbed `providerErrorBody` / `providerErrorRaw`, and a normalized
+ * `providerError` in context. The thrown error stays generic — callers
+ * (llm.call.ts, embedding.call.ts) decide whether to re-wrap as a
  * domain-specific provider code.
  */
 export async function apiRequest<T extends Record<string, any> | null>(
@@ -25,7 +39,7 @@ export async function apiRequest<T extends Record<string, any> | null>(
   options?: Omit<RequestInit, "headers"> & {
     headers: Record<string, any>;
   }
-): Promise<T> {
+): Promise<ApiRequestResponse<T>> {
   const finalOptions: RequestInit = {
     ...options,
   };
@@ -43,8 +57,6 @@ export async function apiRequest<T extends Record<string, any> | null>(
       },
     });
   }
-
-
 
   let response: Response;
   try {
@@ -148,14 +160,18 @@ export async function apiRequest<T extends Record<string, any> | null>(
   }
 
   const contentType = response.headers.get("content-type");
+  const headers = headersToRecord(response.headers);
 
   if (contentType?.includes("application/json")) {
     const responseData = await response.json();
-    return responseData as T;
-  } else {
-    // Handle non-JSON responses as text for backward compatibility
-    // Callers expecting objects should handle string responses appropriately
-    const responseData = await response.text();
-    return responseData as unknown as T;
+    return { data: responseData as T, headers };
   }
+
+  // Handle non-JSON responses as text for backward compatibility.
+  // Callers expecting objects should handle string responses appropriately.
+  const responseData = await response.text();
+  return {
+    data: responseData as unknown as T,
+    headers,
+  };
 }

@@ -13,7 +13,10 @@ const googleGeminiChatV1: Config = {
   options: {
     effort: {},
     prompt: {},
-    // topP: {},
+    temperature: {},
+    topP: {},
+    maxTokens: {},
+    stopSequences: {},
     geminiApiKey: {
       default: getEnvironmentVariable("GEMINI_API_KEY"),
     },
@@ -24,6 +27,18 @@ const googleGeminiChatV1: Config = {
     prompt: {
       key: "contents",
       transform: googleGeminiPromptSanitize,
+    },
+    temperature: {
+      key: "generationConfig.temperature",
+    },
+    topP: {
+      key: "generationConfig.topP",
+    },
+    maxTokens: {
+      key: "generationConfig.maxOutputTokens",
+    },
+    stopSequences: {
+      key: "generationConfig.stopSequences",
     },
     effort: {
       key: "config.thinkingConfig.thinkingBudget",

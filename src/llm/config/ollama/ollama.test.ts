@@ -1,4 +1,5 @@
 import { ollama } from "@/llm/config/ollama";
+import { mapBody } from "@/llm/_utils.mapBody";
 import { Config } from "@/types";
 
 describe("ollama configuration", () => {
@@ -28,6 +29,48 @@ describe("ollama configuration", () => {
       expect(transformPrompt([{ role: "user", content: "Hello" }])).toEqual([
         { role: "user", content: "Hello" },
       ]);
+    });
+
+    it("declares sampling options", () => {
+      expect(ollamaChatV1.options).toMatchObject({
+        temperature: {},
+        topP: {},
+        maxTokens: {},
+        stopSequences: {},
+      });
+    });
+
+    it("maps sampling params into the Ollama options.* block", () => {
+      expect(ollamaChatV1.mapBody.temperature).toEqual({
+        key: "options.temperature",
+      });
+      expect(ollamaChatV1.mapBody.topP).toEqual({ key: "options.top_p" });
+      expect(ollamaChatV1.mapBody.maxTokens).toEqual({
+        key: "options.num_predict",
+      });
+      expect(ollamaChatV1.mapBody.stopSequences).toEqual({
+        key: "options.stop",
+      });
+    });
+
+    it("produces a body with nested options block when sampling params are set", () => {
+      const body = mapBody(ollamaChatV1.mapBody, {
+        model: "llama3.3",
+        prompt: "hi",
+        temperature: 0,
+        topP: 0.9,
+        maxTokens: 256,
+        stopSequences: ["\n"],
+      });
+      expect(body).toMatchObject({
+        model: "llama3.3",
+        options: {
+          temperature: 0,
+          top_p: 0.9,
+          num_predict: 256,
+          stop: ["\n"],
+        },
+      });
     });
   });
 

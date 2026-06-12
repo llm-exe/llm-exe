@@ -12,6 +12,7 @@ describe("llm-exe:parser/MarkdownCodeBlocks", () => {
     expect(parser).toHaveProperty("name");
     expect(parser.name).toEqual("markdownCodeBlocks");
   });
+
   it("parses simple string correctly", () => {
     const parser = new MarkdownCodeBlocksParser();
     const code = `const input = "test";\n`;
@@ -36,10 +37,9 @@ describe("llm-exe:parser/MarkdownCodeBlocks", () => {
 `;
     const language = `javascript`;
     const markdown = `\`\`\`${language}\n${code}\`\`\``;
-    
-    // Create a stringified object with the markdown content
+
     const jsonInput = JSON.stringify({ result: markdown });
-    
+
     expect(parser.parse(jsonInput)).toEqual([]);
   });
 
@@ -50,10 +50,9 @@ describe("llm-exe:parser/MarkdownCodeBlocks", () => {
     const code2 = `const y = 2;
 `;
     const markdown = `Here's code:\n\`\`\`js\n${code1}\`\`\`\n\nMore code:\n\`\`\`python\n${code2}\`\`\``;
-    
-    // Create a stringified object
+
     const jsonInput = JSON.stringify({ response: markdown });
-    
+
     expect(parser.parse(jsonInput)).toEqual([]);
   });
 
@@ -69,65 +68,95 @@ describe("llm-exe:parser/MarkdownCodeBlocks", () => {
     ]);
   });
 
+  it("captures an empty code block", () => {
+    const parser = new MarkdownCodeBlocksParser();
+    expect(parser.parse("```js\n```")).toEqual([{ language: "js", code: "" }]);
+  });
+
+  it("captures code blocks surrounded by prose without picking up the prose", () => {
+    const parser = new MarkdownCodeBlocksParser();
+    const markdown =
+      "Here is some intro text.\n```ts\nconst x = 1;\n```\nAnd some trailing text.";
+    expect(parser.parse(markdown)).toEqual([
+      { language: "ts", code: "const x = 1;\n" },
+    ]);
+  });
+
+  it("captures a code block at end-of-string only when closed", () => {
+    const parser = new MarkdownCodeBlocksParser();
+    const closed = "```js\nconst x = 1;\n```";
+    expect(parser.parse(closed)).toEqual([
+      { language: "js", code: "const x = 1;\n" },
+    ]);
+  });
+
+  it("captures code blocks with content containing backticks (single, double)", () => {
+    const parser = new MarkdownCodeBlocksParser();
+    const markdown = "```md\nUse `inline` or ``backticks`` here\n```";
+    expect(parser.parse(markdown)).toEqual([
+      { language: "md", code: "Use `inline` or ``backticks`` here\n" },
+    ]);
+  });
+
   it("throws parser.parse_failed for malformed fences", () => {
     const parser = new MarkdownCodeBlocksParser();
     try {
-      parser.parse("```ts\nconst x = 1;")
-      fail("Expected an error to be thrown")
+      parser.parse("```ts\nconst x = 1;");
+      fail("Expected an error to be thrown");
     } catch (e) {
-      expect(e).toBeInstanceOf(LlmExeError)
-      expect((e as LlmExeError).code).toEqual("parser.parse_failed")
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toEqual("parser.parse_failed");
       expect((e as LlmExeError).context).toEqual({
         operation: "MarkdownCodeBlocksParser.parse",
         parser: "markdownCodeBlocks",
         reason: "malformed_code_block",
         inputLength: 18,
-      })
+      });
     }
   });
 
   it("throws parser.parse_failed for invalid input type", () => {
     const parser = new MarkdownCodeBlocksParser();
     try {
-      parser.parse(null as any)
-      fail("Expected an error to be thrown")
+      parser.parse(null as any);
+      fail("Expected an error to be thrown");
     } catch (e) {
-      expect(e).toBeInstanceOf(LlmExeError)
+      expect(e).toBeInstanceOf(LlmExeError);
       expect((e as LlmExeError).context).toEqual({
         operation: "MarkdownCodeBlocksParser.parse",
         parser: "markdownCodeBlocks",
         reason: "invalid_input_type",
         expected: "string",
         received: "null",
-      })
+      });
     }
   });
+
   it("describes array invalid input type in parser context", () => {
     const parser = new MarkdownCodeBlocksParser();
     try {
-      // @ts-expect-error invalid type for testing
-      parser.parse([])
-      fail("Expected an error to be thrown")
+      parser.parse([] as any);
+      fail("Expected an error to be thrown");
     } catch (e) {
-      expect(e).toBeInstanceOf(LlmExeError)
+      expect(e).toBeInstanceOf(LlmExeError);
       expect((e as LlmExeError).context).toMatchObject({
         reason: "invalid_input_type",
         received: "array",
-      })
+      });
     }
   });
+
   it("describes object invalid input type in parser context", () => {
     const parser = new MarkdownCodeBlocksParser();
     try {
-      // @ts-expect-error invalid type for testing
-      parser.parse({})
-      fail("Expected an error to be thrown")
+      parser.parse({} as any);
+      fail("Expected an error to be thrown");
     } catch (e) {
-      expect(e).toBeInstanceOf(LlmExeError)
+      expect(e).toBeInstanceOf(LlmExeError);
       expect((e as LlmExeError).context).toMatchObject({
         reason: "invalid_input_type",
         received: "object",
-      })
+      });
     }
   });
 });

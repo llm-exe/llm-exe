@@ -50,7 +50,7 @@ export async function createEmbedding_call(
       body: body,
       headers: headers,
     });
-    return getEmbeddingOutputParser(state, request);
+    return getEmbeddingOutputParser(state, request.data, request.headers);
   } catch (e) {
     // apiRequest stays generic and throws request.http_error. Re-throw as the
     // matching embedding.provider_* code so consumers can branch on err.code.

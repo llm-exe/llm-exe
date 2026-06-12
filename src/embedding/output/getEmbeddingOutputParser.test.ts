@@ -61,9 +61,14 @@ describe("getEmbeddingOutputParser", () => {
     };
     const response = { some: "response" };
 
-    getEmbeddingOutputParser(config, response);
+    const headers = { "x-amzn-bedrock-input-token-count": "3" };
+    getEmbeddingOutputParser(config, response, headers);
 
-    expect(CohereBedrockEmbeddingMock).toHaveBeenCalledWith(response, config);
+    expect(CohereBedrockEmbeddingMock).toHaveBeenCalledWith(
+      response,
+      config,
+      headers
+    );
     expect(OpenAiEmbeddingMock).not.toHaveBeenCalled();
     expect(AmazonTitanEmbeddingMock).not.toHaveBeenCalled();
   });

@@ -27,50 +27,34 @@ describe("llm-exe:parser/BooleanParser", () => {
     expect(parser).toHaveProperty("name");
     expect(parser.name).toEqual("boolean");
   });
-  it('parses "true" as true', () => {
+
+  it.each([
+    ["true", true],
+    ["True", true],
+    ["TRUE", true],
+    ["TrUe", true],
+    ["yes", true],
+    ["Yes", true],
+    ["YES", true],
+    ["y", true],
+    ["Y", true],
+    ["1", true],
+    ["false", false],
+    ["no", false],
+    ["0", false],
+    ["n", false],
+  ])('parses "%s" as %s', (input, expected) => {
     const parser = new BooleanParser();
-    expect(parser.parse("true")).toEqual(true);
+    expect(parser.parse(input)).toEqual(expected);
   });
-  it('parses "True" as true (case-insensitive)', () => {
-    const parser = new BooleanParser();
-    expect(parser.parse("True")).toEqual(true);
-  });
-  it('parses "yes" as true', () => {
-    const parser = new BooleanParser();
-    expect(parser.parse("yes")).toEqual(true);
-  });
-  it('parses "Yes" as true (case-insensitive)', () => {
-    const parser = new BooleanParser();
-    expect(parser.parse("Yes")).toEqual(true);
-  });
-  it('parses "y" as true', () => {
-    const parser = new BooleanParser();
-    expect(parser.parse("y")).toEqual(true);
-  });
-  it('parses "1" as true', () => {
-    const parser = new BooleanParser();
-    expect(parser.parse("1")).toEqual(true);
-  });
-  it('parses "false" as false', () => {
-    const parser = new BooleanParser();
-    expect(parser.parse("false")).toEqual(false);
-  });
-  it('parses "no" as false', () => {
-    const parser = new BooleanParser();
-    expect(parser.parse("no")).toEqual(false);
-  });
-  it('parses "0" as false', () => {
-    const parser = new BooleanParser();
-    expect(parser.parse("0")).toEqual(false);
-  });
-  it('parses "n" as false', () => {
-    const parser = new BooleanParser();
-    expect(parser.parse("n")).toEqual(false);
-  });
+
   it("handles whitespace around value", () => {
     const parser = new BooleanParser();
     expect(parser.parse("  yes  ")).toEqual(true);
+    expect(parser.parse("\n\tyes\t\n")).toEqual(true);
+    expect(parser.parse("\n true \n")).toEqual(true);
   });
+
   it("throws parser.parse_failed for empty input", () => {
     const parser = new BooleanParser();
     try {
@@ -88,6 +72,7 @@ describe("llm-exe:parser/BooleanParser", () => {
       });
     }
   });
+
   it("throws parser.parse_failed for whitespace-only input", () => {
     const parser = new BooleanParser();
     try {
@@ -105,6 +90,7 @@ describe("llm-exe:parser/BooleanParser", () => {
       });
     }
   });
+
   it("throws parser.parse_failed for unrecognized boolean text", () => {
     const parser = new BooleanParser();
     try {
@@ -123,10 +109,14 @@ describe("llm-exe:parser/BooleanParser", () => {
       });
     }
   });
+
   it("throws parser.parse_failed instead of extracting boolean values from prose", () => {
     const parser = new BooleanParser();
     expect(() => parser.parse("The answer is true.")).toThrow(LlmExeError);
+    expect(() => parser.parse("yes please")).toThrow(LlmExeError);
+    expect(() => parser.parse("true story")).toThrow(LlmExeError);
   });
+
   it("throws parser.parse_failed instead of treating conflicting prose as ambiguous extraction", () => {
     const parser = new BooleanParser();
     try {
@@ -145,17 +135,20 @@ describe("llm-exe:parser/BooleanParser", () => {
       });
     }
   });
+
   describe("match: extract", () => {
     it("extracts a boolean value from surrounding text", () => {
       const parser = new BooleanParser({ match: "extract" });
       expect(parser.parse("The answer is true.")).toEqual(true);
       expect(parser.parse("Decision: no.")).toEqual(false);
     });
+
     it("deduplicates equivalent boolean values", () => {
       const parser = new BooleanParser({ match: "extract" });
       expect(parser.parse("yes, true, and 1")).toEqual(true);
       expect(parser.parse("no, false, and 0")).toEqual(false);
     });
+
     it("does not match boolean tokens inside larger words", () => {
       const parser = new BooleanParser({ match: "extract" });
       try {
@@ -169,6 +162,7 @@ describe("llm-exe:parser/BooleanParser", () => {
         });
       }
     });
+
     it("throws for conflicting extracted boolean values", () => {
       const parser = new BooleanParser({ match: "extract" });
       try {
@@ -185,6 +179,7 @@ describe("llm-exe:parser/BooleanParser", () => {
       }
     });
   });
+
   it("does not include input excerpts in error context by default", () => {
     const parser = new BooleanParser();
     try {
@@ -195,6 +190,7 @@ describe("llm-exe:parser/BooleanParser", () => {
       expect((e as LlmExeError).context).not.toHaveProperty("inputExcerpt");
     }
   });
+
   it("includes a bounded input excerpt when debug mode is enabled", () => {
     process.env.LLM_EXE_DEBUG = "true";
     const parser = new BooleanParser();
@@ -211,6 +207,7 @@ describe("llm-exe:parser/BooleanParser", () => {
       });
     }
   });
+
   it("includes an untruncated input excerpt when debug mode is enabled for short input", () => {
     process.env.LLM_EXE_DEBUG = "true";
     const parser = new BooleanParser();
@@ -226,11 +223,15 @@ describe("llm-exe:parser/BooleanParser", () => {
       });
     }
   });
-  it("throws parser.invalid_input for runtime boolean input", () => {
+
+  it.each([
+    [true, "boolean"],
+    [1, "number"],
+    [{ yes: true }, "object"],
+  ])("throws parser.invalid_input for runtime %s input", (input, received) => {
     const parser = new BooleanParser();
     try {
-      // @ts-expect-error runtime contract: parser rejects non-string input.
-      parser.parse(true);
+      parser.parse(input as unknown as string);
       fail("Expected an error to be thrown");
     } catch (e) {
       expect(e).toBeInstanceOf(LlmExeError);
@@ -240,22 +241,38 @@ describe("llm-exe:parser/BooleanParser", () => {
         parser: "boolean",
         reason: "invalid_input_type",
         expected: "string",
-        received: "boolean",
+        received,
       });
     }
   });
-  it("throws parser.parse_failed for null input", () => {
+
+  it("throws parser.invalid_input for null input", () => {
     const parser = new BooleanParser();
-    expect(() => {
-      // @ts-expect-error runtime contract: parser rejects null input.
-      parser.parse(null);
-    }).toThrow(LlmExeError);
+    try {
+      parser.parse(null as unknown as string);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toEqual("parser.invalid_input");
+      expect((e as LlmExeError).context).toMatchObject({
+        reason: "invalid_input_type",
+        received: "null",
+      });
+    }
   });
-  it("throws parser.parse_failed for undefined input", () => {
+
+  it("throws parser.invalid_input for undefined input", () => {
     const parser = new BooleanParser();
-    expect(() => {
-      // @ts-expect-error runtime contract: parser rejects undefined input.
-      parser.parse(undefined);
-    }).toThrow(LlmExeError);
+    try {
+      parser.parse(undefined as unknown as string);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toEqual("parser.invalid_input");
+      expect((e as LlmExeError).context).toMatchObject({
+        reason: "invalid_input_type",
+        received: "undefined",
+      });
+    }
   });
 });

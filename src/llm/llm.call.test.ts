@@ -161,7 +161,8 @@ describe("useLlm_call", () => {
       "Content-Type": "application/json",
     });
     apiRequestMock.mockResolvedValue({
-      data: "response",
+      data: { data: "response" },
+      headers: {},
     });
   });
 
@@ -208,7 +209,8 @@ describe("useLlm_call", () => {
       {
         data: "response",
       },
-      mockConfig
+      mockConfig,
+      {}
     );
     expect(BaseLlmOutput).toHaveBeenCalledWith(mockOutputResult);
 
@@ -574,7 +576,8 @@ describe("useLlm_call", () => {
           },
         ],
       }),
-      mockConfigForMock
+      mockConfigForMock,
+      {}
     );
     expect(BaseLlmOutput).toHaveBeenCalledWith(mockOutputResult);
 
@@ -1034,7 +1037,7 @@ describe("useLlm_call", () => {
       input_tokens: 5,
       stopReason: "complete",
     };
-    apiRequestMock.mockResolvedValue(mockApiResponse);
+    apiRequestMock.mockResolvedValue({ data: mockApiResponse, headers: {} });
 
     const mockOutputDefaultResult = {
       name: "test-model",
@@ -1056,7 +1059,8 @@ describe("useLlm_call", () => {
     // Should call OutputDefault when no output function is provided
     expect(OutputDefaultMock).toHaveBeenCalledWith(
       mockApiResponse,
-      mockConfigNoOutput
+      mockConfigNoOutput,
+      {}
     );
 
     // Should pass the result from OutputDefault to BaseLlmOutput

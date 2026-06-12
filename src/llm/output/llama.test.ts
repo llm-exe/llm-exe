@@ -53,6 +53,36 @@ describe("llm-exe:output/OutputMetaLlama3Chat", () => {
     expect(output.usage.total_tokens).toBe(125);
   });
 
+  it("falls back to Bedrock header token counts when body counts are absent", () => {
+    const result = {
+      ...mock,
+      prompt_token_count: undefined,
+      generation_token_count: undefined,
+    } as any;
+    const output = OutputMetaLlama3Chat(result, undefined, {
+      "x-amzn-bedrock-input-token-count": "100",
+      "x-amzn-bedrock-output-token-count": "25",
+    });
+    expect(output.usage).toEqual({
+      input_tokens: 100,
+      output_tokens: 25,
+      total_tokens: 125,
+    });
+  });
+
+  it("returns zero usage instead of NaN when body and headers carry no counts", () => {
+    const output = OutputMetaLlama3Chat({
+      ...mock,
+      prompt_token_count: undefined,
+      generation_token_count: undefined,
+    } as any);
+    expect(output.usage).toEqual({
+      input_tokens: 0,
+      output_tokens: 0,
+      total_tokens: 0,
+    });
+  });
+
   it("falls back to 'meta' as name when no config is supplied", () => {
     const output = OutputMetaLlama3Chat(mock);
     expect(output.name).toBe("meta");

@@ -141,4 +141,29 @@ describe("llm-exe:output/OutputAnthropicClaude3Chat", () => {
     const output = OutputAnthropicClaude3Chat(mockWithoutModel as any, config as any);
     expect(output.name).toBe("claude-from-config");
   });
+
+  it("falls back to Bedrock header token counts when body usage is absent", () => {
+    const result = {
+      ...mock,
+      usage: undefined,
+    } as any;
+    const output = OutputAnthropicClaude3Chat(result, undefined, {
+      "x-amzn-bedrock-input-token-count": "427",
+      "x-amzn-bedrock-output-token-count": "1",
+    });
+    expect(output.usage).toEqual({
+      input_tokens: 427,
+      output_tokens: 1,
+      total_tokens: 428,
+    });
+  });
+
+  it("returns zero usage instead of NaN when body and headers carry no counts", () => {
+    const output = OutputAnthropicClaude3Chat({ ...mock, usage: undefined } as any);
+    expect(output.usage).toEqual({
+      input_tokens: 0,
+      output_tokens: 0,
+      total_tokens: 0,
+    });
+  });
 });

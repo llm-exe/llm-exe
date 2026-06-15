@@ -8,7 +8,7 @@ import { cleanJsonSchemaFor } from "@/llm/output/_utils/cleanJsonSchemaFor";
 const ANTHROPIC_VERSION = "2023-06-01";
 
 // Models that 400 if temperature / top_p / top_k are set to non-default values.
-const MODELS_REJECTING_SAMPLING_PARAMS = ["claude-opus-4-7"];
+const MODELS_REJECTING_SAMPLING_PARAMS = ["claude-opus-4-7", "claude-opus-4-8"];
 
 // Claude 4.x rejects requests that set both temperature and top_p; keep temperature.
 const isClaude4x = (model: string) =>
@@ -156,6 +156,12 @@ const anthropicChatV1: Config = {
 
 export const anthropic = {
   "anthropic.chat.v1": anthropicChatV1,
+  // Claude 4.8 models
+  "anthropic.claude-opus-4-8": withDefaultModel(
+    anthropicChatV1,
+    "claude-opus-4-8"
+  ),
+
   // Claude 4.7 models
   "anthropic.claude-opus-4-7": withDefaultModel(
     anthropicChatV1,

@@ -46,20 +46,23 @@ export async function useLlm_call(
   const response =
     config.provider === "openai.chat-mock"
       ? {
-          id: "0123-45-6789",
-          model: "model",
-          created: new Date().getTime(),
-          usage: { completion_tokens: 0, prompt_tokens: 0, total_tokens: 0 },
-          choices: [
-            {
-              message: {
-                role: "assistant",
-                content: `Hello world from LLM! The input was ${JSON.stringify(
-                  messages
-                )}`,
+          data: {
+            id: "0123-45-6789",
+            model: "model",
+            created: new Date().getTime(),
+            usage: { completion_tokens: 0, prompt_tokens: 0, total_tokens: 0 },
+            choices: [
+              {
+                message: {
+                  role: "assistant",
+                  content: `Hello world from LLM! The input was ${JSON.stringify(
+                    messages
+                  )}`,
+                },
               },
-            },
-          ],
+            ],
+          },
+          headers: {} as Record<string, string>,
         }
       : await apiRequest(url, {
           method: config.method,
@@ -68,6 +71,6 @@ export async function useLlm_call(
         });
 
   const { transformResponse = OutputDefault } = config;
-  const normalized = transformResponse(response, config);
+  const normalized = transformResponse(response.data, config, response.headers);
   return BaseLlmOutput(normalized);
 }

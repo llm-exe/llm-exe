@@ -3,6 +3,7 @@ import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { getAwsAuthorizationHeaders } from "@/utils/modules/getAwsAuthorizationHeaders";
 import { Config } from "@/types";
 import { parseHeaders } from "@/llm/_utils.parseHeaders";
+import { LlmExeError } from "@/errors";
 
 jest.mock("@/utils/modules/replaceTemplateStringSimple");
 jest.mock("@/utils/modules/getEnvironmentVariable");
@@ -149,6 +150,54 @@ describe("parseHeaders", () => {
     await expect(parseHeaders(config, replacements, payload)).rejects.toThrow(
       /Failed to parse headers configuration/
     );
+  });
+
+  it("throws LlmExeError with configuration.invalid_headers and preserves cause", async () => {
+    (replaceTemplateStringSimple as jest.Mock).mockReturnValue("not valid json");
+
+    try {
+      await parseHeaders(config, replacements, payload);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("configuration.invalid_headers");
+      expect((e as LlmExeError).category).toBe("configuration");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("parseHeaders");
+      expect(ctx.provider).toBe("openai.chat-mock");
+      expect(ctx.key).toBe("openai.chat-mock.v1");
+      expect(ctx.headerTemplate).toBe(config.headers);
+      expect(ctx.replacedHeadersExcerpt).toBe("not valid json");
+      expect((e as unknown as { cause?: unknown }).cause).toBeDefined();
+      expect((e as unknown as { cause?: Error }).cause).toBeInstanceOf(Error);
+    }
+  });
+
+  it("redacts secrets from the post-replacement string before exposing it", async () => {
+    // Simulate a real-world failure: the template resolves to a string
+    // containing a real Authorization header AND fails to parse as JSON.
+    const replacedWithSecret =
+      '{"Authorization": "Bearer sk-syntheticHeadersLeakTokenAAAAAA", broken}';
+    (replaceTemplateStringSimple as jest.Mock).mockReturnValue(
+      replacedWithSecret
+    );
+
+    try {
+      await parseHeaders(config, replacements, payload);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      const err = e as LlmExeError;
+      const ctx = err.context as Record<string, unknown>;
+      // Neither the message nor the context excerpt may contain the secret.
+      expect(err.message).not.toContain("sk-syntheticHeadersLeakTokenAAAAAA");
+      expect(String(ctx.replacedHeadersExcerpt)).not.toContain(
+        "sk-syntheticHeadersLeakTokenAAAAAA"
+      );
+      // And both should show some form of redaction marker so a reader
+      // knows what was suppressed.
+      expect(String(ctx.replacedHeadersExcerpt)).toContain("[redacted]");
+    }
   });
 
   it("Should throw an error with detailed context when JSON parsing fails", async () => {

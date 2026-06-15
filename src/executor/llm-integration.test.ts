@@ -1,5 +1,6 @@
 import { createLlmExecutor, createCoreExecutor } from "@/executor";
 import { useLlm } from "@/llm";
+import { BaseLlmOutput } from "@/llm/output/base";
 import { createChatPrompt } from "@/prompt";
 import { createParser, createCustomParser } from "@/parser";
 
@@ -21,12 +22,24 @@ describe("llm-exe:executor integration (prompt → LLM → parser)", () => {
   });
 
   it("executes with boolean parser", async () => {
+    const booleanLlm = {
+      call: async () =>
+        BaseLlmOutput({
+          stopReason: "stop",
+          usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+          content: [{ type: "text", text: "true" }],
+        }),
+      getTraceId: () => null,
+      withTraceId: () => undefined,
+      getMetadata: () => ({}),
+    };
     const prompt = createChatPrompt("Is this true?");
     const parser = createParser("boolean");
-    const executor = createLlmExecutor({ llm, prompt, parser });
+    const executor = createLlmExecutor({ llm: booleanLlm, prompt, parser });
 
     const result = await executor.execute({});
     expect(typeof result).toBe("boolean");
+    expect(result).toBe(true);
   });
 
   it("executes with number parser on numeric content", async () => {

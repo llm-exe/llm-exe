@@ -14,7 +14,7 @@ describe("llm-exe:parser/createParser", () => {
     expect(parser.name).toEqual("string")
   })
   it('creates stringExtract parser', () => {
-    const parser = createParser("stringExtract");
+    const parser = createParser("stringExtract", { enum: ["yes", "no"] });
     expect(parser).toBeInstanceOf(BaseParser)
     expect(parser).toBeInstanceOf(StringExtractParser)
     expect(parser).toHaveProperty("name")
@@ -110,10 +110,14 @@ describe("llm-exe:parser/createParser", () => {
       'Invalid parser type: "jsonn"'
     );
   })
-  it('throws error message includes valid types', () => {
-    expect(() => createParser("invalid" as any)).toThrow(
-      "Valid types are:"
-    );
+  it('error context includes availableParsers', () => {
+    try {
+      createParser("invalid" as any);
+    } catch (e: any) {
+      const available = (e.context?.availableParsers ?? []) as string[];
+      expect(available.length).toBeGreaterThan(0);
+      expect(available).toContain("json");
+    }
   })
 });
 

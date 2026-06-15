@@ -1,4 +1,5 @@
 import { removeEmptyFromObject } from "./removeEmptyFromObject";
+import { LlmExeError } from "@/errors";
 
 describe("removeEmptyFromObject", () => {
     test("should return the same object if no empty values are found", () => {
@@ -25,5 +26,31 @@ describe("removeEmptyFromObject", () => {
       expect(() => {
         removeEmptyFromObject("invalidInput" as any);
       }).toThrow("invalid object");
+    });
+
+    test("throws LlmExeError with template.invalid_helper_arguments for non-objects", () => {
+      try {
+        removeEmptyFromObject("invalidInput" as any);
+        fail("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toBe("template.invalid_helper_arguments");
+        expect((e as LlmExeError).category).toBe("template");
+        const ctx = (e as LlmExeError).context as Record<string, unknown>;
+        expect(ctx.operation).toBe("removeEmptyFromObject");
+        expect(ctx.expected).toBe("object");
+        expect(ctx.received).toBe("string");
+      }
+    });
+
+    test("throws LlmExeError with received='null' for null input", () => {
+      try {
+        removeEmptyFromObject(null as any);
+        fail("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        const ctx = (e as LlmExeError).context as Record<string, unknown>;
+        expect(ctx.received).toBe("null");
+      }
     });
   });

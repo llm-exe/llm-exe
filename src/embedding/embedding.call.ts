@@ -2,6 +2,11 @@ import { apiRequest } from "@/utils/modules/request";
 import { replaceTemplateStringSimple } from "@/utils/modules/replaceTemplateStringSimple";
 import { mapBody } from "@/llm/_utils.mapBody";
 import { parseHeaders } from "@/llm/_utils.parseHeaders";
+import {
+  LlmExeError,
+  isLlmExeError,
+  statusToEmbeddingProviderCode,
+} from "@/errors";
 
 import {
   GenericLLm,
@@ -39,11 +44,32 @@ export async function createEmbedding_call(
     body: body,
   });
 
-  const request = await apiRequest(url, {
-    method: config.method,
-    body: body,
-    headers: headers,
-  });
-
-  return getEmbeddingOutputParser(state, request.data, request.headers);
+  try {
+    const request = await apiRequest(url, {
+      method: config.method,
+      body: body,
+      headers: headers,
+    });
+    return getEmbeddingOutputParser(state, request.data, request.headers);
+  } catch (e) {
+    // apiRequest stays generic and throws request.http_error. Re-throw as the
+    // matching embedding.provider_* code so consumers can branch on err.code.
+    // Anything else (including getEmbeddingOutputParser errors) passes through.
+    if (!isLlmExeError(e, "request.http_error")) throw e;
+    const ctx = (e.context ?? {}) as Record<string, unknown>;
+    const status = typeof ctx.status === "number" ? ctx.status : undefined;
+    const code = status
+      ? statusToEmbeddingProviderCode(status)
+      : "embedding.provider_http_error";
+    throw new LlmExeError(e.message, {
+      code,
+      context: {
+        ...ctx,
+        operation: "createEmbedding_call",
+        provider: state.provider,
+        model: state.model,
+      },
+      cause: e,
+    });
+  }
 }

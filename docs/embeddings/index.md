@@ -39,9 +39,11 @@ The returned object has a `.call(input)` method that returns a promise. The reso
 
 | Provider | Key | Details |
 |----------|-----|---------|
-| OpenAI | `openai.embedding.v1` | [OpenAI Embeddings](./openai.md) |
+| OpenAI (and OpenAI-compatible) | `openai.embedding.v1` | [OpenAI Embeddings](./openai.md) |
 | Amazon Titan | `amazon.embedding.v1` | [Amazon Embeddings](./amazon.md) |
 | Cohere (via Bedrock) | `amazon:cohere.embedding.v1` | [Cohere Embeddings](./cohere.md) |
+
+The `openai.embedding.v1` provider accepts a `baseUrl` option, so it can also be used with any OpenAI-compatible embeddings endpoint (Baseten, Together AI, vLLM, TEI, local servers, etc.). See [OpenAI Embeddings → OpenAI-Compatible Endpoints](./openai.md#openai-compatible-endpoints).
 
 ## Adding Custom Providers
 Custom embedding providers are not currently supported. If you need an embedding provider that isn't listed above, please open an issue.

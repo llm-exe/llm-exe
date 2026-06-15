@@ -150,5 +150,9 @@ export interface Config<Pk = LlmProviderKey> {
    * Embedding configs do not use this — their flow dispatches via
    * `getEmbeddingOutputParser` instead.
    */
-  transformResponse?: (result: any, _config?: Config<any>) => OutputResult;
+  transformResponse?: (
+    result: any,
+    _config?: Config<any>,
+    headers?: Record<string, string>
+  ) => OutputResult;
 }

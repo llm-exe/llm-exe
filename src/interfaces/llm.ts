@@ -420,10 +420,21 @@ export interface CohereBedrockEmbeddingOptions
   truncate?: "NONE" | "START" | "END" | "LEFT" | "RIGHT";
 }
 
+// Embed v3 returns `embeddings` as a plain array (response_type
+// "embeddings_floats"); Embed v4 returns it keyed by embedding type
+// (response_type "embeddings_by_type").
+export interface CohereBedrockEmbeddingsByType {
+  float?: number[][];
+  int8?: number[][];
+  uint8?: number[][];
+  binary?: number[][];
+  ubinary?: number[][];
+}
+
 export interface CohereBedrockEmbeddingApiResponseOutput {
   id?: string;
   response_type?: string;
-  embeddings: number[][];
+  embeddings: number[][] | CohereBedrockEmbeddingsByType;
   texts?: string[];
 }
 
@@ -612,6 +623,11 @@ export type AllUseLlmOptions = AllLlm & {
   // OpenAI - Deprecated
   "openai.o4-mini": {
     input: Omit<OpenAiRequest, "model">;
+  };
+
+  // Anthropic - Claude 4.8 models
+  "anthropic.claude-opus-4-8": {
+    input: Omit<AnthropicRequest, "model">;
   };
 
   // Anthropic - Claude 4.7 models

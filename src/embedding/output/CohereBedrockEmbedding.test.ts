@@ -70,8 +70,18 @@ describe("CohereBedrockEmbedding", () => {
     );
   });
 
-  it("defaults to an empty embedding array when response has no embeddings", () => {
-    const mockResult = {} as CohereBedrockEmbeddingApiResponseOutput;
+  it("resolves Embed v4 embeddings keyed by type (float)", () => {
+    const mockResult: CohereBedrockEmbeddingApiResponseOutput = {
+      id: "v4-123",
+      response_type: "embeddings_by_type",
+      embeddings: {
+        float: [
+          [0.1, 0.2],
+          [0.3, 0.4],
+        ],
+      },
+      texts: ["hello", "world"],
+    };
 
     deepCloneMock.mockReturnValueOnce(mockResult);
 
@@ -80,8 +90,87 @@ describe("CohereBedrockEmbedding", () => {
     expect(BaseEmbeddingOutputMock).toHaveBeenCalledWith(
       expect.objectContaining({
         model: "cohere.embed-v4:0",
-        embedding: [],
+        embedding: [
+          [0.1, 0.2],
+          [0.3, 0.4],
+        ],
       })
     );
+  });
+
+  it("reads Bedrock token counts from response headers", () => {
+    const mockResult: CohereBedrockEmbeddingApiResponseOutput = {
+      response_type: "embeddings_by_type",
+      embeddings: { float: [[0.1, 0.2]] },
+    };
+    deepCloneMock.mockReturnValueOnce({ ...mockResult });
+
+    CohereBedrockEmbedding(
+      mockResult,
+      { model: "cohere.embed-v4:0" },
+      { "x-amzn-bedrock-input-token-count": "9" }
+    );
+
+    expect(BaseEmbeddingOutputMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        usage: { input_tokens: 9, output_tokens: 0, total_tokens: 9 },
+      })
+    );
+  });
+
+  it("falls back to zero usage when no headers are provided", () => {
+    const mockResult: CohereBedrockEmbeddingApiResponseOutput = {
+      embeddings: [[0.1]],
+    };
+    deepCloneMock.mockReturnValueOnce(mockResult);
+
+    CohereBedrockEmbedding(mockResult, {});
+
+    expect(BaseEmbeddingOutputMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+      })
+    );
+  });
+
+  it("throws when v4 response contains only a type we never request", () => {
+    const mockResult: CohereBedrockEmbeddingApiResponseOutput = {
+      response_type: "embeddings_by_type",
+      embeddings: {
+        int8: [[1, 2, 3]],
+      },
+    };
+
+    deepCloneMock.mockReturnValueOnce(mockResult);
+
+    expect(() =>
+      CohereBedrockEmbedding(mockResult, { model: "cohere.embed-v4:0" })
+    ).toThrow(/Expected float embeddings.*received object with keys: \[int8\]/);
+    expect(BaseEmbeddingOutputMock).not.toHaveBeenCalled();
+  });
+
+  it("throws when response has no embeddings field", () => {
+    const mockResult = {} as CohereBedrockEmbeddingApiResponseOutput;
+
+    deepCloneMock.mockReturnValueOnce(mockResult);
+
+    expect(() =>
+      CohereBedrockEmbedding(mockResult, { model: "cohere.embed-v4:0" })
+    ).toThrow(/Unexpected embeddings shape.*cohere\.embed-v4:0.*received: undefined/);
+    expect(BaseEmbeddingOutputMock).not.toHaveBeenCalled();
+  });
+
+  it("throws when embeddings is an object with no recognized embedding type", () => {
+    const mockResult = {
+      response_type: "embeddings_by_type",
+      embeddings: { something_new: [[0.1]] },
+    } as unknown as CohereBedrockEmbeddingApiResponseOutput;
+
+    deepCloneMock.mockReturnValueOnce(mockResult);
+
+    expect(() =>
+      CohereBedrockEmbedding(mockResult, { model: "cohere.embed-v4:0" })
+    ).toThrow(/Expected float embeddings.*received object with keys: \[something_new\]/);
+    expect(BaseEmbeddingOutputMock).not.toHaveBeenCalled();
   });
 });

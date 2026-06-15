@@ -1,5 +1,6 @@
 import { OutputResultContent } from "@/interfaces";
 import { getResultAsMessage } from "@/llm/output/_utils/getResultAsMessage";
+import { LlmExeError } from "@/errors";
 
 describe("getResultAsMessage", () => {
   it("should return a message with role 'assistant' and content from single text item", () => {
@@ -101,5 +102,26 @@ describe("getResultAsMessage", () => {
     ];
 
     expect(() => getResultAsMessage(input)).toThrow("Invalid response");
+  });
+
+  it("throws LlmExeError with llm.invalid_response_shape on unsupported content", () => {
+    const input: OutputResultContent[] = [
+      { type: "unsupported_type" as any, content: "Test" } as any,
+    ];
+    try {
+      getResultAsMessage(input);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("llm.invalid_response_shape");
+      expect((e as LlmExeError).category).toBe("llm");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("getResultAsMessage");
+      expect(ctx.expected).toBeDefined();
+      expect(ctx.received).toBeDefined();
+      expect(typeof ctx.responseExcerpt).toBe("string");
+      expect(String(ctx.responseExcerpt).length).toBeLessThanOrEqual(500);
+      expect(String(ctx.responseExcerpt)).toContain("unsupported_type");
+    }
   });
 });

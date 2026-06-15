@@ -1,5 +1,6 @@
 import { IChatMessages } from "@/types";
 import { googleGeminiPromptMessageCallback } from "./promptSanitizeMessageCallback";
+import { LlmExeError } from "@/errors";
 
 /**
  * Merge consecutive messages with the same role by combining their parts arrays.
@@ -45,7 +46,16 @@ export function googleGeminiPromptSanitize(
   }
   if (Array.isArray(_messages)) {
     if (_messages.length === 0) {
-      throw new Error("Empty messages array");
+      throw new LlmExeError("Empty messages array", {
+        code: "prompt.invalid_messages",
+        context: {
+          operation: "googleGeminiPromptSanitize",
+          provider: "google",
+          received: "empty array",
+          expected: "a non-empty messages array",
+          resolution: "Pass at least one message to the prompt.",
+        },
+      });
     }
 
     if (_messages.length === 1 && _messages[0].role === "system") {
@@ -84,5 +94,14 @@ export function googleGeminiPromptSanitize(
     return mergeConsecutiveSameRole(result);
   }
 
-  throw new Error("Invalid messages format");
+  throw new LlmExeError("Invalid messages format", {
+    code: "prompt.invalid_messages",
+    context: {
+      operation: "googleGeminiPromptSanitize",
+      provider: "google",
+      received: typeof _messages,
+      expected: "string or messages array",
+      resolution: "Pass a string or an array of chat messages.",
+    },
+  });
 }

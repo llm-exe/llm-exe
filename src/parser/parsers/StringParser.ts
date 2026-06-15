@@ -1,24 +1,44 @@
-import { assert } from "@/utils/modules/assert";
 import { BaseParser } from "../_base";
-import { BaseParserOptions, OutputResult } from "@/types";
-import { isOutputResult } from "@/utils/guards";
+import { LlmExeError } from "@/errors";
 
-export interface StringParserOptions extends BaseParserOptions {}
-
+/**
+ * v3 parser contract:
+ * Category: pass-through
+ * Mode: string pass-through
+ *
+ * Accepts any string and returns it exactly.
+ * Throws LlmExeError(parser.parse_failed) for non-string input.
+ * Executor output normalization owns OutputResult handling before parser
+ * invocation.
+ *
+ */
 export class StringParser extends BaseParser<string> {
-  constructor(options?: StringParserOptions) {
-    super("string", options);
+  constructor() {
+    super("string");
   }
-  parse(text: string | OutputResult, _options?: Record<string, any>) {
-    if (isOutputResult(text)) {
-      return text.content?.[0]?.text ?? "";
+
+  parse(text: string, _attributes?: Record<string, any>) {
+    if (typeof text !== "string") {
+      throw new LlmExeError(
+        `Invalid input. Expected string. Received ${text === null ? "null" : Array.isArray(text) ? "array" : typeof text}.`,
+        {
+          code: "parser.invalid_input",
+          context: {
+            operation: "StringParser.parse",
+            parser: "string",
+            reason: "invalid_input_type",
+            expected: "string",
+            received:
+              text === null
+                ? "null"
+                : Array.isArray(text)
+                  ? "array"
+                  : typeof text,
+          },
+        }
+      );
     }
 
-    assert(
-      typeof text === "string",
-      `Invalid input. Expected string. Received ${typeof text}.`
-    );
-    const parsed = text.toString();
-    return parsed;
+    return text;
   }
 }

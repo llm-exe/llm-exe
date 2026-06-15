@@ -48,13 +48,37 @@ export {
 export { defineSchema } from "./utils/modules/defineSchema";
 export { registerHelpers, registerPartials } from "./utils";
 
+export { LlmExeError, LLM_EXE_ERROR_SYMBOL } from "./errors/LlmExeError";
+export { isLlmExeError } from "./errors/isLlmExeError";
+export type {
+  ErrorCategory,
+  ErrorCodes,
+  ErrorContextByCode,
+  NormalizedProviderError,
+  ProviderErrorContext,
+} from "./errors/types";
+
 export type {
   LlmProvider,
   BaseLlm,
   OpenAIModelName,
   IChatMessages,
   ExecutorContext,
+  ExecutionContext,
+  ExecutorExecutionMetadata,
+  HookErrorRecord,
   LlmProviderKey,
   EmbeddingProviderKey,
   UseLlmKey,
+  JsonParserMatch,
+  JsonParserOptions,
 } from "./interfaces";
+
+export type {
+  BooleanParserMatch,
+  BooleanParserOptions,
+  NumberParserMatch,
+  NumberParserOptions,
+  StringExtractMatch,
+  StringExtractParserOptions,
+} from "./parser";

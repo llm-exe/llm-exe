@@ -59,10 +59,22 @@ export function filterObjectOnSchema(
             }
           } else {
             // keep the child if it's defined properly or null
-            if (sp.type === "integer" || sp.type === "number") {
+            var childType = getType(sp.type);
+            if (childType === "integer" || childType === "number") {
               result[key] = toNumber(filteredChild);
-            } else if (sp.type === "boolean") {
-              result[key] = !!filteredChild;
+            } else if (childType === "boolean") {
+              if (typeof filteredChild === "string") {
+                const normalized = filteredChild.trim().toLowerCase();
+                if (normalized === "true") {
+                  result[key] = true;
+                } else if (normalized === "false") {
+                  result[key] = false;
+                } else {
+                  result[key] = filteredChild;
+                }
+              } else {
+                result[key] = filteredChild;
+              }
             } else {
               result[key] = filteredChild;
             }

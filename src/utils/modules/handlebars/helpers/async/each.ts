@@ -3,10 +3,19 @@ import { blockParams } from "@/utils/modules/handlebars/utils/blockParams";
 import { isPromise } from "@/utils/modules/isPromise";
 import { createFrame } from "@/utils/modules/handlebars/utils/createFrame";
 import { isReadableStream } from "@/utils/modules/isReadableStream";
+import { LlmExeError } from "@/errors";
 
 export async function eachFnAsync(this: any, arg1: any, options: any) {
   if (!options) {
-    throw new Error("Must pass iterator to #each");
+    throw new LlmExeError("Must pass iterator to #each", {
+      code: "template.invalid_helper_arguments",
+      context: {
+        operation: "handlebars.asyncHelper.each",
+        helper: "each",
+        expected: "an iterator",
+        received: typeof options,
+      },
+    });
   }
 
   const { fn } = options;

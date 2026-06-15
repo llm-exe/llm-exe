@@ -44,6 +44,10 @@ const llm = useLlm("openai.chat.v1", {
 
 All providers accept the [generic options](/llm/generic.html) (timeout, retries, temperature, maxTokens, etc.). Each provider may also accept provider-specific options — see the individual provider pages below.
 
+### Deprecation Warnings
+
+Deprecated provider/model shorthands continue to resolve for compatibility, but emit a Node `DeprecationWarning` with code `LLM_EXE_DEPRECATED` on first use. See [Deprecation Warnings](/llm/deprecations.html).
+
 ### Authentication
 
 Each provider requires an API key. You can provide it in three ways:

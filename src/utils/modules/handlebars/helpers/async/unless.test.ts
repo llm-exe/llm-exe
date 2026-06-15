@@ -1,5 +1,6 @@
 import { ifFnAsync } from "@/utils/modules/handlebars/helpers/async/if";
 import { unlessFnAsync } from "@/utils/modules/handlebars/helpers/async/unless";
+import { LlmExeError } from "@/errors";
 
 jest.mock("@/utils/modules/handlebars/helpers/async/if", () => ({
   ifFnAsync: jest.fn(),
@@ -24,6 +25,20 @@ describe("unlessFnAsync", () => {
     await expect((unlessFnAsync as any).call({}, true)).rejects.toThrow(
       "#unless requires exactly one argument"
     );
+  });
+
+  it("throws LlmExeError with template.invalid_helper_arguments on wrong arg count", async () => {
+    try {
+      await (unlessFnAsync as any).call({}, true);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("template.invalid_helper_arguments");
+      expect((e as LlmExeError).category).toBe("template");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("handlebars.asyncHelper.unless");
+      expect(ctx.helper).toBe("unless");
+    }
   });
 
   it("should call ifFnAsync with correct arguments when conditional is true", async () => {

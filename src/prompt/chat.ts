@@ -337,6 +337,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
    * @return formatted prompt.
    */
   format(values: I): IChatMessages {
+    this.preflightValidate(values);
     const messagesOut: IChatMessages = [];
     const replacements = this.getReplacements(values);
     const safeToParseTemplate = ["assistant", "system"];
@@ -475,6 +476,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
    * @return formatted prompt.
    */
   async formatAsync(values: I): Promise<IChatMessages> {
+    this.preflightValidate(values);
     const messagesOut: IChatMessages = [];
     const replacements = this.getReplacements(values);
     const safeToParseTemplate = ["assistant", "system"];

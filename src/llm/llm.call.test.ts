@@ -12,6 +12,7 @@ import { getLlmConfig } from "@/llm/config";
 import { mapBody } from "@/llm/_utils.mapBody";
 import { parseHeaders } from "@/llm/_utils.parseHeaders";
 import { useLlm_call } from "@/llm/llm.call";
+import { LlmExeError } from "@/errors";
 import { cleanJsonSchemaFor } from "./output/_utils/cleanJsonSchemaFor";
 import { BaseLlmOutput } from "./output/base";
 import { OutputDefault } from "./output/default";
@@ -1066,5 +1067,110 @@ describe("useLlm_call", () => {
     expect(BaseLlmOutputMock).toHaveBeenCalledWith(mockOutputDefaultResult);
 
     expect(result).toBe(mockBaseLlmOutputReturn);
+  });
+
+  describe("apiRequest wrap maps request.http_error -> llm.provider_*", () => {
+    function setupMocks() {
+      getLlmConfigMock.mockReturnValue({
+        provider: "openai.chat",
+        key: "openai.chat.v1",
+        endpoint: "https://api.openai.com/v1/chat/completions",
+        method: "POST",
+        mapBody: {},
+        options: {},
+        headers: '{"Authorization":"Bearer {{token}}"}',
+        transformResponse: jest.fn(),
+      });
+      replaceTemplateStringSimpleMock.mockReturnValue(
+        "https://api.openai.com/v1/chat/completions"
+      );
+      mapBodyMock.mockReturnValue({});
+      parseHeadersMock.mockResolvedValue({});
+    }
+
+    function makeRequestError(status: number, extra?: Record<string, unknown>) {
+      return new LlmExeError(`Request failed: ${status}`, {
+        code: "request.http_error",
+        context: {
+          operation: "apiRequest",
+          url: "https://api.openai.com/v1/chat/completions",
+          status,
+          statusText: "Status",
+          providerError: { message: "provider says no" },
+          ...extra,
+        },
+      });
+    }
+
+    beforeEach(setupMocks);
+
+    it.each([
+      [429, "llm.provider_rate_limited"],
+      [401, "llm.provider_auth_failed"],
+      [403, "llm.provider_auth_failed"],
+      [400, "llm.provider_invalid_request"],
+      [422, "llm.provider_invalid_request"],
+      [408, "llm.provider_unavailable"],
+      [503, "llm.provider_unavailable"],
+      [418, "llm.provider_http_error"],
+    ])(
+      "maps status %i to %s",
+      async (status, expectedCode) => {
+        apiRequestMock.mockRejectedValue(makeRequestError(status));
+        try {
+          await useLlm_call(mockStateOpenAi, "hi");
+          throw new Error("Expected an error to be thrown");
+        } catch (e) {
+          expect(e).toBeInstanceOf(LlmExeError);
+          expect((e as InstanceType<typeof LlmExeError>).code).toBe(expectedCode);
+          expect((e as InstanceType<typeof LlmExeError>).category).toBe("llm");
+          const ctx = (e as InstanceType<typeof LlmExeError>).context as Record<
+            string,
+            unknown
+          >;
+          expect(ctx.provider).toBe("openai.chat");
+          expect(ctx.status).toBe(status);
+          expect(ctx.providerError).toEqual({ message: "provider says no" });
+          expect((e as unknown as { cause?: unknown }).cause).toBeDefined();
+        }
+      }
+    );
+
+    it("falls back to llm.provider_http_error when no status is present", async () => {
+      const err = new LlmExeError("network down", {
+        code: "request.http_error",
+        context: {
+          operation: "apiRequest",
+          url: "https://api.openai.com/v1/chat/completions",
+        },
+      });
+      apiRequestMock.mockRejectedValue(err);
+      try {
+        await useLlm_call(mockStateOpenAi, "hi");
+        throw new Error("Expected an error to be thrown");
+      } catch (e) {
+        expect((e as InstanceType<typeof LlmExeError>).code).toBe(
+          "llm.provider_http_error"
+        );
+      }
+    });
+
+    it("does not wrap non-request.http_error errors", async () => {
+      apiRequestMock.mockRejectedValue(
+        new LlmExeError("bad url", {
+          code: "request.invalid_url",
+          context: { operation: "apiRequest", url: "x" },
+        })
+      );
+      try {
+        await useLlm_call(mockStateOpenAi, "hi");
+        throw new Error("Expected an error to be thrown");
+      } catch (e) {
+        // Re-thrown unchanged — still request.invalid_url, not wrapped as llm.*
+        expect((e as InstanceType<typeof LlmExeError>).code).toBe(
+          "request.invalid_url"
+        );
+      }
+    });
   });
 });

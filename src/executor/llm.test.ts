@@ -1,8 +1,10 @@
 import { LlmExecutor } from "@/executor";
 import { useLlm } from "@/llm";
+import { BaseLlmOutput } from "@/llm/output/base";
 import { JsonParser } from "@/parser";
 import { createChatPrompt } from "@/prompt";
 import { defineSchema } from "@/utils/modules/defineSchema";
+import { LlmExeError } from "@/errors";
 
 /**
  * Tests LlmExecutor
@@ -75,7 +77,12 @@ describe("llm-exe:executor/LlmExecutor", () => {
         getResultText: expect.any(Function),
       }),
       expect.objectContaining({ input }),
-      undefined
+      undefined,
+      expect.objectContaining({
+        executor: expect.objectContaining({ type: "llm-executor" }),
+        execution: expect.objectContaining({ input }),
+        attributes: {},
+      })
     );
   });
   it("MockExecutor returns correct result from execute", async () => {
@@ -100,6 +107,22 @@ describe("llm-exe:executor/LlmExecutor", () => {
       await executor.execute({ input: "input-value" });
     } catch (e: any) {
       expect(e.message).toEqual("Missing prompt");
+    }
+  });
+
+  it("throws LlmExeError with executor.missing_prompt when no prompt is configured", async () => {
+    const executor = new LlmExecutor({ llm, prompt: undefined } as any);
+    try {
+      await executor.execute({ input: "input-value" });
+      throw new Error("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("executor.missing_prompt");
+      expect((e as LlmExeError).category).toBe("executor");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("LlmExecutor.getHandlerInput");
+      expect(ctx.executorName).toBeDefined();
+      expect(ctx.executorType).toBe("llm-executor");
     }
   });
   it("MockExecutor returns metadata", async () => {
@@ -191,7 +214,11 @@ describe("llm-exe:executor/LlmExecutor", () => {
     });
     const parser = new JsonParser({ schema });
     const executor = new LlmExecutor({ llm, prompt, parser });
-    jest.spyOn(executor, "handler");
+    jest.spyOn(executor, "handler").mockResolvedValue(BaseLlmOutput({
+      stopReason: "stop",
+      usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+      content: [{ type: "text", text: '[{"name":"Greg","age":1}]' }],
+    }));
 
     const input = { input: "input-value" };
     await executor.execute(input);
@@ -200,7 +227,12 @@ describe("llm-exe:executor/LlmExecutor", () => {
       [{ content: "This is a prompt.", role: "system" }],
       {
         jsonSchema: schema,
-      }
+      },
+      expect.objectContaining({
+        executor: expect.objectContaining({ type: "llm-executor" }),
+        execution: expect.objectContaining({ input }),
+        attributes: {},
+      })
     );
   });
 
@@ -224,6 +256,11 @@ describe("llm-exe:executor/LlmExecutor", () => {
 
     const parser = new JsonParser({ schema });
     const executor = new LlmExecutor({ llm, prompt: _prompt, parser });
+    jest.spyOn(executor, "handler").mockResolvedValue(BaseLlmOutput({
+      stopReason: "stop",
+      usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+      content: [{ type: "text", text: '[{"name":"Greg","age":1}]' }],
+    }));
     jest.spyOn(_prompt, "format");
 
     const input = { input: "input-value" };
@@ -250,16 +287,20 @@ describe("llm-exe:executor/LlmExecutor", () => {
     expect(result).toEqual(["formatted"]);
   });
 
-  it("handles null input in execute method", async () => {
+  it("throws TypeError when execute is called with null (issue #410)", async () => {
     const executor = new LlmExecutor({ llm, prompt });
-    const result = await executor.execute(null as any);
-    expect(result).toBeDefined();
+    await expect(executor.execute(null as any)).rejects.toThrow(TypeError);
+    await expect(executor.execute(null as any)).rejects.toThrow(
+      /received null or undefined as input/
+    );
   });
 
-  it("handles undefined input in execute method", async () => {
+  it("throws TypeError when execute is called with undefined (issue #410)", async () => {
     const executor = new LlmExecutor({ llm, prompt });
-    const result = await executor.execute(undefined as any);
-    expect(result).toBeDefined();
+    await expect(executor.execute(undefined as any)).rejects.toThrow(TypeError);
+    await expect(executor.execute(undefined as any)).rejects.toThrow(
+      /received null or undefined as input/
+    );
   });
 
   it("getHandlerOutput uses getResult when parser target is function_call", async () => {

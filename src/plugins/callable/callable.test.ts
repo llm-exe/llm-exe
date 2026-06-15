@@ -3,6 +3,7 @@ import {
   CallableExecutor,
   UseExecutorsBase,
 } from "@/plugins/callable/callable";
+import { LlmExeError } from "@/errors";
 
 const callableFnConfig = {
   key: "get_appointments",
@@ -337,6 +338,66 @@ describe("llm-exe:callable/useExecutors", () => {
       expect(result).toEqual({
         result: false,
         attributes: { error: "validation failed" },
+      });
+    });
+  });
+
+  describe("v3 typed errors (internal — public return shapes unchanged)", () => {
+    it("constructor throws LlmExeError with callable.invalid_handler", () => {
+      try {
+        new CallableExecutor({
+          name: "no_handler",
+          description: "missing",
+          input: "{}",
+        } as any);
+        throw new Error("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toBe("callable.invalid_handler");
+        expect((e as LlmExeError).category).toBe("callable");
+        const ctx = (e as LlmExeError).context as Record<string, unknown>;
+        expect(ctx.operation).toBe("CallableExecutor.constructor");
+        expect(ctx.functionName).toBe("no_handler");
+        expect(ctx.key).toBe("no_handler");
+        expect(ctx.expected).toBe("function or BaseExecutor");
+        expect(ctx.received).toBe("undefined");
+      }
+    });
+
+    it("constructor preserves the legacy 'Invalid handler' message", () => {
+      try {
+        new CallableExecutor({
+          name: "no_handler",
+          description: "missing",
+          input: "{}",
+        } as any);
+        throw new Error("Expected an error to be thrown");
+      } catch (e) {
+        expect((e as Error).message).toBe("Invalid handler");
+      }
+    });
+
+    it("callFunction return shape stays a string when handler is missing", async () => {
+      const executors = useExecutors([callableFn]);
+      const result = await executors.callFunction("missing_handler", "{}");
+      expect(typeof result).toBe("string");
+      expect(result).toBe(
+        "[invalid handler] The handler (missing_handler) does not exist."
+      );
+    });
+
+    it("validateFunctionInput return shape stays { result, attributes } when handler is missing", async () => {
+      const executors = useExecutors([callableFn]);
+      const result = await executors.validateFunctionInput(
+        "missing_handler",
+        "{}"
+      );
+      expect(result).toEqual({
+        result: false,
+        attributes: {
+          error:
+            "[invalid handler] The handler (missing_handler) does not exist.",
+        },
       });
     });
   });

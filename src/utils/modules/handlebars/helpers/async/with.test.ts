@@ -4,6 +4,7 @@ import { appendContextPath } from "@/utils/modules/handlebars/utils/appendContex
 import { blockParams } from "@/utils/modules/handlebars/utils/blockParams";
 import { createFrame } from "@/utils/modules/handlebars/utils/createFrame";
 import { withFnAsync } from "@/utils/modules/handlebars/helpers/async/with";
+import { LlmExeError } from "@/errors";
 
 jest.mock("@/utils/modules/isEmpty");
 jest.mock("@/utils/modules/isPromise");
@@ -28,6 +29,20 @@ describe("withFnAsync", () => {
     await expect((withFnAsync as any).call({})).rejects.toThrow(
       "#with requires exactly one argument"
     );
+  });
+
+  it("throws LlmExeError with template.invalid_helper_arguments on wrong arg count", async () => {
+    try {
+      await (withFnAsync as any).call({});
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("template.invalid_helper_arguments");
+      expect((e as LlmExeError).category).toBe("template");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("handlebars.asyncHelper.with");
+      expect(ctx.helper).toBe("with");
+    }
   });
 
   it("should render fn with context when context is not empty", async () => {

@@ -37,3 +37,16 @@ export {
   createParser,
   createCustomParser,
 };
+
+export type {
+  BooleanParserMatch,
+  BooleanParserOptions,
+} from "./parsers/BooleanParser";
+export type {
+  NumberParserMatch,
+  NumberParserOptions,
+} from "./parsers/NumberParser";
+export type {
+  StringExtractMatch,
+  StringExtractParserOptions,
+} from "./parsers/StringExtractParser";

@@ -18,8 +18,8 @@ import { /* specific modules */ } from "llm-exe"
 ```
 
 ## Basic Example
-Below is simple example:
-```js
+Below is a simple example:
+```ts
 import {
   useLlm,
   createChatPrompt,
@@ -27,38 +27,40 @@ import {
 } from "llm-exe";
 
 const llm = useLlm("openai.gpt-4o-mini");
-const prompt = createChatPrompt("Talk like a pirate.")
+
+// The first argument is the system message.
+// Add a user message that references your input variable.
+const prompt = createChatPrompt<{ input: string }>("Talk like a pirate.")
+  .addUserMessage("{{input}}");
 
 const executor = createLlmExecutor({
   llm,
-  prompt
-})
+  prompt,
+});
 
-const input = "Hello!";
-const response = await executor.execute({ input })
+const response = await executor.execute({ input: "Hello!" });
 /**
- * 
- * The prompt sent to the LLM would be: 
- * (line breaks added for readability)
- * 
- * [{ 
- *   role: 'system', 
- *   content: 'Talk like a pirate.' 
- * },
- * { 
- *   role: 'user',
- *   content: 'Hello!'
- * }]
- * 
+ *
+ * The prompt sent to the LLM would be:
+ *
+ * [
+ *   { role: 'system', content: 'Talk like a pirate.' },
+ *   { role: 'user',   content: 'Hello!' }
+ * ]
+ *
  */
 
 /**
- * 
+ *
  * Output from LLM executor:
- * Arrr, matey! Speak up, fer me ears be as keen as a sea serpent's! 
+ * Arrr, matey! Speak up, fer me ears be as keen as a sea serpent's!
  * Avast ye, what be your query?
- * /
+ */
 ```
+
+::: tip
+Passing a value as `{ input }` does **not** automatically append a user message — your prompt must reference it (for example with `{{input}}` in a template or by calling `.addUserMessage("{{input}}")`). The chat prompt always renders exactly the messages you build.
+:::
 ---
 
 # Introduction
@@ -228,11 +230,11 @@ const response = await piiDetector(input)
  * Output:
  *
  * {
- *   emailAddress: false,
+ *   emailAddresses: false,
  *   socialSecurityNumber: false,
  *   creditCardNumber: true
  * }
- * /
+ */
 ```
 
 The input and output of the `piiDetector` function are strongly typed, providing reliable structure and safety when integrating with the rest of your application
@@ -252,6 +254,58 @@ Note: llm-exe utilizes the underlying API's from the various providers. This mea
 - Automatic retry with configurable back-off for errors.
 - Use different LLM's with different configurations for different functions.
 Note: You can use and call methods on LLM's directly, but they are usually passed to an LLM executor and then called internally.
+
+## Using `useLlm`
+
+The `useLlm` function creates an LLM instance. It takes a provider key and an optional options object.
+
+### Provider Shorthand (by model)
+
+Use a provider-specific model shorthand to get full type support for that model's options:
+
+```ts
+import { useLlm } from "llm-exe";
+
+const llm = useLlm("openai.gpt-4o-mini");
+```
+
+### Provider Key + Model Option
+
+Use a generic provider key and specify the model in the options. This lets you use any model the provider supports without needing a dedicated shorthand:
+
+```ts
+const llm = useLlm("openai.chat.v1", {
+  model: "gpt-4o",
+});
+```
+
+### Options
+
+All providers accept the [generic options](/llm/generic.html) (timeout, retries, temperature, maxTokens, etc.). Each provider may also accept provider-specific options — see the individual provider pages below.
+
+### Deprecation Warnings
+
+Deprecated provider/model shorthands continue to resolve for compatibility, but emit a Node `DeprecationWarning` with code `LLM_EXE_DEPRECATED` on first use. See [Deprecation Warnings](/llm/deprecations.html).
+
+### Authentication
+
+Each provider requires an API key. You can provide it in three ways:
+
+1. **Environment variable** — set the provider's default env var (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`)
+2. **Setup options** — pass the key when creating the LLM (e.g., `{ openAiApiKey: "sk-..." }`)
+3. **Execute options** — pass the key at execution time
+
+See the individual provider pages for the exact option names and env var names.
+
+### Direct Usage
+
+While you'll typically pass the LLM instance to an [executor](/executor/), you can also call it directly:
+
+```ts
+const llm = useLlm("openai.gpt-4o-mini");
+const response = await llm.call(prompt);
+console.log(response.getResultText());
+```
 
 ## Currently Supported Providers
 
@@ -308,6 +362,7 @@ llm-exe attempts to normalize the inputs for various llm vendors, providing a si
 > - [Ollama Chat Model Options](/llm/ollama#ollama-specific-options)
 > - [AWS Bedrock Chat Model Options](/llm/bedrock/index.html)
 
+
 ---
 
 # OpenAI
@@ -352,7 +407,7 @@ await llm.call(prompt);
 
 ## OpenAi-Specific Options
 
-In addition to the generic options, the following options are OpenAi-specific and can be passed in when creating a llm function.
+In addition to the [generic options](/llm/generic.html), the following options are OpenAi-specific and can be passed in when creating a llm function.
 
 | Option           | Type    | Default     | Description                                                    |
 | ---------------- | ------- | ----------- | -------------------------------------------------------------- |
@@ -430,16 +485,16 @@ When using Google Gemini models, llm-exe will make POST requests to `https://gen
 
 ```ts
 const llm = useLlm("google.chat.v1", {
-  model: "gemini-2.0-flash", // specify a model
+  model: "gemini-2.5-flash", // specify a model
 });
 ```
 
 ### Gemini Chat By Model
 
 ```ts
-const llm = useLlm("google.gemini-2.0-flash", {
+const llm = useLlm("google.gemini-2.5-flash", {
   // other options,
-  // no model needed, using gemini-2.0-flash
+  // no model needed, using gemini-2.5-flash
 });
 ```
 
@@ -447,7 +502,7 @@ const llm = useLlm("google.gemini-2.0-flash", {
 
 ## Authentication
 
-To authenticate, you need to provide an Google Gemini API Key. You can provide the API key various ways, depending on your use case.
+To authenticate, you need to provide a Google Gemini API Key. You can provide the API key various ways, depending on your use case.
 
 1. Pass in as execute options using `geminiApiKey`
 2. Pass in as setup options using `geminiApiKey`
@@ -546,8 +601,7 @@ In addition to the [generic options](/llm/generic.html), the following options a
 | awsAccessKey| string | undefined | AWS Access Key. Can be set via `AWS_ACCESS_KEY_ID` environment variable  |
 
 > [!NOTE]
-> The Bedrock Anthropic provider maps a subset of the direct Anthropic provider options. Options like `temperature`, `topK`, `stopSequences`, `metadata`, and `serviceTier` are not mapped for the Bedrock variant at this time.
-
+> The Bedrock Anthropic provider maps a subset of the direct [Anthropic provider](/llm/anthropic.html) options. Options like `temperature`, `topK`, `stopSequences`, `metadata`, and `serviceTier` are not mapped for the Bedrock variant at this time.
 ---
 
 # Meta
@@ -617,6 +671,13 @@ const llm = useLlm("xai.grok-4", {
 });
 ```
 
+```ts
+const llm = useLlm("xai.grok-3-mini", {
+  // other options,
+  // no model needed, using grok-3-mini
+});
+```
+
 <ImportModelNames provider="xai" />
 
 ## Authentication
@@ -678,7 +739,9 @@ const llm = useLlm("ollama.deepseek-r1", {
 
 <ImportModelNames provider="ollama" />
 
+## Configuration
 
+By default, llm-exe connects to `http://localhost:11434`. To use a different Ollama endpoint, set the `OLLAMA_ENDPOINT` environment variable.
 
 Generally you pass the LLM instance off to an LLM Executor and call that. However, it is possible to interact with the LLM object directly, if you wanted.
 
@@ -688,8 +751,6 @@ await llm.call(prompt);
 ```
 
 ## Ollama-Specific Options
-
-In addition to the generic options, the following options are Ollama-specific and can be passed in when creating a llm function.
 
 | Option | Type   | Default   | Description                                                    |
 | ------ | ------ | --------- | -------------------------------------------------------------- |
@@ -705,6 +766,15 @@ See [Ollama Docs](https://ollama.com/) for details.
 # Deepseek
 
 When using Deepseek models, llm-exe will make POST requests to `https://api.deepseek.com/v1/chat/completions`. All models are supported if you pass `deepseek.chat.v1` as the first argument, and then specify a model in the options.
+
+llm-exe ships typed shorthands for the most common Deepseek models so you do not have to remember the exact model strings:
+
+| Shorthand              | Default model        |
+| ---------------------- | -------------------- |
+| `deepseek.chat.v1`     | _none — set `model`_ |
+| `deepseek.chat`        | `deepseek-chat`      |
+| `deepseek.v4-flash`    | `deepseek-v4-flash`  |
+| `deepseek.v4-pro`      | `deepseek-v4-pro`    |
 
 ## Basic Usage
 
@@ -725,11 +795,25 @@ const llm = useLlm("deepseek.chat", {
 });
 ```
 
+```ts
+const llm = useLlm("deepseek.v4-flash", {
+  // other options,
+  // no model needed, using deepseek-v4-flash model
+});
+```
+
+```ts
+const llm = useLlm("deepseek.v4-pro", {
+  // other options,
+  // no model needed, using deepseek-v4-pro model
+});
+```
+
 <ImportModelNames provider="deepseek" />
 
 ## Authentication
 
-To authenticate, you need to provide an Deepseek API Key. You can provide the API key various ways, depending on your use case.
+To authenticate, you need to provide a Deepseek API Key. You can provide the API key various ways, depending on your use case.
 
 1. Pass in as execute options using `deepseekApiKey`
 2. Pass in as setup options using `deepseekApiKey`
@@ -829,7 +913,7 @@ const customLlm = useLlmConfiguration({
 // Use it like any other LLM
 const llm = customLlm({
   apiKey: process.env.CUSTOM_API_KEY,
-  model: "gpt-4-turbo",
+  model: "gpt-4o",
 } as any); // Note: Use 'as any' for custom options that aren't in base types
 
 const response = await llm.call("Hello, how are you?");
@@ -1242,6 +1326,7 @@ See:
 
 - [Text Prompt](/prompt/text.html)
 - [Chat Prompt](/prompt/chat.html)
+- [Prompt Validation](/prompt/validation.html)
 
 ## Basic Replacements
 
@@ -1253,6 +1338,12 @@ The object that you pass to `prompt.format` (or `.execute` when a prompt is part
 </GenericOutput>
 
 For advanced uses and working with custom helpers/partials, [see here](/prompt/advanced.html).
+
+## Validating Template Inputs
+
+Prompts can validate that required template variables and helpers are available before rendering. Use `prompt.validate(input)` directly, or set `validateInput: "strict"` / `"warn"` on a prompt to check calls to `format()`.
+
+See [Prompt Validation](/prompt/validation.html).
 
 ## Using Types with Prompts
 
@@ -1541,6 +1632,33 @@ Website: www.example.com`,
 const prompt = createPrompt("text", "You are a cowboy.", { helpers, partials });
 ```
 
+### 2. Register them globally
+
+If you want helpers or partials available to all prompts in your application, use the standalone `registerHelpers` and `registerPartials` utility functions. These register with the global Handlebars instance, so any prompt created afterward can use them.
+
+```ts
+import { registerHelpers, registerPartials } from "llm-exe";
+
+// Register custom helpers globally
+registerHelpers([
+  {
+    name: "uppercase",
+    handler: (str: string) => str.toUpperCase(),
+  },
+]);
+
+// Register custom partials globally
+registerPartials([
+  {
+    name: "greeting",
+    template: "Hello {{name}}!",
+  },
+]);
+
+// Now any prompt can use them
+const prompt = createChatPrompt("{{> greeting name='World'}} {{uppercase 'hello'}}");
+```
+
 ---
 
 # Why Handlebars?
@@ -1717,8 +1835,8 @@ When combined with an LLM executor, the parser is responsible for providing type
 
 When working with output parsers, you have two options:
 
-1. Use a default parser.
-2. Extend the base parser to create a custom output parser
+1. Use a [default parser](/parser/included-parsers.html).
+2. Create a [custom parser](/parser/custom.html) for full control over output transformation.
 
 #### Use a Default Parser
 
@@ -1749,6 +1867,10 @@ const parsed = parser.parse(exampleOutputFromLlm);
 #### Using a Parser with Schema
 
 When instructing the LLM to respond with json or a format that can be parsed to json, it can be helpful to define schema. This allows you to validate, provide default values, and have a fully-typed response. In fact, the JSON Schema you define can be really useful (and re-used!) in your prompt. [See tips](/examples/concepts/working-with-json) for working with JSON.
+
+##### `defineSchema`
+
+The `defineSchema` helper narrows a JSON Schema definition to its literal type so TypeScript can infer the exact shape of the parsed output. It also sets `additionalProperties: false` to ensure strict validation. Use it whenever you define schemas for JSON parsers.
 
 ```ts
 import { defineSchema, createParser } from "llm-exe";
@@ -1793,6 +1915,10 @@ const parsed = parser.parse(exampleOutputFromLlm);
 The default parser. Doesn't really parse, it passes through the string response with no modification.
 Returns: string
 
+```ts
+const parser = createParser("string");
+```
+
 ::: code-group
 
 ```[Output]
@@ -1808,12 +1934,17 @@ This is an example input message.
 ## Number Parser
 
 `number`
-Extracts a number from the LLM response.
+Extracts exactly one number from the LLM response.
 Returns: number
 
 ```ts
 const parser = createParser("number");
 ```
+
+Options:
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `match` | `"extract" \| "exact"` | `"extract"` | `"extract"` finds one numeric token in the response. `"exact"` requires the entire trimmed response to be one numeric token. |
 
 ::: code-group
 
@@ -1837,6 +1968,11 @@ Returns: boolean
 const parser = createParser("boolean");
 ```
 
+Options:
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `match` | `"exact" \| "extract"` | `"exact"` | `"exact"` requires the entire trimmed response to be one boolean literal. `"extract"` finds one boolean literal in surrounding text. |
+
 ::: code-group
 
 ```[Output]
@@ -1844,7 +1980,7 @@ true
 ```
 
 ```[Response]
-Yes, that is correct.
+yes
 ```
 
 :::
@@ -1868,7 +2004,8 @@ Options:
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enum` | `string[]` | `[]` | The list of allowed values to match against. |
-| `ignoreCase` | `boolean` | `false` | When `true`, matching is case-insensitive. |
+| `ignoreCase` | `boolean` | `true` | When `true`, matching is case-insensitive. |
+| `match` | `"word" \| "substring" \| "exact"` | `"word"` | `"word"` matches enum values on word boundaries. `"substring"` uses contains matching. `"exact"` requires the entire trimmed response to equal one enum value. |
 
 ::: code-group
 
@@ -1969,7 +2106,7 @@ Below is the generated code:
 function add(a: number, b: number){
     return a + b;
 }
-``'
+```
 ````
 
 :::
@@ -2004,7 +2141,7 @@ Below is the generated code:
 function add(a: number, b: number){
     return a + b;
 }
-``'
+```
 
 And the next:
 
@@ -2012,7 +2149,7 @@ And the next:
 function subtract(a: number, b: number){
     return a - b;
 }
-``'
+```
 ````
 
 :::
@@ -2024,11 +2161,27 @@ Runs Handlebars substitution on the LLM's output, using the executor's input att
 
 Returns: string
 
-**Use case:** The LLM generates a response containing placeholders, and the parser fills them in with known values from the executor input — useful for personalized messages, dynamic templates, or mail-merge patterns.
-
 ```ts
 const parser = createParser("replaceStringTemplate");
 ```
+
+**Use case:** The LLM generates a response containing placeholders, and the parser fills them in with known values from the executor input — useful for personalized messages, dynamic templates, or mail-merge patterns.
+
+::: code-group
+
+```[Output]
+Hello Alice! Your order #12345 has shipped.
+```
+
+```[Response]
+Hello {{name}}! Your order #{{orderId}} has shipped.
+```
+
+```[Attributes passed to parser]
+{ name: "Alice", orderId: "12345" }
+```
+
+:::
 
 ## List to JSON
 
@@ -2037,17 +2190,21 @@ Parses key:value lines (separated by newlines) into a **single flat object**. Ea
 
 Returns: object (flat key-value pairs)
 
+::: warning
+This parser produces a single object, not an array. If the LLM output contains duplicate keys, later values overwrite earlier ones. If you need to preserve multiple records with the same keys, use [`listToKeyValue`](#list-to-key-value) instead (which returns an array of `{ key, value }` pairs).
+:::
+
+> **Example Prompt:** <br>Extract the following information. Reply only with: Color: the color\nName: the name\nType: the type
+
+```typescript
+const parser = createParser("listToJson");
+```
+
 Options:
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `keyTransform` | `"camelCase" \| "preserve"` | `"camelCase"` | How to transform keys. `"camelCase"` converts keys like "First Name" to "firstName". `"preserve"` keeps the original key text (trimmed). |
 | `schema` | `JSONSchema` | `undefined` | Optional JSON Schema to validate and enforce types on the output. |
-
-> **Example Prompt:** <br>You need to extract the following information. Reply only with: Color: the color\nName: the name\nType: the type
-
-```typescript
-const parser = createParser("listToJson");
-```
 
 ::: code-group
 
@@ -2067,10 +2224,28 @@ Type: Fruit
 
 :::
 
+**Choosing between `listToJson` and `listToKeyValue`:**
+
+| Parser | Returns | Best for |
+| --- | --- | --- |
+| `listToJson` | `{ key: value, ... }` (flat object) | Extracting a fixed set of unique fields from a response |
+| `listToKeyValue` | `Array<{ key, value }>` | Preserving order, handling duplicate keys, or iterating over pairs |
+
 ## JSON
 
 `json`
-Parse an expected stringified json object or array into a valid object. Schema can be passed in to enforce schema and provide default values.
+Parse an expected stringified JSON object or array into a valid object. Schema can be passed in to enforce schema and provide default values.
+Returns: object | array
+
+```ts
+const parser = createParser("json");
+```
+
+Options:
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `schema` | `JSONSchema` | `undefined` | Optional JSON Schema to validate and enforce types on the output. Use with [`defineSchema`](/parser/index.html#defineschema) for full type inference. |
+| `match` | `"exact" \| "extract"` | `"exact"` | `"exact"` parses the entire response as JSON. `"extract"` finds one JSON object or array in surrounding text. |
 
 ::: code-group
 
@@ -2222,33 +2397,49 @@ userIntent.resetValue();  // resets to "unknown"
 
 **Attributes** are a simple key-value store for lightweight metadata. Use `state.setAttribute(key, value)`, `state.deleteAttribute(key)`, and `state.clearAttributes()`.
 
-State has a `saveState()` method that can be customized to save the state to a database.
+## Creating State
 
-Initializing a state object is as simple as:
+Initializing a state object is simple:
 ```ts
-const state = createState()
+import { createState } from "llm-exe";
+
+const state = createState();
 ```
 
-If you wanted to store a chat conversation dialogue, you could:
+## Dialogues
+
+If you want to store a chat conversation dialogue, create one on the state:
 ```ts
-const state = createState()
+const state = createState();
 
 // this creates a new dialogue in the state, and returns it
 const chatHistory = state.createDialogue("chatHistory");
 
-// we can use this directly
-// chatHistory.setUserMessage("Hey anyone there?");
+// add messages directly
+chatHistory.setUserMessage("Hey anyone there?");
 
-
-// or get again from state object
-// state.getDialogue("chatHistory").setAssistantMessage("Yep! Whats up?");
+// or retrieve from state later
+state.getDialogue("chatHistory").setAssistantMessage("Yep! What's up?");
 ```
 
+You can also create a standalone dialogue without state using `createDialogue`. See the [Dialogue](/state/dialogue.html) page for full details.
 
-Saving state
+## Saving State
+
+The `DefaultState` class implements `saveState()` with a warning log by default. To persist state, extend `DefaultState` and override it with your own save logic:
+
 ```ts
-// this needs to be implemented by you if you want to save somewhere
-await state.saveState()
+import { DefaultState } from "llm-exe";
+
+class MyState extends DefaultState {
+  async saveState() {
+    const data = {
+      dialogues: this.dialogues,
+      attributes: this.attributes,
+    };
+    await db.save("state", JSON.stringify(data));
+  }
+}
 ```
 ---
 
@@ -2412,6 +2603,40 @@ const response = await executor.execute({ input: "Hello!" });
 
 `createLlmExecutor` Returns an instance of LlmExecutor.
 
+## Function Executor
+
+If you need tool/function calling support, use `createLlmFunctionExecutor`. It extends the standard LLM executor with the ability to define functions the LLM can call. This works with any provider that supports tool calling (OpenAI, Anthropic, Google, etc.).
+
+```typescript
+import { useLlm, createChatPrompt, createLlmFunctionExecutor } from "llm-exe";
+
+const llm = useLlm("openai.gpt-4o-mini");
+const prompt = createChatPrompt("You are a helpful assistant.");
+
+const executor = createLlmFunctionExecutor({
+  llm,
+  prompt,
+});
+
+const response = await executor.execute(
+  { input: "What's the weather?" },
+  {
+    functionCall: "auto",
+    functions: [
+      {
+        name: "get_weather",
+        description: "Get the current weather",
+        parameters: { /* JSON Schema */ },
+      },
+    ],
+  }
+);
+```
+
+`createLlmFunctionExecutor` Returns an instance of LlmExecutorWithFunctions.
+
+See [Tool Calling Executor](/executor/openai-functions.html) for full documentation and examples.
+
 ## Core Executor
 
 If you need a typed executor that wraps a plain function (no LLM involved), use `createCoreExecutor`. This is useful for composing non-LLM steps alongside LLM executors in a pipeline — the core executor provides the same `execute` interface, tracing, and hooks as an LLM executor.
@@ -2486,59 +2711,161 @@ Hooks are available mostly for logging purposes, but can have more advanced use-
 
 The following hooks are available:
 
-- onComplete
-- onSuccess
-- onError
+- `onSuccess` — runs after a successful execution, once the output has been produced
+- `onError` — runs when the executor throws, before the error is re-thrown
+- `onComplete` — runs after `onSuccess` or `onError`, regardless of outcome
+
+### Hook Signature
+
+Every hook receives the same two arguments:
+
+```typescript
+type Hook = (
+  executionMetadata: ExecutorExecutionMetadata,
+  executorMetadata: ExecutorMetadata
+) => void;
+```
+
+`executionMetadata` contains information about this specific execution (input, output, timings, and — for `onError` — the thrown error). `executorMetadata` contains information about the executor instance itself (id, type, name, total executions).
+
+| Field                              | Available on              | Description                                      |
+| ---------------------------------- | ------------------------- | ------------------------------------------------ |
+| `executionMetadata.input`          | all hooks                 | The input passed to `.execute()`                 |
+| `executionMetadata.output`         | `onSuccess`, `onComplete` | The parsed output returned by the executor       |
+| `executionMetadata.handlerInput`   | all hooks                 | The transformed input passed to the internal handler |
+| `executionMetadata.handlerOutput`  | `onSuccess`, `onComplete` | The raw handler output before parsing            |
+| `executionMetadata.error`          | `onError`, `onComplete`   | The thrown `Error` instance                      |
+| `executionMetadata.errorMessage`   | `onError`, `onComplete`   | Shortcut for `error.message`                     |
+| `executionMetadata.errorCategory`  | `onError`, `onComplete`   | Structured category for `LlmExeError` failures  |
+| `executionMetadata.errorCode`      | `onError`, `onComplete`   | Structured code for `LlmExeError` failures      |
+| `executionMetadata.errorContext`   | `onError`, `onComplete`   | Structured context for `LlmExeError` failures   |
+| `executionMetadata.hookErrors`     | later hooks               | Failures captured from earlier hook callbacks   |
+| `executionMetadata.start`          | all hooks                 | Execution start time (ms since epoch)            |
+| `executionMetadata.end`            | `onComplete`              | Execution end time (ms since epoch)              |
+| `executorMetadata.id`              | all hooks                 | Stable id of the executor                        |
+| `executorMetadata.name`            | all hooks                 | Name of the executor, if set                     |
+| `executorMetadata.type`            | all hooks                 | Type of executor (e.g. `"llm-executor"`)         |
+| `executorMetadata.created`         | all hooks                 | Timestamp when the executor was created (ms since epoch) |
+| `executorMetadata.executions`      | all hooks                 | Number of times this executor has run            |
+
+Hooks should be synchronous and lightweight. Errors thrown inside a hook are caught and collected by llm-exe. They do not affect the executor result.
+
+### Hook Errors
+
+If an `onSuccess` or `onError` hook throws, the failure is captured in `executionMetadata.hookErrors` for later hooks such as `onComplete`.
+
+```typescript:no-line-numbers
+executor.on("onSuccess", () => {
+  throw new Error("logging failed");
+});
+
+executor.on("onComplete", (exec) => {
+  console.log(exec.hookErrors?.[0]?.errorMessage);
+});
+```
+
+Each hook error record includes the raw thrown value and `errorMessage`. If the thrown value is an `LlmExeError`, `errorCategory`, `errorCode`, `errorContext`, and `errorCause` are included.
+
+`onComplete` runs last. If an `onComplete` hook throws, there is no later hook where that failure can be surfaced in execution metadata.
 
 You can attach hooks:
 
 - During initialization
-- After initialization using on/off/once
+- After initialization using `on` / `off` / `once`
 
-#### Adding hooks during initialization:
+#### Adding hooks during initialization
 
-```typescript{2,5}:no-line-numbers
-// You can pass in hooks object
-const hooks = { onComplete: logFunction, onError: logFunctionError };
+```typescript{5}:no-line-numbers
+const hooks = {
+  onSuccess: (exec) => console.log("output:", exec.output),
+  onError: (exec) => console.error("failed:", exec.errorMessage),
+};
 const llm = useLlm("openai.chat-mock.v1", {});
 const prompt = createChatPrompt("This is a prompt.");
 const executor = createLlmExecutor({ llm, prompt }, { hooks });
 ```
 
-#### Adding hooks after initialization:
+#### Adding hooks after initialization
 
-```typescript{13,14}:no-line-numbers
-function logFunction() {
-  console.log("its done!!");
+Use `.on()` to attach a hook, and `.off()` to remove it.
+
+```typescript{10,11,14}:no-line-numbers
+function logSuccess(exec) {
+  console.log("output:", exec.output);
 }
 
-function logFunctionError() {
-  console.log("its done!!");
+function logError(exec) {
+  console.error("failed:", exec.errorMessage);
 }
 
-// You can also use on to listen
-const llm = useLlm("openai.chat-mock.v1", {});
-const prompt = createChatPrompt("This is a prompt.");
 const executor = createLlmExecutor({ llm, prompt });
-executor.on("onComplete", logFunction);
-executor.on("onError", logFunctionError);
-return executor.execute({});
+executor.on("onSuccess", logSuccess);
+executor.on("onError", logError);
+
+// Later, detach a specific listener:
+executor.off("onSuccess", logSuccess);
 ```
 
-You can also use `.once` to add a hook that get executed exactly once
+#### Listening exactly once
 
-```typescript{5}:no-line-numbers
-// You can also use once to listen once
-const llm = useLlm("openai.chat-mock.v1", {});
-const prompt = createChatPrompt("This is a prompt.");
+Use `.once()` to add a hook that fires on the next execution only and then detaches itself.
+
+```typescript{3}:no-line-numbers
 const executor = createLlmExecutor({ llm, prompt });
-executor.once("onComplete", logFunction);
-return executor.execute({});
+
+executor.once("onComplete", (exec) => {
+  console.log(`first run took ${exec.end - exec.start}ms`);
+});
+
+await executor.execute({});
+await executor.execute({}); // the once handler no longer fires
 ```
 
 ::: tip
-Default behavior is to not add the same handler to the same hook more than once.
+Default behavior is to not add the same handler to the same hook more than once. There is also a per-event hook limit to prevent unbounded memory growth — if you hit it, remove unused hooks with `.off()` rather than piling on new ones.
 :::
+
+#### Clearing hooks
+
+Use `.clearHooks()` to remove all hooks for a specific event, or all events at once. This is useful for preventing memory leaks in long-running processes.
+
+```typescript{3,6}:no-line-numbers
+const executor = createLlmExecutor({ llm, prompt });
+
+// Clear hooks for a specific event
+executor.clearHooks("onSuccess");
+
+// Clear all hooks across all events
+executor.clearHooks();
+```
+
+#### Inspecting hook count
+
+Use `.getHookCount()` to check how many hooks are registered, either for a specific event or across all events.
+
+```typescript{3,6}:no-line-numbers
+const executor = createLlmExecutor({ llm, prompt });
+
+// Get count for a specific event
+const count = executor.getHookCount("onSuccess"); // number
+
+// Get counts for all events
+const counts = executor.getHookCount(); // { onSuccess: 0, onError: 0, onComplete: 0 }
+```
+
+#### Trace ID
+
+Use `.withTraceId()` to associate an executor with a trace identifier for observability. The trace ID is included in `executorMetadata` passed to hooks.
+
+```typescript{3}:no-line-numbers
+const executor = createLlmExecutor({ llm, prompt });
+
+executor.withTraceId("req-abc-123");
+
+executor.on("onComplete", (exec, meta) => {
+  console.log(meta.traceId); // "req-abc-123"
+});
+```
 
 ---
 
@@ -2562,9 +2889,9 @@ const executor = createLlmExecutor(
   },
   {
     hooks: {
-      onComplete: () => console.log("Done"),
-      onSuccess: (result) => console.log("Result:", result),
-      onError: (error) => console.error("Error:", error),
+      onSuccess: (exec) => console.log("Result:", exec.output),
+      onError: (exec) => console.error("Error:", exec.errorMessage),
+      onComplete: (exec) => console.log(`Done in ${exec.end - exec.start}ms`),
     },
   }
 );
@@ -2598,147 +2925,6 @@ const result = await executor.execute(
 | Option     | Type                      | Description                                         |
 | ---------- | ------------------------- | --------------------------------------------------- |
 | jsonSchema | `Record<string, any>`     | JSON schema to pass to the LLM for structured output |
-
----
-
-# Callable Executor
-
-When building LLM agents that need to call tools or functions, `createCallableExecutor` wraps your executors (or plain functions) into a standardized interface. Use `useExecutors` to group them into a collection you can query and invoke by name.
-
-## Creating a callable executor
-
-Use `createCallableExecutor` to wrap a handler function or an existing executor.
-
-**Config properties:**
-
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `name` | `string` | Yes | Unique name used to look up and invoke the function |
-| `description` | `string` | Yes | Description of what the function does (shown to the LLM) |
-| `input` | `string` | Yes | JSON-stringified schema describing the expected input shape |
-| `handler` | `function \| BaseExecutor` | No | The function to execute, or an existing executor instance |
-| `parameters` | `Record<string, any>` | No | Additional static parameters passed alongside the input |
-| `attributes` | `Record<string, any>` | No | Metadata attributes returned with the result |
-| `visibilityHandler` | `function` | No | Controls whether this function is visible in a given context |
-| `validateInput` | `function` | No | Validates input before execution |
-
-```ts
-import { createCallableExecutor, createLlmExecutor, useLlm, createChatPrompt, createParser } from "llm-exe";
-
-// Wrap a plain function
-const searchCallable = createCallableExecutor({
-  name: "searchInternet",
-  description: "Search the internet for information",
-  input: JSON.stringify({
-    type: "object",
-    properties: {
-      query: { type: "string", description: "The search query" },
-    },
-  }),
-  handler: async (input: { query: string }) => {
-    return { results: [`Result for: ${input.query}`] };
-  },
-});
-
-// Or wrap an existing LlmExecutor
-const summarizeExecutor = createLlmExecutor({
-  llm: useLlm("openai.chat.v1", { model: "gpt-4o-mini" }),
-  prompt: createChatPrompt("Summarize: {{input}}"),
-  parser: createParser("string"),
-});
-
-const summarizeCallable = createCallableExecutor({
-  name: "summarize",
-  description: "Summarize the given text",
-  input: JSON.stringify({
-    type: "object",
-    properties: {
-      input: { type: "string", description: "Text to summarize" },
-    },
-  }),
-  handler: summarizeExecutor,
-});
-```
-
-## Grouping with `useExecutors`
-
-`useExecutors` groups callables into a collection with lookup and invocation methods:
-
-```ts
-import { useExecutors } from "llm-exe";
-
-const executors = useExecutors([searchCallable, summarizeCallable]);
-
-// Check if a function exists
-executors.hasFunction("searchInternet"); // true
-
-// Get a function by name
-const fn = executors.getFunction("searchInternet");
-
-// Call a function by name — input is parsed from a JSON string
-const result = await executors.callFunction(
-  "searchInternet",
-  JSON.stringify({ query: "llm-exe docs" })
-);
-// result: { result: any, attributes: any }
-
-// Get all functions (useful for building tool lists)
-const allFunctions = executors.getFunctions();
-```
-
-## Optional features
-
-**Visibility handler** — conditionally show/hide functions based on context:
-
-```ts
-const adminCallable = createCallableExecutor({
-  name: "deleteUser",
-  description: "Delete a user account",
-  input: JSON.stringify({
-    type: "object",
-    properties: {
-      userId: { type: "string", description: "The ID of the user to delete" },
-    },
-  }),
-  handler: async (input: { userId: string }) => { /* ... */ },
-  visibilityHandler: (input, context, attributes) => {
-    return attributes?.role === "admin";
-  },
-});
-
-// Only returns functions visible for the given context
-const visible = executors.getVisibleFunctions(input, { role: "admin" });
-```
-
-**Input validation** — validate input before execution:
-
-```ts
-const callable = createCallableExecutor({
-  name: "sendEmail",
-  description: "Send an email",
-  input: JSON.stringify({
-    type: "object",
-    properties: {
-      to: { type: "string", description: "Recipient email address" },
-      subject: { type: "string", description: "Email subject line" },
-      body: { type: "string", description: "Email body content" },
-    },
-  }),
-  handler: async (input: { to: string; subject: string; body: string }) => { /* ... */ },
-  validateInput: async (input) => {
-    if (!input.to) {
-      return { result: false, attributes: { error: "Missing 'to' field" } };
-    }
-    return { result: true, attributes: {} };
-  },
-});
-
-const validation = await executors.validateFunctionInput(
-  "sendEmail",
-  JSON.stringify({ subject: "Hi" })
-);
-// validation: { result: false, attributes: { error: "Missing 'to' field" } }
-```
 
 ---
 
@@ -2873,81 +3059,26 @@ console.log(vector);
 
 ---
 
-
-# Cohere Embeddings (via AWS Bedrock)
-
-When using Cohere embeddings, llm-exe will make POST requests to the AWS Bedrock endpoint for your configured region. Both Cohere Embed v3 and Embed v4 are supported through a single provider key — pick the variant via the `model` option.
-
-## Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `model` | `string` | — | The Bedrock model ID (e.g., `cohere.embed-english-v3`, `cohere.embed-multilingual-v3`, `cohere.embed-v4:0`) |
-| `inputType` | `"search_document" \| "search_query" \| "classification" \| "clustering"` | `"search_document"` | How Cohere should prepare the embedding. Use `search_document` for the corpus you index and `search_query` for queries you embed at search time |
-| `truncate` | `"NONE" \| "START" \| "END" \| "LEFT" \| "RIGHT"` | — | How over-length inputs are handled. `START`/`END` for v3, `LEFT`/`RIGHT` for v4. `NONE` returns an error if the input is too long |
-| `dimensions` | `number` | — | Output vector size. For Embed v4: `256`, `512`, `1024`, or `1536` (maps to Cohere's `output_dimension`). For Embed v3: the model has a fixed 1024-dim output — passing `1024` is accepted as a no-op, any other value throws immediately so you don't silently get a different dimension than you asked for |
-| `awsRegion` | `string` | `AWS_REGION` env var | The AWS region for the Bedrock endpoint (required) |
-| `awsSecretKey` | `string` | — | AWS secret key (if not using default credentials) |
-| `awsAccessKey` | `string` | — | AWS access key (if not using default credentials) |
-
-## Basic Usage
-
-```ts
-import { createEmbedding } from "llm-exe";
-
-const embeddings = createEmbedding("amazon:cohere.embedding.v1", {
-  model: "cohere.embed-multilingual-v3",
-  awsRegion: "us-west-2",
-});
-
-const embedding = await embeddings.call("The string of text you would like as vector");
-const vector = embedding.getEmbedding();
-```
-
-## Batching
-
-Cohere accepts up to 96 texts per call. Pass an array to embed them in a single request:
-
-```ts
-const embedding = await embeddings.call([
-  "RAG system design patterns",
-  "Actuarial loss triangles and reserving primer",
-]);
-
-const first = embedding.getEmbedding(0);
-const second = embedding.getEmbedding(1);
-```
-
-## Search vs Indexing
-
-For retrieval (RAG) workflows, embed your corpus with `inputType: "search_document"` and your queries with `inputType: "search_query"`. Cohere prepends different special tokens for each case, which improves retrieval quality.
-
-## Embed v4 Output Dimensions
-
-Cohere Embed v4 supports variable output dimensions via `dimensions` (`256`, `512`, `1024`, or `1536`). Smaller vectors trade off some retrieval quality for cheaper storage and faster nearest-neighbor lookups.
-
-```ts
-const embeddings = createEmbedding("amazon:cohere.embedding.v1", {
-  model: "cohere.embed-v4:0",
-  dimensions: 512,
-});
-```
-
-## Notes
-
-- Cohere on Bedrock does not return token usage, so `getResult().usage.input_tokens` will be `0`.
-- Cohere models on Bedrock are served from AWS Marketplace. The first invocation in your account must come from a user with `aws-marketplace:Subscribe` permissions, after which all users in the account can invoke the model.
-- llm-exe is text-only; image inputs to Cohere Embed v3/v4 are not supported.
-
----
-
 ## Callable Executor Wrapper
 
 When building LLM agents that need to call tools or functions, `createCallableExecutor` wraps your executors (or plain functions) into a standardized interface. Use `useExecutors` to group them into a collection you can query and invoke by name.
 
 ### Creating a callable executor
 
-Use `createCallableExecutor` to wrap a handler function or an existing executor:
+Use `createCallableExecutor` to wrap a handler function or an existing executor.
+
+**Config properties:**
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `name` | `string` | Yes | Unique name used to look up and invoke the function |
+| `description` | `string` | Yes | Description of what the function does (shown to the LLM) |
+| `input` | `string` | Yes | JSON-stringified schema describing the expected input shape |
+| `handler` | `function \| BaseExecutor` | No | The function to execute, or an existing executor instance |
+| `parameters` | `Record<string, any>` | No | Additional static parameters passed alongside the input |
+| `attributes` | `Record<string, any>` | No | Metadata attributes returned with the result |
+| `visibilityHandler` | `function` | No | Controls whether this function is visible in a given context |
+| `validateInput` | `function` | No | Validates input before execution |
 
 ```ts
 import { createCallableExecutor, createLlmExecutor, useLlm, createChatPrompt, createParser } from "llm-exe";
@@ -3025,8 +3156,13 @@ const allFunctions = executors.getFunctions();
 const adminCallable = createCallableExecutor({
   name: "deleteUser",
   description: "Delete a user account",
-  input: "...",
-  handler: async (input) => { /* ... */ },
+  input: JSON.stringify({
+    type: "object",
+    properties: {
+      userId: { type: "string", description: "The ID of the user to delete" },
+    },
+  }),
+  handler: async (input: { userId: string }) => { /* ... */ },
   visibilityHandler: (input, context, attributes) => {
     return attributes?.role === "admin";
   },
@@ -3042,8 +3178,15 @@ const visible = executors.getVisibleFunctions(input, { role: "admin" });
 const callable = createCallableExecutor({
   name: "sendEmail",
   description: "Send an email",
-  input: "...",
-  handler: async (input) => { /* ... */ },
+  input: JSON.stringify({
+    type: "object",
+    properties: {
+      to: { type: "string", description: "Recipient email address" },
+      subject: { type: "string", description: "Email subject line" },
+      body: { type: "string", description: "Email body content" },
+    },
+  }),
+  handler: async (input: { to: string; subject: string; body: string }) => { /* ... */ },
   validateInput: async (input) => {
     if (!input.to) {
       return { result: false, attributes: { error: "Missing 'to' field" } };
@@ -3057,6 +3200,28 @@ const validation = await executors.validateFunctionInput(
   JSON.stringify({ subject: "Hi" })
 );
 // validation: { result: false, attributes: { error: "Missing 'to' field" } }
+```
+
+### Callable Errors
+
+Callable executor failures use structured `LlmExeError` codes:
+
+| Code | Meaning |
+| --- | --- |
+| `callable.invalid_handler` | The callable was created without a valid function or executor handler |
+| `callable.handler_not_found` | `useExecutors` could not find a callable with the requested name |
+| `callable.validation_failed` | Callable input validation failed |
+
+Use `isLlmExeError` to check callable failure codes.
+
+```ts
+try {
+  await executors.callFunction("sendEmail", input);
+} catch (error) {
+  if (isLlmExeError(error, "callable.handler_not_found")) {
+    // Ask the model to choose one of the available functions.
+  }
+}
 ```
 
 ### Using with an LLM agent loop
@@ -3079,6 +3244,7 @@ const functionWithCallableExecutors = async (input: {
   return executors.callFunction(input.action, input.input);
 };
 ```
+
 ---
 
 # LLM Executor Function Syntax

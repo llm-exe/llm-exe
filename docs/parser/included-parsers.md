@@ -27,12 +27,17 @@ This is an example input message.
 ## Number Parser
 
 `number`
-Extracts a number from the LLM response.
+Extracts exactly one number from the LLM response.
 Returns: number
 
 ```ts
 const parser = createParser("number");
 ```
+
+Options:
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `match` | `"extract" \| "exact"` | `"extract"` | `"extract"` finds one numeric token in the response. `"exact"` requires the entire trimmed response to be one numeric token. |
 
 ::: code-group
 
@@ -56,6 +61,11 @@ Returns: boolean
 const parser = createParser("boolean");
 ```
 
+Options:
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `match` | `"exact" \| "extract"` | `"exact"` | `"exact"` requires the entire trimmed response to be one boolean literal. `"extract"` finds one boolean literal in surrounding text. |
+
 ::: code-group
 
 ```[Output]
@@ -63,7 +73,7 @@ true
 ```
 
 ```[Response]
-Yes, that is correct.
+yes
 ```
 
 :::
@@ -87,7 +97,8 @@ Options:
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enum` | `string[]` | `[]` | The list of allowed values to match against. |
-| `ignoreCase` | `boolean` | `false` | When `true`, matching is case-insensitive. |
+| `ignoreCase` | `boolean` | `true` | When `true`, matching is case-insensitive. |
+| `match` | `"word" \| "substring" \| "exact"` | `"word"` | `"word"` matches enum values on word boundaries. `"substring"` uses contains matching. `"exact"` requires the entire trimmed response to equal one enum value. |
 
 ::: code-group
 
@@ -316,7 +327,7 @@ Type: Fruit
 ## JSON
 
 `json`
-Parse an expected stringified json object or array into a valid object. Schema can be passed in to enforce schema and provide default values.
+Parse an expected stringified JSON object or array into a valid object. Schema can be passed in to enforce schema and provide default values.
 Returns: object | array
 
 ```ts
@@ -327,6 +338,7 @@ Options:
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `schema` | `JSONSchema` | `undefined` | Optional JSON Schema to validate and enforce types on the output. Use with [`defineSchema`](/parser/index.html#defineschema) for full type inference. |
+| `match` | `"exact" \| "extract"` | `"exact"` | `"exact"` parses the entire response as JSON. `"extract"` finds one JSON object or array in surrounding text. |
 
 ::: code-group
 

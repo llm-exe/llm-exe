@@ -3,6 +3,7 @@ import { AmazonTitanEmbedding } from "@/embedding/output/AmazonTitan";
 import { CohereBedrockEmbedding } from "@/embedding/output/CohereBedrockEmbedding";
 import { OpenAiEmbedding } from "@/embedding/output/OpenAiEmbedding";
 import { EmbeddingProviderKey } from "@/types";
+import { LlmExeError } from "@/errors";
 
 jest.mock("@/embedding/output/AmazonTitan", () => ({
   AmazonTitanEmbedding: jest.fn(),
@@ -86,5 +87,25 @@ describe("getEmbeddingOutputParser", () => {
     expect(OpenAiEmbeddingMock).not.toHaveBeenCalled();
     expect(AmazonTitanEmbeddingMock).not.toHaveBeenCalled();
     expect(CohereBedrockEmbeddingMock).not.toHaveBeenCalled();
+  });
+
+  it("throws LlmExeError with embedding.invalid_response_shape for unsupported keys", () => {
+    const config = {
+      model: "invalid-model",
+      key: "unsupported.key" as EmbeddingProviderKey,
+    };
+    try {
+      getEmbeddingOutputParser(config, { some: "response" });
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("embedding.invalid_response_shape");
+      expect((e as LlmExeError).category).toBe("embedding");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("getEmbeddingOutputParser");
+      expect(ctx.provider).toBe("unsupported.key");
+      expect(ctx.model).toBe("invalid-model");
+      expect(Array.isArray(ctx.availableProviders)).toBe(true);
+    }
   });
 });

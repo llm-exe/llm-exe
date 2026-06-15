@@ -1,25 +1,42 @@
 import { CombinedJsonLResult, OutputResultContent } from "@/interfaces";
+import { LlmExeError } from "@/errors";
 
 export function combineJsonl<T extends Record<string, any> = any>(
   jsonl: string
 ): CombinedJsonLResult<T> {
   // Split lines and parse to objects
-  const lines: T[] = jsonl
+  const rawLines = jsonl
     .trim()
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .map((line) => {
-      try {
-        return JSON.parse(line);
-      } catch (e) {
-        throw new Error(`Invalid JSON: ${line}`);
-      }
-    });
+    .filter((line) => line.length > 0);
+
+  const lines: T[] = rawLines.map((line, idx) => {
+    try {
+      return JSON.parse(line);
+    } catch (e) {
+      throw new LlmExeError(`Invalid JSON: ${line}`, {
+        code: "llm.invalid_jsonl_response",
+        context: {
+          operation: "combineJsonl",
+          lineNumber: idx + 1,
+          lineExcerpt: line,
+        },
+        cause: e,
+      });
+    }
+  });
 
   // Check if we have any lines at all
   if (lines.length === 0) {
-    throw new Error("No JSON lines provided.");
+    throw new LlmExeError("No JSON lines provided.", {
+      code: "llm.invalid_jsonl_response",
+      context: {
+        operation: "combineJsonl",
+        received: 0,
+        expected: "at least one JSONL line",
+      },
+    });
   }
 
   // Sort lines ascending by created_at
@@ -41,7 +58,14 @@ export function combineJsonl<T extends Record<string, any> = any>(
   // Identify the final line (with done=true). We'll assume exactly one final line.
   const finalLine = lines.find((line) => line.done === true);
   if (!finalLine) {
-    throw new Error("No line found where done = true.");
+    throw new LlmExeError("No line found where done = true.", {
+      code: "llm.invalid_jsonl_response",
+      context: {
+        operation: "combineJsonl",
+        lineCount: lines.length,
+        expected: "a final line with done = true",
+      },
+    });
   }
 
   const result = {

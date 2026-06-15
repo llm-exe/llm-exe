@@ -8,7 +8,7 @@ import {
 } from "@/types";
 import { BaseStateItem } from "./item";
 import { maybeStringifyJSON } from "@/utils";
-import { LlmExeError } from "@/utils/modules/errors";
+import { LlmExeError } from "@/errors";
 import { isOutputResultContentText } from "@/utils/guards";
 
 export class Dialogue extends BaseStateItem<IChatMessages> {
@@ -94,18 +94,28 @@ export class Dialogue extends BaseStateItem<IChatMessages> {
         }
   ) {
     if (!input || typeof input !== "object") {
-      throw new LlmExeError(`Invalid arguments`, "state", {
-        error: `Invalid arguments: input must be an object`,
-        module: "dialogue",
+      throw new LlmExeError(`Invalid arguments`, {
+        code: "state.invalid_arguments",
+        context: {
+          operation: "Dialogue.setFunctionCallMessage",
+          module: "dialogue",
+          expected: "object",
+          received: typeof input,
+        },
       });
     }
 
     // This is for backwards compatibility
     if ("function_call" in input) {
       if (!input.function_call || typeof input.function_call !== "object") {
-        throw new LlmExeError(`Invalid arguments`, "state", {
-          error: `Invalid arguments: input must be an object`,
-          module: "dialogue",
+        throw new LlmExeError(`Invalid arguments`, {
+          code: "state.invalid_arguments",
+          context: {
+            operation: "Dialogue.setFunctionCallMessage",
+            module: "dialogue",
+            expected: "object",
+            received: typeof input.function_call,
+          },
         });
       }
       this.value.push({

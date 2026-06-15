@@ -3,6 +3,11 @@ import { replaceTemplateStringSimple } from "@/utils/modules/replaceTemplateStri
 import { getLlmConfig } from "@/llm/config";
 import { mapBody } from "@/llm/_utils.mapBody";
 import { parseHeaders } from "@/llm/_utils.parseHeaders";
+import {
+  LlmExeError,
+  isLlmExeError,
+  statusToLlmProviderCode,
+} from "@/errors";
 
 import {
   GenericFunctionCall,
@@ -43,34 +48,54 @@ export async function useLlm_call(
     body: body,
   });
 
-  const response =
-    config.provider === "openai.chat-mock"
-      ? {
-          data: {
-            id: "0123-45-6789",
-            model: "model",
-            created: new Date().getTime(),
-            usage: { completion_tokens: 0, prompt_tokens: 0, total_tokens: 0 },
-            choices: [
-              {
-                message: {
-                  role: "assistant",
-                  content: `Hello world from LLM! The input was ${JSON.stringify(
-                    messages
-                  )}`,
-                },
-              },
-            ],
-          },
-          headers: {} as Record<string, string>,
-        }
-      : await apiRequest(url, {
-          method: config.method,
-          body: body,
-          headers: headers,
-        });
-
   const { transformResponse = OutputDefault } = config;
-  const normalized = transformResponse(response.data, config, response.headers);
-  return BaseLlmOutput(normalized);
+
+  if (config.provider === "openai.chat-mock") {
+    const mockResponse = {
+      id: "0123-45-6789",
+      model: "model",
+      created: new Date().getTime(),
+      usage: { completion_tokens: 0, prompt_tokens: 0, total_tokens: 0 },
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content: `Hello world from LLM! The input was ${JSON.stringify(messages)}`,
+          },
+        },
+      ],
+    };
+    return BaseLlmOutput(transformResponse(mockResponse, config, {}));
+  }
+
+  try {
+    const response = await apiRequest(url, {
+      method: config.method,
+      body: body,
+      headers: headers,
+    });
+    return BaseLlmOutput(
+      transformResponse(response.data, config, response.headers)
+    );
+  } catch (e) {
+    // apiRequest stays generic and throws request.http_error. Re-throw as the
+    // matching llm.provider_* code so consumers can branch on err.code.
+    // Anything else (including transformResponse errors) passes through.
+    if (!isLlmExeError(e, "request.http_error")) throw e;
+    const ctx = (e.context ?? {}) as Record<string, unknown>;
+    const status = typeof ctx.status === "number" ? ctx.status : undefined;
+    const code = status
+      ? statusToLlmProviderCode(status)
+      : "llm.provider_http_error";
+    throw new LlmExeError(e.message, {
+      code,
+      context: {
+        ...ctx,
+        operation: "useLlm_call",
+        provider: state.provider,
+        model: state.model,
+      },
+      cause: e,
+    });
+  }
 }

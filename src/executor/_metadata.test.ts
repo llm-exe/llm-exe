@@ -60,7 +60,9 @@ describe("llm-exe:executor/ExecutorExecutionMetadataState", () => {
     const result = metadata.asPlainObject();
     const expectedKeys = [
       "start", "end", "input", "handlerInput",
-      "handlerOutput", "output", "errorMessage", "error", "metadata",
+      "handlerOutput", "output", "errorMessage", "error",
+      "errorCategory", "errorCode", "errorContext", "errorCause",
+      "hookErrors", "metadata",
     ];
     expect(Object.keys(result).sort()).toEqual(expectedKeys.sort());
   });

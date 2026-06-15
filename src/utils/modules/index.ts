@@ -1,5 +1,7 @@
 export { assert } from "./assert";
 export { defineSchema } from "./defineSchema";
+export { LlmExeError, LLM_EXE_ERROR_SYMBOL } from "@/errors/LlmExeError";
+export { isLlmExeError } from "@/errors/isLlmExeError";
 export { importPartials } from "./handlebars/utils/importPartials";
 export { importHelpers } from "./handlebars/utils/importHelpers";
 export { filterObjectOnSchema } from "./filterObjectOnSchema";

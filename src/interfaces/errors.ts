@@ -1,9 +1,6 @@
-export type ErrorContextMap = {
-  unknown: unknown;
-  llm: { provider: string; model: string; error: string };
-  prompt: { prompt: any; provider?: string; model?: string; error: string };
-  parser: { parser: string; output: any; error: string };
-  state: { module: string; error: string };
-};
-
-export type ErrorCodes = keyof ErrorContextMap;
+export type {
+  ErrorCategory,
+  ErrorCodes,
+  ErrorContextByCode,
+  BaseErrorContext,
+} from "@/errors/types";

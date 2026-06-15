@@ -1,10 +1,11 @@
 import {
   BaseParser,
   LlmNativeFunctionParser,
+  OpenAiFunctionParser,
   StringParser,
   JsonParser,
 } from "@/parser";
-import { LlmFunctionParser, OpenAiFunctionParser } from "./LlmNativeFunctionParser";
+import { LlmFunctionParser } from "./LlmNativeFunctionParser";
 import { OutputResult } from "@/interfaces";
 import { mockOutputResultObject } from "../../../utils/mock.helpers";
 
@@ -165,7 +166,7 @@ describe("llm-exe:parser/LlmNativeFunctionParser", () => {
       };
       expect(() => {
         parser.parse(mockResult as any);
-      }).toThrow("Invalid input. Expected string. Received object.");
+      }).toThrow("Invalid input. Expected string. Received undefined.");
     });
     it("returns function call object when function_use is present", () => {
       const parser = new LlmNativeFunctionParser({
@@ -309,10 +310,8 @@ describe("llm-exe:parser/LlmNativeFunctionParser", () => {
         } as any,
         { type: "text", text: "fallback" },
       ]);
-      // The parser looks for (text as any)?.text ?? text
-      // Since mockResult doesn't have a text property, it passes the whole object
       const result = parser.parse(mockResult);
-      expect(result).toEqual("");
+      expect(result).toEqual("fallback");
     });
 
     it("works with JSON parser", () => {
@@ -320,10 +319,8 @@ describe("llm-exe:parser/LlmNativeFunctionParser", () => {
       const mockResult = mockOutputResultObject([
         { text: '{"result": "success"}', type: "text" },
       ]);
-      // The parser passes the whole object to JsonParser since mockResult doesn't have a text property
       const result = parser.parse(mockResult);
-      // JsonParser will stringify and parse the whole object
-      expect(result).toEqual(mockResult);
+      expect(result).toEqual({ result: "success" });
     });
 
     it("handles OutputResult with no content property", () => {
@@ -342,10 +339,6 @@ describe("llm-exe:parser/LlmNativeFunctionParser", () => {
         // content property is missing/undefined
       } as OutputResult;
 
-      // When content is undefined, content?.find returns undefined,
-      // and the parser falls back to parsing the object itself
-      // Since the object has no text property, it passes the whole object to StringParser
-      // which will throw an error trying to parse a non-string object
       expect(() => {
         parser.parse(resultWithoutContent);
       }).toThrow();

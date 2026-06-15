@@ -138,13 +138,13 @@ describe("llm-exe:prompt/TextPrompt", () => {
     expect(textPrompt.helpers[0]).toEqual(helper);
   });
 
-  test("validate returns true when prompt has messages", () => {
-    const textPrompt = new TextPrompt("Hello");
-    expect(textPrompt.validate()).toBe(true);
-  });
-  test("validate returns false when prompt has no messages", () => {
-    const textPrompt = new TextPrompt();
-    expect(textPrompt.validate()).toBe(false);
+  // v3: validate() now takes input and asserts template variables are present.
+  // Old shape-check semantics are equivalent to `prompt.messages.length > 0`.
+  test("messages.length > 0 reports whether prompt has content (replaces v2 validate())", () => {
+    const withContent = new TextPrompt("Hello");
+    expect(withContent.messages.length > 0).toBe(true);
+    const empty = new TextPrompt();
+    expect(empty.messages.length > 0).toBe(false);
   });
 
   it("can add pre filters that run _before_ replacements", () => {
@@ -211,5 +211,22 @@ describe("llm-exe:prompt/TextPrompt", () => {
     expect(() => (prompt as any).format()).toThrow(
       "format() requires an input object"
     );
+  });
+
+  it("throws LlmExeError with prompt.missing_input when format() is called without arguments", () => {
+    const { LlmExeError } = require("@/errors");
+    const prompt = new TextPrompt<{ name: string }>("Hello {{name}}");
+    try {
+      (prompt as any).format();
+      fail("Expected an error to be thrown");
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect(e.code).toBe("prompt.missing_input");
+      expect(e.category).toBe("prompt");
+      expect(e.context.operation).toBe("BasePrompt.getReplacements");
+      expect(e.context.promptType).toBe("text");
+      expect(e.context.expected).toBe("object");
+      expect(e.context.received).toBe("undefined");
+    }
   });
 });

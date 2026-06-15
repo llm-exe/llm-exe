@@ -55,6 +55,19 @@ describe("llm-exe:parser/CustomParser", () => {
     });
     expect(parser.parse("one two three", {} as any)).toEqual(["one", "two", "three"]);
   });
+  it("returns falsy values exactly", () => {
+    const zeroParser = createCustomParser("zero-parser", () => 0);
+    const falseParser = createCustomParser("false-parser", () => false);
+    expect(zeroParser.parse("ignored", {} as any)).toEqual(0);
+    expect(falseParser.parse("ignored", {} as any)).toEqual(false);
+  });
+  it("lets parser function errors propagate", () => {
+    const error = new Error("custom failure");
+    const parser = createCustomParser("throwing-parser", () => {
+      throw error;
+    });
+    expect(() => parser.parse("ignored", {} as any)).toThrow(error);
+  });
   it("parser function receives this context bound to parser", () => {
     const parser = new CustomParser("self-ref", function (this: any, text) {
       return { text, parserName: this.name };

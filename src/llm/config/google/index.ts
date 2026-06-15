@@ -1,4 +1,5 @@
 import { withDefaultModel } from "@/llm/_utils.withDefaultModel";
+import { deprecateShorthand } from "@/llm/_utils.deprecationWarning";
 import { Config } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { googleGeminiPromptSanitize } from "./promptSanitize";
@@ -88,18 +89,7 @@ const googleGeminiChatV1: Config = {
 
 export const google = {
   "google.chat.v1": googleGeminiChatV1,
-  "google.gemini-2.5-flash": withDefaultModel(
-    googleGeminiChatV1,
-    "gemini-2.5-flash"
-  ),
-  "google.gemini-2.5-flash-lite": withDefaultModel(
-    googleGeminiChatV1,
-    "gemini-2.5-flash-lite"
-  ),
-  "google.gemini-2.5-pro": withDefaultModel(
-    googleGeminiChatV1,
-    "gemini-2.5-pro"
-  ),
+
   "google.gemini-3.1-flash-lite": withDefaultModel(
     googleGeminiChatV1,
     "gemini-3.1-flash-lite"
@@ -110,6 +100,21 @@ export const google = {
   ),
 
   // Deprecated
+  ...deprecateShorthand("google.gemini-2.5-flash", {
+    config: withDefaultModel(googleGeminiChatV1, "gemini-2.5-flash"),
+    message:
+      'Model "google.gemini-2.5-flash" is deprecated and will shut down on 2026-06-17.',
+  }),
+  ...deprecateShorthand("google.gemini-2.5-flash-lite", {
+    config: withDefaultModel(googleGeminiChatV1, "gemini-2.5-flash-lite"),
+    message:
+      'Model "google.gemini-2.5-flash-lite" is deprecated and will shut down on 2026-07-22.',
+  }),
+  ...deprecateShorthand("google.gemini-2.5-pro", {
+    config: withDefaultModel(googleGeminiChatV1, "gemini-2.5-pro"),
+    message:
+      'Model "google.gemini-2.5-pro" is deprecated and will shut down on 2026-06-17.',
+  }),
   "google.gemini-2.0-flash": withDefaultModel(
     googleGeminiChatV1,
     "gemini-2.0-flash"

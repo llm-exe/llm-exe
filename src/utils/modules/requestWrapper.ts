@@ -1,8 +1,13 @@
 import { stateFromOptions } from "@/llm/_utils.stateFromOptions";
-import { LlmExecutorWithFunctionsOptions, Config } from "@/types";
+import {
+  LlmExecutorWithFunctionsOptions,
+  Config,
+  ExecutionContext,
+} from "@/types";
 import { deepFreeze } from "@/utils/modules/deepFreeze";
 import { backOff } from "exponential-backoff";
 import { asyncCallWithTimeout } from "@/utils/modules/asyncCallWithTimeout";
+import { emitDeprecationWarning } from "@/llm/_utils.deprecationWarning";
 
 // const doNotRetryErrorMessages: string[] = [];
 
@@ -44,8 +49,16 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
 
   let traceId: null | string = options?.traceId || null;
 
-  async function call(messages: I, options?: LlmExecutorWithFunctionsOptions) {
+  async function call(
+    messages: I,
+    options?: LlmExecutorWithFunctionsOptions,
+    context?: ExecutionContext
+  ) {
     try {
+      emitDeprecationWarning(config, {
+        executorName: context?.executor?.name,
+        traceId: context?.traceId ?? getTraceId() ?? undefined,
+      });
       metrics.total_calls++;
       const result = await backOff<T>(
         () =>

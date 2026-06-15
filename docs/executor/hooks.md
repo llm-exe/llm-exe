@@ -29,6 +29,10 @@ type Hook = (
 | `executionMetadata.handlerOutput`  | `onSuccess`, `onComplete` | The raw handler output before parsing            |
 | `executionMetadata.error`          | `onError`, `onComplete`   | The thrown `Error` instance                      |
 | `executionMetadata.errorMessage`   | `onError`, `onComplete`   | Shortcut for `error.message`                     |
+| `executionMetadata.errorCategory`  | `onError`, `onComplete`   | Structured category for `LlmExeError` failures  |
+| `executionMetadata.errorCode`      | `onError`, `onComplete`   | Structured code for `LlmExeError` failures      |
+| `executionMetadata.errorContext`   | `onError`, `onComplete`   | Structured context for `LlmExeError` failures   |
+| `executionMetadata.hookErrors`     | later hooks               | Failures captured from earlier hook callbacks   |
 | `executionMetadata.start`          | all hooks                 | Execution start time (ms since epoch)            |
 | `executionMetadata.end`            | `onComplete`              | Execution end time (ms since epoch)              |
 | `executorMetadata.id`              | all hooks                 | Stable id of the executor                        |
@@ -37,7 +41,25 @@ type Hook = (
 | `executorMetadata.created`         | all hooks                 | Timestamp when the executor was created (ms since epoch) |
 | `executorMetadata.executions`      | all hooks                 | Number of times this executor has run            |
 
-Hooks should be synchronous and lightweight. Errors thrown inside a hook are caught and logged by llm-exe; they will not affect the executor's result.
+Hooks should be synchronous and lightweight. Errors thrown inside a hook are caught and collected by llm-exe. They do not affect the executor result.
+
+### Hook Errors
+
+If an `onSuccess` or `onError` hook throws, the failure is captured in `executionMetadata.hookErrors` for later hooks such as `onComplete`.
+
+```typescript:no-line-numbers
+executor.on("onSuccess", () => {
+  throw new Error("logging failed");
+});
+
+executor.on("onComplete", (exec) => {
+  console.log(exec.hookErrors?.[0]?.errorMessage);
+});
+```
+
+Each hook error record includes the raw thrown value and `errorMessage`. If the thrown value is an `LlmExeError`, `errorCategory`, `errorCode`, `errorContext`, and `errorCause` are included.
+
+`onComplete` runs last. If an `onComplete` hook throws, there is no later hook where that failure can be surfaced in execution metadata.
 
 You can attach hooks:
 

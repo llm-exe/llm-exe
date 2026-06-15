@@ -13,6 +13,11 @@ export class ExecutorExecutionMetadataState<I, O> {
     output: undefined,
     errorMessage: undefined,
     error: undefined,
+    errorCategory: undefined,
+    errorCode: undefined,
+    errorContext: undefined,
+    errorCause: undefined,
+    hookErrors: undefined,
     metadata: null,
   };
 
@@ -48,6 +53,11 @@ export class ExecutorExecutionMetadataState<I, O> {
       output: this.#state.output,
       errorMessage: this.#state.errorMessage,
       error: this.#state.error,
+      errorCategory: this.#state.errorCategory,
+      errorCode: this.#state.errorCode,
+      errorContext: this.#state.errorContext,
+      errorCause: this.#state.errorCause,
+      hookErrors: this.#state.hookErrors,
       metadata: this.#state.metadata,
     });
   }

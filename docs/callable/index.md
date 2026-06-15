@@ -141,6 +141,28 @@ const validation = await executors.validateFunctionInput(
 // validation: { result: false, attributes: { error: "Missing 'to' field" } }
 ```
 
+### Callable Errors
+
+Callable executor failures use structured `LlmExeError` codes:
+
+| Code | Meaning |
+| --- | --- |
+| `callable.invalid_handler` | The callable was created without a valid function or executor handler |
+| `callable.handler_not_found` | `useExecutors` could not find a callable with the requested name |
+| `callable.validation_failed` | Callable input validation failed |
+
+Use `isLlmExeError` to check callable failure codes.
+
+```ts
+try {
+  await executors.callFunction("sendEmail", input);
+} catch (error) {
+  if (isLlmExeError(error, "callable.handler_not_found")) {
+    // Ask the model to choose one of the available functions.
+  }
+}
+```
+
 ### Using with an LLM agent loop
 
 A typical agent pattern: the LLM decides which function to call, and you execute it:

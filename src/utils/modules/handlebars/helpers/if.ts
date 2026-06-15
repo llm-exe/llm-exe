@@ -1,4 +1,5 @@
 import { isEmpty } from "@/utils/modules/isEmpty";
+import { LlmExeError } from "@/errors";
 
 interface HandlebarsOptions {
   fn: (context: any) => string;
@@ -12,7 +13,15 @@ export function ifFn (
   options: HandlebarsOptions
 ) {
   if (arguments.length !== 2) {
-    throw new Error("#if requires exactly one argument");
+    throw new LlmExeError("#if requires exactly one argument", {
+      code: "template.invalid_helper_arguments",
+      context: {
+        operation: "handlebars.helper.if",
+        helper: "if",
+        expected: 1,
+        received: arguments.length,
+      },
+    });
   }
 
   else if (typeof conditional === "function") {

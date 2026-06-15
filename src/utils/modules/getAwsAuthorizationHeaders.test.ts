@@ -4,6 +4,7 @@ import { SignatureV4 } from "@smithy/signature-v4";
 import { Sha256 } from "@aws-crypto/sha256-js";
 import { runWithTemporaryEnv } from "@/utils/modules/runWithTemporaryEnv";
 import { getAwsAuthorizationHeaders } from "@/utils/modules/getAwsAuthorizationHeaders";
+import { LlmExeError } from "@/errors";
 
 jest.mock("@aws-sdk/credential-providers", () => ({
   fromNodeProviderChain: jest.fn(),
@@ -215,6 +216,30 @@ describe("getAwsAuthorizationHeaders", () => {
     await expect(getAwsAuthorizationHeaders(req, props)).rejects.toThrow(
       "URL and region name are required for AWS authorization"
     );
+  });
+
+  it("throws LlmExeError with auth.aws_signing_input_missing when url or region missing", async () => {
+    try {
+      await getAwsAuthorizationHeaders(
+        { method: "GET" },
+        {
+          url: "",
+          regionName: "us-east-1",
+          awsAccessKey: "x",
+          awsSecretKey: "y",
+          awsSessionToken: undefined,
+        }
+      );
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("auth.aws_signing_input_missing");
+      expect((e as LlmExeError).category).toBe("auth");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("getAwsAuthorizationHeaders");
+      expect(ctx.url).toBe("");
+      expect(ctx.regionName).toBe("us-east-1");
+    }
   });
 
   it("should not set environment variables for null or undefined values", async () => {

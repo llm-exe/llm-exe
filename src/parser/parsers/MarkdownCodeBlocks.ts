@@ -1,24 +1,54 @@
-import { BaseParserOptions } from "@/types";
 import { BaseParser } from "../_base";
-import { isObjectStringified } from "@/utils";
-import { singleKeyObjectToString } from "../singleKeyObjectToString";
+import { LlmExeError } from "@/errors";
 
-export interface MarkdownCodeBlocksParserOptions extends BaseParserOptions {}
-
+/**
+ * v3 parser contract:
+ * Category: collector
+ * Mode: markdown fenced block collection
+ *
+ * Accepts text containing zero or more complete fenced code blocks.
+ * Returns all complete blocks in source order.
+ * Returns [] when no complete block exists.
+ * Throws LlmExeError(parser.parse_failed) for invalid input type or malformed
+ * fence structure. Does not unwrap stringified JSON.
+ *
+ */
 export class MarkdownCodeBlocksParser extends BaseParser<
   { language: string; code: string }[]
 > {
-  constructor(options?: MarkdownCodeBlocksParserOptions) {
-    super("markdownCodeBlocks", options);
+  constructor() {
+    super("markdownCodeBlocks");
   }
-  parse(input: string) {
+  parse(input: string, _attributes?: Record<string, any>) {
+    if (typeof input !== "string") {
+      throw new LlmExeError(
+        `Invalid input. Expected string. Received ${input === null ? "null" : Array.isArray(input) ? "array" : typeof input}.`,
+        {
+          code: "parser.invalid_input",
+          context: {
+            operation: "MarkdownCodeBlocksParser.parse",
+            parser: "markdownCodeBlocks",
+            reason: "invalid_input_type",
+            expected: "string",
+            received: input === null ? "null" : Array.isArray(input) ? "array" : typeof input,
+          },
+        }
+      );
+    }
+
     const out: { code: string; language: string }[] = [];
 
-    // If input is JSON, decode it first
-    // grok seems to want to return JSON code blocks
-    // if others do, this can't hurt
-    if (isObjectStringified(input)) {
-      input = singleKeyObjectToString(input);
+    const fenceCount = input.match(/```/g)?.length ?? 0;
+    if (fenceCount % 2 !== 0) {
+      throw new LlmExeError(`Malformed markdown code block.`, {
+        code: "parser.parse_failed",
+        context: {
+          operation: "MarkdownCodeBlocksParser.parse",
+          parser: "markdownCodeBlocks",
+          reason: "malformed_code_block",
+          inputLength: input.length,
+        },
+      });
     }
 
     const regex = input.matchAll(new RegExp(/```(\w*)\n([\s\S]*?)```/, "g"));

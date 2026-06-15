@@ -1,5 +1,6 @@
 import { isEmpty } from "@/utils/modules/isEmpty";
 import { isPromise } from "@/utils/modules/isPromise";
+import { LlmExeError } from "@/errors";
 
 interface HandlebarsOptions {
   fn: (context: any) => string;
@@ -13,7 +14,15 @@ export async function ifFnAsync (
   options: HandlebarsOptions
 ) {
   if (arguments.length !== 2) {
-    throw new Error("#if requires exactly one argument");
+    throw new LlmExeError("#if requires exactly one argument", {
+      code: "template.invalid_helper_arguments",
+      context: {
+        operation: "handlebars.asyncHelper.if",
+        helper: "if",
+        expected: 1,
+        received: arguments.length,
+      },
+    });
   }
 
   if (isPromise(conditional)) {

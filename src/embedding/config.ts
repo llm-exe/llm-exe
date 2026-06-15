@@ -1,5 +1,6 @@
 import { Config, EmbeddingProviderKey } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
+import { LlmExeError } from "@/errors";
 
 export const embeddingConfigs: {
   [key in EmbeddingProviderKey]: Config<EmbeddingProviderKey>;
@@ -113,8 +114,20 @@ export const embeddingConfigs: {
           const isV3 = /embed-(english|multilingual)-v3/.test(model);
           if (isV3) {
             if (value === 1024) return undefined;
-            throw new Error(
-              `Cohere Embed v3 only supports 1024-dimensional output (model: "${model}", requested: ${value}). Use cohere.embed-v4:0 for configurable dimensions.`
+            throw new LlmExeError(
+              `Cohere Embed v3 only supports 1024-dimensional output (model: "${model}", requested: ${value}). Use cohere.embed-v4:0 for configurable dimensions.`,
+              {
+                code: "embedding.unsupported_dimensions",
+                context: {
+                  operation: "embedding.dimensionTransform",
+                  provider: "amazon:cohere.embedding",
+                  model,
+                  dimensions: value,
+                  expected: 1024,
+                  resolution:
+                    "Use cohere.embed-v4:0 for configurable dimensions.",
+                },
+              }
             );
           }
           return value;
@@ -126,11 +139,26 @@ export const embeddingConfigs: {
 
 export function getEmbeddingConfig(provider: EmbeddingProviderKey) {
   if (!provider) {
-    throw new Error(`Missing provider`);
+    throw new LlmExeError(`Missing provider`, {
+      code: "embedding.missing_provider",
+      context: {
+        operation: "getEmbeddingConfig",
+        availableProviders: Object.keys(embeddingConfigs),
+        resolution: "Provide a valid embedding provider key.",
+      },
+    });
   }
   const pick = embeddingConfigs[provider];
   if (pick) {
     return pick;
   }
-  throw new Error(`Invalid provider: ${provider}`);
+  throw new LlmExeError(`Invalid provider: ${provider}`, {
+    code: "embedding.invalid_provider",
+    context: {
+      operation: "getEmbeddingConfig",
+      provider,
+      availableProviders: Object.keys(embeddingConfigs),
+      resolution: "Provide a valid embedding provider key.",
+    },
+  });
 }

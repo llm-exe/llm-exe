@@ -23,11 +23,16 @@
     >
       <button
         v-for="(model, idx) in providers[activeProviderIdx].models"
-        :key="model"
-        :class="['model-tab', { active: idx === activeModelIdx }]"
+        :key="model.id"
+        :class="[
+          'model-tab',
+          { active: idx === activeModelIdx, deprecated: model.deprecated },
+        ]"
+        :title="model.message || ''"
         @click="activeModelIdx = idx"
       >
-        <span>{{ model }}</span>
+        <span>{{ model.id }}</span>
+        <span v-if="model.deprecated" class="deprecated-badge">deprecated</span>
       </button>
     </div>
     <div class="code-area">
@@ -57,7 +62,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick, onUnmounted } from "vue";
 import { inferLangFromFilename } from "../utils/codeLang";
-import { getProviders, clipboardIcon, checkIcon } from "../utils/modelSwitcher";
+import {
+  getProviders,
+  clipboardIcon,
+  checkIcon,
+  type ProviderEntry,
+} from "../utils/modelSwitcher";
 import { createHighlighter } from "shiki";
 
 const highlighter = ref<any>(null);
@@ -90,12 +100,7 @@ const props = defineProps<{
   output?: string;
   language?: string;
   filename?: string;
-  providerModels?: Array<{
-    key: string;
-    name: string;
-    logo: string;
-    models: string[];
-  }>;
+  providerModels?: ProviderEntry[];
 }>();
 
 const providers = ref(getProviders(props.providerModels));
@@ -126,8 +131,8 @@ const codeBlock = computed(() => {
   if (!props.code || !providers.value.length) return props.code || "";
   const provider = providers.value[activeProviderIdx.value]?.key || "openai";
   const model =
-    providers.value[activeProviderIdx.value]?.models[activeModelIdx.value] ||
-    "gpt-4o-mini";
+    providers.value[activeProviderIdx.value]?.models[activeModelIdx.value]
+      ?.id || "gpt-4o-mini";
   let code = props.code;
 
   const defaultModels = {
@@ -494,6 +499,22 @@ function copyCode() {
   color: var(--vp-c-brand);
   opacity: 0.9;
   text-decoration: none;
+}
+.model-tab.deprecated > span:first-child {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+.deprecated-badge {
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 16px;
+  border-radius: 3px;
+  background: var(--vp-c-warning-soft, rgba(234, 179, 8, 0.16));
+  color: var(--vp-c-warning-1, #b45309);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
 }
 .code-area {
   margin-top: 5px;

@@ -1,5 +1,6 @@
 import { googleGeminiPromptSanitize } from "./promptSanitize";
 import { googleGeminiPromptMessageCallback } from "./promptSanitizeMessageCallback";
+import { LlmExeError } from "@/errors";
 
 jest.mock("./promptSanitizeMessageCallback", () => ({
   googleGeminiPromptMessageCallback: jest.fn(),
@@ -34,6 +35,39 @@ describe("googleGeminiPromptSanitize", () => {
       googleGeminiPromptSanitize([], {}, {})
     ).toThrowError("Empty messages array");
     expect(googleGeminiPromptMessageCallback).not.toHaveBeenCalled();
+  });
+
+  it("throws LlmExeError with prompt.invalid_messages on empty messages array", () => {
+    try {
+      googleGeminiPromptSanitize([], {}, {});
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("prompt.invalid_messages");
+      expect((e as LlmExeError).category).toBe("prompt");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("googleGeminiPromptSanitize");
+      expect(ctx.provider).toBe("google");
+    }
+  });
+
+  it("throws LlmExeError with prompt.invalid_messages on non-string/array input", () => {
+    try {
+      googleGeminiPromptSanitize(
+        { someWrongObject: "value" } as any,
+        {},
+        {}
+      );
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("prompt.invalid_messages");
+      expect((e as LlmExeError).category).toBe("prompt");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("googleGeminiPromptSanitize");
+      expect(ctx.provider).toBe("google");
+      expect(ctx.received).toBe("object");
+    }
   });
 
   it("should return the single user message if provided a single system message", () => {

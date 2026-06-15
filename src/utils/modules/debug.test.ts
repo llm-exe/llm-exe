@@ -38,7 +38,7 @@ describe("debug", () => {
       );
     });
 
-    it("masks Authorization headers in objects", () => {
+    it("redacts Authorization headers in objects", () => {
       debug({
         headers: {
           Authorization: "Bearer sk-1234567890abcdefghijklmnop",
@@ -46,14 +46,31 @@ describe("debug", () => {
       });
       const loggedStr = debugSpy.mock.calls[0][0];
       expect(loggedStr).not.toContain("sk-1234567890abcdefghijklmnop");
-      expect(loggedStr).toContain("***");
+      expect(loggedStr).toContain("[redacted]");
     });
 
-    it("does not mask objects without Authorization header", () => {
+    it("redacts Anthropic-style lowercase x-api-key inside object args", () => {
+      // Anthropic's config sends `x-api-key`, not Authorization. The previous
+      // Authorization-only conditional missed this entire shape.
+      debug({
+        headers: {
+          "x-api-key": "sk-ant-syntheticAnthropicTokenAAAA",
+        },
+      });
+      const loggedStr = debugSpy.mock.calls[0][0];
+      expect(loggedStr).not.toContain("sk-ant-syntheticAnthropicTokenAAAA");
+    });
+
+    it("redacts secrets in objects even when no headers field is present", () => {
+      debug({ apiKey: "sk-syntheticBareApiKeyAAAAAAAAAA" });
+      const loggedStr = debugSpy.mock.calls[0][0];
+      expect(loggedStr).not.toContain("sk-syntheticBareApiKeyAAAAAAAAAA");
+    });
+
+    it("leaves non-secret object content intact", () => {
       debug({ headers: { "Content-Type": "application/json" } });
       const loggedStr = debugSpy.mock.calls[0][0];
       expect(loggedStr).toContain("application/json");
-      expect(loggedStr).not.toContain("***");
     });
 
     it("logs arrays as stringified items", () => {

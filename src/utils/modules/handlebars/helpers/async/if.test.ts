@@ -1,6 +1,7 @@
 import { isEmpty } from "@/utils/modules/isEmpty";
 import { isPromise } from "@/utils/modules/isPromise";
 import { ifFnAsync } from "@/utils/modules/handlebars/helpers/async/if";
+import { LlmExeError } from "@/errors";
 
 jest.mock("@/utils/modules/isEmpty");
 jest.mock("@/utils/modules/isPromise");
@@ -25,6 +26,20 @@ describe("ifFnAsync", () => {
     await expect((ifFnAsync as any).call({})).rejects.toThrow(
       "#if requires exactly one argument"
     );
+  });
+
+  it("throws LlmExeError with template.invalid_helper_arguments on wrong arg count", async () => {
+    try {
+      await (ifFnAsync as any).call({});
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("template.invalid_helper_arguments");
+      expect((e as LlmExeError).category).toBe("template");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("handlebars.asyncHelper.if");
+      expect(ctx.helper).toBe("if");
+    }
   });
 
   it("should render fn when conditional is truthy", async () => {

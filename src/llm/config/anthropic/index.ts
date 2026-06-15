@@ -1,4 +1,5 @@
 import { withDefaultModel } from "@/llm/_utils.withDefaultModel";
+import { deprecateShorthand } from "@/llm/_utils.deprecationWarning";
 import { Config } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { anthropicPromptSanitize } from "./promptSanitize";
@@ -189,36 +190,44 @@ export const anthropic = {
   ),
 
   // Deprecated
-  "anthropic.claude-opus-4-6": withDefaultModel(
-    anthropicChatV1,
-    "claude-opus-4-6"
-  ),
-  "anthropic.claude-opus-4-1": withDefaultModel(
-    anthropicChatV1,
-    "claude-opus-4-1-20250805"
-  ),
-  "anthropic.claude-sonnet-4": withDefaultModel(
-    anthropicChatV1,
-    "claude-sonnet-4-0"
-  ),
-  "anthropic.claude-opus-4": withDefaultModel(
-    anthropicChatV1,
-    "claude-opus-4-0"
-  ),
-  "anthropic.claude-3-7-sonnet": withDefaultModel(
-    anthropicChatV1,
-    "claude-3-7-sonnet-20250219"
-  ),
-  "anthropic.claude-3-5-sonnet": withDefaultModel(
-    anthropicChatV1,
-    "claude-3-5-sonnet-latest"
-  ),
-  "anthropic.claude-3-5-haiku": withDefaultModel(
-    anthropicChatV1,
-    "claude-3-5-haiku-latest"
-  ),
-  "anthropic.claude-3-opus": withDefaultModel(
-    anthropicChatV1,
-    "claude-3-opus-20240229"
-  ),
+  ...deprecateShorthand("anthropic.claude-opus-4-6", {
+    config: withDefaultModel(anthropicChatV1, "claude-opus-4-6"),
+    message:
+      'Shorthand "anthropic.claude-opus-4-6" is deprecated and may be removed in a future release.',
+  }),
+  ...deprecateShorthand("anthropic.claude-opus-4-1", {
+    config: withDefaultModel(anthropicChatV1, "claude-opus-4-1-20250805"),
+    message:
+      'Shorthand "anthropic.claude-opus-4-1" is deprecated and may be removed in a future release.',
+  }),
+  ...deprecateShorthand("anthropic.claude-sonnet-4", {
+    config: withDefaultModel(anthropicChatV1, "claude-sonnet-4-0"),
+    message:
+      'Shorthand "anthropic.claude-sonnet-4" is deprecated and may be removed in a future release.',
+  }),
+  ...deprecateShorthand("anthropic.claude-opus-4", {
+    config: withDefaultModel(anthropicChatV1, "claude-opus-4-0"),
+    message:
+      'Shorthand "anthropic.claude-opus-4" is deprecated and may be removed in a future release.',
+  }),
+  ...deprecateShorthand("anthropic.claude-3-7-sonnet", {
+    config: withDefaultModel(anthropicChatV1, "claude-3-7-sonnet-20250219"),
+    message:
+      'Shorthand "anthropic.claude-3-7-sonnet" is deprecated and may be removed in a future release.',
+  }),
+  ...deprecateShorthand("anthropic.claude-3-5-sonnet", {
+    config: withDefaultModel(anthropicChatV1, "claude-3-5-sonnet-latest"),
+    message:
+      'Shorthand "anthropic.claude-3-5-sonnet" is deprecated and may be removed in a future release.',
+  }),
+  ...deprecateShorthand("anthropic.claude-3-5-haiku", {
+    config: withDefaultModel(anthropicChatV1, "claude-3-5-haiku-latest"),
+    message:
+      'Shorthand "anthropic.claude-3-5-haiku" is deprecated and may be removed in a future release.',
+  }),
+  ...deprecateShorthand("anthropic.claude-3-opus", {
+    config: withDefaultModel(anthropicChatV1, "claude-3-opus-20240229"),
+    message:
+      'Shorthand "anthropic.claude-3-opus" is deprecated and may be removed in a future release.',
+  }),
 };

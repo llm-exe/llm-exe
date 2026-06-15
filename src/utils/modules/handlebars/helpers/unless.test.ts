@@ -1,5 +1,6 @@
 import { ifFn } from "@/utils/modules/handlebars/helpers/if";
 import { unless } from "@/utils/modules/handlebars/helpers/unless";
+import { LlmExeError } from "@/errors";
 
 jest.mock("@/utils/modules/handlebars/helpers/if", () => ({
     ifFn: jest.fn(),
@@ -24,6 +25,21 @@ describe("unless", () => {
       expect(() => (unless as any).call({}, true)).toThrow(
         "#unless requires exactly one argument"
       );
+    });
+
+    it("throws LlmExeError with template.invalid_helper_arguments on wrong arg count", () => {
+      try {
+        (unless as any).call({}, true);
+        fail("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toBe("template.invalid_helper_arguments");
+        const ctx = (e as LlmExeError).context as Record<string, unknown>;
+        expect(ctx.operation).toBe("handlebars.helper.unless");
+        expect(ctx.helper).toBe("unless");
+        expect(ctx.expected).toBe(1);
+        expect(ctx.received).toBe(1);
+      }
     });
 
     it("should call ifFn with correct arguments when conditional is true", () => {

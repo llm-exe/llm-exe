@@ -207,6 +207,26 @@ describe("createEmbedding_call", () => {
     });
   });
 
+  it("forwards response headers to getEmbeddingOutputParser", async () => {
+    const responseHeaders = {
+      "x-amzn-bedrock-input-token-count": "11",
+      "x-amzn-bedrock-output-token-count": "0",
+    };
+    apiRequestMock.mockResolvedValueOnce({
+      data: { data: "mockResponse" },
+      headers: responseHeaders,
+    });
+    mapBodyMock.mockReturnValueOnce({});
+
+    await createEmbedding_call(mockState, "test input");
+
+    expect(getEmbeddingOutputParserMock).toHaveBeenCalledWith(
+      mockState,
+      { data: "mockResponse" },
+      responseHeaders
+    );
+  });
+
   it("should handle apiRequest errors", async () => {
     apiRequestMock.mockRejectedValue(new Error("API Error"));
     mapBodyMock.mockReturnValueOnce({})

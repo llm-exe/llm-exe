@@ -160,6 +160,19 @@ describe("CohereBedrockEmbedding", () => {
     expect(BaseEmbeddingOutputMock).not.toHaveBeenCalled();
   });
 
+  it("throws with 'received: null' when embeddings is explicitly null", () => {
+    const mockResult = {
+      embeddings: null,
+    } as unknown as CohereBedrockEmbeddingApiResponseOutput;
+
+    deepCloneMock.mockReturnValueOnce(mockResult);
+
+    expect(() =>
+      CohereBedrockEmbedding(mockResult, { model: "cohere.embed-v4:0" })
+    ).toThrow(/Unexpected embeddings shape.*received: null/);
+    expect(BaseEmbeddingOutputMock).not.toHaveBeenCalled();
+  });
+
   it("throws when embeddings is an object with no recognized embedding type", () => {
     const mockResult = {
       response_type: "embeddings_by_type",

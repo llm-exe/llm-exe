@@ -66,7 +66,8 @@ describe("createEmbedding_call", () => {
     replaceTemplateStringSimpleMock.mockReturnValue("https://api.example.com/endpoint");
     parseHeadersMock.mockResolvedValue(mockParsedHeaders);
     apiRequestMock.mockResolvedValue({
-      data: "mockResponse"
+      data: { data: "mockResponse" },
+      headers: {},
     });
     getEmbeddingOutputParserMock.mockReturnValue({
       embeddedData: "parsedData"
@@ -95,9 +96,11 @@ describe("createEmbedding_call", () => {
       body: JSON.stringify({}),
       headers: mockParsedHeaders,
     });
-    expect(getEmbeddingOutputParserMock).toHaveBeenCalledWith(mockState, {
-      data: "mockResponse"
-    });
+    expect(getEmbeddingOutputParserMock).toHaveBeenCalledWith(
+      mockState,
+      { data: "mockResponse" },
+      {}
+    );
     expect(result).toEqual({
       embeddedData: "parsedData"
     });
@@ -125,9 +128,11 @@ describe("createEmbedding_call", () => {
       body: JSON.stringify({}),
       headers: mockParsedHeaders,
     });
-    expect(getEmbeddingOutputParserMock).toHaveBeenCalledWith(mockState, {
-      data: "mockResponse"
-    });
+    expect(getEmbeddingOutputParserMock).toHaveBeenCalledWith(
+      mockState,
+      { data: "mockResponse" },
+      {}
+    );
     expect(result).toEqual({
       embeddedData: "parsedData"
     });
@@ -155,9 +160,11 @@ describe("createEmbedding_call", () => {
       body: JSON.stringify({}),
       headers: mockParsedHeaders,
     });
-    expect(getEmbeddingOutputParserMock).toHaveBeenCalledWith(mockState, {
-      data: "mockResponse"
-    });
+    expect(getEmbeddingOutputParserMock).toHaveBeenCalledWith(
+      mockState,
+      { data: "mockResponse" },
+      {}
+    );
     expect(result).toEqual({
       embeddedData: "parsedData"
     });
@@ -189,9 +196,11 @@ describe("createEmbedding_call", () => {
       body: JSON.stringify({}),
       headers: mockParsedHeaders,
     });
-    expect(getEmbeddingOutputParserMock).toHaveBeenCalledWith(mockState, {
-      data: "mockResponse"
-    });
+    expect(getEmbeddingOutputParserMock).toHaveBeenCalledWith(
+      mockState,
+      { data: "mockResponse" },
+      {}
+    );
     expect(result).toEqual({
       embeddedData: "parsedData"
     });

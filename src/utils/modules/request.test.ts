@@ -48,9 +48,26 @@ describe("apiRequest", () => {
       }),
     } as unknown as Response);
 
-    const data = await apiRequest<typeof dummyData>(url);
+    const { data } = await apiRequest<typeof dummyData>(url);
     expect(data).toEqual(dummyData);
     expect(fetchMock).toHaveBeenCalledWith(url, {});
+  });
+
+  it("returns response headers alongside the data, with lowercased keys", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: jsonMock,
+      headers: new Headers({
+        "content-type": "application/json",
+        "X-Amzn-Bedrock-Input-Token-Count": "5",
+      }),
+    } as unknown as Response);
+
+    const { data, headers } = await apiRequest<typeof dummyData>(url);
+    expect(data).toEqual(dummyData);
+    expect(headers).toEqual(
+      expect.objectContaining({ "x-amzn-bedrock-input-token-count": "5" })
+    );
   });
 
   it("should make a request and return the data as text according to headers ", async () => {
@@ -64,7 +81,7 @@ describe("apiRequest", () => {
     } as unknown as Response);
     const mockJsonl = JSON.stringify({ testing: "jsonl" });
     textMock.mockResolvedValue(mockJsonl);
-    const data = await apiRequest<typeof dummyData>(url);
+    const { data } = await apiRequest<typeof dummyData>(url);
     expect(data).toEqual(mockJsonl);
     expect(fetchMock).toHaveBeenCalledWith(url, {});
   });
@@ -257,7 +274,7 @@ describe("apiRequest", () => {
       }),
     } as unknown as Response);
 
-    const data = await apiRequest<null>(url);
+    const { data } = await apiRequest<null>(url);
     expect(data).toBe(null);
     expect(fetchMock).toHaveBeenCalledWith(url, {});
   });

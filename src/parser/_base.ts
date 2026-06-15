@@ -1,33 +1,20 @@
-import {
-  BaseParserOptions,
-  BaseParserOptionsWithSchema,
-  OutputResult,
-} from "@/types";
+import { ParserSchemaOptions } from "@/types";
 import { FromSchema, JSONSchema } from "json-schema-to-ts";
 
-export type ParserInput = string | OutputResult;
 /**
  * BaseParser is an abstract class for parsing text and enforcing JSON schema on the parsed data.
  */
-export abstract class BaseParser<T = any> {
+export abstract class BaseParser<T = any, TInput = string> {
   public name: string;
-  public options: BaseParserOptions;
   public target: "text" | "function_call" = "text";
   /**
    * Create a new BaseParser.
    * @param name - The name of the parser.
-   * @param  options - options
+   * @param target - Whether the parser consumes text or function-call output.
    */
-  constructor(
-    name: string,
-    options: BaseParserOptions = {},
-    target: "text" | "function_call" = "text"
-  ) {
+  constructor(name: string, target: "text" | "function_call" = "text") {
     this.name = name;
     this.target = target;
-    if (options) {
-      this.options = options;
-    }
   }
 
   /**
@@ -37,21 +24,18 @@ export abstract class BaseParser<T = any> {
    * @param [attributes] - Optional attributes to use during parsing.
    * @returns The parsed data.
    */
-  abstract parse(text: ParserInput, attributes?: Record<string, any>): T;
+  abstract parse(text: TInput, attributes?: Record<string, any>): T;
 }
 
 export abstract class BaseParserWithJson<
   S extends JSONSchema | undefined = undefined,
   T = S extends JSONSchema ? FromSchema<S> : Record<string, any>,
-> extends BaseParser<T> {
+  TInput = string,
+> extends BaseParser<T, TInput> {
   public schema: S;
   public validateSchema: boolean;
-  /**
-   * Create a new BaseParser.
-   * @param name - The name of the parser.
-   * @param  options - options
-   */
-  constructor(name: string, options: BaseParserOptionsWithSchema<S>) {
+
+  constructor(name: string, options: ParserSchemaOptions<S>) {
     super(name);
 
     const { schema, validateSchema } = options;

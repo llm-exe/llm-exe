@@ -1,37 +1,273 @@
-import { maybeParseJSON } from "@/utils";
 import { BaseParserWithJson } from "../_base";
-import { JSONSchema } from "json-schema-to-ts";
-import { BaseParserOptionsWithSchema, ParserOutput } from "@/types";
-import { enforceParserSchema, validateParserSchema } from "../_utils";
-import { helpJsonMarkup } from "@/utils/modules/json";
-import { LlmExeError } from "@/utils/modules/errors";
+import { FromSchema, JSONSchema } from "json-schema-to-ts";
+import { JsonParserOptions } from "@/types";
+import {
+  applyParserSchemaDefaultsAndFilter,
+  enforceParserSchema,
+  validateParserSchema,
+} from "../_utils";
+import { LlmExeError } from "@/errors";
 
-export class JsonParser<
-  S extends JSONSchema | undefined = undefined
-> extends BaseParserWithJson<S> {
-  constructor(options: BaseParserOptionsWithSchema<S> = {}) {
-    super("json", options);
+export type JsonParserInput = string | Record<string, unknown> | unknown[];
+type JsonParserOutput<S extends JSONSchema | undefined> = S extends JSONSchema
+  ? FromSchema<S>
+  : Record<string, any>;
+type JsonCandidate = {
+  parsed: unknown;
+};
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
   }
 
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+function normalizeExactResponseJsonText(input: string) {
+  const trimmed = input.trim();
+  const fenceMatch = trimmed.match(
+    /^```([a-zA-Z]*)[^\S\r\n]*\r?\n([\s\S]*)```$/,
+  );
+
+  if (!fenceMatch) {
+    return trimmed;
+  }
+
+  const [, language, body] = fenceMatch;
+  if (language && language.toLowerCase() !== "json") {
+    return trimmed;
+  }
+
+  return body.trim();
+}
+
+function findBalancedJsonEnd(input: string, start: number) {
+  const first = input[start];
+  const stack = first === "{" ? ["}"] : first === "[" ? ["]"] : [];
+  let inString = false;
+  let escaping = false;
+
+  for (let index = start + 1; index < input.length; index += 1) {
+    const char = input[index];
+
+    if (inString) {
+      if (escaping) {
+        escaping = false;
+      } else if (char === "\\") {
+        escaping = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{" || char === "[") {
+      stack.push(char === "{" ? "}" : "]");
+      continue;
+    }
+
+    if (char !== "}" && char !== "]") {
+      continue;
+    }
+
+    if (stack[stack.length - 1] !== char) {
+      return undefined;
+    }
+
+    stack.pop();
+    if (stack.length === 0) {
+      return index;
+    }
+  }
+
+  return undefined;
+}
+
+function extractJsonCandidates(input: string): JsonCandidate[] {
+  const candidates: JsonCandidate[] = [];
+
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+    if (char !== "{" && char !== "[") {
+      continue;
+    }
+
+    const end = findBalancedJsonEnd(input, index);
+    if (end === undefined) {
+      continue;
+    }
+
+    const candidate = input.slice(index, end + 1);
+    try {
+      candidates.push({
+        parsed: JSON.parse(candidate),
+      });
+      index = end;
+    } catch {
+      // Balanced braces can still contain non-JSON content.
+    }
+  }
+
+  return candidates;
+}
+
+export class JsonParser<
+  S extends JSONSchema | undefined = undefined,
+> extends BaseParserWithJson<S, JsonParserOutput<S>, JsonParserInput> {
+  private shouldValidateSchema: boolean;
+  private match: JsonParserOptions<S>["match"];
+
+  constructor(options: JsonParserOptions<S> = {}) {
+    super("json", options);
+    this.match = options.match ?? "exact";
+    this.shouldValidateSchema =
+      !!options.schema && options.validateSchema !== false;
+  }
+
+  /**
+   * v3 parser contract:
+   * Category: strict
+   * Mode: exact
+   *
+   * Parses strict JSON object/array output by default. Pass match: "extract"
+   * to extract one JSON object or array from surrounding text. Invalid JSON,
+   * empty input, JSON primitives, and non-plain runtime objects throw typed parser errors.
+   * Schema validation is on by default when a schema is provided unless
+   * validateSchema: false is explicitly set.
+   *
+   */
   parse(
-    text: string,
-    _attributes?: Record<string, any>
-  ): ParserOutput<BaseParserWithJson<S>> {
-    const parsed = maybeParseJSON(helpJsonMarkup(text));
-    if (this.schema) {
-      const enforce = enforceParserSchema(this.schema, parsed);
-      if (this.validateSchema) {
-        const valid = validateParserSchema(this.schema, enforce as any);
-        if (valid && valid.length) {
-          throw new LlmExeError(valid[0].message, "parser", {
+    text: JsonParserInput,
+    _attributes?: Record<string, any>,
+  ): JsonParserOutput<S> {
+    let parsed: unknown;
+    let inputLength: number | undefined;
+
+    if (typeof text === "string") {
+      inputLength = text.length;
+      if (text.trim() === "") {
+        throw new LlmExeError(`No JSON value found in input.`, {
+          code: "parser.parse_failed",
+          context: {
+            operation: "JsonParser.parse",
             parser: "json",
-            output: parsed,
-            error: valid[0].message,
+            reason: "empty_input",
+            expected: "JSON object or array",
+            inputLength,
+          },
+        });
+      }
+
+      try {
+        parsed = JSON.parse(normalizeExactResponseJsonText(text));
+      } catch (cause) {
+        if (this.match === "extract") {
+          const candidates = extractJsonCandidates(text);
+
+          if (candidates.length === 1) {
+            parsed = candidates[0].parsed;
+          } else if (candidates.length > 1) {
+            throw new LlmExeError(`Multiple JSON values found in input.`, {
+              code: "parser.parse_failed",
+              context: {
+                operation: "JsonParser.parse",
+                parser: "json",
+                reason: "ambiguous_json_match",
+                expected: "one JSON object or array",
+                match: this.match,
+                inputLength,
+                matchCount: candidates.length,
+              },
+            });
+          } else {
+            throw new LlmExeError(`No JSON value found in input.`, {
+              code: "parser.parse_failed",
+              context: {
+                operation: "JsonParser.parse",
+                parser: "json",
+                reason: "no_json_value",
+                expected: "JSON object or array",
+                match: this.match,
+                inputLength,
+              },
+              cause,
+            });
+          }
+        } else {
+          throw new LlmExeError(`Invalid JSON input.`, {
+            code: "parser.parse_failed",
+            context: {
+              operation: "JsonParser.parse",
+              parser: "json",
+              reason: "invalid_json",
+              expected: "JSON object or array",
+              inputLength,
+            },
+            cause,
           });
         }
       }
-      return enforce;
+    } else if (Array.isArray(text) || isPlainObject(text)) {
+      parsed = text;
+    } else {
+      throw new LlmExeError(
+        `Invalid input. Expected JSON string, plain object, or array. Received ${text === null ? "null" : typeof text}.`,
+        {
+          code: "parser.invalid_input",
+          context: {
+            operation: "JsonParser.parse",
+            parser: "json",
+            reason: "invalid_input_type",
+            expected: "JSON string, plain object, or array",
+            received: text === null ? "null" : typeof text,
+          },
+        },
+      );
     }
-    return parsed;
+
+    if (!Array.isArray(parsed) && !isPlainObject(parsed)) {
+      throw new LlmExeError(`Invalid JSON root type.`, {
+        code: "parser.parse_failed",
+        context: {
+          operation: "JsonParser.parse",
+          parser: "json",
+          reason: "invalid_json_root_type",
+          expected: "JSON object or array",
+          received: parsed === null ? "null" : typeof parsed,
+          inputLength,
+        },
+      });
+    }
+
+    if (this.schema) {
+      if (this.shouldValidateSchema) {
+        const valid = validateParserSchema(this.schema, parsed as any);
+        if (valid && valid.length) {
+          throw new LlmExeError(valid[0].message, {
+            code: "parser.schema_validation_failed",
+            context: {
+              operation: "JsonParser.parse",
+              parser: "json",
+              schemaErrors: valid.map((error) => error.message),
+            },
+          });
+        }
+      }
+      if (this.shouldValidateSchema) {
+        return applyParserSchemaDefaultsAndFilter(
+          this.schema,
+          parsed,
+        ) as JsonParserOutput<S>;
+      }
+      return enforceParserSchema(this.schema, parsed) as JsonParserOutput<S>;
+    }
+    return parsed as JsonParserOutput<S>;
   }
 }

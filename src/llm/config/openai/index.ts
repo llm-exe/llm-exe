@@ -1,4 +1,5 @@
 import { withDefaultModel } from "@/llm/_utils.withDefaultModel";
+import { deprecateShorthand } from "@/llm/_utils.deprecationWarning";
 import { Config } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { OutputOpenAIChat } from "@/llm/output/openai";
@@ -65,5 +66,9 @@ export const openai = {
   "openai.gpt-4o": withDefaultModel(openAiChatV1, "gpt-4o"),
   "openai.gpt-4o-mini": withDefaultModel(openAiChatV1, "gpt-4o-mini"),
   // Deprecated
-  "openai.o4-mini": withDefaultModel(openAiChatV1, "o4-mini"),
+  ...deprecateShorthand("openai.o4-mini", {
+    config: withDefaultModel(openAiChatV1, "o4-mini"),
+    message:
+      'Shorthand "openai.o4-mini" is deprecated and may be removed in a future release.',
+  }),
 };

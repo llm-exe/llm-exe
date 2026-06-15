@@ -1,5 +1,6 @@
 import { combineJsonl } from "./combineJsonl";
 import { CombinedJsonLResult } from "@/interfaces";
+import { LlmExeError } from "@/errors";
 
 describe("combineJsonl", () => {
   it("correctly combines, sorts, decodes content, and selects the final line", () => {
@@ -70,6 +71,57 @@ describe("combineJsonl", () => {
   it("throws for empty input or whitespace-only input", () => {
     expect(() => combineJsonl("")).toThrow("No JSON lines provided.");
     expect(() => combineJsonl("\n  \n")).toThrow("No JSON lines provided.");
+  });
+
+  it("throws LlmExeError with llm.invalid_jsonl_response on invalid JSON, preserving cause", () => {
+    const jsonl = `
+      {"created_at":"2023-01-01","done":false,"message":{"content":"Ok"}}
+      { NOT VALID JSON }
+      {"created_at":"2023-01-02","done":true,"message":{"content":"Done"}}
+    `;
+    try {
+      combineJsonl(jsonl);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("llm.invalid_jsonl_response");
+      expect((e as LlmExeError).category).toBe("llm");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("combineJsonl");
+      expect(ctx.lineNumber).toBe(2);
+      expect(String(ctx.lineExcerpt)).toContain("NOT VALID JSON");
+      expect((e as unknown as { cause?: unknown }).cause).toBeDefined();
+    }
+  });
+
+  it("throws LlmExeError with llm.invalid_jsonl_response on empty input", () => {
+    try {
+      combineJsonl("");
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("llm.invalid_jsonl_response");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("combineJsonl");
+      expect(ctx.received).toBe(0);
+    }
+  });
+
+  it("throws LlmExeError with llm.invalid_jsonl_response when no done line found", () => {
+    const jsonl = `
+      {"created_at":"2023-01-01","done":false,"message":{"content":"Ok"}}
+      {"created_at":"2023-01-02","done":false,"message":{"content":"Still going"}}
+    `;
+    try {
+      combineJsonl(jsonl);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("llm.invalid_jsonl_response");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("combineJsonl");
+      expect(ctx.lineCount).toBe(2);
+    }
   });
 
   it("uses first done line if multiple done=true lines", () => {

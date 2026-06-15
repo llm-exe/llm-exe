@@ -1,9 +1,9 @@
 import { createCoreExecutor } from "@/executor/_functions";
 import { CallableExecutorCore, FunctionOrExecutor, PlainObject } from "@/types";
 import { ensureInputIsObject } from "@/utils/modules/ensureInputIsObject";
-import { assert } from "@/utils/modules/assert";
 import { BaseExecutor } from "@/executor";
 import { enforceResultAttributes } from "@/utils/modules/enforceResultAttributes";
+import { LlmExeError } from "@/errors";
 
 /**
  * Represents the input for a CallableExecutor.
@@ -115,7 +115,18 @@ export class CallableExecutor<I extends PlainObject | { input: string }, O> {
     } else if (typeof options.handler === "function") {
       this._handler = createCoreExecutor(options.handler);
     } else {
-      throw new Error("Invalid handler");
+      throw new LlmExeError("Invalid handler", {
+        code: "callable.invalid_handler",
+        context: {
+          operation: "CallableExecutor.constructor",
+          functionName: options.name,
+          key: options?.key || options.name,
+          expected: "function or BaseExecutor",
+          received: typeof options.handler,
+          resolution:
+            "Pass a function or a BaseExecutor instance as the handler.",
+        },
+      });
     }
   }
   async execute(input: I): Promise<{ result: O; attributes: any }> {
@@ -133,7 +144,25 @@ export class CallableExecutor<I extends PlainObject | { input: string }, O> {
       }
       return { result: true, attributes: {} };
     } catch (error: any) {
-      return { result: false, attributes: { error: error.message } };
+      // Wrap the caught error in a typed LlmExeError. The wrap is internal —
+      // public return shape stays { result: false, attributes: { error: msg } }
+      // with the user's original message text preserved. The typed error is
+      // here for parity with the rest of the codebase and so a future opt-in
+      // API can surface structured detail through metadata without us having
+      // to revisit this site.
+      const wrapped =
+        error instanceof LlmExeError
+          ? error
+          : new LlmExeError(error?.message ?? String(error), {
+              code: "callable.validation_failed",
+              context: {
+                operation: "CallableExecutor.validateInput",
+                functionName: this.name,
+                key: this.key,
+              },
+              cause: error,
+            });
+      return { result: false, attributes: { error: wrapped.message } };
     }
   }
   visibilityHandler(input: any, attributes: any): boolean {
@@ -184,23 +213,43 @@ export abstract class UseExecutorsBase<
   }> {
     try {
       const handler = this.getFunction(name);
-      assert(
-        handler,
-        `[invalid handler] The handler (${name}) does not exist.`
-      );
+      if (!handler) {
+        throw new LlmExeError(
+          `[invalid handler] The handler (${name}) does not exist.`,
+          {
+            code: "callable.handler_not_found",
+            context: {
+              operation: "UseExecutorsBase.callFunction",
+              functionName: name,
+              availableFunctions: this.handlers.map((h) => h.name),
+            },
+          }
+        );
+      }
       const result = await handler.execute(ensureInputIsObject(input) as any);
       return result;
     } catch (error: any) {
+      // Public return shape preserved: callFunction returns the message string
+      // on failure. The typed error stays internal-only for now.
       return error.message;
     }
   }
   async validateFunctionInput(name: string, input: string) {
     try {
       const handler = this.getFunction(name);
-      assert(
-        handler,
-        `[invalid handler] The handler (${name}) does not exist.`
-      );
+      if (!handler) {
+        throw new LlmExeError(
+          `[invalid handler] The handler (${name}) does not exist.`,
+          {
+            code: "callable.handler_not_found",
+            context: {
+              operation: "UseExecutorsBase.validateFunctionInput",
+              functionName: name,
+              availableFunctions: this.handlers.map((h) => h.name),
+            },
+          }
+        );
+      }
       const result = await handler.validateInput(
         ensureInputIsObject(input) as any
       );

@@ -112,6 +112,40 @@ describe("filterObjectOnSchema", function () {
     });
   });
 
+  it("coerces true and false boolean strings without treating false as truthy", function () {
+    var document = {
+      firstName: "Andrew",
+      lastName: "Lank",
+      isLive: "false",
+      boolField: "true",
+    };
+
+    var result = filterObjectOnSchema(schema, document);
+
+    expect(result).toEqual({
+      firstName: "Andrew",
+      lastName: "Lank",
+      isLive: false,
+      boolField: true,
+    });
+  });
+
+  it("preserves invalid boolean strings for schema validation to reject later", function () {
+    var document = {
+      firstName: "Andrew",
+      lastName: "Lank",
+      isLive: "maybe",
+    };
+
+    var result = filterObjectOnSchema(schema, document);
+
+    expect(result).toEqual({
+      firstName: "Andrew",
+      lastName: "Lank",
+      isLive: "maybe",
+    });
+  });
+
   it("excludes non schema defined array objects", function () {
     var document = {
       firstName: "Andrew",

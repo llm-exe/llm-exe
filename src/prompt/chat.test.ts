@@ -230,13 +230,13 @@ describe("llm-exe:prompt/ChatPrompt", () => {
       { content: "World", role: "assistant" },
     ]);
   });
-  it("validate returns true when prompt has messages", () => {
-    const prompt = new ChatPrompt("Hello");
-    expect(prompt.validate()).toEqual(true);
-  });
-  it("validate returns false when prompt has no messages", () => {
-    const prompt = new ChatPrompt();
-    expect(prompt.validate()).toEqual(false);
+  // v3: validate() now takes input and asserts template variables are present.
+  // Old shape-check semantics are equivalent to `prompt.messages.length > 0`.
+  it("messages.length > 0 reports whether prompt has content (replaces v2 validate())", () => {
+    const withContent = new ChatPrompt("Hello");
+    expect(withContent.messages.length > 0).toEqual(true);
+    const empty = new ChatPrompt();
+    expect(empty.messages.length > 0).toEqual(false);
   });
 
   it("addToPrompt to add assistant message", () => {
@@ -787,6 +787,23 @@ describe("llm-exe:prompt/ChatPrompt", () => {
     expect(() => (prompt as any).format(null)).toThrow(
       "format() requires an input object"
     );
+  });
+
+  it("throws LlmExeError with prompt.missing_input when format() is called with null", () => {
+    const { LlmExeError } = require("@/errors");
+    const prompt = new ChatPrompt<{ name: string }>("Hello {{name}}");
+    try {
+      (prompt as any).format(null);
+      fail("Expected an error to be thrown");
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect(e.code).toBe("prompt.missing_input");
+      expect(e.category).toBe("prompt");
+      expect(e.context.operation).toBe("BasePrompt.getReplacements");
+      expect(e.context.promptType).toBe("chat");
+      expect(e.context.expected).toBe("object");
+      expect(e.context.received).toBe("null");
+    }
   });
 
   it("handles assistant message with function_call but no content", () => {

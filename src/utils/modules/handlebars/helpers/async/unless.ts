@@ -1,4 +1,5 @@
 import { ifFnAsync } from "@/utils/modules/handlebars/helpers/async/if";
+import { LlmExeError } from "@/errors";
 
 interface HandlebarsOptions {
   fn: (context: any) => string;
@@ -12,7 +13,15 @@ export async function unlessFnAsync(
   options: HandlebarsOptions
 ) {
   if (arguments.length !== 2) {
-    throw new Error("#unless requires exactly one argument");
+    throw new LlmExeError("#unless requires exactly one argument", {
+      code: "template.invalid_helper_arguments",
+      context: {
+        operation: "handlebars.asyncHelper.unless",
+        helper: "unless",
+        expected: 1,
+        received: arguments.length,
+      },
+    });
   }
   
   return ifFnAsync.call(this, conditional, {

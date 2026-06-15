@@ -23,6 +23,7 @@ import {
   EmbeddingProviderKey,
 } from "@/types";
 import { createEmbedding_call } from "./embedding.call";
+import { LlmExeError } from "@/errors";
 
 // Mock external dependencies
 jest.mock("@/utils/modules/request");
@@ -272,5 +273,90 @@ describe("createEmbedding_call", () => {
       body: JSON.stringify({})
     });
     expect(apiRequestMock).not.toHaveBeenCalled();
+  });
+
+  describe("apiRequest wrap maps request.http_error -> embedding.provider_*", () => {
+    function makeRequestError(status: number) {
+      return new LlmExeError(`Request failed: ${status}`, {
+        code: "request.http_error",
+        context: {
+          operation: "apiRequest",
+          url: "https://api.openai.com/v1/embeddings",
+          status,
+          statusText: "Status",
+          providerError: { message: "provider says no" },
+        },
+      });
+    }
+
+    beforeEach(() => {
+      mapBodyMock.mockReturnValue({});
+      parseHeadersMock.mockResolvedValue({});
+    });
+
+    it.each([
+      [429, "embedding.provider_rate_limited"],
+      [401, "embedding.provider_auth_failed"],
+      [400, "embedding.provider_invalid_request"],
+      [503, "embedding.provider_unavailable"],
+      [418, "embedding.provider_http_error"],
+    ])(
+      "maps status %i to %s",
+      async (status, expectedCode) => {
+        apiRequestMock.mockRejectedValue(makeRequestError(status));
+        try {
+          await createEmbedding_call(mockState, "x");
+          throw new Error("Expected an error to be thrown");
+        } catch (e) {
+          expect(e).toBeInstanceOf(LlmExeError);
+          expect((e as InstanceType<typeof LlmExeError>).code).toBe(expectedCode);
+          expect((e as InstanceType<typeof LlmExeError>).category).toBe("embedding");
+          const ctx = (e as InstanceType<typeof LlmExeError>).context as Record<
+            string,
+            unknown
+          >;
+          expect(ctx.provider).toBe("openai.embedding");
+          expect(ctx.status).toBe(status);
+          expect(ctx.providerError).toEqual({ message: "provider says no" });
+          expect((e as unknown as { cause?: unknown }).cause).toBeDefined();
+        }
+      }
+    );
+
+    it("falls back to embedding.provider_http_error when no status is present", async () => {
+      const err = new LlmExeError("network down", {
+        code: "request.http_error",
+        context: {
+          operation: "apiRequest",
+          url: "https://api.openai.com/v1/embeddings",
+        },
+      });
+      apiRequestMock.mockRejectedValue(err);
+      try {
+        await createEmbedding_call(mockState, "x");
+        throw new Error("Expected an error to be thrown");
+      } catch (e) {
+        expect((e as InstanceType<typeof LlmExeError>).code).toBe(
+          "embedding.provider_http_error"
+        );
+      }
+    });
+
+    it("does not wrap non-request.http_error errors", async () => {
+      apiRequestMock.mockRejectedValue(
+        new LlmExeError("bad url", {
+          code: "request.invalid_url",
+          context: { operation: "apiRequest", url: "x" },
+        })
+      );
+      try {
+        await createEmbedding_call(mockState, "x");
+        throw new Error("Expected an error to be thrown");
+      } catch (e) {
+        expect((e as InstanceType<typeof LlmExeError>).code).toBe(
+          "request.invalid_url"
+        );
+      }
+    });
   });
 });

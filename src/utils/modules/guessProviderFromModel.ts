@@ -1,3 +1,5 @@
+import { LlmExeError } from "@/errors";
+
 export function isModelKnownOpenAi(payload: { model: string }) {
   const model = payload.model.toLowerCase();
   if (model.startsWith("gpt-") || model.startsWith("chatgpt-")) {
@@ -47,6 +49,22 @@ export function guessProviderFromModel(payload: { model: string }) {
     case isModelKnownAnthropic(payload):
       return "anthropic";
     default:
-      throw new Error("Unsupported model");
+      throw new LlmExeError("Unsupported model", {
+        code: "configuration.invalid_provider",
+        context: {
+          operation: "guessProviderFromModel",
+          model: payload.model,
+          // Mirrors the switch above. Keep these in sync when adding a new
+          // isModelKnown* case.
+          availableProviders: [
+            "openai",
+            "xai",
+            "bedrock:anthropic",
+            "anthropic",
+          ],
+          resolution:
+            "Pass a known model prefix (gpt-, chatgpt-, o1, o3-mini, claude-, grok-, anthropic.claude-) or specify the provider explicitly.",
+        },
+      });
   }
 }

@@ -75,13 +75,13 @@ const name="Greg";
     role: "user",
     content: "Hello?",
   },{
-    role: "user",
+    role: "assistant",
     content: "Hi! How can I help you?",
   },{
     role: "user",
     content: "I was wondering if you were open",
   },{
-    role: "user",
+    role: "assistant",
     content: "We sure are!",
   }]
 }

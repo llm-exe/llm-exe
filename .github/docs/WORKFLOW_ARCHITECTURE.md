@@ -347,7 +347,7 @@ The minimal tree, annotated with why each path exists. A replica must reproduce 
 │   │   ├── draft-main-pr.yml             on PR closed to development or on release published: bumps patch if package.json is behind, creates or updates a draft PR from development to main
 │   │   ├── create-draft-release.yml      on PR merged to main: wipes existing drafts and creates a fresh draft release
 │   │   ├── auto-merge-main-pr.yml        on Release / Check Semver success or PR sync: waits for checks, merges development to main with admin merge
-│   │   ├── publish-release.yml           on release published from main: npm publish (stable script for no-suffix versions, --tag $CHANNEL for any -beta.X / -rc.X / -alpha.X pre-release; refuses pre-releases with no alphabetic channel); on failure reverts release to draft and re-attaches a warning banner
+│   │   ├── publish-release.yml           on release published from main: npm publish (stable script for no-suffix versions, --tag $CHANNEL for any -beta.X / -rc.X / -alpha.X pre-release; refuses pre-releases with no alphabetic channel); on failure reverts release to draft, deletes the release tag, and reverts the version bump on development via admin-merged PR
 │   │   ├── deploy-docs.yml               on release published from main or manual dispatch from development or main: builds VitePress docs, ships to S3 versioned folder, rotates CloudFront OriginPath, invalidates /*
 │   │   ├── docs-sync-trigger.yml        detects workflow/script changes on push to development, dispatches docs-sync.yml
 │   │   ├── docs-sync.yml                keeps workflow deep-dive markdown in sync with source; invoked by trigger or manual dispatch
@@ -829,7 +829,7 @@ PR body truncation: capped at 65000 characters.
 | Field | Value |
 |-------|-------|
 | Trigger | `pull_request` `closed` to `main` (`merged == true`) and dispatch |
-| Behavior | Lists every release with `draft == true` and deletes each one via `gh api -X DELETE`. Then reads `package.json .version`, formats `vMAJOR.MINOR.PATCH`, creates a draft release with `generate_release_notes: true`, then cleans the auto-generated body by removing lines matching `chore: bump version`, `Draft PR for release`, `Bump Version on PR to Main`, `docs: sync` (case-insensitive) and stripping ` by @user in ` attributions. The cleaned body is PATCHed back onto the release. |
+| Behavior | Lists every release with `draft == true` and deletes each one via `gh api -X DELETE`. Then reads `package.json .version`, formats `vMAJOR.MINOR.PATCH`, creates a draft release with `generate_release_notes: true`, then cleans the auto-generated body by removing lines matching `chore: bump version`, `Draft PR for release`, `Bump Version on PR to Main`, `docs: sync`, `revert version bump after failed publish` (case-insensitive) and stripping ` by @user in ` attributions. The cleaned body is PATCHed back onto the release. |
 
 ### 9.15. `auto-merge-main-pr.yml` - Auto-merge gate
 
@@ -849,7 +849,7 @@ PR body truncation: capped at 65000 characters.
 | Examples tests | New `run-examples-tests` job runs before publish. Uses the `Examples Test` environment with real provider keys (OpenAI, Anthropic, Gemini, xAI, DeepSeek, AWS). Builds, packs, extracts tarball, replaces dist/, installs examples deps, runs `npm run test-examples`. |
 | Build | `npm install` then `npm run build:package`. |
 | Publish step | Reads `package.json .version`. If the version has no `-` suffix, runs `npm run publish-main` (stable, `latest` dist-tag). If the version has a `-CHANNEL` suffix where CHANNEL starts with letters (e.g. `-beta.0`, `-rc.1`, `-alpha.2`), runs `npm publish --provenance --tag $CHANNEL` directly. If the version has a `-` but no alphabetic channel (e.g. `3.0.0-1234`), the step exits 1 to refuse silently clobbering the `latest` dist-tag. |
-| Failure rollback | Separate `revert-to-draft` job: `if: always() && github.event_name == 'release' && (needs.run-examples-tests.result == 'failure' \|\| needs.publish-npm-package.result == 'failure')`. Mints its own bot token, patches the release back to `draft: true`, and prepends a warning banner with the specific failure reason and workflow URL. |
+| Failure rollback | Separate `revert-to-draft` job: `if: always() && github.event_name == 'release' && (needs.run-examples-tests.result == 'failure' \|\| needs.publish-npm-package.result == 'failure')`. Mints its own bot token, checks out the repo at fetch-depth: 0, then runs three cleanups in order: (1) PATCH the release back to `draft: true` with a warning banner that names the failed step and workflow URL; (2) `gh api -X DELETE git/refs/tags/<tag>` to free the tag for reuse on the next attempt; (3) if `development` has been bumped beyond the failed version, open + admin-merge a `revert-version-bump` PR (base: `development`) to restore `package.json` to the failed version, then `gh pr edit` the open dev to main draft PR's title to `Draft PR for release version v<failed>`. Each cleanup logs warnings but does not exit on failure, so later cleanups still attempt to run. |
 
 ### 9.17. `deploy-docs.yml` - VitePress to S3 plus CloudFront
 

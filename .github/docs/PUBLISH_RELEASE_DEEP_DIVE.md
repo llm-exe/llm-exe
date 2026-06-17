@@ -61,7 +61,7 @@ flowchart LR
 
     subgraph X["External"]
         npm["registry.npmjs.org\n(npm publish)"]:::ext
-        gh["api.github.com\n(PATCH releases on failure)"]:::ext
+        gh["api.github.com\n(PATCH releases, DELETE tag,\nopen + merge revert PR,\nedit draft-main PR on failure)"]:::ext
         prov["Provider APIs\n(examples tests)"]:::ext
     end
 
@@ -69,7 +69,7 @@ flowchart LR
         ok["npm tarball\n(latest or beta tag)"]:::out
         provA["sigstore provenance\n(OIDC attestation)"]:::out
         rel["GitHub Release\nremains published"]:::out
-        bad1["GitHub Release\nreverted to draft + warning"]:::bad
+        bad1["GitHub Release\nreverted to draft + warning,\ntag deleted, development\nreverted to failed version"]:::bad
     end
 
     t1 --> J1
@@ -189,8 +189,11 @@ flowchart TB
         direction TB
         r1["if: always() && release event &&\n(examples failed || publish failed)"]:::gate
         r2["Generate bot token\n(create-github-app-token@v1)"]:::step
+        r2b["Checkout (fetch-depth: 0, bot token)"]:::step
         r3["Revert release to draft\n(PATCH with warning banner)"]:::cleanup
-        r1 --> r2 --> r3
+        r4["Delete release tag\n(gh api -X DELETE git/refs/tags/vX.Y.Z)"]:::cleanup
+        r5["Revert version bump in development\nopen + admin-merge revert PR (base: development)\nthen update dev to main draft PR title"]:::cleanup
+        r1 --> r2 --> r2b --> r3 --> r4 --> r5
     end
 ```
 
@@ -358,9 +361,13 @@ flowchart LR
     end
 
     subgraph Rb["Failure rollback (separate job, release event only)"]
-        d3["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: mint bot token for PATCH"]:::rb
-        d4["api.github.com PATCH /releases/:id\nauth: bot token from step 'bot-token'\nwhy: flip published release to draft and prepend warning"]:::rb
-        d3 --> d4
+        d3["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: mint bot token for cleanup steps"]:::rb
+        d4["api.github.com PATCH /releases/:id\nauth: bot token\nwhy: flip published release to draft and prepend warning"]:::rb
+        d5["api.github.com DELETE /git/refs/tags/vX.Y.Z\nauth: bot token (via gh api)\nwhy: free up the tag so the next attempt can reuse it"]:::rb
+        d6["git push origin revert-version-bump --force\nauth: bot token\nwhy: open a revert PR against development"]:::rb
+        d7["gh pr create + gh pr merge --admin --squash\nauth: bot token\nwhy: roll development back to FAILED_VERSION"]:::rb
+        d8["gh pr edit dev to main draft PR title\nauth: bot token\nwhy: keep the release PR labeled with FAILED_VERSION"]:::rb
+        d3 --> d4 --> d5 --> d6 --> d7 --> d8
     end
 
     e1 --> e2 --> e3
@@ -379,7 +386,7 @@ The npm token (used by `npm publish`) is configured by the setup-node composite 
 
 ## 8. The rollback path
 
-The `revert-to-draft` job is a dedicated rollback job that runs after both `run-examples-tests` and `publish-npm-package` complete (in any state). Preserves the original release body.
+The `revert-to-draft` job is a dedicated rollback job that runs after both `run-examples-tests` and `publish-npm-package` complete (in any state). It performs three independent cleanups so the failed release leaves no debris: the GitHub Release is flipped back to draft with its original body preserved, the git tag is removed so future runs can reuse the same version, and the version bump on `development` (if any landed) is reverted via an admin-merged PR.
 
 ```mermaid
 flowchart TB
@@ -392,7 +399,8 @@ flowchart TB
     A --> B{condition met?}
     B -->|no: dispatch, or both passed| skip([job skipped]):::fail
     B -->|yes| T["Generate bot token\n(create-github-app-token@v1)"]:::step
-    T --> C["read release.id and release.body\nfrom GITHUB_EVENT_PATH via jq"]:::step
+    T --> CO["actions/checkout@v4\nfetch-depth: 0, bot token"]:::step
+    CO --> C["read release.id and release.body\nfrom GITHUB_EVENT_PATH via jq"]:::step
 
     C --> D0{which job failed?}
     D0 -->|examples tests| D0a["FAILURE_REASON =\n'the examples tests failed before publishing'"]:::step
@@ -407,10 +415,39 @@ flowchart TB
     G --> H["curl PATCH /repos/:repo/releases/:id\nbody: {draft:true, body: BODY_JSON}\nAuth: bot token from step output"]:::step
     H --> I{response has .id?}
     I -->|yes| OK["Release reverted to draft with original notes preserved"]:::out
-    I -->|no| WARN["log warning, dump response\n(workflow still marked failed)"]:::fail
+    I -->|no| WARN["log warning, dump response\n(step still continues)"]:::fail
+
+    OK --> TAG
+    WARN --> TAG
+
+    TAG["Delete release tag\ngh api -X DELETE git/refs/tags/vX.Y.Z"]:::step
+    TAG --> TAGI{tag delete succeeded?}
+    TAGI -->|yes| TAGOK["tag gone; next release run can\nreuse vX.Y.Z without conflict"]:::out
+    TAGI -->|no| TAGWARN["log warning, continue\n(tag may already be deleted)"]:::fail
+
+    TAGOK --> VB
+    TAGWARN --> VB
+
+    VB["read FAILED_VERSION from tag_name\nfetch origin/development\ncompare package.json on development"]:::step
+    VB --> VBQ{development bumped\nbeyond FAILED_VERSION?}
+    VBQ -->|no, already at FAILED_VERSION| VBSKIP["no version revert needed"]:::out
+    VBQ -->|yes| VBC["branch revert-version-bump from origin/development\njq write package.json to FAILED_VERSION\ncommit + force push"]:::step
+    VBC --> VBPR["gh pr create (if not already open)\nbase: development, head: revert-version-bump"]:::step
+    VBPR --> VBMERGE["gh pr merge --admin --squash --delete-branch"]:::step
+
+    VBSKIP --> TITLE
+    VBMERGE --> TITLE
+
+    TITLE["Find open dev to main draft PR"]:::step
+    TITLE --> TQ{PR exists?}
+    TQ -->|no| DONE["title update skipped"]:::out
+    TQ -->|yes| TC{title already\n'Draft PR for release version vX.Y.Z'?}
+    TC -->|yes| DONE
+    TC -->|no| TE["gh pr edit --title 'Draft PR for release version vX.Y.Z'"]:::step
+    TE --> DONE
 ```
 
-Source: [publish-release.yml](../workflows/publish-release.yml) lines 123-177.
+Source: [publish-release.yml](../workflows/publish-release.yml) lines 133-263.
 
 Key invariants:
 
@@ -419,6 +456,9 @@ Key invariants:
 - The workflow URL is computed from `github.server_url`, `github.repository`, `github.run_id`. No magic strings.
 - The PATCH uses the bot token (App identity) rather than `GITHUB_TOKEN`, which lets the change look like the bot acted rather than the GitHub Actions service account.
 - The job uses `always()` combined with explicit `needs.*.result == 'failure'` checks to ensure it runs even when upstream jobs fail. A failure of `check-release-branch` short-circuits before examples or publish ever run, so the rollback never executes for a wrong-branch release. That is intentional: a wrong-branch release should not be auto-drafted by this workflow.
+- Tag deletion lets the next release attempt reuse `vX.Y.Z` (the [create-draft-release.yml](../workflows/create-draft-release.yml) version-bump logic treats existing tags as "already released" and would otherwise skip ahead).
+- Version revert targets `development`, not `main`. By the time a release event fires, `main` has already been bumped (via the dev to main release PR) and the bot's draft-main-pr workflow has typically opened the next bump on top of `development`. The revert PR rolls `development` back to the failed version so the next release attempt re-uses it.
+- The dev to main draft PR title is updated immediately to reference `vX.Y.Z` (the failed version) so the maintainer sees the correct version on the PR even before [draft-main-pr.yml](../workflows/draft-main-pr.yml) re-runs.
 
 [Back to top](#navigate)
 
@@ -492,9 +532,14 @@ stateDiagram-v2
     PublishFailed --> RollbackEligible
     RollbackEligible --> Drafted: event_name == release, PATCH 200
     RollbackEligible --> DraftFailed: dispatch OR PATCH non-200
+    Drafted --> TagDeleted: gh api DELETE tags/vX.Y.Z
+    DraftFailed --> TagDeleted
+    TagDeleted --> VersionReverted: development bumped beyond vX.Y.Z, revert PR merged
+    TagDeleted --> VersionMatched: development already at vX.Y.Z
+    VersionReverted --> TitleUpdated: dev to main PR title set
+    VersionMatched --> TitleUpdated
     Published --> [*]
-    Drafted --> [*]
-    DraftFailed --> [*]
+    TitleUpdated --> [*]
 ```
 
 Failure of the publish step is the only path that produces a partial outcome (tarball pushed but provenance failed). npm's transactional semantics make this rare in practice. Examples test failures are caught before any npm publish attempt.
@@ -550,9 +595,19 @@ flowchart TB
     F6E --> F6X
 
     F7["Rollback PATCH itself fails\n(bot token revoked, GitHub API down)"]:::fail
-    F7 --> F7E["warning printed, response dumped\nrelease stays published\nworkflow still marked failed"]:::effect
+    F7 --> F7E["warning printed, response dumped\nrelease stays published\nsubsequent rollback steps still run\n(tag delete, version revert, PR title)"]:::effect
     F7X["manually edit the release to draft\nadd warning banner by hand"]:::fix
     F7E --> F7X
+
+    F7b["Tag delete fails\n(tag already gone, API down)"]:::fail
+    F7b --> F7bE["warning printed, step continues\nnext release attempt may need\nmanual tag cleanup"]:::effect
+    F7bX["delete vX.Y.Z by hand\nor live with the conflict on retry"]:::fix
+    F7bE --> F7bX
+
+    F7c["Revert PR merge fails\n(branch protection, admin merge denied)"]:::fail
+    F7c --> F7cE["job step fails after force push\ndevelopment stays bumped past failed version"]:::effect
+    F7cX["close the revert PR, hand-edit\npackage.json on development to FAILED_VERSION"]:::fix
+    F7cE --> F7cX
 
     F8["Two simultaneous dispatch runs"]:::fail
     F8 --> F8E["no concurrency group;\nsecond run will fail at npm publish\n(version conflict)"]:::effect
@@ -587,9 +642,10 @@ flowchart LR
     K13["Routing key"]:::k --- V13["first alphabetic chunk after '-' in package.json version; no '-' = stable; '-' without letters = refuse"]:::v
     K14["Provenance"]:::k --- V14["OIDC id-token, automatic on publish"]:::v
     K15["Bot identity"]:::k --- V15["llm-exe-bot[bot] via App token"]:::v
-    K16["Rollback"]:::k --- V16["PATCH releases/:id draft=true, banner + original body"]:::v
+    K16["Rollback"]:::k --- V16["3 cleanups: PATCH releases/:id draft=true (banner + original body),\nDELETE git/refs/tags/vX.Y.Z, revert package.json on development\nvia admin-merged PR, then update dev to main draft PR title"]:::v
     K17["Rollback condition"]:::k --- V17["always() && release event &&\n(examples failed || publish failed)"]:::v
-    K18["Rollback job"]:::k --- V18["revert-to-draft (separate job,\nmints own bot token)"]:::v
+    K18["Rollback job"]:::k --- V18["revert-to-draft (separate job,\nmints own bot token, checkout fetch-depth: 0)"]:::v
+    K19["Revert PR target"]:::k --- V19["base: development, head: revert-version-bump (force-pushed)"]:::v
 ```
 
 Direct links:

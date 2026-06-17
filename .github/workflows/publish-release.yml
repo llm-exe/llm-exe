@@ -235,7 +235,7 @@ jobs:
                 --head revert-version-bump
             fi
 
-            REVERT_PR=$(gh pr list --state open --head revert-version-bump --json number --jq '.[0].number')
+            REVERT_PR=$(gh pr list --state open --head revert-version-bump --base development --json number --jq '.[0].number')
             gh pr merge "$REVERT_PR" --admin --squash --delete-branch --repo ${{ github.repository }}
             echo "development reverted to v$FAILED_VERSION"
           else

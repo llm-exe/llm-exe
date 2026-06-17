@@ -98,8 +98,8 @@ jobs:
     - name: Clean up release notes
       id: clean_release_notes
       run: |
-        # Remove automation-related commits (chore: bump version, Draft PR for release, Bump Version on PR to Main, docs: sync) and remove "by @username in" from PR references
-        CLEANED_BODY=$(sed '/chore: bump version/Id; /Draft PR for release/Id; /Bump Version on PR to Main/Id; /docs: sync/Id' release_body.txt | sed -E 's/ by @[^ ]+ in/ /g')
+        # Remove automation-related commits and remove "by @username in" from PR references
+        CLEANED_BODY=$(sed '/chore: bump version/Id; /Draft PR for release/Id; /Bump Version on PR to Main/Id; /docs: sync/Id; /revert version bump after failed publish/Id' release_body.txt | sed -E 's/ by @[^ ]+ in/ /g')
         echo "$CLEANED_BODY" > cleaned_body.txt
         echo "📝 Cleaned release notes:"
         cat cleaned_body.txt

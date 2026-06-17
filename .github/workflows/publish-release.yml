@@ -148,6 +148,12 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.bot-token.outputs.token }}
+
       - name: Revert release to draft
         run: |
           RELEASE_ID=$(jq -r .release.id "$GITHUB_EVENT_PATH")
@@ -186,3 +192,72 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+
+      - name: Delete release tag
+        run: |
+          TAG_NAME=$(jq -r .release.tag_name "$GITHUB_EVENT_PATH")
+          echo "Deleting git tag: $TAG_NAME"
+          if gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$TAG_NAME"; then
+            echo "Tag $TAG_NAME deleted — version bump logic will no longer treat this version as released"
+          else
+            echo "Could not delete tag $TAG_NAME"
+          fi
+        env:
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+
+      - name: Revert version bump in development and update draft PR title
+        run: |
+          TAG_NAME=$(jq -r .release.tag_name "$GITHUB_EVENT_PATH")
+          FAILED_VERSION="${TAG_NAME#v}"
+
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git fetch origin development
+
+          CURRENT_DEV_VERSION=$(git show origin/development:package.json | jq -r '.version')
+          echo "Failed version: $FAILED_VERSION | Current version on development: $CURRENT_DEV_VERSION"
+
+          if [ "$CURRENT_DEV_VERSION" != "$FAILED_VERSION" ]; then
+            echo "development was bumped to v$CURRENT_DEV_VERSION after the failed release — reverting to v$FAILED_VERSION"
+
+            git checkout -b revert-version-bump origin/development
+            jq --arg v "$FAILED_VERSION" '.version = $v' package.json > package.tmp && mv package.tmp package.json
+            git add package.json
+            git commit -m "chore: revert version bump after failed publish of v$FAILED_VERSION"
+            git push origin revert-version-bump --force
+
+            EXISTING=$(gh pr list --state open --head revert-version-bump --base development --json number --jq '.[0].number')
+            if [ -z "$EXISTING" ]; then
+              gh pr create \
+                --title "chore: revert version bump after failed publish of v$FAILED_VERSION" \
+                --body "The v$FAILED_VERSION publish failed. Reverting package.json so the next release attempt re-uses v$FAILED_VERSION." \
+                --base development \
+                --head revert-version-bump
+            fi
+
+            REVERT_PR=$(gh pr list --state open --head revert-version-bump --json number --jq '.[0].number')
+            gh pr merge "$REVERT_PR" --admin --squash --delete-branch --repo ${{ github.repository }}
+            echo "development reverted to v$FAILED_VERSION"
+          else
+            echo "development already at v$FAILED_VERSION — no version revert needed"
+          fi
+
+          # Update the draft dev→main PR title immediately (draft-main-pr.yml will also
+          # update it when the revert PR merges, but this ensures it happens right away)
+          EXPECTED_TITLE="Draft PR for release version v$FAILED_VERSION"
+          PR_INFO=$(gh pr list --base main --head development --state open --json number,title --jq '.[0]')
+          if [ -n "$PR_INFO" ] && [ "$PR_INFO" != "null" ]; then
+            PR_NUMBER=$(echo "$PR_INFO" | jq -r '.number')
+            PR_TITLE=$(echo "$PR_INFO" | jq -r '.title')
+            if [ "$PR_TITLE" != "$EXPECTED_TITLE" ]; then
+              gh pr edit "$PR_NUMBER" --title "$EXPECTED_TITLE" --repo ${{ github.repository }}
+              echo "Updated dev→main PR #$PR_NUMBER title to: $EXPECTED_TITLE"
+            else
+              echo "PR title already correct: $PR_TITLE"
+            fi
+          else
+            echo "No open dev→main PR found — title update skipped"
+          fi
+        env:
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.bot-token.outputs.token }}

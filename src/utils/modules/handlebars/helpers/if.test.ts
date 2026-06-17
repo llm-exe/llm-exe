@@ -1,5 +1,6 @@
 import { ifFn } from "./if";
 import { isEmpty } from "@/utils/modules/isEmpty";
+import { LlmExeError } from "@/errors";
 
 jest.mock("@/utils/modules/isEmpty");
 
@@ -13,6 +14,22 @@ describe("ifFn", () => {
 
     it("should throw an error if arguments length is not 2", () => {
         expect(() => (ifFn as any).call({}, true)).toThrow("#if requires exactly one argument");
+    });
+
+    it("throws LlmExeError with template.invalid_helper_arguments on wrong arg count", () => {
+        try {
+            (ifFn as any).call({}, true);
+            fail("Expected an error to be thrown");
+        } catch (e) {
+            expect(e).toBeInstanceOf(LlmExeError);
+            expect((e as LlmExeError).code).toBe("template.invalid_helper_arguments");
+            expect((e as LlmExeError).category).toBe("template");
+            const ctx = (e as LlmExeError).context as Record<string, unknown>;
+            expect(ctx.operation).toBe("handlebars.helper.if");
+            expect(ctx.helper).toBe("if");
+            expect(ctx.expected).toBe(1);
+            expect(ctx.received).toBe(1);
+        }
     });
 
     it("should call the conditional function if conditional is a function", () => {

@@ -1,6 +1,7 @@
 import { EmbeddingProviderKey } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { embeddingConfigs, getEmbeddingConfig } from "./config";
+import { LlmExeError } from "@/errors";
 
 jest.mock("@/utils/modules/getEnvironmentVariable");
 
@@ -59,11 +60,42 @@ describe("getEmbeddingConfig", () => {
     );
   });
 
+  it("throws LlmExeError with embedding.invalid_provider for an invalid provider", () => {
+    const invalidProvider = "invalid.provider" as EmbeddingProviderKey;
+    try {
+      getEmbeddingConfig(invalidProvider);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("embedding.invalid_provider");
+      expect((e as LlmExeError).category).toBe("embedding");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("getEmbeddingConfig");
+      expect(ctx.provider).toBe(invalidProvider);
+      expect(Array.isArray(ctx.availableProviders)).toBe(true);
+      expect((ctx.availableProviders as string[]).length).toBeGreaterThan(0);
+    }
+  });
+
   it("should throw an error for a missing provider", () => {
     const invalidProvider = "" as EmbeddingProviderKey;
     expect(() => getEmbeddingConfig(invalidProvider)).toThrowError(
       `Missing provider`
     );
+  });
+
+  it("throws LlmExeError with embedding.missing_provider for a missing provider", () => {
+    try {
+      getEmbeddingConfig("" as EmbeddingProviderKey);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("embedding.missing_provider");
+      expect((e as LlmExeError).category).toBe("embedding");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("getEmbeddingConfig");
+      expect(Array.isArray(ctx.availableProviders)).toBe(true);
+    }
   });
 });
 
@@ -215,6 +247,24 @@ describe("embeddingConfigs", () => {
       expect(() =>
         transform(256, { model: "cohere.embed-multilingual-v3" }, {})
       ).toThrow(/requested: 256/);
+    });
+
+    it("throws LlmExeError with embedding.unsupported_dimensions for Embed v3 with bad dim", () => {
+      const transform = getTransform();
+      try {
+        transform(512, { model: "cohere.embed-english-v3" }, {});
+        fail("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toBe("embedding.unsupported_dimensions");
+        expect((e as LlmExeError).category).toBe("embedding");
+        const ctx = (e as LlmExeError).context as Record<string, unknown>;
+        expect(ctx.operation).toBe("embedding.dimensionTransform");
+        expect(ctx.provider).toBe("amazon:cohere.embedding");
+        expect(ctx.model).toBe("cohere.embed-english-v3");
+        expect(ctx.dimensions).toBe(512);
+        expect(ctx.expected).toBe(1024);
+      }
     });
 
     it("passes the value through for Embed v4 and unknown models (Cohere validates)", () => {

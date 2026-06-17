@@ -3,6 +3,7 @@ import { SignatureV4 } from "@smithy/signature-v4";
 import { HttpRequest } from "@smithy/protocol-http";
 import { Sha256 } from "@aws-crypto/sha256-js";
 import { runWithTemporaryEnv } from "@/utils/modules/runWithTemporaryEnv";
+import { LlmExeError } from "@/errors";
 
 type AuthProps = {
   url: string;
@@ -18,7 +19,20 @@ export async function getAwsAuthorizationHeaders(
 ): Promise<Record<string, string>> {
   // Validate required inputs early to fail fast
   if (!props.url || !props.regionName) {
-    throw new Error('URL and region name are required for AWS authorization');
+    throw new LlmExeError(
+      "URL and region name are required for AWS authorization",
+      {
+        code: "auth.aws_signing_input_missing",
+        context: {
+          operation: "getAwsAuthorizationHeaders",
+          url: props.url,
+          regionName: props.regionName,
+          expected: "both url and regionName to be set",
+          resolution:
+            "Set AWS_REGION as an environment variable (or pass regionName) and provide a valid request URL.",
+        },
+      }
+    );
   }
   
   const providerChain = fromNodeProviderChain();

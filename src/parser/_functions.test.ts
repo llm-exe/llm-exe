@@ -1,4 +1,5 @@
 import { createParser, createCustomParser } from "./_functions";
+import { LlmExeError } from "@/errors";
 import { StringParser } from "./parsers/StringParser";
 import { BooleanParser } from "./parsers/BooleanParser";
 import { NumberParser } from "./parsers/NumberParser";
@@ -23,6 +24,11 @@ describe("createParser", () => {
     expect(parser).toBeInstanceOf(BooleanParser);
   });
 
+  it("passes options to BooleanParser", () => {
+    const parser = createParser("boolean", { match: "extract" });
+    expect(parser.parse("The answer is true.")).toBe(true);
+  });
+
   it("creates a NumberParser for type 'number'", () => {
     const parser = createParser("number");
     expect(parser).toBeInstanceOf(NumberParser);
@@ -41,6 +47,13 @@ describe("createParser", () => {
     } as const;
     const parser = createParser("json", { schema });
     expect(parser).toBeInstanceOf(JsonParser);
+  });
+
+  it("passes match options to JsonParser", () => {
+    const parser = createParser("json", { match: "extract" });
+    expect(parser.parse('Here is JSON: {"name":"Greg"}')).toEqual({
+      name: "Greg",
+    });
   });
 
   it("creates a ListToJsonParser for type 'listToJson'", () => {
@@ -81,40 +94,65 @@ describe("createParser", () => {
   });
 
   it("throws for an invalid parser type", () => {
-    expect(() => createParser("invalid" as any)).toThrow(
-      /Invalid parser type: "invalid"/
-    );
+    expect(() => {
+      // @ts-expect-error runtime contract: invalid parser type throws.
+      createParser("invalid");
+    }).toThrow(/Invalid parser type: "invalid"/);
   });
 
-  it("error message includes all valid types", () => {
+  it("throws LlmExeError with parser.invalid_type for an unknown parser type", () => {
     try {
-      createParser("bad" as any);
+      createParser("nope" as any);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("parser.invalid_type");
+      expect((e as LlmExeError).category).toBe("parser");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("createParser");
+      expect(ctx.parser).toBe("nope");
+      expect(Array.isArray(ctx.availableParsers)).toBe(true);
+      expect((ctx.availableParsers as string[]).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("error context includes all valid parser types in availableParsers", () => {
+    try {
+      // @ts-expect-error runtime contract: invalid parser type throws.
+      createParser("bad");
     } catch (e: any) {
-      expect(e.message).toContain("json");
-      expect(e.message).toContain("string");
-      expect(e.message).toContain("boolean");
-      expect(e.message).toContain("number");
-      expect(e.message).toContain("stringExtract");
-      expect(e.message).toContain("listToArray");
-      expect(e.message).toContain("listToJson");
-      expect(e.message).toContain("listToKeyValue");
-      expect(e.message).toContain("replaceStringTemplate");
-      expect(e.message).toContain("markdownCodeBlock");
-      expect(e.message).toContain("markdownCodeBlocks");
+      const available = (e.context?.availableParsers ?? []) as string[];
+      expect(available).toEqual(
+        expect.arrayContaining([
+          "json",
+          "string",
+          "boolean",
+          "number",
+          "stringExtract",
+          "listToArray",
+          "listToJson",
+          "listToKeyValue",
+          "replaceStringTemplate",
+          "markdownCodeBlock",
+          "markdownCodeBlocks",
+        ]),
+      );
     }
   });
 });
 
 describe("createCustomParser", () => {
   it("creates a CustomParser with the given name and function", () => {
-    const parser = createCustomParser("my-parser", (text) => text.toUpperCase());
+    const parser = createCustomParser("my-parser", (text) =>
+      text.toUpperCase(),
+    );
     expect(parser).toBeInstanceOf(CustomParser);
     expect(parser.name).toBe("my-parser");
   });
 
   it("parser function is invoked correctly", () => {
     const parser = createCustomParser("reverse", (text) =>
-      text.split("").reverse().join("")
+      text.split("").reverse().join(""),
     );
     const result = parser.parse("hello", {} as any);
     expect(result).toBe("olleh");
@@ -134,7 +172,10 @@ describe("createCustomParser", () => {
   it("can return complex types", () => {
     const parser = createCustomParser("json-extract", (text) => {
       const parsed = JSON.parse(text);
-      return { items: parsed.items as string[], count: parsed.items.length as number };
+      return {
+        items: parsed.items as string[],
+        count: parsed.items.length as number,
+      };
     });
     const result = parser.parse('{"items": ["a", "b", "c"]}', {} as any);
     expect(result).toEqual({ items: ["a", "b", "c"], count: 3 });

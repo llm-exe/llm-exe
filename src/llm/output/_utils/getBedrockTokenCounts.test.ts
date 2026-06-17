@@ -22,6 +22,15 @@ describe("getBedrockTokenCounts", () => {
     });
   });
 
+  it("defaults missing input header to 0 when only output is present", () => {
+    expect(
+      getBedrockTokenCounts({ "x-amzn-bedrock-output-token-count": "7" })
+    ).toEqual({
+      input_tokens: 0,
+      output_tokens: 7,
+    });
+  });
+
   it("returns undefined when neither Bedrock header is present", () => {
     expect(
       getBedrockTokenCounts({ "content-type": "application/json" })

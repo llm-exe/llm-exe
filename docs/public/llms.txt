@@ -43,19 +43,13 @@
 
 ### Executor
 - [LLM Executor](https://llm-exe.com/executor/index.html)
-- [Executor Options](https://llm-exe.com/executor/options.html)
 - [Tool Calling Executor](https://llm-exe.com/executor/openai-functions.html)
-- [Callable Executor](https://llm-exe.com/callable/index.html)
-- [Hooks](https://llm-exe.com/executor/hooks.html)
+- [hooks](https://llm-exe.com/executor/hooks.html)
 
 ### Embeddings
 - [Embeddings](https://llm-exe.com/embeddings/index.html)
 - [OpenAI Embeddings](https://llm-exe.com/embeddings/openai.html)
 - [Amazon Embeddings](https://llm-exe.com/embeddings/amazon.html)
-- [Cohere Embeddings (via Bedrock)](https://llm-exe.com/embeddings/cohere.html)
-
-### Callable
-- [Callable Executors](https://llm-exe.com/callable/index.html)
 
 ### Examples
 - [LLM Executor Function Syntax](https://llm-exe.com/examples/FunctionSyntax.html)

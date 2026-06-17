@@ -36,17 +36,26 @@ export const checkIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="
   <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
+export interface ModelEntry {
+  id: string;
+  shorthand: string;
+  deprecated?: boolean;
+  message?: string;
+}
+
+export interface ProviderEntry {
+  key: string;
+  name: string;
+  logo: string;
+  models: ModelEntry[];
+}
+
 export function getProviders(
-  customProviders?: Array<{
-    key: string;
-    name: string;
-    logo: string;
-    models: string[];
-  }>
-) {
+  customProviders?: ProviderEntry[]
+): ProviderEntry[] {
   if (customProviders) {
     return customProviders;
   }
 
-  return providersData;
+  return providersData as ProviderEntry[];
 }

@@ -13,7 +13,7 @@ class TestParser extends BaseParser<string> {
 
 class TestParserWithTarget extends BaseParser<string> {
   constructor(name: string, target: "text" | "function_call") {
-    super(name, {}, target);
+    super(name, target);
   }
   parse(text: string): string {
     return text;
@@ -47,16 +47,6 @@ describe("llm-exe:parser/BaseParser", () => {
   it("accepts custom target", () => {
     const parser = new TestParserWithTarget("fn-parser", "function_call");
     expect(parser.target).toBe("function_call");
-  });
-
-  it("sets options from constructor", () => {
-    const parser = new TestParser("test-parser", { someOption: true } as any);
-    expect(parser.options).toEqual({ someOption: true });
-  });
-
-  it("uses empty object as default options", () => {
-    const parser = new TestParser("test-parser");
-    expect(parser.options).toEqual({});
   });
 
   it("calls parse method on concrete implementation", () => {

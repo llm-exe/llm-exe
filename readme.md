@@ -2,6 +2,8 @@
 
 [![tests](https://github.com/llm-exe/llm-exe/actions/workflows/tests.yml/badge.svg)](https://github.com/llm-exe/llm-exe/actions/workflows/tests.yml) [![Coverage Status](https://coveralls.io/repos/github/llm-exe/llm-exe/badge.svg?branch=main)](https://coveralls.io/github/llm-exe/llm-exe?branch=main) [![npm version](https://badge.fury.io/js/llm-exe.svg)](https://badge.fury.io/js/llm-exe)
 
+> Upgrading from llm-exe 2.x to 3.x? Read the [v2 to v3 migration guide](https://llm-exe.com/misc/v2-to-v3-migration-guide.html) before updating. It covers parser and output-boundary changes that may require code updates.
+
 A package that provides simplified base components to make building and maintaining LLM-powered applications easier.
 
 - Write functions powered by LLM's with easy to use building blocks.
@@ -83,7 +85,7 @@ Welcome back!
 ```ts
 createParser("string");              // pass-through, returns string
 createParser("json", { schema });    // JSON with optional schema validation
-createParser("boolean");             // extracts boolean from response
+createParser("boolean");             // parses a boolean token
 createParser("number");              // extracts number from response
 createParser("stringExtract", { enum: ["yes", "no"] }); // match one of the enum values
 createParser("listToArray");         // newline-separated list → string[]

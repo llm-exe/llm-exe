@@ -5,6 +5,7 @@ import {
   isModelKnownBedrockAnthropic,
   guessProviderFromModel,
 } from "./guessProviderFromModel";
+import { LlmExeError } from "@/errors";
 
 describe("Model Identification Functions", () => {
   describe("isModelKnownOpenAi", () => {
@@ -112,6 +113,21 @@ describe("Model Identification Functions", () => {
       expect(() =>
         guessProviderFromModel({ model: "unsupported-model" })
       ).toThrow("Unsupported model");
+    });
+
+    it("throws LlmExeError with configuration.invalid_provider for unsupported models", () => {
+      try {
+        guessProviderFromModel({ model: "unsupported-model" });
+        fail("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toBe("configuration.invalid_provider");
+        expect((e as LlmExeError).category).toBe("configuration");
+        const ctx = (e as LlmExeError).context as Record<string, unknown>;
+        expect(ctx.operation).toBe("guessProviderFromModel");
+        expect(ctx.model).toBe("unsupported-model");
+        expect(Array.isArray(ctx.availableProviders)).toBe(true);
+      }
     });
   });
 });

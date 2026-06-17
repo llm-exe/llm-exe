@@ -2,6 +2,7 @@ import { get } from "@/utils/modules/get";
 import { pick } from "@/utils/modules/pick";
 import { Config, GenericLLm, LlmProvider } from "@/types";
 import { stateFromOptions } from "@/llm/_utils.stateFromOptions";
+import { LlmExeError } from "@/errors";
 
 describe("stateFromOptions", () => {
   const mockGet = jest.fn(get);
@@ -69,6 +70,25 @@ describe("stateFromOptions", () => {
     expect(() => stateFromOptions(options, config)).toThrowError(
       "Error: [maxTokens] is required"
     );
+  });
+
+  it("throws LlmExeError with configuration.missing_option for a missing required option", () => {
+    mockPick.mockReturnValueOnce({ model: "gpt-3" });
+    mockGet.mockReturnValueOnce(undefined).mockReturnValueOnce(undefined);
+
+    try {
+      stateFromOptions(options, config);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("configuration.missing_option");
+      expect((e as LlmExeError).category).toBe("configuration");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.operation).toBe("stateFromOptions");
+      expect(ctx.provider).toBe("openai.chat");
+      expect(ctx.key).toBe("openai.chat.v1");
+      expect(ctx.option).toBe("maxTokens");
+    }
   });
 
   it("should not throw error if required config is provided", () => {

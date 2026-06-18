@@ -358,7 +358,7 @@ flowchart LR
     end
 
     subgraph Rb["Failure rollback (separate job, release event only)"]
-        d3["actions/create-github-app-token@v3\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: mint bot token for PATCH"]:::rb
+        d3["actions/create-github-app-token@v3\nauth: APP_CLIENT_ID + APP_PRIVATE_KEY\nwhy: mint bot token for PATCH"]:::rb
         d4["api.github.com PATCH /releases/:id\nauth: bot token from step 'bot-token'\nwhy: flip published release to draft and prepend warning"]:::rb
         d3 --> d4
     end

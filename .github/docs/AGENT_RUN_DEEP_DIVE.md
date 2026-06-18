@@ -48,7 +48,7 @@ flowchart LR
     end
 
     subgraph S["Secrets and Identity"]
-        s1["APP_ID + APP_PRIVATE_KEY"]:::file
+        s1["APP_CLIENT_ID + APP_PRIVATE_KEY"]:::file
         s2["CLAUDE_CODE_OAUTH_TOKEN"]:::file
         bot["llm-exe-bot[bot]\nshort-lived token"]:::file
     end
@@ -258,7 +258,7 @@ sequenceDiagram
     participant API as Anthropic + GitHub
 
     E->>J: dispatch / schedule
-    J->>T: create-github-app-token@v3 (APP_ID, APP_PRIVATE_KEY)
+    J->>T: create-github-app-token@v3 (APP_CLIENT_ID, APP_PRIVATE_KEY)
     T-->>J: bot token (short-lived)
     J->>G: checkout fetch-depth 0 with bot token
     J->>G: git config llm-exe-bot[bot]
@@ -388,7 +388,7 @@ flowchart LR
     classDef web fill:#064e3b,color:#fff,stroke:#000
 
     subgraph Pre["Before the agent starts"]
-        c1["actions/create-github-app-token@v3\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: bot identity so writes trigger downstream"]:::pre
+        c1["actions/create-github-app-token@v3\nauth: APP_CLIENT_ID + APP_PRIVATE_KEY\nwhy: bot identity so writes trigger downstream"]:::pre
         c2["actions/checkout@v6\nauth: bot token\nwhy: fetch full history (depth 0) for git operations"]:::pre
         c3["actions/setup-node@v6\nauth: none\nwhy: install Node 24, prime npm cache"]:::pre
     end
@@ -571,7 +571,7 @@ flowchart TB
     F1 --> F1E["gate sets proceed=false\nrun-agent skipped"]:::effect
     F1E --> F1X["maintainer drains queue\nor uses dispatch to bypass"]:::fix
 
-    F2["Bot token mint fails\nAPP_ID or APP_PRIVATE_KEY wrong"]:::fail
+    F2["Bot token mint fails\nAPP_CLIENT_ID or APP_PRIVATE_KEY wrong"]:::fail
     F2 --> F2E["job fails at token step\nno log file written"]:::effect
     F2X["rotate App key, re-add secret"]:::fix
     F2E --> F2X

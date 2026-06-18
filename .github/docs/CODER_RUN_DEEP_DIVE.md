@@ -46,7 +46,7 @@ flowchart LR
     end
 
     subgraph S["Secrets and Identity"]
-        s1["APP_ID + APP_PRIVATE_KEY"]:::file
+        s1["APP_CLIENT_ID + APP_PRIVATE_KEY"]:::file
         s2["CLAUDE_CODE_OAUTH_TOKEN"]:::file
         bot["llm-exe-bot[bot]\nshort-lived token"]:::file
     end
@@ -355,7 +355,7 @@ flowchart LR
     classDef gh fill:#1f2937,color:#fff,stroke:#000
 
     subgraph Pre["Before the agent starts (gate + find-issues + leg setup)"]
-        c1["create-github-app-token@v3 (x3)\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: each job re-mints (tokens are job-scoped)"]:::pre
+        c1["create-github-app-token@v3 (x3)\nauth: APP_CLIENT_ID + APP_PRIVATE_KEY\nwhy: each job re-mints (tokens are job-scoped)"]:::pre
         c2["gh pr list / gh issue list (gate)\nauth: bot token\nwhy: backlog caps"]:::pre
         c3["gh issue list --json number,labels (find-issues)\nauth: bot token\nwhy: candidate set"]:::pre
         c4["gh pr list --author app/llm-exe-bot (find-issues)\nauth: bot token\nwhy: claimed detection"]:::pre

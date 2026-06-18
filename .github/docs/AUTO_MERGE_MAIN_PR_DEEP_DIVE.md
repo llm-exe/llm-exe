@@ -52,7 +52,7 @@ flowchart LR
     end
 
     subgraph S["Secrets and Identity"]
-        s1["APP_ID + APP_PRIVATE_KEY"]:::file
+        s1["APP_CLIENT_ID + APP_PRIVATE_KEY"]:::file
         bot["llm-exe-bot[bot]\nshort-lived token\nadmin on repo"]:::file
         s1 --> bot
     end
@@ -227,7 +227,7 @@ sequenceDiagram
 
     E->>J: workflow_run completed OR pull_request event
     J->>J: evaluate if-gate (line 30)
-    J->>T: create-github-app-token (APP_ID, APP_PRIVATE_KEY)
+    J->>T: create-github-app-token (APP_CLIENT_ID, APP_PRIVATE_KEY)
     T-->>J: bot token (short-lived, admin)
     J->>GH: gh pr list base=main head=development state=open
     GH-->>J: PR number (filtered isDraft=false)
@@ -359,7 +359,7 @@ flowchart LR
 
     subgraph Pre["Setup"]
         c1["actions/checkout@v6\nauth: GITHUB_TOKEN\nwhy: needed for context, not for diffs"]:::pre
-        c2["actions/create-github-app-token@v3\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: mint admin-capable bot token"]:::pre
+        c2["actions/create-github-app-token@v3\nauth: APP_CLIENT_ID + APP_PRIVATE_KEY\nwhy: mint admin-capable bot token"]:::pre
     end
 
     subgraph During["gh CLI calls"]
@@ -501,7 +501,7 @@ flowchart TB
     F3X["bump MAX_ATTEMPTS or sleep duration\nfor long-running CI matrices\nor add IN_PROGRESS check to step 5"]:::fix
     F3E --> F3X
 
-    F4["Bot token mint fails\n(APP_ID or APP_PRIVATE_KEY wrong)"]:::fail
+    F4["Bot token mint fails\n(APP_CLIENT_ID or APP_PRIVATE_KEY wrong)"]:::fail
     F4 --> F4E["step 2 fails, subsequent steps skipped\nworkflow fails loud"]:::effect
     F4X["rotate App key, re-add secret"]:::fix
     F4E --> F4X

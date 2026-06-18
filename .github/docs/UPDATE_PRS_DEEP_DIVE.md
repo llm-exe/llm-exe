@@ -39,7 +39,7 @@ flowchart LR
     end
 
     subgraph S["Secrets and Identity"]
-        s1["APP_ID + APP_PRIVATE_KEY"]:::file
+        s1["APP_CLIENT_ID + APP_PRIVATE_KEY"]:::file
         bot["llm-exe-bot[bot]\nshort-lived token"]:::file
     end
 
@@ -146,7 +146,7 @@ sequenceDiagram
     participant PR as Open PRs
 
     E->>J: workflow_dispatch
-    J->>T: create-github-app-token@v3 (APP_ID, APP_PRIVATE_KEY)
+    J->>T: create-github-app-token@v3 (APP_CLIENT_ID, APP_PRIVATE_KEY)
     T-->>J: bot token (short-lived)
     J->>G: actions/checkout@v6 with bot token
     G-->>J: working tree ready
@@ -308,7 +308,7 @@ flowchart TB
     F3X["benign, no action needed"]:::fix
     F3E --> F3X
 
-    F4["Bot token mint fails\n(APP_ID or APP_PRIVATE_KEY wrong)"]:::fail
+    F4["Bot token mint fails\n(APP_CLIENT_ID or APP_PRIVATE_KEY wrong)"]:::fail
     F4 --> F4E["job fails at first step\nno PRs updated this morning"]:::effect
     F4X["rotate App key, re-add secret\nnext cron picks up"]:::fix
     F4E --> F4X

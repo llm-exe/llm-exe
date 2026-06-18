@@ -50,7 +50,7 @@ flowchart LR
     end
 
     subgraph SEC["Secrets"]
-        s1["APP_ID + APP_PRIVATE_KEY"]:::file
+        s1["APP_CLIENT_ID + APP_PRIVATE_KEY"]:::file
         s2["CLAUDE_CODE_OAUTH_TOKEN"]:::file
         s3["AZURE_TENANT_ID + AZURE_CLIENT_ID + AZURE_CLIENT_SECRET"]:::file
         s4["SMTP_USERNAME (sender mailbox)"]:::file
@@ -184,7 +184,7 @@ sequenceDiagram
     participant IN as Recipient inboxes
 
     E->>J: trigger workflow
-    J->>T: create-github-app-token (APP_ID + key)
+    J->>T: create-github-app-token (APP_CLIENT_ID + key)
     T-->>J: short-lived bot token
     J->>FS: actions/checkout@v6 with bot token
     J->>CCA: prompt + allowedTools + max-turns 15
@@ -307,7 +307,7 @@ flowchart LR
     classDef mg fill:#064e3b,color:#fff,stroke:#000
 
     subgraph Pre["Setup"]
-        c1["create-github-app-token@v3\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: bot token for gh CLI in step 3"]:::pre
+        c1["create-github-app-token@v3\nauth: APP_CLIENT_ID + APP_PRIVATE_KEY\nwhy: bot token for gh CLI in step 3"]:::pre
         c2["actions/checkout@v6\nauth: bot token\nwhy: get repo so Claude can read logs"]:::pre
     end
 
@@ -509,7 +509,7 @@ flowchart TB
     classDef effect fill:#374151,color:#fff,stroke:#000
     classDef fix fill:#064e3b,color:#fff,stroke:#000
 
-    F1["Bot token mint fails\nAPP_ID or APP_PRIVATE_KEY wrong"]:::fail
+    F1["Bot token mint fails\nAPP_CLIENT_ID or APP_PRIVATE_KEY wrong"]:::fail
     F1 --> F1E["job fails at step 1\nno email sent"]:::effect
     F1E --> F1X["rotate App key, re-add secret"]:::fix
 

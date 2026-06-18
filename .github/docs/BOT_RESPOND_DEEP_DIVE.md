@@ -52,7 +52,7 @@ flowchart LR
     end
 
     subgraph S["Secrets and Identity"]
-        s1["APP_ID + APP_PRIVATE_KEY"]:::file
+        s1["APP_CLIENT_ID + APP_PRIVATE_KEY"]:::file
         s2["CLAUDE_CODE_OAUTH_TOKEN"]:::file
         bot["llm-exe-bot[bot]\nshort-lived token"]:::file
     end
@@ -188,7 +188,7 @@ sequenceDiagram
     E->>F: payload arrives
     Note over F: three-part filter evaluates
     F-->>J: pass: start respond
-    J->>T: create-github-app-token(APP_ID, APP_PRIVATE_KEY)
+    J->>T: create-github-app-token(APP_CLIENT_ID, APP_PRIVATE_KEY)
     T-->>J: bot token (short-lived)
     J->>G: git config llm-exe-bot[bot]
     J->>G: checkout fetch-depth 0 with bot token
@@ -361,7 +361,7 @@ flowchart LR
     classDef gh fill:#1f2937,color:#fff,stroke:#000
 
     subgraph Pre["Before the bot starts"]
-        c1["actions/create-github-app-token@v3\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: mint bot identity"]:::pre
+        c1["actions/create-github-app-token@v3\nauth: APP_CLIENT_ID + APP_PRIVATE_KEY\nwhy: mint bot identity"]:::pre
         c2["actions/checkout@v6\nauth: bot token\nwhy: full history, fetch-depth 0"]:::pre
         c3["actions/setup-node@v6\nauth: none\nwhy: Node 24, npm cache"]:::pre
         c4["npm ci\nauth: none\nwhy: install deps so npm test runs"]:::pre
@@ -531,7 +531,7 @@ flowchart TB
     F2 --> F2E["user.login check fails\nself-loop prevented"]:::effect
     F2E --> F2X["working as designed"]:::fix
 
-    F3["Bot token mint fails\nAPP_ID or APP_PRIVATE_KEY wrong"]:::fail
+    F3["Bot token mint fails\nAPP_CLIENT_ID or APP_PRIVATE_KEY wrong"]:::fail
     F3 --> F3E["job fails at token step\nno reply posted"]:::effect
     F3E --> F3X["rotate App key, re-add secret"]:::fix
 

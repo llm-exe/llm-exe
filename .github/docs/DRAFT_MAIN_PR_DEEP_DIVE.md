@@ -49,7 +49,7 @@ flowchart LR
     end
 
     subgraph S["Identity"]
-        s1["APP_ID + APP_PRIVATE_KEY"]:::file
+        s1["APP_CLIENT_ID + APP_PRIVATE_KEY"]:::file
         bot["llm-exe-bot[bot]\nshort-lived token"]:::file
     end
 
@@ -433,7 +433,7 @@ flowchart LR
 
     subgraph Boot["Before logic begins"]
         c1["actions/checkout@v6\nfetch-depth: 0\nwhy: full tag history + merge-base"]:::pre
-        c2["actions/create-github-app-token@v3\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: bot identity for gh, git push"]:::pre
+        c2["actions/create-github-app-token@v3\nauth: APP_CLIENT_ID + APP_PRIVATE_KEY\nwhy: bot identity for gh, git push"]:::pre
     end
 
     subgraph Git["Local git commands"]
@@ -631,7 +631,7 @@ flowchart TB
     F9X["audit line 21 condition\nany change to bump-version-branch name\nmust update the gate"]:::fix
     F9E --> F9X
 
-    F10["Bot token mint fails\n(APP_ID rotation lag)"]:::fail
+    F10["Bot token mint fails\n(APP_CLIENT_ID rotation lag)"]:::fail
     F10 --> F10E["all gh + git push steps fail\nrun aborts at first gh call"]:::effect
     F10X["rotate App key, re-add secret"]:::fix
     F10E --> F10X

@@ -26,18 +26,18 @@ jobs:
     steps:
       - name: Generate bot token
         id: bot-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.APP_ID }}
+          client-id: ${{ vars.APP_CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Configure git
         run: |
           git config --global user.name "llm-exe-bot[bot]"
-          git config --global user.email "${{ secrets.APP_ID }}+llm-exe-bot[bot]@users.noreply.github.com"
+          git config --global user.email "${{ vars.APP_BOT_USER_ID }}+llm-exe-bot[bot]@users.noreply.github.com"
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ steps.bot-token.outputs.token }}

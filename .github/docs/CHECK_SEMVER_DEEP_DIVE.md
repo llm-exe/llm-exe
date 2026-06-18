@@ -113,7 +113,7 @@ flowchart TB
 
     subgraph J["Job: enforce-semantic-version (ubuntu-latest)"]
         direction TB
-        s1["actions/checkout@v4"]:::step
+        s1["actions/checkout@v6"]:::step
         s2["git fetch --tags"]:::step
         s3["Get latest stable release tag\n(regex + sort + head)"]:::step
         s4["Get version from package.json\n(jq -r .version)"]:::step
@@ -141,7 +141,7 @@ sequenceDiagram
     autonumber
     participant E as Event (pull_request)
     participant R as Runner
-    participant CO as actions/checkout@v4
+    participant CO as actions/checkout@v6
     participant G as git
     participant TAG as Tag list
     participant PJ as package.json

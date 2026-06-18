@@ -42,13 +42,13 @@ jobs:
     steps:
       - name: Generate bot token
         id: bot-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.APP_ID }}
+          client-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Checkout development
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: development
           token: ${{ steps.bot-token.outputs.token }}

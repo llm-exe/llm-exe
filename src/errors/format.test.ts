@@ -148,3 +148,77 @@ describe("formatErrorValue throw-fallback path", () => {
     expect(out).toBe("[object Object]");
   });
 });
+
+describe("formatErrorValue additional primitive coverage", () => {
+  it("formats top-level bigint", () => {
+    expect(formatErrorValue(42n)).toBe("42");
+  });
+
+  it("formats nested bigint inside an object via compactJson", () => {
+    expect(formatErrorValue({ big: 9n })).toBe(`{"big":"9"}`);
+  });
+
+  it("formats nested function inside an object via compactJson", () => {
+    expect(formatErrorValue({ fn: () => 1 })).toContain("[Function]");
+  });
+
+  it("formats nested symbol inside an object via compactJson", () => {
+    expect(formatErrorValue({ sym: Symbol("x") })).toContain("Symbol(x)");
+  });
+
+  it("formats anonymous function with empty name", () => {
+    const fn = function () {};
+    Object.defineProperty(fn, "name", { value: "" });
+    expect(formatErrorValue(fn)).toBe("[Function]");
+  });
+});
+
+describe("formatErrorList additional coverage", () => {
+  it("respects custom maxLength on each item", () => {
+    const out = formatErrorList(["hello world", "another"], { maxLength: 6 });
+    // maxLength is forwarded into formatErrorValue for each item
+    expect(out).toContain("…");
+  });
+});
+
+describe("formatLlmExeErrorForLog additional coverage", () => {
+  it("falls back to Error name when name is missing", () => {
+    const err = { message: "hi" };
+    expect(formatLlmExeErrorForLog(err)).toBe("Error: hi");
+  });
+
+  it("falls back to empty message when message is not a string", () => {
+    const err = { name: "MyError", message: 42 };
+    expect(formatLlmExeErrorForLog(err)).toBe("MyError: ");
+  });
+
+  it("emits cause with code segment when cause has a code", () => {
+    const cause = { name: "InnerError", message: "boom", code: "x.y" };
+    const err = new LlmExeError("outer", {
+      code: "parser.invalid_type",
+      cause,
+    });
+    const out = formatLlmExeErrorForLog(err);
+    expect(out).toContain("Caused by: InnerError [x.y]: boom");
+  });
+
+  it("stringifies the cause when message is not a string", () => {
+    const cause = { name: "InnerError", message: 7, toString: () => "weird" };
+    const err = new LlmExeError("outer", {
+      code: "parser.invalid_type",
+      cause,
+    });
+    const out = formatLlmExeErrorForLog(err);
+    expect(out).toContain("Caused by: InnerError:");
+  });
+
+  it("falls back to Error name for nameless cause", () => {
+    const cause = { message: "no name here" };
+    const err = new LlmExeError("outer", {
+      code: "parser.invalid_type",
+      cause,
+    });
+    const out = formatLlmExeErrorForLog(err);
+    expect(out).toContain("Caused by: Error: no name here");
+  });
+});

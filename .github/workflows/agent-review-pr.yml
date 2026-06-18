@@ -132,7 +132,7 @@ jobs:
             Read the file /tmp/review-prompt.txt for your full instructions. Follow them exactly.
           claude_args: |
             --allowedTools "Bash,Read,Glob,Grep,WebFetch"
-            --max-turns 30
+            --max-turns 60
             --model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 
       - name: Upload agent prompt

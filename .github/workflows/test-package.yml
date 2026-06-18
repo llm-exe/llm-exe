@@ -27,7 +27,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Use Latest Node.js 22.x
         uses: actions/setup-node@v6

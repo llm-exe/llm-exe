@@ -156,7 +156,7 @@ flowchart TB
 
     subgraph J["Job: test-package (ubuntu-latest, env: Examples Test)"]
         direction TB
-        s1["Checkout repository\nactions/checkout@v4"]:::step
+        s1["Checkout repository\nactions/checkout@v6"]:::step
         s2["Use Latest Node.js 22.x\nactions/setup-node@v6 (cache: npm)"]:::step
         s3["Cache npm dependencies\n./.github/actions/cache"]:::step
         s4["Install dependencies\nnpm install"]:::step
@@ -351,7 +351,7 @@ flowchart LR
     classDef reg fill:#1f2937,color:#fff,stroke:#000
 
     subgraph Pre["Before tests"]
-        c1["actions/checkout@v4\nauth: GITHUB_TOKEN\nwhy: get source"]:::pre
+        c1["actions/checkout@v6\nauth: GITHUB_TOKEN\nwhy: get source"]:::pre
         c2["actions/setup-node@v6\nauth: none\nwhy: Node 22.x install"]:::pre
         c3["registry.npmjs.org\nauth: none\nwhy: npm install (dev deps + examples deps)"]:::reg
     end

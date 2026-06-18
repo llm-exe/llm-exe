@@ -20,7 +20,7 @@ jobs:
     name: Pack Package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js environment
         uses: ./.github/actions/setup-node
@@ -46,7 +46,7 @@ jobs:
           echo "PACKED_PACKAGE_PATH=$(find . -maxdepth 1 -type f -name 'llm-exe-*.tgz')" >> $GITHUB_ENV
 
       - name: Upload packed package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: package
           path: ${{ env.PACKED_PACKAGE_PATH }}

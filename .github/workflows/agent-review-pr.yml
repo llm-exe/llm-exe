@@ -45,7 +45,7 @@ jobs:
         node-version: [18.x, 20.x, 22.x, 24.x]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Checkout PR (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
@@ -80,13 +80,13 @@ jobs:
     steps:
       - name: Generate review bot token
         id: review-bot-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.LLM_EXE_REVIEW_BOT_APP_ID }}
+          client-id: ${{ vars.LLM_EXE_REVIEW_BOT_CLIENT_ID }}
           private-key: ${{ secrets.LLM_EXE_REVIEW_BOT_PRIVATE_KEY }}
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ steps.review-bot-token.outputs.token }}
@@ -132,12 +132,12 @@ jobs:
             Read the file /tmp/review-prompt.txt for your full instructions. Follow them exactly.
           claude_args: |
             --allowedTools "Bash,Read,Glob,Grep,WebFetch"
-            --max-turns 30
+            --max-turns 60
             --model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 
       - name: Upload agent prompt
         if: steps.prompt.outputs.log_file != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: agent-prompt-${{ github.run_id }}
           path: /tmp/review-prompt.txt
@@ -175,16 +175,16 @@ jobs:
     steps:
       - name: Generate review bot token
         id: review-bot-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.LLM_EXE_REVIEW_BOT_APP_ID }}
+          client-id: ${{ vars.LLM_EXE_REVIEW_BOT_CLIENT_ID }}
           private-key: ${{ secrets.LLM_EXE_REVIEW_BOT_PRIVATE_KEY }}
 
       - name: Generate bot token
         id: bot-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.APP_ID }}
+          client-id: ${{ vars.APP_CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Approve or skip

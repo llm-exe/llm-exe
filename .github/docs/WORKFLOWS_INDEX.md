@@ -79,7 +79,7 @@ flowchart LR
 | [agent-review-pr.yml](../workflows/agent-review-pr.yml) | PR opened/synchronize on development + workflow_dispatch | Tests (Node matrix) + reviewer agent + decide job: approve, request changes, or close | [AGENT_REVIEW_PR_DEEP_DIVE.md](AGENT_REVIEW_PR_DEEP_DIVE.md) |
 | [agent-digest.yml](../workflows/agent-digest.yml) | Monday cron + dispatch | Weekly HTML email digest sent via Microsoft Graph | [AGENT_DIGEST_DEEP_DIVE.md](AGENT_DIGEST_DEEP_DIVE.md) |
 | [bot-respond.yml](../workflows/bot-respond.yml) | issue_comment mentioning @llm-exe-bot | Conversational responder; can dispatch review pipeline, answer questions, or revise PR branches on explicit ask | [BOT_RESPOND_DEEP_DIVE.md](BOT_RESPOND_DEEP_DIVE.md) |
-| [docs-sync-trigger.yml](../workflows/docs-sync-trigger.yml) | push to development on workflow/action/script paths | Push detector that dispatches `docs-sync.yml` with the changed file list (workaround for `claude-code-action@v1` not supporting push) | [DOCS_SYNC_DEEP_DIVE.md](DOCS_SYNC_DEEP_DIVE.md#trigger) |
+| [docs-sync-trigger.yml](../workflows/docs-sync-trigger.yml) | push to development on workflow/action/script paths | Push detector that dispatches `docs-sync.yml` with the changed file list (workaround for `claude-code-action@v1` not supporting push) | [DOCS_SYNC_DEEP_DIVE.md](DOCS_SYNC_DEEP_DIVE.md) |
 | [docs-sync.yml](../workflows/docs-sync.yml) | workflow_dispatch (manual or from docs-sync-trigger) | Keeps the workflow deep-dive docs in sync with their source files | [DOCS_SYNC_DEEP_DIVE.md](DOCS_SYNC_DEEP_DIVE.md) |
 | [vitals.yml](../workflows/vitals.yml) | daily cron + dispatch | Regenerates [AUTOMATION.md](../../AUTOMATION.md), the live dashboard at the repo root | [VITALS_DEEP_DIVE.md](VITALS_DEEP_DIVE.md) |
 

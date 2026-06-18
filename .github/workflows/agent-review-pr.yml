@@ -82,7 +82,7 @@ jobs:
         id: review-bot-token
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ secrets.LLM_EXE_REVIEW_BOT_APP_ID }}
+          app-id: ${{ secrets.LLM_EXE_REVIEW_BOT_APP_ID }}
           private-key: ${{ secrets.LLM_EXE_REVIEW_BOT_PRIVATE_KEY }}
 
       - name: Checkout
@@ -132,7 +132,7 @@ jobs:
             Read the file /tmp/review-prompt.txt for your full instructions. Follow them exactly.
           claude_args: |
             --allowedTools "Bash,Read,Glob,Grep,WebFetch"
-            --max-turns 60
+            --max-turns 30
             --model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 
       - name: Upload agent prompt
@@ -177,7 +177,7 @@ jobs:
         id: review-bot-token
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ secrets.LLM_EXE_REVIEW_BOT_APP_ID }}
+          app-id: ${{ secrets.LLM_EXE_REVIEW_BOT_APP_ID }}
           private-key: ${{ secrets.LLM_EXE_REVIEW_BOT_PRIVATE_KEY }}
 
       - name: Generate bot token

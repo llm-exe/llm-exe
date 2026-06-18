@@ -29,9 +29,9 @@ jobs:
     steps:
       - name: Generate bot token
         id: bot-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.APP_ID }}
+          client-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
       - name: Backlog gate
         id: check
@@ -82,13 +82,13 @@ jobs:
     steps:
       - name: Generate bot token
         id: bot-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.APP_ID }}
+          client-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ steps.bot-token.outputs.token }}
@@ -150,7 +150,7 @@ jobs:
 
       - name: Upload agent prompt
         if: steps.prompt.outputs.log_file != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: agent-prompt-persona-${{ matrix.persona }}-${{ github.run_id }}
           path: /tmp/agent-prompt.txt
@@ -171,13 +171,13 @@ jobs:
     steps:
       - name: Generate bot token
         id: bot-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.APP_ID }}
+          client-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ steps.bot-token.outputs.token }}
@@ -232,7 +232,7 @@ jobs:
 
       - name: Upload agent prompt
         if: steps.prompt.outputs.log_file != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: agent-prompt-curator-${{ github.run_id }}
           path: /tmp/agent-prompt.txt

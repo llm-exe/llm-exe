@@ -295,9 +295,9 @@ Stored under repository or organization variables:
 
 | Variable | Where it is used |
 |----------|------------------|
-| `APP_CLIENT_ID` | OAuth Client ID for `llm-exe-bot[bot]` — passed as `client-id` to `actions/create-github-app-token@v3` in every workflow that mints a main bot token. |
-| `APP_BOT_USER_ID` | Numeric GitHub user ID for `llm-exe-bot[bot]` (265913398) — used as the prefix in `git config user.email` so bot commits get proper noreply attribution. |
-| `LLM_EXE_REVIEW_BOT_CLIENT_ID` | OAuth Client ID for `llm-exe-review-bot[bot]` — passed as `client-id` to `actions/create-github-app-token@v3` in `agent-review-pr.yml`. |
+| `APP_CLIENT_ID` | OAuth Client ID for `llm-exe-bot[bot]`. Passed as `client-id` to `actions/create-github-app-token@v3` in every workflow that mints a main bot token. |
+| `APP_BOT_USER_ID` | Numeric GitHub user ID for `llm-exe-bot[bot]` (265913398). Used as the prefix in `git config user.email` so bot commits get proper noreply attribution. |
+| `LLM_EXE_REVIEW_BOT_CLIENT_ID` | OAuth Client ID for `llm-exe-review-bot[bot]`. Passed as `client-id` to `actions/create-github-app-token@v3` in `agent-review-pr.yml`. |
 | `ANTHROPIC_OPUS_LATEST` | Every agent workflow that invokes `claude-code-action@v1` (except `agent-digest.yml` which uses sonnet). Falls back to `claude-opus-4-6` if unset. Allows upgrading all agents to a newer Opus model by changing one variable. |
 | `AWS_ROLE_DEPLOY_ARN`, `AWS_REGION`, `AWS_S3_BUCKET`, `AWS_CLOUDFRONT_DISTRIBUTION_ID` | `deploy-docs.yml` |
 
@@ -478,7 +478,7 @@ Read the file /tmp/agent-prompt.txt for your full instructions. Follow them exac
 | scout | same | 50 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | personas (each) | same | 40 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | curator | same | 40 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
-| reviewer | `Bash,Read,Glob,Grep,WebFetch` (read-only set) | 30 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
+| reviewer | `Bash,Read,Glob,Grep,WebFetch` (read-only set) | 60 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | bot-respond | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch` | 90 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | docs-sync | `Bash,Read,Write,Edit,Glob,Grep,WebFetch` | 80 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | digest | `Bash,Read,Glob,Grep,Write` | 15 | `claude-sonnet-4-6` |
@@ -1109,7 +1109,7 @@ If you wanted to clone this system into a different repository, here is the exac
 
 1. **Create a GitHub App** for the repo (or org). Permissions: contents:write, pull-requests:write, issues:write, actions:write, id-token:write, metadata:read. Install on the target repository. Save the App ID and download the private key PEM.
 2. **Store secrets** at repo level: `APP_PRIVATE_KEY`, `LLM_EXE_REVIEW_BOT_PRIVATE_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`. If you want the digest, also `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `SMTP_USERNAME`, `MARKETING_EMAILS`. If you want `test-package.yml`, also the per-provider API keys.
-3. **Store variables** at repo level: `APP_CLIENT_ID` (OAuth Client ID for main bot), `APP_BOT_USER_ID` (numeric GitHub user ID for `llm-exe-bot[bot]` — get it from `gh api /users/llm-exe-bot[bot] --jq .id`), `LLM_EXE_REVIEW_BOT_CLIENT_ID` (OAuth Client ID for review bot). If you want docs deploy: `AWS_ROLE_DEPLOY_ARN`, `AWS_REGION`, `AWS_S3_BUCKET`, `AWS_CLOUDFRONT_DISTRIBUTION_ID`.
+3. **Store variables** at repo level: `APP_CLIENT_ID` (OAuth Client ID for main bot), `APP_BOT_USER_ID` (numeric GitHub user ID for `llm-exe-bot[bot]`; get it from `gh api /users/llm-exe-bot[bot] --jq .id`), `LLM_EXE_REVIEW_BOT_CLIENT_ID` (OAuth Client ID for review bot). If you want docs deploy: `AWS_ROLE_DEPLOY_ARN`, `AWS_REGION`, `AWS_S3_BUCKET`, `AWS_CLOUDFRONT_DISTRIBUTION_ID`.
 4. **Pick two branches**: `development` (default) and `main`. Protect `main` so only the auto-merge workflow can write.
 5. **Set the default branch to `development`** in repo settings.
 

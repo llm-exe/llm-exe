@@ -101,7 +101,7 @@ export default defineConfig({
             link: "/executor/index.html",
           },
           {
-            text: "Config",
+            text: "Prompt Files",
             link: "/config/index.html",
           },
           {
@@ -311,15 +311,15 @@ export default defineConfig({
         ],
       },
       {
-        text: "Config",
+        text: "Prompt Files",
         collapsed: true,
         items: [
           {
-            text: "Getting Started",
+            text: "Overview",
             link: "/config/index.html",
           },
           {
-            text: "Config File Formats",
+            text: "File Formats",
             link: "/config/formats.html",
           },
           {

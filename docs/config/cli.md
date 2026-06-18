@@ -1,46 +1,46 @@
 ---
-title: "CLI | Run Config Files from the Terminal"
-description: "Run llm-exe config files from the command line."
+title: "CLI | Run Prompt Files from the Terminal"
+description: "Run llm-exe prompt files from the command line."
 ---
 
 # CLI
 
-The `llm-exe` command runs a [config file](/config/index.html) from your terminal.
+The `llm-exe` command runs prompt files.
 
 ```bash
 llm-exe ./summarize.yml --data.text "Long article..."
 ```
 
-If the package is not installed globally, use `npx`.
+Use `npx` if the package is not installed globally.
 
 ```bash
 npx llm-exe ./summarize.yml --data.text "Long article..."
 ```
 
-The CLI uses the same config format as the TypeScript API. It loads the file, builds the executor, runs it, and prints the result.
-
-## Basic Usage
+The result is written to stdout, so it works well with pipes and CI logs.
 
 ```bash
-llm-exe <path> [options]
+npm test 2>&1 | llm-exe ./explain-failure.yml --stdin log
 ```
 
-`<path>` should be a config file:
+## Write a Prompt File
 
-- `.json`
-- `.yml`
-- `.yaml`
-- `.md`
+```yaml
+# summarize.yml
+provider: openai.gpt-4o-mini
+message: "Summarize: {{text}}"
+parser: string
+```
 
-URLs are supported too, but only with `--remote`.
+Run it:
 
 ```bash
-llm-exe https://example.com/summarize.yml --remote
+llm-exe ./summarize.yml --data.text "Long article..."
 ```
 
-Without `--remote`, URLs are refused.
+Prompt files can be JSON, YAML, or Markdown. See [Prompt File Formats](/config/formats.html).
 
-## Passing Data
+## Pass Data
 
 Use `--data.<key>` to pass template values.
 
@@ -64,13 +64,13 @@ That becomes:
 }
 ```
 
-Values from the command line override values in the file. `data` is merged; top-level fields replace.
+Command-line values override values in the file. `data` is merged; top-level fields replace.
 
 ```bash
 llm-exe ./summarize.yml --data.text "Different text" --model gpt-4.1
 ```
 
-## Reading stdin
+## Pipe stdin
 
 Use `--stdin <key>` to bind piped input to a data variable.
 
@@ -78,60 +78,75 @@ Use `--stdin <key>` to bind piped input to a data variable.
 npm test 2>&1 | llm-exe ./explain-failure.yml --stdin log
 ```
 
-Example config:
-
 ```yaml
+# explain-failure.yml
 provider: openai.gpt-4o-mini
 system: You are a senior engineer.
 message: "Explain why this failed and suggest a fix:\n\n{{log}}"
 ```
 
-stdin is only read when `--stdin` is present, so the command will not sit around waiting for input when you are not piping anything.
+stdin is only read when `--stdin` is present.
 
-## Output
+## Parse Output
 
-By default, the result is written to stdout.
+Prompt files can use llm-exe parsers.
+
+```yaml
+# extract.yml
+provider: openai.gpt-4o-mini
+message: "Extract sentiment from: {{text}}"
+parser: json
+parserOptions:
+  schema:
+    type: object
+    properties:
+      sentiment:
+        type: string
+    required: [sentiment]
+```
+
+Use `--json` when you want the result and metadata as JSON.
 
 ```bash
-llm-exe ./summarize.yml > summary.txt
+llm-exe ./extract.yml --data.text "I love this" --json | jq ".result"
 ```
 
-Errors and debug output go to stderr.
-
-Use `--json` when you want the result and metadata together.
+Without `--json`, only the parsed result is printed.
 
 ```bash
-llm-exe ./summarize.yml --json
+llm-exe ./summarize.yml --data.text "Long article..." > summary.txt
 ```
 
-```json
-{
-  "result": "...",
-  "metadata": {}
-}
-```
+Errors and debug output go to stderr. The exit code is `0` on success and `1` on errors.
 
-Use `--debug` to print execution metadata to stderr.
+## Chain Prompt Files
+
+One prompt file can feed another.
 
 ```bash
-llm-exe ./summarize.yml --debug
+llm-exe ./outline.yml --data.topic "rate limiting" \
+  | llm-exe ./draft-from-outline.yml --stdin outline
 ```
 
-The exit code is `0` on success and `1` on errors.
+This is often enough for small local workflows and CI jobs.
 
 ## Options
+
+```bash
+llm-exe <path> [options]
+```
 
 **`--data.<key> <value>`**  
 Set a template value. Dotted keys are nested.
 
 **`--model <value>`**  
-Override `model` in the config.
+Override `model` in the file.
 
 **`--provider <value>`**  
-Override `provider` in the config. This should be a real `useLlm` provider key, like `openai.chat.v1`.
+Override `provider` in the file. This should be a real `useLlm` provider key, like `openai.chat.v1`.
 
 **`--parser <value>`**  
-Override `parser` in the config.
+Override `parser` in the file.
 
 **`--stdin <key>`**  
 Read stdin and put it at `data[key]`.
@@ -143,13 +158,29 @@ Print `{ result, metadata }` instead of only the result.
 Print execution metadata to stderr.
 
 **`--remote`**  
-Allow loading a config from an `http` or `https` URL.
+Allow loading a prompt file from an `http` or `https` URL.
 
 **`-h`, `--help`**  
 Print help.
 
 **`-v`, `--version`**  
 Print the installed version.
+
+## Remote Files
+
+Local files are the default.
+
+```bash
+llm-exe ./summarize.yml
+```
+
+Remote files require `--remote`.
+
+```bash
+llm-exe https://example.com/summarize.yml --remote
+```
+
+Without `--remote`, URLs are refused.
 
 ## Auth
 
@@ -163,9 +194,9 @@ For example:
 - `XAI_API_KEY`
 - `DEEPSEEK_API_KEY`
 
-There is no separate CLI login or key storage.
+There is no separate CLI login.
 
-## Try it with no key
+## Try It with No Key
 
 Use the mock provider to test the command without an API key.
 
@@ -181,43 +212,9 @@ data:
 llm-exe ./hello.yml
 ```
 
-## Piping
-
-Because the result goes to stdout, the CLI works well with pipes.
-
-```bash
-llm-exe ./extract.yml --json | jq ".result.sentiment"
-```
-
-One config can feed another.
-
-```bash
-llm-exe ./outline.yml --data.topic "rate limiting" \
-  | llm-exe ./draft-from-outline.yml --stdin outline
-```
-
-If your config uses the JSON parser, the result is already structured.
-
-```yaml
-provider: openai.gpt-4o-mini
-message: "Extract sentiment from: {{text}}"
-parser: json
-parserOptions:
-  schema:
-    type: object
-    properties:
-      sentiment:
-        type: string
-    required: [sentiment]
-```
-
-```bash
-llm-exe ./extract.yml --data.text "I love this" --json | jq ".result"
-```
-
 ## Tool Calls
 
-A config can include function schemas under `executorOptions.functions`.
+A prompt file can include function schemas.
 
 ```yaml
 provider: openai.gpt-4o-mini
@@ -243,7 +240,7 @@ The CLI returns the model output. If the model chooses a tool, you get the tool 
 llm-exe ./weather.yml --json | jq ".result"
 ```
 
-Run the handler in your own code or shell script, then pass the result into another config if needed.
+Run the handler in your own code or shell script, then pass the result into another prompt file if needed.
 
 ```bash
 forecast=$(curl -s "https://api.example.com/weather?city=Denver")

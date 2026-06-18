@@ -14,18 +14,17 @@ import type {
   RunOverrides,
 } from "./types";
 
-// Both branches are `LlmExecutor` — `LlmExecutorWithFunctions extends
-// LlmExecutor`. Typing the return as the base is the true common supertype
-// (NOT a downcast): it matches what `createLlmExecutor` returns, so this stays
-// a drop-in, and `.execute(input)` works without forcing a second arg (the
-// function subclass narrows `execute`'s options to required, which would leak
-// onto every caller if we returned the union). Functions are still delivered
-// at execute-time via `executorOptions`; the runtime instance is unchanged.
+// `LlmExecutorWithFunctions` extends `LlmExecutor`, so the base type covers
+// both branches. The base is used so `.execute(input)` accepts a single
+// argument; the function subclass requires a second.
 type AnyConfigExecutor = LlmExecutor<any, any, any, any>;
 
 /**
- * Normalize an in-memory object into a validated `ExecutorConfig`.
- * Browser-safe. Identical to `normalizeConfig`, named for the public surface.
+ * Validate and normalize a config object into an `ExecutorConfig`. Browser-safe.
+ *
+ * Public alias for the internal `normalizeConfig` (which is not exported). The
+ * exported name matches the `parseExecutorConfig` / `executorFromConfig` family
+ * and decouples the public API from the internal signature.
  */
 export function loadExecutorConfig(
   object: unknown,
@@ -35,11 +34,10 @@ export function loadExecutorConfig(
 }
 
 /**
- * Assemble a native executor from a config. This is the extracted `run.ts`
- * body — it returns the SAME class the hand-written code path returns, with no
- * wrapper type. `createOptions` carries hooks/debug (construction-time);
- * `executorOptions` is NOT bound here — it is execute-time state the caller
- * passes per `.execute(input, executorOptions)` call.
+ * Build a native `LlmExecutor` from a config. `createOptions` sets
+ * construction-time options such as hooks. `executorOptions` is not applied
+ * here; the caller passes it at execute time via `.execute(input, options)`.
+ * An `executorOptions.functions` array selects the function-calling executor.
  */
 export function executorFromConfig(
   config: ExecutorConfig,
@@ -73,13 +71,10 @@ export function executorFromConfig(
 }
 
 /**
- * Terminal "run once" helper. Binds config defaults — deep-merges
- * `overrides.data` over `config.data`, shallow-merges `overrides.executorOptions`
- * over `config.executorOptions` — then executes. This is the ONLY place config
- * defaults are bound; `executorFromConfig` leaves them to the caller.
- *
- * `config.executorOptions` MUST flow to `.execute()` (not construction) — that
- * is where the function-executor's `functions` array is delivered.
+ * Run a config once. Deep-merges `overrides.data` over `config.data` and
+ * shallow-merges `overrides.executorOptions` over `config.executorOptions`,
+ * then executes. `executorOptions` is passed to `.execute()`, which is where a
+ * function executor receives its `functions`.
  */
 export function runConfig(
   config: ExecutorConfig,

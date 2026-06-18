@@ -1,13 +1,13 @@
 ---
-title: "Config File Formats | JSON, YAML, and Markdown"
-description: "Write llm-exe executor configs as JSON, YAML, or Markdown with frontmatter."
+title: "Prompt File Formats | JSON, YAML, and Markdown"
+description: "Write llm-exe prompt files as JSON, YAML, or Markdown with frontmatter."
 ---
 
-# Config File Formats
+# Prompt File Formats
 
-Configs can be written as JSON, YAML, or Markdown.
+Prompt files can be written as JSON, YAML, or Markdown.
 
-All three formats become the same `ExecutorConfig`.
+All three formats load into the same prompt file shape.
 
 ## Fields
 
@@ -65,7 +65,7 @@ data:
 
 ## Markdown
 
-Markdown uses YAML frontmatter for config fields. The body becomes `message`.
+Markdown uses YAML frontmatter for file fields. The body becomes `message`.
 
 ```markdown
 ---
@@ -131,7 +131,7 @@ const config = await parseExecutorConfig(source, {
 
 ## With Parser Options
 
-Parser options are plain data, so they can live in the config.
+Parser options are plain data, so they can live in the prompt file.
 
 ```yaml
 provider: openai.gpt-4o-mini

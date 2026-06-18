@@ -147,8 +147,8 @@ flowchart TB
 
     subgraph J1["Job: digest (ubuntu-latest, timeout-minutes: 10)"]
         direction TB
-        s1["Generate bot token\ncreate-github-app-token@v1"]:::step
-        s2["Checkout\nactions/checkout@v4"]:::step
+        s1["Generate bot token\ncreate-github-app-token@v3"]:::step
+        s2["Checkout\nactions/checkout@v6"]:::step
         s3["Generate digest\nclaude-code-action@v1\nmodel: claude-sonnet-4-6\nmax-turns: 15"]:::llm
         s4["Get access token\ncurl POST to Azure OAuth"]:::http
         s5["Send digest email\ncurl POST to MS Graph"]:::http
@@ -186,7 +186,7 @@ sequenceDiagram
     E->>J: trigger workflow
     J->>T: create-github-app-token (APP_ID + key)
     T-->>J: short-lived bot token
-    J->>FS: actions/checkout@v4 with bot token
+    J->>FS: actions/checkout@v6 with bot token
     J->>CCA: prompt + allowedTools + max-turns 15
     CCA->>GH: gh issue list (state all, since 7 days ago)
     GH-->>CCA: issue JSON
@@ -307,8 +307,8 @@ flowchart LR
     classDef mg fill:#064e3b,color:#fff,stroke:#000
 
     subgraph Pre["Setup"]
-        c1["create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: bot token for gh CLI in step 3"]:::pre
-        c2["actions/checkout@v4\nauth: bot token\nwhy: get repo so Claude can read logs"]:::pre
+        c1["create-github-app-token@v3\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: bot token for gh CLI in step 3"]:::pre
+        c2["actions/checkout@v6\nauth: bot token\nwhy: get repo so Claude can read logs"]:::pre
     end
 
     subgraph During["Digest generation"]

@@ -180,7 +180,7 @@ flowchart TB
 
     subgraph J1["Job: cleanup (ubuntu-latest)"]
         direction TB
-        s1["Step 1: Generate bot token\nactions/create-github-app-token@v1"]:::step
+        s1["Step 1: Generate bot token\nactions/create-github-app-token@v3"]:::step
         s2["Step 2: Install gh extension\ngh extension install actions/gh-actions-cache"]:::step
         s3["Step 3: Resolve refs to clean\nbash, sets pr_ref, branch_ref, tag_ref outputs"]:::step
         s4["Step 4: Cleanup Caches\nlist + dedupe + delete loop"]:::step
@@ -368,7 +368,7 @@ flowchart LR
     classDef api fill:#1f2937,color:#fff,stroke:#000
 
     subgraph Setup["Before listing"]
-        s1["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: short-lived token with actions: write"]:::pre
+        s1["actions/create-github-app-token@v3\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: short-lived token with actions: write"]:::pre
         s2["gh extension install\nactions/gh-actions-cache\nauth: bot token\nwhy: add list/delete subcommands"]:::pre
     end
 

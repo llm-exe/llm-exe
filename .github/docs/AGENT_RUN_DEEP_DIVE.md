@@ -258,7 +258,7 @@ sequenceDiagram
     participant API as Anthropic + GitHub
 
     E->>J: dispatch / schedule
-    J->>T: create-github-app-token@v1 (APP_ID, APP_PRIVATE_KEY)
+    J->>T: create-github-app-token@v3 (APP_ID, APP_PRIVATE_KEY)
     T-->>J: bot token (short-lived)
     J->>G: checkout fetch-depth 0 with bot token
     J->>G: git config llm-exe-bot[bot]
@@ -388,8 +388,8 @@ flowchart LR
     classDef web fill:#064e3b,color:#fff,stroke:#000
 
     subgraph Pre["Before the agent starts"]
-        c1["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: bot identity so writes trigger downstream"]:::pre
-        c2["actions/checkout@v4\nauth: bot token\nwhy: fetch full history (depth 0) for git operations"]:::pre
+        c1["actions/create-github-app-token@v3\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: bot identity so writes trigger downstream"]:::pre
+        c2["actions/checkout@v6\nauth: bot token\nwhy: fetch full history (depth 0) for git operations"]:::pre
         c3["actions/setup-node@v6\nauth: none\nwhy: install Node 24, prime npm cache"]:::pre
     end
 

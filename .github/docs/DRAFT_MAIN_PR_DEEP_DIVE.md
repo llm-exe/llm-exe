@@ -193,7 +193,7 @@ sequenceDiagram
     E->>J: pull_request closed OR release published
     Note over J: skip gate evaluated
     J->>G: checkout fetch-depth 0
-    J->>T: create-github-app-token@v1
+    J->>T: create-github-app-token@v3
     T-->>J: bot token
     J->>TAG: git tag --sort=-v:refname | grep
     TAG-->>J: LATEST_VERSION (or v0.0.0)
@@ -432,8 +432,8 @@ flowchart LR
     classDef rem fill:#064e3b,color:#fff,stroke:#000
 
     subgraph Boot["Before logic begins"]
-        c1["actions/checkout@v4\nfetch-depth: 0\nwhy: full tag history + merge-base"]:::pre
-        c2["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: bot identity for gh, git push"]:::pre
+        c1["actions/checkout@v6\nfetch-depth: 0\nwhy: full tag history + merge-base"]:::pre
+        c2["actions/create-github-app-token@v3\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: bot identity for gh, git push"]:::pre
     end
 
     subgraph Git["Local git commands"]

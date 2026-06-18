@@ -151,7 +151,7 @@ flowchart TB
 
     subgraph J["Job: respond (ubuntu-latest, timeout-minutes: 20)"]
         direction TB
-        s1["Generate bot token\ncreate-github-app-token@v1"]:::step
+        s1["Generate bot token\ncreate-github-app-token@v3"]:::step
         s2["Configure git\nuser.name = llm-exe-bot[bot]\nuser.email = APP_ID+...@users.noreply.github.com"]:::step
         s3["Checkout fetch-depth: 0\nwith bot token"]:::step
         s4["actions/setup-node@v6\nnode-version: 24, cache: npm"]:::step
@@ -361,8 +361,8 @@ flowchart LR
     classDef gh fill:#1f2937,color:#fff,stroke:#000
 
     subgraph Pre["Before the bot starts"]
-        c1["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: mint bot identity"]:::pre
-        c2["actions/checkout@v4\nauth: bot token\nwhy: full history, fetch-depth 0"]:::pre
+        c1["actions/create-github-app-token@v3\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: mint bot identity"]:::pre
+        c2["actions/checkout@v6\nauth: bot token\nwhy: full history, fetch-depth 0"]:::pre
         c3["actions/setup-node@v6\nauth: none\nwhy: Node 24, npm cache"]:::pre
         c4["npm ci\nauth: none\nwhy: install deps so npm test runs"]:::pre
     end

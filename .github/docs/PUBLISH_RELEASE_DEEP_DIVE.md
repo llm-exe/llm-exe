@@ -156,7 +156,7 @@ flowchart TB
 
     subgraph J2["Job: run-examples-tests (ubuntu-latest, Examples Test env)"]
         direction TB
-        e1["actions/checkout@v4"]:::step
+        e1["actions/checkout@v6"]:::step
         e2["setup-node@v6 Node 22.x"]:::step
         e3["./.github/actions/cache"]:::step
         e4["npm install"]:::step
@@ -172,7 +172,7 @@ flowchart TB
 
     subgraph J3["Job: publish-npm-package (ubuntu-latest)"]
         direction TB
-        s1["actions/checkout@v4"]:::step
+        s1["actions/checkout@v6"]:::step
         s2["Validate Publisher\n(actor allowlist)"]:::gate
         s3["./.github/actions/setup-node\n(Node 24.x + npm registry-url)"]:::step
         s4["./.github/actions/cache\n(node_modules)"]:::step
@@ -188,7 +188,7 @@ flowchart TB
     subgraph J4["Job: revert-to-draft (ubuntu-latest)"]
         direction TB
         r1["if: always() && release event &&\n(examples failed || publish failed)"]:::gate
-        r2["Generate bot token\n(create-github-app-token@v1)"]:::step
+        r2["Generate bot token\n(create-github-app-token@v3)"]:::step
         r3["Revert release to draft\n(PATCH with warning banner)"]:::cleanup
         r1 --> r2 --> r3
     end
@@ -266,7 +266,7 @@ sequenceDiagram
     EX->>P: npm run test-examples (real provider keys)
     P-->>EX: examples pass
     EX-->>J: needs satisfied
-    J->>J: actions/checkout@v4
+    J->>J: actions/checkout@v6
     J->>J: Validate Publisher (actor in allowlist)
     J->>N: setup-node composite (Node 24.x, registry-url npmjs.org)
     Note over N: registry-url makes npm write an .npmrc with NODE_AUTH_TOKEN
@@ -341,15 +341,15 @@ flowchart LR
     classDef rb fill:#7c2d12,color:#fff,stroke:#000
 
     subgraph ExTest["Examples tests job"]
-        e1["actions/checkout@v4\nauth: GITHUB_TOKEN (default)\nwhy: source for build + pack"]:::test
+        e1["actions/checkout@v6\nauth: GITHUB_TOKEN (default)\nwhy: source for build + pack"]:::test
         e2["actions/setup-node@v6\nauth: none\nwhy: Node 22.x"]:::test
         e3["Provider APIs (OpenAI, Anthropic,\nGemini, xAI, DeepSeek)\nauth: per-provider API keys\nwhy: real integration tests"]:::test
     end
 
     subgraph Pre["Publish job setup"]
-        c1["actions/checkout@v4\nauth: GITHUB_TOKEN (default)\nwhy: source for build"]:::pre
+        c1["actions/checkout@v6\nauth: GITHUB_TOKEN (default)\nwhy: source for build"]:::pre
         c2["actions/setup-node@v6 (composite)\nauth: none\nwhy: Node 24.x + npm registry-url"]:::pre
-        c3["actions/cache@v4 (composite)\nauth: none\nwhy: speed up npm install"]:::pre
+        c3["actions/cache@v5 (composite)\nauth: none\nwhy: speed up npm install"]:::pre
     end
 
     subgraph Pub["Publish"]
@@ -358,7 +358,7 @@ flowchart LR
     end
 
     subgraph Rb["Failure rollback (separate job, release event only)"]
-        d3["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: mint bot token for PATCH"]:::rb
+        d3["actions/create-github-app-token@v3\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: mint bot token for PATCH"]:::rb
         d4["api.github.com PATCH /releases/:id\nauth: bot token from step 'bot-token'\nwhy: flip published release to draft and prepend warning"]:::rb
         d3 --> d4
     end
@@ -371,7 +371,7 @@ flowchart LR
     d1 -.failure.-> d3
 ```
 
-The npm token (used by `npm publish`) is configured by the setup-node composite action consuming the `registry-url` and the `NODE_AUTH_TOKEN` env var. Provenance is explicitly requested via the `--provenance` flag in both publish scripts; this requires `id-token: write` (granted at the top of the file) and will fail if the OIDC token cannot be issued. The bot token from `create-github-app-token@v1` is minted only in the `revert-to-draft` job and only used by the rollback step.
+The npm token (used by `npm publish`) is configured by the setup-node composite action consuming the `registry-url` and the `NODE_AUTH_TOKEN` env var. Provenance is explicitly requested via the `--provenance` flag in both publish scripts; this requires `id-token: write` (granted at the top of the file) and will fail if the OIDC token cannot be issued. The bot token from `create-github-app-token@v3` is minted only in the `revert-to-draft` job and only used by the rollback step.
 
 [Back to top](#navigate)
 
@@ -391,7 +391,7 @@ flowchart TB
     A["revert-to-draft job starts\nif: always() && release event &&\n(examples failed || publish failed)"]:::trig
     A --> B{condition met?}
     B -->|no: dispatch, or both passed| skip([job skipped]):::fail
-    B -->|yes| T["Generate bot token\n(create-github-app-token@v1)"]:::step
+    B -->|yes| T["Generate bot token\n(create-github-app-token@v3)"]:::step
     T --> C["read release.id and release.body\nfrom GITHUB_EVENT_PATH via jq"]:::step
 
     C --> D0{which job failed?}

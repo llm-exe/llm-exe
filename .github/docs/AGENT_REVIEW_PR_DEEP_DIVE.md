@@ -238,7 +238,7 @@ sequenceDiagram
     participant API as Anthropic + GitHub
 
     E->>J: base_ref is development, job runs
-    J->>T: create-github-app-token@v1 (LLM_EXE_REVIEW_BOT_APP_ID, key)
+    J->>T: create-github-app-token@v3 (LLM_EXE_REVIEW_BOT_APP_ID, key)
     T-->>J: review bot token (short-lived)
     J->>G: checkout fetch-depth 0 with review bot token
     J->>N: setup-node@v6 + npm ci
@@ -363,8 +363,8 @@ flowchart LR
     classDef web fill:#064e3b,color:#fff,stroke:#000
 
     subgraph Pre["Before the reviewer starts"]
-        c1["actions/create-github-app-token@v1\nauth: LLM_EXE_REVIEW_BOT_APP_ID + key\nwhy: review bot identity to post reviews"]:::pre
-        c2["actions/checkout@v4\nauth: review bot token\nwhy: full history (depth 0)"]:::pre
+        c1["actions/create-github-app-token@v3\nauth: LLM_EXE_REVIEW_BOT_APP_ID + key\nwhy: review bot identity to post reviews"]:::pre
+        c2["actions/checkout@v6\nauth: review bot token\nwhy: full history (depth 0)"]:::pre
         c3["actions/setup-node@v6\nauth: none\nwhy: prime npm cache (used by tools)"]:::pre
     end
 

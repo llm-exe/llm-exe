@@ -109,8 +109,8 @@ flowchart TB
 
     subgraph J["Job: update-prs (ubuntu-latest, timeout-minutes: 15)"]
         direction TB
-        s1["Generate bot token\nactions/create-github-app-token@v1"]:::step
-        s2["Checkout\nactions/checkout@v4\nwith bot token"]:::step
+        s1["Generate bot token\nactions/create-github-app-token@v3"]:::step
+        s2["Checkout\nactions/checkout@v6\nwith bot token"]:::step
         s3["Update open PRs targeting development\nbash script: list + loop + update-branch"]:::step
         s1 --> s2 --> s3
     end
@@ -146,9 +146,9 @@ sequenceDiagram
     participant PR as Open PRs
 
     E->>J: workflow_dispatch
-    J->>T: create-github-app-token@v1 (APP_ID, APP_PRIVATE_KEY)
+    J->>T: create-github-app-token@v3 (APP_ID, APP_PRIVATE_KEY)
     T-->>J: bot token (short-lived)
-    J->>G: actions/checkout@v4 with bot token
+    J->>G: actions/checkout@v6 with bot token
     G-->>J: working tree ready
     J->>GH: gh pr list --base development --state open --json number
     GH-->>J: PR numbers (one per line) or empty

@@ -179,7 +179,7 @@ flowchart LR
     classDef rt fill:#581c87,color:#fff,stroke:#000
 
     APP[APP_ID + APP_PRIVATE_KEY<br/>repo secrets]:::sec
-    MINT[actions/create-github-app-token@v1]:::tok
+    MINT[actions/create-github-app-token@v3]:::tok
     BOT[llm-exe-bot[bot] token<br/>short-lived]:::tok
     CCA[anthropics/claude-code-action@v1<br/>vars.ANTHROPIC_OPUS_LATEST or sonnet-4-6]:::rt
     CFG[scripts/agents/config.sh<br/>shared bash helpers]:::rt
@@ -252,7 +252,7 @@ Every system outside this repository that one or more workflows depend on at run
 | GitHub API (REST and GraphQL) | every workflow that talks to issues, PRs, releases, caches | Either the workflow-default `GITHUB_TOKEN`, an App-generated `llm-exe-bot[bot]` token, or the dedicated `llm-exe-review-bot[bot]` token | Creating PRs, listing issues, posting comments, reviewing PRs, creating releases, deleting cache entries |
 | Anthropic Claude API | `agent-run`, `coder-run`, `personas-run`, `agent-review-pr`, `agent-digest`, `bot-respond`, `docs-sync` | `CLAUDE_CODE_OAUTH_TOKEN` secret passed to `anthropics/claude-code-action@v1` | Runs the agent. Model is configurable via the `vars.ANTHROPIC_OPUS_LATEST` repository variable (default: `claude-opus-4-6`) for all task agents, persona runners, curator, reviewer, bot responder, and docs-sync; `claude-sonnet-4-6` for the weekly digest. |
 | `anthropics/claude-code-action@v1` Marketplace action | every agent workflow | OAuth token above plus an App-generated GitHub token | The harness that executes Claude with a constrained tool allowlist and a `--max-turns` budget. |
-| `actions/create-github-app-token@v1` | every agent workflow plus the release and hygiene workflows that need write access beyond `GITHUB_TOKEN` | `APP_ID`/`APP_PRIVATE_KEY`, or `LLM_EXE_REVIEW_BOT_APP_ID`/`LLM_EXE_REVIEW_BOT_PRIVATE_KEY` for reviews | Mints short-lived GitHub App installation tokens. The main bot authors work and triggers downstream workflows; the review bot posts reviews and approvals. |
+| `actions/create-github-app-token@v3` | every agent workflow plus the release and hygiene workflows that need write access beyond `GITHUB_TOKEN` | `APP_ID`/`APP_PRIVATE_KEY`, or `LLM_EXE_REVIEW_BOT_APP_ID`/`LLM_EXE_REVIEW_BOT_PRIVATE_KEY` for reviews | Mints short-lived GitHub App installation tokens. The main bot authors work and triggers downstream workflows; the review bot posts reviews and approvals. |
 | npm registry (`registry.npmjs.org`) | `publish-release.yml` | NPM token configured via `NODE_AUTH_TOKEN` env var (set by `registry-url`); both publish scripts pass `--provenance` explicitly, which requires OIDC `id-token: write` | Publishing the `llm-exe` package on every release. |
 | AWS S3 | `deploy-docs.yml` | OIDC federation via `aws-actions/configure-aws-credentials@v4`, assuming role from `AWS_ROLE_DEPLOY_ARN`, region from `AWS_REGION`, bucket from `AWS_S3_BUCKET` | Stores versioned docs at `s3://<bucket>/docs/<version>-<timestamp>/`. |
 | AWS CloudFront | `deploy-docs.yml` | Same OIDC federation, distribution ID from `AWS_CLOUDFRONT_DISTRIBUTION_ID` | Rotates the `OriginPath` to the new versioned folder and invalidates `/*`. |
@@ -271,8 +271,8 @@ Three identities operate this repository, and they are not interchangeable.
 | Identity | Created by | Used for | Why it matters |
 |----------|-----------|----------|----------------|
 | `github-actions[bot]` (the default `GITHUB_TOKEN`) | GitHub | Read operations, simple writes inside `tests.yml`, `check-semantic-versioning.yml`, `create-draft-release.yml`, `publish-release.yml`, `deploy-docs.yml` | Writes by this identity do not trigger further workflows. That is why agent workflows do not use it. |
-| `llm-exe-bot[bot]` (GitHub App installation token) | `actions/create-github-app-token@v1` reading `APP_ID` and `APP_PRIVATE_KEY` | Work-producing agent operations and any release-pipeline write that must trigger another workflow. Configured git author when committing from CI: `llm-exe-bot[bot]` with email `${{ vars.APP_CLIENT_ID }}+llm-exe-bot[bot]@users.noreply.github.com`. | Writes by this identity DO trigger downstream workflows (for example, a bot PR fires `tests.yml` and `agent-review-pr.yml`). It does not approve its own PRs. |
-| `llm-exe-review-bot[bot]` (GitHub App installation token) | `actions/create-github-app-token@v1` reading `LLM_EXE_REVIEW_BOT_APP_ID` and `LLM_EXE_REVIEW_BOT_PRIVATE_KEY` | `agent-review-pr.yml` only: review comments, request-changes, close decisions, and approvals. | Dedicated review identity, separate from the bot that authored the PR, so GitHub accepts approvals on `llm-exe-bot[bot]` PRs. |
+| `llm-exe-bot[bot]` (GitHub App installation token) | `actions/create-github-app-token@v3` reading `APP_ID` and `APP_PRIVATE_KEY` | Work-producing agent operations and any release-pipeline write that must trigger another workflow. Configured git author when committing from CI: `llm-exe-bot[bot]` with email `${{ vars.APP_CLIENT_ID }}+llm-exe-bot[bot]@users.noreply.github.com`. | Writes by this identity DO trigger downstream workflows (for example, a bot PR fires `tests.yml` and `agent-review-pr.yml`). It does not approve its own PRs. |
+| `llm-exe-review-bot[bot]` (GitHub App installation token) | `actions/create-github-app-token@v3` reading `LLM_EXE_REVIEW_BOT_APP_ID` and `LLM_EXE_REVIEW_BOT_PRIVATE_KEY` | `agent-review-pr.yml` only: review comments, request-changes, close decisions, and approvals. | Dedicated review identity, separate from the bot that authored the PR, so GitHub accepts approvals on `llm-exe-bot[bot]` PRs. |
 
 ### Secret inventory
 
@@ -745,7 +745,7 @@ Body must be HTML fragment (no `<html>` / `<body>` tags) and must be the only th
 | Push rationale | Coverage upload is gated to Node 24.x. Without a `push` event on `main`, every Coveralls record is tagged with the source PR head branch (development / feature branches), so the docs-site badge that filters with `?branch=main` renders "unknown". The `push` trigger on `main` (always reached via `auto-merge-main-pr.yml`) produces a Coveralls record tagged for `main`. |
 | Bypass | Job-level `if` skips when `pull_request.base.ref == 'development' && pull_request.head.ref == 'bump-version-branch'`. On `push` and `workflow_dispatch` `pull_request` is null, so the bypass is false and the matrix runs. |
 | Matrix | Node 18, 20, 22, 24 |
-| Steps | `actions/checkout@v4` -> `actions/setup-node@v6` with `cache: npm` -> reusable cache action -> `npm install` -> `npm run test` -> coverage upload on Node 24 only |
+| Steps | `actions/checkout@v6` -> `actions/setup-node@v6` with `cache: npm` -> reusable cache action -> `npm install` -> `npm run test` -> coverage upload on Node 24 only |
 
 Note: this workflow does not use the App token. It only needs reads.
 
@@ -766,7 +766,7 @@ This is the only place real provider keys are used. It exists so the maintainer 
 |-------|-------|
 | Trigger | `pull_request` `closed` to `development`, plus dispatch |
 | Bypass | Skip the `bump-version-branch` head |
-| Output | `actions/upload-artifact@v4` with name `package`, contents `llm-exe-*.tgz`, retention 30 days |
+| Output | `actions/upload-artifact@v7` with name `package`, contents `llm-exe-*.tgz`, retention 30 days |
 
 ### 9.10. `cache-cleanup.yml` - Actions cache GC
 
@@ -1266,7 +1266,7 @@ runs:
   using: 'composite'
   steps:
     - name: Cache node modules
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: node_modules
         key: ${{ runner.os }}-nodeModules-${{ matrix.node-version }}-${{ hashFiles('**/package.json') }}

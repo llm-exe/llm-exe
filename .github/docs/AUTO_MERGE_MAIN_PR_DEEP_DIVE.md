@@ -181,8 +181,8 @@ flowchart TB
 
     subgraph J["Job: auto-merge (ubuntu-latest)"]
         direction TB
-        s1["1. Checkout repository\nactions/checkout@v4"]:::step
-        s2["2. Generate bot token\ncreate-github-app-token@v1"]:::step
+        s1["1. Checkout repository\nactions/checkout@v6"]:::step
+        s2["2. Generate bot token\ncreate-github-app-token@v3"]:::step
         s3["3. Get PR number\ngh pr list, filter isDraft=false"]:::step
         c1{PR_NUMBER non-empty?}:::cond
         s4["4. Wait for checks\nloop max 10 x 30s"]:::step
@@ -358,8 +358,8 @@ flowchart LR
     classDef act fill:#581c87,color:#fff,stroke:#000
 
     subgraph Pre["Setup"]
-        c1["actions/checkout@v4\nauth: GITHUB_TOKEN\nwhy: needed for context, not for diffs"]:::pre
-        c2["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: mint admin-capable bot token"]:::pre
+        c1["actions/checkout@v6\nauth: GITHUB_TOKEN\nwhy: needed for context, not for diffs"]:::pre
+        c2["actions/create-github-app-token@v3\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: mint admin-capable bot token"]:::pre
     end
 
     subgraph During["gh CLI calls"]

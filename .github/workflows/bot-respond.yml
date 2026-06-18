@@ -26,9 +26,9 @@ jobs:
     steps:
       - name: Generate bot token
         id: bot-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.APP_ID }}
+          client-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Configure git
@@ -37,7 +37,7 @@ jobs:
           git config --global user.email "${{ secrets.APP_ID }}+llm-exe-bot[bot]@users.noreply.github.com"
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ steps.bot-token.outputs.token }}

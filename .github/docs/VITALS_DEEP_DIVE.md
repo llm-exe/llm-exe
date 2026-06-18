@@ -138,7 +138,7 @@ sequenceDiagram
     participant Out as AUTOMATION.md
 
     E->>J: dispatch / schedule
-    J->>T: create-github-app-token@v1
+    J->>T: create-github-app-token@v3
     T-->>J: bot token (short-lived)
     J->>G: checkout development with bot token
     J->>G: git config llm-exe-bot[bot]
@@ -315,8 +315,8 @@ flowchart LR
     classDef cdn fill:#064e3b,color:#fff,stroke:#000
 
     subgraph Pre["Before the script"]
-        c1["actions/create-github-app-token@v1<br/>auth: APP_ID + APP_PRIVATE_KEY<br/>why: bot identity for git push"]:::pre
-        c2["actions/checkout@v4<br/>auth: bot token<br/>why: get development branch tip"]:::pre
+        c1["actions/create-github-app-token@v3<br/>auth: APP_CLIENT_ID + APP_PRIVATE_KEY<br/>why: bot identity for git push"]:::pre
+        c2["actions/checkout@v6<br/>auth: bot token<br/>why: get development branch tip"]:::pre
     end
 
     subgraph During["While the script runs"]

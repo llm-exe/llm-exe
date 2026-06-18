@@ -49,7 +49,7 @@ flowchart LR
     end
 
     subgraph S["Identity"]
-        s1["APP_ID + APP_PRIVATE_KEY"]:::file
+        s1["APP_CLIENT_ID + APP_PRIVATE_KEY"]:::file
         bot["llm-exe-bot[bot]\nshort-lived token"]:::file
     end
 
@@ -193,7 +193,7 @@ sequenceDiagram
     E->>J: pull_request closed OR release published
     Note over J: skip gate evaluated
     J->>G: checkout fetch-depth 0
-    J->>T: create-github-app-token@v1
+    J->>T: create-github-app-token@v3
     T-->>J: bot token
     J->>TAG: git tag --sort=-v:refname | grep
     TAG-->>J: LATEST_VERSION (or v0.0.0)
@@ -432,8 +432,8 @@ flowchart LR
     classDef rem fill:#064e3b,color:#fff,stroke:#000
 
     subgraph Boot["Before logic begins"]
-        c1["actions/checkout@v4\nfetch-depth: 0\nwhy: full tag history + merge-base"]:::pre
-        c2["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: bot identity for gh, git push"]:::pre
+        c1["actions/checkout@v6\nfetch-depth: 0\nwhy: full tag history + merge-base"]:::pre
+        c2["actions/create-github-app-token@v3\nauth: APP_CLIENT_ID + APP_PRIVATE_KEY\nwhy: bot identity for gh, git push"]:::pre
     end
 
     subgraph Git["Local git commands"]
@@ -631,7 +631,7 @@ flowchart TB
     F9X["audit line 21 condition\nany change to bump-version-branch name\nmust update the gate"]:::fix
     F9E --> F9X
 
-    F10["Bot token mint fails\n(APP_ID rotation lag)"]:::fail
+    F10["Bot token mint fails\n(APP_CLIENT_ID rotation lag)"]:::fail
     F10 --> F10E["all gh + git push steps fail\nrun aborts at first gh call"]:::effect
     F10X["rotate App key, re-add secret"]:::fix
     F10E --> F10X

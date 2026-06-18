@@ -146,7 +146,7 @@ flowchart TB
 
     subgraph J["Job: update-draft-releases (ubuntu-latest)"]
         direction TB
-        s0["actions/checkout@v4"]:::step
+        s0["actions/checkout@v6"]:::step
         s1["Get all draft releases\ngh api ... | jq draft==true ids\nwrite release_ids.txt"]:::step
         s2["Delete old draft releases\nloop: gh api -X DELETE"]:::step
         s3["Determine next semantic version\njq -r .version package.json\nregex MAJOR.MINOR.PATCH(-PRERELEASE)?\nformat vMAJOR.MINOR.PATCH (preserve -suffix)\nexport NEW_VERSION + IS_PRERELEASE"]:::step
@@ -179,7 +179,7 @@ sequenceDiagram
     participant FS as Runner filesystem
 
     E->>R: trigger create-draft-release.yml
-    R->>R: actions/checkout@v4 (default token)
+    R->>R: actions/checkout@v6 (default token)
     R->>API: GET /repos/(owner)/(repo)/releases
     API-->>R: full list (draft + published)
     R->>FS: jq draft==true ids > release_ids.txt
@@ -312,7 +312,7 @@ flowchart LR
     classDef out fill:#064e3b,color:#fff,stroke:#000
 
     subgraph Pre["Before API work"]
-        p1["actions/checkout@v4\nauth: default GITHUB_TOKEN\nwhy: read package.json"]:::pre
+        p1["actions/checkout@v6\nauth: default GITHUB_TOKEN\nwhy: read package.json"]:::pre
     end
 
     subgraph During["GitHub Releases API"]

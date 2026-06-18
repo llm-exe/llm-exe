@@ -17,7 +17,7 @@ jobs:
   enforce-semantic-version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Fetch all tags
         run: git fetch --tags

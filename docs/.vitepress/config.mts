@@ -322,6 +322,10 @@ export default defineConfig({
             text: "Config File Formats",
             link: "/config/formats.html",
           },
+          {
+            text: "CLI",
+            link: "/config/cli.html",
+          },
         ],
       },
       {

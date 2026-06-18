@@ -1185,10 +1185,10 @@ gate:
   outputs:
     proceed: ${{ steps.check.outputs.proceed }}
   steps:
-    - uses: actions/create-github-app-token@v1
+    - uses: actions/create-github-app-token@v3
       id: bot-token
       with:
-        app-id: ${{ secrets.APP_ID }}
+        client-id: ${{ secrets.APP_ID }}
         private-key: ${{ secrets.APP_PRIVATE_KEY }}
     - id: check
       env:

@@ -82,7 +82,7 @@ jobs:
         id: review-bot-token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.LLM_EXE_REVIEW_BOT_APP_ID }}
+          client-id: ${{ vars. LLM_EXE_REVIEW_BOT_CLIENT_ID }}
           private-key: ${{ secrets.LLM_EXE_REVIEW_BOT_PRIVATE_KEY }}
 
       - name: Checkout
@@ -177,7 +177,7 @@ jobs:
         id: review-bot-token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.LLM_EXE_REVIEW_BOT_APP_ID }}
+          client-id: ${{ vars. LLM_EXE_REVIEW_BOT_CLIENT_ID }}
           private-key: ${{ secrets.LLM_EXE_REVIEW_BOT_PRIVATE_KEY }}
 
       - name: Generate bot token

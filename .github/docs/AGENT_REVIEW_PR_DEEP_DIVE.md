@@ -52,8 +52,8 @@ flowchart LR
     end
 
     subgraph S["Secrets and Identity"]
-        s1["LLM_EXE_REVIEW_BOT_APP_ID\n+ LLM_EXE_REVIEW_BOT_PRIVATE_KEY"]:::file
-        s3["APP_ID + APP_PRIVATE_KEY"]:::file
+        s1["LLM_EXE_REVIEW_BOT_CLIENT_ID\n+ LLM_EXE_REVIEW_BOT_PRIVATE_KEY"]:::file
+        s3["APP_CLIENT_ID + APP_PRIVATE_KEY"]:::file
         s2["CLAUDE_CODE_OAUTH_TOKEN"]:::file
         reviewbot["llm-exe-review-bot[bot]\nreview token"]:::file
         bot["llm-exe-bot[bot]\nmaintenance token"]:::file
@@ -238,7 +238,7 @@ sequenceDiagram
     participant API as Anthropic + GitHub
 
     E->>J: base_ref is development, job runs
-    J->>T: create-github-app-token@v1 (LLM_EXE_REVIEW_BOT_APP_ID, key)
+    J->>T: create-github-app-token@v3 (LLM_EXE_REVIEW_BOT_CLIENT_ID, key)
     T-->>J: review bot token (short-lived)
     J->>G: checkout fetch-depth 0 with review bot token
     J->>N: setup-node@v6 + npm ci
@@ -363,8 +363,8 @@ flowchart LR
     classDef web fill:#064e3b,color:#fff,stroke:#000
 
     subgraph Pre["Before the reviewer starts"]
-        c1["actions/create-github-app-token@v1\nauth: LLM_EXE_REVIEW_BOT_APP_ID + key\nwhy: review bot identity to post reviews"]:::pre
-        c2["actions/checkout@v4\nauth: review bot token\nwhy: full history (depth 0)"]:::pre
+        c1["actions/create-github-app-token@v3\nauth: LLM_EXE_REVIEW_BOT_CLIENT_ID + key\nwhy: review bot identity to post reviews"]:::pre
+        c2["actions/checkout@v6\nauth: review bot token\nwhy: full history (depth 0)"]:::pre
         c3["actions/setup-node@v6\nauth: none\nwhy: prime npm cache (used by tools)"]:::pre
     end
 
@@ -542,7 +542,7 @@ flowchart TB
     F1 --> F1E["workflow may start, but jobs skip\nbecause base is not development"]:::effect
     F1E --> F1X["retarget to development\nor review manually"]:::fix
 
-    F2["Review bot token mint fails\nLLM_EXE_REVIEW_BOT_APP_ID or key wrong"]:::fail
+    F2["Review bot token mint fails\nLLM_EXE_REVIEW_BOT_CLIENT_ID or key wrong"]:::fail
     F2 --> F2E["job fails at token step\nno log file written"]:::effect
     F2X["rotate review App key, re-add secrets"]:::fix
     F2E --> F2X

@@ -46,7 +46,7 @@ flowchart LR
     end
 
     subgraph S["Secrets and Identity"]
-        s1["APP_ID + APP_PRIVATE_KEY"]:::file
+        s1["APP_CLIENT_ID + APP_PRIVATE_KEY"]:::file
         s2["CLAUDE_CODE_OAUTH_TOKEN"]:::file
         bot["llm-exe-bot[bot]\nshort-lived token"]:::file
     end
@@ -232,14 +232,14 @@ sequenceDiagram
     participant API as Anthropic + GitHub
 
     E->>GT: dispatch or cron
-    GT->>TK: create-github-app-token@v1
+    GT->>TK: create-github-app-token@v3
     TK-->>GT: bot token
     GT->>API: gh pr list (bot author) + gh issue list
     API-->>GT: counts
     Note over GT: dispatch bypasses; cron enforces caps
     GT-->>FI: outputs.proceed=true
 
-    FI->>TK: create-github-app-token@v1
+    FI->>TK: create-github-app-token@v3
     TK-->>FI: bot token
     FI->>API: gh issue list open --json number,labels
     API-->>FI: issues with labels
@@ -251,7 +251,7 @@ sequenceDiagram
     FI-->>J: outputs.issues (JSON array), outputs.count
 
     loop per matrix leg (max-parallel 1)
-        J->>TK: create-github-app-token@v1
+        J->>TK: create-github-app-token@v3
         TK-->>J: bot token
         J->>G: checkout fetch-depth 0 with bot token
         J->>G: git config llm-exe-bot[bot]
@@ -355,11 +355,11 @@ flowchart LR
     classDef gh fill:#1f2937,color:#fff,stroke:#000
 
     subgraph Pre["Before the agent starts (gate + find-issues + leg setup)"]
-        c1["create-github-app-token@v1 (x3)\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: each job re-mints (tokens are job-scoped)"]:::pre
+        c1["create-github-app-token@v3 (x3)\nauth: APP_CLIENT_ID + APP_PRIVATE_KEY\nwhy: each job re-mints (tokens are job-scoped)"]:::pre
         c2["gh pr list / gh issue list (gate)\nauth: bot token\nwhy: backlog caps"]:::pre
         c3["gh issue list --json number,labels (find-issues)\nauth: bot token\nwhy: candidate set"]:::pre
         c4["gh pr list --author app/llm-exe-bot (find-issues)\nauth: bot token\nwhy: claimed detection"]:::pre
-        c5["actions/checkout@v4 fetch-depth 0\nauth: bot token\nwhy: full history for branch ops"]:::pre
+        c5["actions/checkout@v6 fetch-depth 0\nauth: bot token\nwhy: full history for branch ops"]:::pre
         c6["actions/setup-node@v6 + npm ci\nauth: none\nwhy: Node 24, prime npm cache"]:::pre
     end
 

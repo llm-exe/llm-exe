@@ -23,8 +23,14 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
       "import": "./dist/index.mjs"
+    },
+    "./node": {
+      "types": "./dist/config/node.d.ts",
+      "require": "./dist/config/node.js",
+      "import": "./dist/config/node.mjs"
     }
   },
   "files": [
@@ -40,9 +46,10 @@
     "test-one": "eval $(cat .env) NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --coverage --forceExit --config jest.config.examples.ts examples/helloWorld.test.ts",
     "run-one": "eval $(cat .env) ts-node ./examples/chains/self-refinement/usage.ts",
     "build": "(concurrently \"tsc --p ./tsconfig.json -w\" \"tsc-alias -p tsconfig.json -w\")",
-    "build:ci": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "build:ci": "tsup src/index.ts src/config/node.ts --format cjs,esm --dts --clean",
     "build:browser": "tsup src/script.ts --format iife --platform browser --target es6 --sourcemap --clean --external '**'",
-    "build:package": "tsup src/index.ts --format cjs,esm --dts --clean --external jsonschema,json-schema-to-ts,exponential-backoff,@aws-sdk/credential-providers,@aws-crypto/sha256-js,@smithy/protocol-http,@smithy/signature-v4",
+    "build:package": "tsup src/index.ts src/config/node.ts --format cjs,esm --dts --clean --external js-yaml,jsonschema,json-schema-to-ts,exponential-backoff,@aws-sdk/credential-providers,@aws-crypto/sha256-js,@smithy/protocol-http,@smithy/signature-v4",
+    "check:root-node-free": "node scripts/assert-root-node-free.mjs",
     "build:docs-examples": "./node_modules/.bin/esbuild examples/prompt/index.ts examples/state/index.ts --bundle --outdir=docs/.vitepress/components/examples  --platform=node --target=es6 --format=esm",
     "build:watch:docs-examples": "./node_modules/.bin/esbuild  examples/prompt/index.ts examples/state/index.ts  --watch --bundle --outdir=docs/.vitepress/components/examples  --platform=node --target=es6 --format=esm",
     "predocs:build": "npm run build:docs-examples && bash scripts/generate-llms-txt.sh",
@@ -63,6 +70,7 @@
     "@smithy/signature-v4": "5.1.0",
     "exponential-backoff": "3.1.2",
     "handlebars": "4.7.8",
+    "js-yaml": "4.1.0",
     "json-schema-to-ts": "3.1.1",
     "jsonschema": "1.5.0",
     "shiki": "^3.8.1",
@@ -71,6 +79,7 @@
   "devDependencies": {
     "@tsconfig/recommended": "1.0.8",
     "@types/jest": "^29.5.14",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^18.0.0",
     "@types/prettier": "2.6.0",
     "@types/uuid": "10.0.0",

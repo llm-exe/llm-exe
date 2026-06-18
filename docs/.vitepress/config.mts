@@ -101,6 +101,10 @@ export default defineConfig({
             link: "/executor/index.html",
           },
           {
+            text: "Config",
+            link: "/config/index.html",
+          },
+          {
             text: "Embeddings",
             link: "/embeddings/index.html",
           },
@@ -303,6 +307,20 @@ export default defineConfig({
           {
             text: "Hooks",
             link: "/executor/hooks.html",
+          },
+        ],
+      },
+      {
+        text: "Config",
+        collapsed: true,
+        items: [
+          {
+            text: "Getting Started",
+            link: "/config/index.html",
+          },
+          {
+            text: "Config File Formats",
+            link: "/config/formats.html",
           },
         ],
       },

@@ -1,0 +1,6 @@
+provider: openai.chat-mock.v1
+system: You are a helpful summarizer.
+message: "Summarize: {{text}}"
+parser: string
+data:
+  text: hello world

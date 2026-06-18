@@ -70,6 +70,7 @@ describe("anthropic config", () => {
 
   describe("active shorthands", () => {
     it.each([
+      ["anthropic.claude-fable-5", "claude-fable-5"],
       ["anthropic.claude-opus-4-8", "claude-opus-4-8"],
       ["anthropic.claude-opus-4-7", "claude-opus-4-7"],
       ["anthropic.claude-sonnet-4-6", "claude-sonnet-4-6"],

@@ -625,6 +625,11 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<OpenAiRequest, "model">;
   };
 
+  // Anthropic - Claude Fable 5 models
+  "anthropic.claude-fable-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+
   // Anthropic - Claude 4.8 models
   "anthropic.claude-opus-4-8": {
     input: Omit<AnthropicRequest, "model">;

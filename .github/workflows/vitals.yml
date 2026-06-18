@@ -56,7 +56,7 @@ jobs:
       - name: Configure git
         run: |
           git config user.name "llm-exe-bot[bot]"
-          git config user.email "${{ secrets.APP_ID }}+llm-exe-bot[bot]@users.noreply.github.com"
+          git config user.email "${{ vars.APP_BOT_USER_ID }}+llm-exe-bot[bot]@users.noreply.github.com"
 
       - name: Generate AUTOMATION.md
         env:

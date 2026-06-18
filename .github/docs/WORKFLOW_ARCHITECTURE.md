@@ -271,7 +271,7 @@ Three identities operate this repository, and they are not interchangeable.
 | Identity | Created by | Used for | Why it matters |
 |----------|-----------|----------|----------------|
 | `github-actions[bot]` (the default `GITHUB_TOKEN`) | GitHub | Read operations, simple writes inside `tests.yml`, `check-semantic-versioning.yml`, `create-draft-release.yml`, `publish-release.yml`, `deploy-docs.yml` | Writes by this identity do not trigger further workflows. That is why agent workflows do not use it. |
-| `llm-exe-bot[bot]` (GitHub App installation token) | `actions/create-github-app-token@v3` reading `APP_CLIENT_ID` (repo var) and `APP_PRIVATE_KEY` | Work-producing agent operations and any release-pipeline write that must trigger another workflow. Configured git author when committing from CI: `llm-exe-bot[bot]` with email `${{ secrets.APP_ID }}+llm-exe-bot[bot]@users.noreply.github.com` (email prefix still uses the numeric `APP_ID` secret). | Writes by this identity DO trigger downstream workflows (for example, a bot PR fires `tests.yml` and `agent-review-pr.yml`). It does not approve its own PRs. |
+| `llm-exe-bot[bot]` (GitHub App installation token) | `actions/create-github-app-token@v3` reading `APP_CLIENT_ID` (repo var) and `APP_PRIVATE_KEY` | Work-producing agent operations and any release-pipeline write that must trigger another workflow. Configured git author when committing from CI: `llm-exe-bot[bot]` with email `${{ vars.APP_BOT_USER_ID }}+llm-exe-bot[bot]@users.noreply.github.com`. | Writes by this identity DO trigger downstream workflows (for example, a bot PR fires `tests.yml` and `agent-review-pr.yml`). It does not approve its own PRs. |
 | `llm-exe-review-bot[bot]` (GitHub App installation token) | `actions/create-github-app-token@v3` reading `LLM_EXE_REVIEW_BOT_CLIENT_ID` (repo var) and `LLM_EXE_REVIEW_BOT_PRIVATE_KEY` | `agent-review-pr.yml` only: review comments, request-changes, close decisions, and approvals. | Dedicated review identity, separate from the bot that authored the PR, so GitHub accepts approvals on `llm-exe-bot[bot]` PRs. |
 
 ### Secret inventory
@@ -280,7 +280,6 @@ Stored under repository or organization secrets:
 
 | Secret | Where it is used |
 |--------|------------------|
-| `APP_ID` | Numeric bot user ID — used only in `git config user.email` for commit attribution (`${{ secrets.APP_ID }}+llm-exe-bot[bot]@users.noreply.github.com`). Not used for token minting. |
 | `APP_PRIVATE_KEY` | App-token minting for `llm-exe-bot[bot]` in every workflow that needs the bot. |
 | `LLM_EXE_REVIEW_BOT_PRIVATE_KEY` | App-token minting for `llm-exe-review-bot[bot]` in `agent-review-pr.yml`. |
 | `CLAUDE_CODE_OAUTH_TOKEN` | Every agent workflow that invokes `anthropics/claude-code-action@v1`. |
@@ -297,6 +296,7 @@ Stored under repository or organization variables:
 | Variable | Where it is used |
 |----------|------------------|
 | `APP_CLIENT_ID` | OAuth Client ID for `llm-exe-bot[bot]` — passed as `client-id` to `actions/create-github-app-token@v3` in every workflow that mints a main bot token. |
+| `APP_BOT_USER_ID` | Numeric GitHub user ID for `llm-exe-bot[bot]` (265913398) — used as the prefix in `git config user.email` so bot commits get proper noreply attribution. |
 | `LLM_EXE_REVIEW_BOT_CLIENT_ID` | OAuth Client ID for `llm-exe-review-bot[bot]` — passed as `client-id` to `actions/create-github-app-token@v3` in `agent-review-pr.yml`. |
 | `ANTHROPIC_OPUS_LATEST` | Every agent workflow that invokes `claude-code-action@v1` (except `agent-digest.yml` which uses sonnet). Falls back to `claude-opus-4-6` if unset. Allows upgrading all agents to a newer Opus model by changing one variable. |
 | `AWS_ROLE_DEPLOY_ARN`, `AWS_REGION`, `AWS_S3_BUCKET`, `AWS_CLOUDFRONT_DISTRIBUTION_ID` | `deploy-docs.yml` |
@@ -1108,8 +1108,8 @@ If you wanted to clone this system into a different repository, here is the exac
 ### 13.1. One-time setup
 
 1. **Create a GitHub App** for the repo (or org). Permissions: contents:write, pull-requests:write, issues:write, actions:write, id-token:write, metadata:read. Install on the target repository. Save the App ID and download the private key PEM.
-2. **Store secrets** at repo level: `APP_ID` (numeric — for git commit email prefix only), `APP_PRIVATE_KEY`, `LLM_EXE_REVIEW_BOT_PRIVATE_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`. If you want the digest, also `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `SMTP_USERNAME`, `MARKETING_EMAILS`. If you want `test-package.yml`, also the per-provider API keys.
-3. **Store variables** at repo level: `APP_CLIENT_ID` (OAuth Client ID for main bot), `LLM_EXE_REVIEW_BOT_CLIENT_ID` (OAuth Client ID for review bot). If you want docs deploy: `AWS_ROLE_DEPLOY_ARN`, `AWS_REGION`, `AWS_S3_BUCKET`, `AWS_CLOUDFRONT_DISTRIBUTION_ID`.
+2. **Store secrets** at repo level: `APP_PRIVATE_KEY`, `LLM_EXE_REVIEW_BOT_PRIVATE_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`. If you want the digest, also `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `SMTP_USERNAME`, `MARKETING_EMAILS`. If you want `test-package.yml`, also the per-provider API keys.
+3. **Store variables** at repo level: `APP_CLIENT_ID` (OAuth Client ID for main bot), `APP_BOT_USER_ID` (numeric GitHub user ID for `llm-exe-bot[bot]` — get it from `gh api /users/llm-exe-bot[bot] --jq .id`), `LLM_EXE_REVIEW_BOT_CLIENT_ID` (OAuth Client ID for review bot). If you want docs deploy: `AWS_ROLE_DEPLOY_ARN`, `AWS_REGION`, `AWS_S3_BUCKET`, `AWS_CLOUDFRONT_DISTRIBUTION_ID`.
 4. **Pick two branches**: `development` (default) and `main`. Protect `main` so only the auto-merge workflow can write.
 5. **Set the default branch to `development`** in repo settings.
 

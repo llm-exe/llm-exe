@@ -152,7 +152,7 @@ flowchart TB
     subgraph J["Job: respond (ubuntu-latest, timeout-minutes: 20)"]
         direction TB
         s1["Generate bot token\ncreate-github-app-token@v3"]:::step
-        s2["Configure git\nuser.name = llm-exe-bot[bot]\nuser.email = APP_ID+...@users.noreply.github.com"]:::step
+        s2["Configure git\nuser.name = llm-exe-bot[bot]\nuser.email = APP_BOT_USER_ID+...@users.noreply.github.com"]:::step
         s3["Checkout fetch-depth: 0\nwith bot token"]:::step
         s4["actions/setup-node@v6\nnode-version: 24, cache: npm"]:::step
         s5["npm ci"]:::step

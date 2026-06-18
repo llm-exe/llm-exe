@@ -192,7 +192,7 @@ flowchart TB
         s3["Setup Node 24"]:::step
         s4["npm ci"]:::step
         s5["Build review prompt\nclock_in + perl substitution"]:::step
-        s6["Review PR\nclaude-code-action@v1\n(max-turns 30)"]:::step
+        s6["Review PR\nclaude-code-action@v1\n(max-turns 60)"]:::step
         s7["Upload agent prompt artifact"]:::step
         s8["Read verdict from /tmp/review-verdict.txt"]:::step
         s9["Clock out (if: always())"]:::step
@@ -369,7 +369,7 @@ flowchart LR
     end
 
     subgraph During["While the reviewer runs"]
-        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)\ncost meter: --max-turns 30"]:::llm
+        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)\ncost meter: --max-turns 60"]:::llm
         d2["api.github.com (gh CLI)\nauth: review bot token\nwhy: gh pr diff/view/review/close"]:::gh
         d3["allowed_bots: llm-exe-bot[bot]\nwhy: lets the action operate on bot PRs\n(default action behavior skips bot PRs)"]:::gh
         d4["WebFetch (allowed but rarely used)\nauth: anonymous\nwhy: external link verification only"]:::web
@@ -387,7 +387,7 @@ Tool allowlist passed to `claude-code-action@v1`:
 
 ```
 --allowedTools "Bash,Read,Glob,Grep,WebFetch"
---max-turns 30
+--max-turns 60
 --model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 ```
 
@@ -515,7 +515,7 @@ stateDiagram-v2
     Logging --> ClockOut: status mapped to exit code
     ClockOut --> Completed: exit 0
     ClockOut --> Interrupted: any non-zero
-    Running --> TimedOut: 15-minute job timeout OR max-turns 30
+    Running --> TimedOut: 15-minute job timeout OR max-turns 60
     TimedOut --> ClockOut
     Skipped --> [*]
     Completed --> [*]
@@ -552,7 +552,7 @@ flowchart TB
     F3X["check package-lock alignment"]:::fix
     F3E --> F3X
 
-    F4["Claude hits --max-turns 30"]:::fail
+    F4["Claude hits --max-turns 60"]:::fail
     F4 --> F4E["reviewer returns whatever it has\nmay leave PR without a verdict"]:::effect
     F4X["maintainer reviews manually\nor re-runs the workflow"]:::fix
     F4E --> F4X
@@ -604,7 +604,7 @@ flowchart LR
     K6["Concurrency"]:::k --- V6["none (parallel reviews allowed)"]:::v
     K7["Identity"]:::k --- V7["llm-exe-review-bot[bot] for reviews; llm-exe-bot[bot] only for gh pr ready"]:::v
     K8["Model"]:::k --- V8["vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6"]:::v
-    K9["Max turns"]:::k --- V9["30 (review job only)"]:::v
+    K9["Max turns"]:::k --- V9["60 (review job only)"]:::v
     K10["Tool allowlist"]:::k --- V10["Bash, Read, Glob, Grep, WebFetch (read-only)"]:::v
     K11["allowed_bots"]:::k --- V11["llm-exe-bot[bot]"]:::v
     K12["Jobs"]:::k --- V12["tests (Node 18/20/22/24), review, decide"]:::v

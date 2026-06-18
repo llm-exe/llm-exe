@@ -146,7 +146,7 @@ flowchart TB
 
     subgraph J2["Job: deploy-docs (ubuntu-latest, needs: check-deploy-branch)"]
         direction TB
-        s1["checkout@v4 (default GITHUB_TOKEN)"]:::step
+        s1["checkout@v6 (default GITHUB_TOKEN)"]:::step
         s2["./.github/actions/setup-node (Node 24.x)"]:::step
         s3["./.github/actions/cache (node_modules)"]:::step
         s4["npm install"]:::step
@@ -154,7 +154,7 @@ flowchart TB
         s6["compute PACKAGE_ID = version-timestamp"]:::step
         s7["write docs/.env (VITE_PACKAGE_ID)"]:::step
         s8["npm run docs:update-providers\nnpm run docs:build"]:::step
-        s9["upload-artifact@v4 name=docs"]:::step
+        s9["upload-artifact@v7 name=docs"]:::step
         s10["configure-aws-credentials@v4 (OIDC)"]:::step
         s11["aws sts get-caller-identity"]:::step
         s12["stage dist/ (copy build + package.json)"]:::step
@@ -194,7 +194,7 @@ sequenceDiagram
     R->>R: branch guard (target_commitish or GITHUB_REF)
     R-->>GH: exit 0
     GH->>R: schedule deploy-docs
-    R->>FS: checkout@v4 (GITHUB_TOKEN)
+    R->>FS: checkout@v6 (GITHUB_TOKEN)
     R->>R: setup-node (24.x) + cache
     R->>R: npm install
     R->>FS: read package.json version
@@ -325,7 +325,7 @@ flowchart LR
     classDef art fill:#581c87,color:#fff,stroke:#000
 
     subgraph Pre["Before AWS"]
-        c1["actions/checkout@v4\nauth: default GITHUB_TOKEN\nwhy: clone repo at the dispatched ref"]:::pre
+        c1["actions/checkout@v6\nauth: default GITHUB_TOKEN\nwhy: clone repo at the dispatched ref"]:::pre
         c2["./.github/actions/setup-node\nauth: none\nwhy: install Node 24.x + npm registry"]:::pre
         c3["./.github/actions/cache\nauth: none\nwhy: warm node_modules"]:::pre
         c4["npm registry\nauth: anonymous\nwhy: npm install"]:::build
@@ -334,7 +334,7 @@ flowchart LR
     subgraph Build["Build"]
         b1["npm run docs:update-providers\nupdates provider metadata in docs"]:::build
         b2["npm run docs:build\nVitePress build to docs/.vitepress/dist"]:::build
-        b3["actions/upload-artifact@v4\nname: docs, 30-day retention"]:::art
+        b3["actions/upload-artifact@v7\nname: docs, 30-day retention"]:::art
     end
 
     subgraph AWS["AWS plane"]

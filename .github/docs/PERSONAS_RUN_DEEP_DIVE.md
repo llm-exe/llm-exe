@@ -47,7 +47,7 @@ flowchart LR
     end
 
     subgraph S["Secrets and Identity"]
-        s1["APP_ID + APP_PRIVATE_KEY"]:::file
+        s1["APP_CLIENT_ID + APP_PRIVATE_KEY"]:::file
         s2["CLAUDE_CODE_OAUTH_TOKEN"]:::file
         bot["llm-exe-bot[bot]\nshort-lived token per job"]:::file
     end
@@ -486,8 +486,8 @@ flowchart LR
     classDef gh fill:#1f2937,color:#fff,stroke:#000
 
     subgraph Pre["Each job startup (gate, pick, every matrix slot, curator)"]
-        c1["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: short-lived bot token per job"]:::pre
-        c2["actions/checkout@v4\nauth: bot token\nfetch-depth: 0 (full history for branch ops)"]:::pre
+        c1["actions/create-github-app-token@v3\nauth: APP_CLIENT_ID + APP_PRIVATE_KEY\nwhy: short-lived bot token per job"]:::pre
+        c2["actions/checkout@v6\nauth: bot token\nfetch-depth: 0 (full history for branch ops)"]:::pre
         c3["actions/setup-node@v6\nnode-version: 24, cache: npm"]:::pre
     end
 

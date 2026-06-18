@@ -167,7 +167,7 @@ sequenceDiagram
     autonumber
     participant E as Event
     participant R as Runner (ubuntu-latest)
-    participant CO as actions/checkout@v4
+    participant CO as actions/checkout@v6
     participant SN as actions/setup-node@v6
     participant CA as ./.github/actions/cache
     participant NPM as npm
@@ -175,7 +175,7 @@ sequenceDiagram
     participant CV as coveralls
 
     E->>R: matrix leg starts (node 18/20/22/24)
-    R->>CO: actions/checkout@v4
+    R->>CO: actions/checkout@v6
     CO-->>R: working tree at PR HEAD
     R->>SN: setup-node@v6, node-version, cache: npm
     SN-->>R: node + npm installed, ~/.npm primed
@@ -219,7 +219,7 @@ flowchart LR
     end
 
     subgraph L2["Layer 2: ./.github/actions/cache (composite)"]
-        l2b["actions/cache@v4"]:::comp
+        l2b["actions/cache@v5"]:::comp
         l2bp["node_modules"]:::path
         l2bk["os-nodeModules-{matrix.node-version}-hash(package.json)"]:::key
         l2b --> l2bp
@@ -250,9 +250,9 @@ flowchart LR
     classDef auth fill:#374151,color:#fff,stroke:#000
 
     subgraph Setup
-        s1["actions/checkout@v4\nauth: GITHUB_TOKEN\nwhy: get PR HEAD"]:::setup
+        s1["actions/checkout@v6\nauth: GITHUB_TOKEN\nwhy: get PR HEAD"]:::setup
         s2["actions/setup-node@v6\nauth: none\nwhy: install Node, prime npm cache"]:::setup
-        s3["actions/cache@v4 (x2)\nauth: GITHUB_TOKEN\nwhy: persist deps across runs"]:::setup
+        s3["actions/cache@v5 (x2)\nauth: GITHUB_TOKEN\nwhy: persist deps across runs"]:::setup
     end
 
     subgraph Runtime

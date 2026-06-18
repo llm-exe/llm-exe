@@ -287,4 +287,88 @@ describe("serializeLlmExeError", () => {
     expect(out.name).toBe("TypeError");
     expect(out.stack).toBe(plainErr.stack);
   });
+
+  it("nullifies non-finite numbers in context", () => {
+    const err = new LlmExeError("nan", {
+      code: "parser.parse_failed",
+      context: { broken: NaN, inf: Infinity } as any,
+    });
+    const out = serializeLlmExeError(err) as any;
+    expect(out.context.broken).toBeNull();
+    expect(out.context.inf).toBeNull();
+  });
+
+  it("describes anonymous functions in context as [Function]", () => {
+    const fn = function () {};
+    Object.defineProperty(fn, "name", { value: "" });
+    const err = new LlmExeError("fn", {
+      code: "parser.parse_failed",
+      context: { fn } as any,
+    });
+    const out = serializeLlmExeError(err) as any;
+    expect(out.context.fn).toBe("[Function]");
+  });
+
+  it("nullifies an invalid Date in context", () => {
+    const err = new LlmExeError("d", {
+      code: "parser.parse_failed",
+      context: { when: new Date("not-a-date") } as any,
+    });
+    const out = serializeLlmExeError(err) as any;
+    expect(out.context.when).toBeNull();
+  });
+
+  it("skips undefined values on a plain-object context", () => {
+    const err = new LlmExeError("u", {
+      code: "parser.parse_failed",
+      context: { a: 1, b: undefined, c: 2 } as any,
+    });
+    const out = serializeLlmExeError(err) as any;
+    expect(out.context).toEqual({ a: 1, c: 2 });
+  });
+
+  it("skips undefined own-keys on a custom-class context", () => {
+    class CustomThing {
+      constructor(public a: number, public b: undefined, public c: number) {}
+    }
+    const err = new LlmExeError("u", {
+      code: "parser.parse_failed",
+      context: { received: new CustomThing(1, undefined, 3) } as any,
+    });
+    const out = serializeLlmExeError(err) as any;
+    expect(out.context.received).toEqual({ a: 1, c: 3 });
+  });
+
+  it("falls back to safe defaults when an LlmExeError-like value has non-string fields", () => {
+    const fake = {
+      isLlmExeError: true,
+      message: 42,
+      category: 99,
+      code: {},
+    };
+    const out = serializeLlmExeError(fake) as any;
+    expect(out.name).toBe("LlmExeError");
+    expect(out.message).toBe("");
+    expect(out.category).toBe("unknown");
+    expect(out.code).toBe("unknown.unclassified");
+  });
+
+  it("returns null for a non-finite number passed as the top-level error", () => {
+    expect(serializeLlmExeError(NaN)).toBeNull();
+  });
+
+  it("falls back to Error name for a top-level error-like value with no name", () => {
+    const errLike = { message: "no name", name: "" };
+    const out = serializeLlmExeError(errLike) as any;
+    expect(out.name).toBe("Error");
+    expect(out.message).toBe("no name");
+  });
+
+  it("returns empty message string when a generic error-like message is non-string", () => {
+    const errLike = { name: "Boom", message: 42 };
+    // isErrorLike requires both message and name as strings, so this falls through
+    // to the freshSafeValue branch and ends up as a plain serialized object.
+    const out = serializeLlmExeError(errLike) as any;
+    expect(out).toEqual({ name: "Boom", message: 42 });
+  });
 });

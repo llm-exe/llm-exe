@@ -465,4 +465,34 @@ describe("llm-exe:parser/JsonParser", () => {
       ).toThrow();
     });
   });
+
+  describe("extract: JSON-in-string brace-walker edge cases", () => {
+    it("ignores braces nested inside JSON string values (escaped quotes)", () => {
+      // The string value contains escaped quotes — exercises the escape-mode
+      // branches of findBalancedJsonEnd.
+      const parser = new JsonParser({ match: "extract" });
+      const input = 'Result: {"q":"say \\"hi\\" {to {them}}"} done';
+      expect(parser.parse(input)).toEqual({ q: 'say "hi" {to {them}}' });
+    });
+
+    it("skips an unbalanced opening brace without an end", () => {
+      // The opening { never closes — findBalancedJsonEnd returns undefined and
+      // the loop moves on. The second {a:1} is a valid candidate.
+      const parser = new JsonParser({ match: "extract" });
+      expect(parser.parse('Start: { but then {"a":1}')).toEqual({ a: 1 });
+    });
+
+    it("skips mismatched bracket pairs (e.g. opens { but tries to close ])", () => {
+      // The { is never matched by a }, so findBalancedJsonEnd returns undefined
+      // and we fall through to the no-json-value path.
+      const parser = new JsonParser({ match: "extract" });
+      expect(() => parser.parse('Bad: {"a":1]')).toThrow(LlmExeError);
+    });
+
+    it("skips braces in surrounding text when extraction runs", () => {
+      // The bare `{` near 'set' has no closer; the real object after that does.
+      const parser = new JsonParser({ match: "extract" });
+      expect(parser.parse('open { set then {"b":2} end')).toEqual({ b: 2 });
+    });
+  });
 });

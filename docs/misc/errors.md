@@ -8,12 +8,7 @@ description: "Reference for LlmExeError, error codes, context, and serialization
 llm-exe uses `LlmExeError` for errors created by the library.
 
 ```ts
-import {
-  LlmExeError,
-  isLlmExeError,
-  serializeLlmExeError,
-  formatLlmExeErrorForLog,
-} from "llm-exe";
+import { LlmExeError, isLlmExeError } from "llm-exe";
 ```
 
 ## Error Shape
@@ -115,16 +110,16 @@ Secrets are redacted before provider error data is added to context.
 
 ## Serialization
 
-Use `serializeLlmExeError` when sending errors to logs, queues, or telemetry.
+`LlmExeError` instances implement `toJSON()`, which returns a structured,
+JSON-safe payload for logs, queues, or telemetry.
 
 ```ts
-const payload = serializeLlmExeError(error);
+if (isLlmExeError(error)) {
+  const payload = error.toJSON();
+  logger.error(payload);
+}
 ```
 
-Use `formatLlmExeErrorForLog` for compact logs.
-
-```ts
-logger.error(formatLlmExeErrorForLog(error));
-```
-
-`error.toJSON()` also returns the serialized value for `LlmExeError` instances.
+The payload includes `name`, `message`, `code`, `category`, `context`, and a
+serialized `cause` when one is set. Secrets in provider error context are
+redacted before serialization.

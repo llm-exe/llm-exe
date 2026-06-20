@@ -1,65 +1,113 @@
 ---
 title: "Parsers | Validate and Transform LLM Output with llm-exe"
-description: "Parsers turn raw LLM output into structured, reliable data. Choose from built-in options or define custom parsers to enforce schemas, extract values, and shape responses for safe, predictable AI execution."
+description: "Use parsers in prompt files or TypeScript to turn LLM text into strings, booleans, numbers, JSON, arrays, and schema-validated objects."
 ---
 
 # Parser
 
-When calling LLM's the response is ultimately a string. While you can (and will) instruct the LLM to respond with a number, or formatted as JSON... the response will still be a string.
+Parsers turn LLM output into data your application can use.
 
-Parsers are used to take the output from the LLM, and format it into a data type that is usable by your application.
+In a prompt file, use `parser` and `parserOptions`.
 
-There are various default parsers included, and the parser class is easily extendable.
-
-When combined with an LLM executor, the parser is responsible for providing type hints to the Typescript compiler on the expected output for the LLM executor.
-
-**Note**: You can use and call methods on parsers directly, but they are usually passed to an [LLM executor](/executor/index.html) and then called internally.
-
-## Getting Started
-
-### Working with Parsers
-
-When working with output parsers, you have two options:
-
-1. Use a [default parser](/parser/included-parsers.html).
-2. Create a [custom parser](/parser/custom.html) for full control over output transformation.
-
-#### Use a Default Parser
-
-```ts
-const parser = createParser("listToArray"); // see list of included parsers
-
-// example output string from LLM
-const exampleOutputFromLlm = `First, hover the services menu
-Wait for the dropdown menu to appear
-Click on the development link`;
-
-// listToArray will split a string on line breaks
-const parsed = parser.parse(exampleOutputFromLlm);
-
-/**
- *
- * console.log(parsed);
- *
- * [
- *   "First, hover the services menu",
- *   "Wait for the dropdown menu to appear",
- *   "Click on the development link"
- * ]
- *
- */
+```yaml
+provider: openai.gpt-4o-mini
+message: "Extract sentiment from: {{text}}"
+parser: json
+parserOptions:
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      sentiment:
+        type: string
+    required: [sentiment]
+data:
+  text: I love this.
 ```
 
-#### Using a Parser with Schema
+Run it:
 
-When instructing the LLM to respond with json or a format that can be parsed to json, it can be helpful to define schema. This allows you to validate, provide default values, and have a fully-typed response. In fact, the JSON Schema you define can be really useful (and re-used!) in your prompt. [See tips](/examples/concepts/working-with-json) for working with JSON.
+```bash
+llm-exe ./sentiment.yml --json
+```
 
-##### `defineSchema`
+The JSON parser parses the model response and validates it against the schema. For providers that support structured JSON output, llm-exe also sends the schema to the provider.
 
-The `defineSchema` helper narrows a JSON Schema definition to its literal type so TypeScript can infer the exact shape of the parsed output. It also sets `additionalProperties: false` to ensure strict validation. Use it whenever you define schemas for JSON parsers.
+## Built-In Parsers
+
+The default parser is `string`.
+
+```yaml
+provider: openai.gpt-4o-mini
+message: "Summarize: {{text}}"
+parser: string
+```
+
+Other built-in parsers include:
+
+- `json`
+- `boolean`
+- `number`
+- `listToArray`
+- `listToJson`
+- `listToKeyValue`
+- `stringExtract`
+- `markdownCodeBlock`
+- `markdownCodeBlocks`
+- `replaceStringTemplate`
+
+See [Included Parsers](/parser/included-parsers.html).
+
+## Parser Options
+
+Parser options go under `parserOptions`.
+
+```yaml
+parser: stringExtract
+parserOptions:
+  enum:
+    - approve
+    - reject
+```
+
+For JSON-style output, schema options are the most common use.
+
+```yaml
+parser: json
+parserOptions:
+  schema:
+    type: object
+    properties:
+      answer:
+        type: string
+      confidence:
+        type: integer
+    required: [answer, confidence]
+```
+
+## TypeScript
+
+In TypeScript, use `createParser`.
 
 ```ts
-import { defineSchema, createParser } from "llm-exe";
+import { createParser } from "llm-exe";
+
+const parser = createParser("listToArray");
+
+const parsed = parser.parse(`First step
+Second step
+Third step`);
+
+console.log(parsed);
+// ["First step", "Second step", "Third step"]
+```
+
+## JSON Schema Types
+
+Use `defineSchema` when you want TypeScript to infer the parsed output type from a JSON Schema.
+
+```ts
+import { createParser, defineSchema } from "llm-exe";
 
 const schema = defineSchema({
   type: "object",
@@ -72,19 +120,27 @@ const schema = defineSchema({
 });
 
 const parser = createParser("listToJson", { schema });
-
-const exampleOutputFromLlm = `Statement: The included document contains PII\nAnswer: No\nConfidence: 90`;
-
-const parsed = parser.parse(exampleOutputFromLlm);
-/**
- *
- * console.log(parsed);
- *
- * {
- *   "statement": "The included document contains PII",
- *   "answer": "No",
- *   "confidence": 90
- * }
- *
- */
 ```
+
+The same schema can live in a prompt file, but the TypeScript type inference only exists in code.
+
+```yaml
+parser: listToJson
+parserOptions:
+  schema:
+    type: object
+    properties:
+      statement:
+        type: string
+      answer:
+        type: string
+      confidence:
+        type: integer
+    required: [statement, answer, confidence]
+```
+
+## Custom Parsers
+
+Custom parsers are JavaScript functions, so they are TypeScript-only.
+
+Use a built-in parser from prompt files. Use [Custom Parsers](/parser/custom.html) when you need full control in code.

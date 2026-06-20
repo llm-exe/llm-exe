@@ -1,48 +1,121 @@
 ---
-title: Prompts | Dynamic, Typed Prompt Templates in llm-exe
-description: "Design powerful prompts with Handlebars templates, full type safety, and reusable partials. llm-exe lets you separate logic from content—so your LLM apps stay readable, testable, and maintainable."
+title: Prompts | Dynamic Prompt Templates in llm-exe
+description: "Write prompt templates in prompt files or TypeScript. Use Handlebars variables, system messages, Markdown prompt bodies, and typed prompt inputs."
 ---
 
 # Prompt
 
-The prompt is the instruction for the LLM, usually sent in plain-text or an array of chat-style messages. When working with certain models, the prompt is formatted like chat messages, allowing you to control a system message, user message, and assistant message.
+The prompt is the instruction sent to the LLM.
 
-llm-exe provides a prompt interface to simplify working with prompts. Ultimately a prompt is a string, but building elaborate prompts can quickly get complicated. The prompt utility provides a foundation for building complex prompts.
+In a prompt file, the main fields are `system`, `message`, and `data`.
 
-- Support for text-based or chat-based prompts.
-- Uses Handlebars as template engine, allowing you to use features such as custom templates, partials, functions, etc. See [handlebars documentation](https://handlebarsjs.com/guide/) for everything you can do.
-- Infers types when they are provided.
+```yaml
+provider: openai.gpt-4o-mini
+system: You are a helpful summarizer.
+message: "Summarize: {{text}}"
+data:
+  text: Long article...
+```
 
-Note: You can use and call methods on prompts directly, but they are usually passed to an LLM executor and then called internally.
+Run it:
 
-There are 2 types of prompts included, along with a `BasePrompt` class that can be extended, if needed.
+```bash
+llm-exe ./summarize.yml
+```
 
-See:
+`message` is a Handlebars template. Values come from `data` or from the input you pass at runtime.
+
+```bash
+llm-exe ./summarize.yml --data.text "Different article..."
+```
+
+## Markdown Prompts
+
+Markdown prompt files put the config in frontmatter and the prompt in the body.
+
+```markdown
+---
+provider: openai.gpt-4o-mini
+system: You are a helpful summarizer.
+data:
+  text: Long article...
+---
+
+Summarize this:
+
+{{text}}
+```
+
+This is often easier for long prompts than writing a large quoted YAML string.
+
+See [Prompt File Formats](/config/formats.html).
+
+## Template Variables
+
+Prompt files use the same Handlebars syntax as TypeScript prompts.
+
+```yaml
+provider: openai.gpt-4o-mini
+message: "Write a {{tone}} email to {{name}}."
+data:
+  tone: friendly
+  name: Greg
+```
+
+Override values from the CLI:
+
+```bash
+llm-exe ./email.yml --data.tone formal --data.name Sam
+```
+
+Or pass input from TypeScript:
+
+```ts
+const executor = executorFromConfig(config);
+const result = await executor.execute({
+  tone: "formal",
+  name: "Sam",
+});
+```
+
+## TypeScript
+
+In TypeScript, create prompts with `createChatPrompt` or `createPrompt`.
+
+```ts
+import { createChatPrompt } from "llm-exe";
+
+const prompt = createChatPrompt<{ text: string }>(
+  "Summarize this:\n\n{{text}}",
+);
+
+const output = prompt.format({
+  text: "Long article...",
+});
+```
+
+Prompt input types are inferred when you provide them.
+
+```ts
+const prompt = createChatPrompt<{ tone: string; name: string }>(
+  "Write a {{tone}} email to {{name}}.",
+);
+```
+
+## Chat and Text Prompts
+
+llm-exe includes:
 
 - [Text Prompt](/prompt/text.html)
 - [Chat Prompt](/prompt/chat.html)
 - [Prompt Validation](/prompt/validation.html)
 
-## Basic Replacements
+Prompt files use a chat-style prompt under the hood: `system` becomes the system message, and `message` becomes the user message.
 
-The object that you pass to `prompt.format` (or `.execute` when a prompt is part of an LLM executor) gets passed to the template engine, making all those variables available to you in your prompt template.
+## Helpers and Partials
 
-<GenericOutput example="prompt.basic.exampleOne">
+Handlebars helpers and partials are JavaScript functions, so they do not live in prompt files.
 
-<<< ../../examples/prompt/basic.ts#exampleOne
-</GenericOutput>
+Use TypeScript when you need custom helpers, partials, or more control over prompt construction.
 
-For advanced uses and working with custom helpers/partials, [see here](/prompt/advanced.html).
-
-## Validating Template Inputs
-
-Prompts can validate that required template variables and helpers are available before rendering. Use `prompt.validate(input)` directly, or set `validateInput: "strict"` / `"warn"` on a prompt to check calls to `format()`.
-
-See [Prompt Validation](/prompt/validation.html).
-
-## Using Types with Prompts
-
-<GenericOutput example="prompt.basic.exampleTwo">
-
-<<< ../../examples/prompt/basic.ts#exampleTwo
-</GenericOutput>
+See [Advanced Prompt Usage](/prompt/advanced.html).

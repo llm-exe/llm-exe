@@ -12,7 +12,7 @@ All three formats load into the same prompt file shape.
 ## Fields
 
 **provider** (required)  
-A [`useLlm`](/llm/index.html) provider key, like `openai.gpt-4o-mini` or `openai.chat.v1`.
+The same value you would pass to [`useLlm`](/llm/index.html): a model shorthand like `openai.gpt-4o-mini`, or a generic provider key like `openai.chat.v1`.
 
 **message** (required)  
 The user message. This can be a Handlebars template. It must not be empty.

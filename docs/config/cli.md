@@ -143,7 +143,7 @@ Set a template value. Dotted keys are nested.
 Override `model` in the file.
 
 **`--provider <value>`**  
-Override `provider` in the file. This should be a real `useLlm` provider key, like `openai.chat.v1`.
+Override `provider` in the file. This is the same value you would pass to [`useLlm`](/llm/index.html), such as `openai.gpt-4o-mini` or `openai.chat.v1`.
 
 **`--parser <value>`**  
 Override `parser` in the file.

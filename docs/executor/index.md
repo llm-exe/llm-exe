@@ -1,32 +1,78 @@
 ---
-title: "LLM Executor | Structure Your LLM Calls with Type Safety"
-description: The core building block of llm-exe. Create modular, testable LLM functions with typed inputs, custom prompts, and reliable output parsers. Build AI features that are easy to reason about and reuse.
+title: "LLM Executor | Run Prompts with Models and Parsers"
+description: "Run a prompt file, or build the same executor in TypeScript with an LLM, prompt, and parser."
 ---
 
 # LLM Executor
 
-The LLM executor takes an [llm](/llm/index.html), a [prompt](/prompt/index.html), optionally a [parser](/parser/index.html), and wraps in a well-typed executor function. An LLM executor is a _container_ that can be used to call an LLM with a pre-defined input and output; with additional values provided at the time of execution. The executor is responsible for combining and calling the provided components, with added tracing, metadata, and extendable hooks.
+An executor combines the [LLM](/llm/index.html), [prompt](/prompt/index.html), and [parser](/parser/index.html), then runs them with input.
 
-An LLM executor's input and output types are determined by the prompt and parser respectively. These are inferred automatically when working with Typescript. See working with types in prompts and parsers.
+In a prompt file, those pieces are the file:
 
-## Llm Executor Input
+```yaml
+provider: openai.gpt-4o-mini
+system: You are a customer support agent.
+message: "Reply to the user's message.\n\n{{input}}"
+parser: string
+```
 
-**llm** (required) `instance of BaseLlm`. Use `useLlm()` to create one.
+Run it:
 
-**prompt** (required) `instance of BasePrompt` Either text or chat, respective of the LLM.
+```bash
+llm-exe ./support.yml --data.input "Hello!"
+```
 
-**parser** (optional) defaults to string if not provided.
+That is the file version of an LLM executor.
 
-**hooks** (optional) allows you to hook into various stages of the execution. Most useful for logging, but may be used for additional plugins.
+## Run Once
 
-## Basic Example
+Use the CLI when you only need the result.
 
-```typescript
+```bash
+llm-exe ./support.yml --data.input "Hello!"
+```
+
+Use `runFile` from Node when you want the same one-shot behavior in code.
+
+```ts
+import { runFile } from "llm-exe/node";
+
+const response = await runFile("./support.yml", undefined, {
+  data: {
+    input: "Hello!",
+  },
+});
+```
+
+## Reuse an Executor
+
+If you want to run the same prompt many times, load the file and build an executor.
+
+```ts
+import { executorFromConfig } from "llm-exe";
+import { loadConfigFromFile } from "llm-exe/node";
+
+const config = await loadConfigFromFile("./support.yml");
+const executor = executorFromConfig(config);
+
+const response = await executor.execute({
+  input: "Hello!",
+});
+```
+
+`executorFromConfig` returns the normal llm-exe executor. It does not create a new executor type.
+
+## TypeScript
+
+The same executor can be built directly in TypeScript.
+
+```ts
 import { useLlm, createChatPrompt, createLlmExecutor } from "llm-exe";
 
 const llm = useLlm("openai.gpt-4o-mini");
-const instruction = `You are a customer support agent. Reply to the user's message.\n{{input}}`;
-const prompt = createChatPrompt<{ input: string }>(instruction);
+const prompt = createChatPrompt<{ input: string }>(
+  "You are a customer support agent. Reply to the user's message.\n\n{{input}}",
+);
 
 const executor = createLlmExecutor({
   llm,
@@ -36,44 +82,93 @@ const executor = createLlmExecutor({
 const response = await executor.execute({ input: "Hello!" });
 ```
 
-## Basic Example with All Options
+The prompt-file version is smaller when everything is data. The TypeScript version is better when you need custom code, helpers, custom parsers, or more control over composition.
 
-```typescript
-import { useLlm, createChatPrompt, createParser, createLlmExecutor } from "llm-exe";
+## With a Parser
 
-const llm = useLlm("openai.gpt-4o-mini");
-const instruction = `You are a customer support agent. Reply to the user's message as JSON.\n{{input}}`;
-const prompt = createChatPrompt<{ input: string }>(instruction);
-const parser = createParser("json");
+Prompt file:
 
-const hooks = {
-  onComplete() {},
-  onSuccess() {},
-  onError() {},
-};
-
-const executor = createLlmExecutor(
-  {
-    llm,
-    prompt,
-    parser,
-  },
-  { hooks }
-);
-
-executor.on("onComplete", () => {});
-executor.once("onComplete", () => {});
-
-const response = await executor.execute({ input: "Hello!" });
+```yaml
+provider: openai.gpt-4o-mini
+message: "Extract sentiment from: {{text}}"
+parser: json
+parserOptions:
+  schema:
+    type: object
+    properties:
+      sentiment:
+        type: string
+    required: [sentiment]
 ```
 
-`createLlmExecutor` Returns an instance of LlmExecutor.
+TypeScript:
+
+```ts
+import {
+  useLlm,
+  createChatPrompt,
+  createParser,
+  createLlmExecutor,
+} from "llm-exe";
+
+const llm = useLlm("openai.gpt-4o-mini");
+const prompt = createChatPrompt<{ text: string }>(
+  "Extract sentiment from: {{text}}",
+);
+const parser = createParser("json", {
+  schema: {
+    type: "object",
+    properties: {
+      sentiment: { type: "string" },
+    },
+    required: ["sentiment"],
+  },
+});
+
+const executor = createLlmExecutor({ llm, prompt, parser });
+```
+
+## Hooks
+
+Hooks are TypeScript construction options.
+
+```ts
+const executor = executorFromConfig(config, {
+  hooks: {
+    onComplete(metadata) {
+      console.log(metadata);
+    },
+  },
+});
+```
 
 ## Function Executor
 
-If you need tool/function calling support, use `createLlmFunctionExecutor`. It extends the standard LLM executor with the ability to define functions the LLM can call. This works with any provider that supports tool calling (OpenAI, Anthropic, Google, etc.).
+Prompt files can include function schemas.
 
-```typescript
+```yaml
+provider: openai.gpt-4o-mini
+message: What is the weather in {{city}}?
+data:
+  city: Denver
+executorOptions:
+  functionCall: auto
+  functions:
+    - name: get_weather
+      description: Get the current weather
+      parameters:
+        type: object
+        properties:
+          city:
+            type: string
+        required: [city]
+```
+
+When `executorOptions.functions` is present, llm-exe creates a function-calling executor.
+
+In TypeScript, use `createLlmFunctionExecutor`.
+
+```ts
 import { useLlm, createChatPrompt, createLlmFunctionExecutor } from "llm-exe";
 
 const llm = useLlm("openai.gpt-4o-mini");
@@ -92,32 +187,29 @@ const response = await executor.execute(
       {
         name: "get_weather",
         description: "Get the current weather",
-        parameters: { /* JSON Schema */ },
+        parameters: { type: "object", properties: {} },
       },
     ],
-  }
+  },
 );
 ```
 
-`createLlmFunctionExecutor` Returns an instance of LlmExecutorWithFunctions.
-
-See [Tool Calling Executor](/executor/openai-functions.html) for full documentation and examples.
+See [Tool Calling Executor](/executor/openai-functions.html).
 
 ## Core Executor
 
-If you need a typed executor that wraps a plain function (no LLM involved), use `createCoreExecutor`. This is useful for composing non-LLM steps alongside LLM executors in a pipeline — the core executor provides the same `execute` interface, tracing, and hooks as an LLM executor.
+If you need an executor around a plain function, use `createCoreExecutor`.
 
-```typescript
+```ts
 import { createCoreExecutor } from "llm-exe";
 
-const executor = createCoreExecutor(
-  async (input: { text: string }) => {
-    return { wordCount: input.text.split(" ").length };
-  }
-);
+const executor = createCoreExecutor(async (input: { text: string }) => {
+  return { wordCount: input.text.split(" ").length };
+});
 
-const result = await executor.execute({ text: "Hello world from llm-exe" });
-// result: { wordCount: 4 }
+const result = await executor.execute({
+  text: "Hello world from llm-exe",
+});
 ```
 
-`createCoreExecutor` Returns an instance of CoreExecutor.
+Core executors are TypeScript-only.

@@ -10,58 +10,75 @@
           /> -->
 
         <!-- start add messages -->
-        <div class="left-side-section" style="width: 100%; position: relative">
-          <div class="input-label">Add Messages</div>
+        <fieldset class="left-side-section" style="width: 100%; position: relative">
+          <legend class="input-label">Add Messages</legend>
           <div style="width: 100%">
-            <div>
-              <select
-                v-model="newMessage.role"
-                style="width: 100%; padding: 3px 8px"
-              >
-                <option value="system">System</option>
-                <option value="assistant">Assistant</option>
-                <option value="user">User</option>
-              </select>
-            </div>
+            <label for="playground2-new-role" class="visually-hidden">
+              Message role
+            </label>
+            <select
+              id="playground2-new-role"
+              v-model="newMessage.role"
+              style="width: 100%; padding: 3px 8px"
+            >
+              <option value="system">System</option>
+              <option value="assistant">Assistant</option>
+              <option value="user">User</option>
+            </select>
+            <label for="playground2-new-content" class="visually-hidden">
+              Message content
+            </label>
             <textarea
+              id="playground2-new-content"
               style="width: 100%; padding: 3px 8px"
               v-model="newMessage.content"
             />
           </div>
 
           <button
+            type="button"
             class="add-message-button"
             @click="addMessage"
             style="padding: 1px 4px; background: #333; width: 100%"
           >
             Add
           </button>
-        </div>
+        </fieldset>
         <!-- end add messages -->
 
         <!-- start options -->
 
-        <div class="left-side-section">
-          <div class="input-label">Options</div>
+        <fieldset class="left-side-section">
+          <legend class="input-label">Options</legend>
 
           <div>
-            <span>Prompt Type: </span>
-            <select v-model="type">
+            <label for="playground2-prompt-type">Prompt Type: </label>
+            <select id="playground2-prompt-type" v-model="type">
               <option value="chat">chat</option>
               <option value="text">text</option>
             </select>
           </div>
           <div>
-            <span>Allow Unsafe User Template</span>:
-            <input type="checkbox" v-model="options.allowUnsafeUserTemplate" />
+            <label for="playground2-allow-unsafe">
+              <input
+                id="playground2-allow-unsafe"
+                type="checkbox"
+                v-model="options.allowUnsafeUserTemplate"
+              />
+              Allow Unsafe User Template
+            </label>
           </div>
-        </div>
+        </fieldset>
 
         <!-- end options -->
       </div>
       <div>
+        <label for="playground2-json" class="input-label">
+          Template input (JSON)
+        </label>
         <div>
           <textarea
+            id="playground2-json"
             style="width: 100%; padding: 3px 8px; min-height: 200px"
             v-model="json"
           ></textarea>
@@ -69,33 +86,60 @@
       </div>
     </div>
     <div class="grid-right-side">
-      <div class="tabs-labels">
-        <div
+      <!--
+        ARIA tabs pattern. The panel below is labelled by the active tab via
+        aria-labelledby. Keyboard arrow-key navigation between tabs is a
+        known gap; tabs are reachable via Tab and activated with Enter/Space.
+        Follow-up tracked separately.
+      -->
+      <div class="tabs-labels" role="tablist" aria-label="Playground output">
+        <button
+          type="button"
+          role="tab"
+          id="pp2-tab-messages"
+          aria-controls="pp2-tabpanel"
+          :aria-selected="activeTab === 'messages'"
+          :tabindex="activeTab === 'messages' ? 0 : -1"
           style="padding: 2px 3px; cursor: pointer"
           class="tabs-label"
           :class="activeTab === 'messages' ? 'active' : ''"
           @click="activeTab = 'messages'"
         >
           messages
-        </div>
-        <div
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="pp2-tab-options"
+          aria-controls="pp2-tabpanel"
+          :aria-selected="activeTab === 'options'"
+          :tabindex="activeTab === 'options' ? 0 : -1"
           style="padding: 2px 3px; cursor: pointer"
           class="tabs-label"
           :class="activeTab === 'options' ? 'active' : ''"
           @click="activeTab = 'options'"
         >
           options
-        </div>
-        <div
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="pp2-tab-prompt"
+          aria-controls="pp2-tabpanel"
+          :aria-selected="activeTab === 'prompt'"
+          :tabindex="activeTab === 'prompt' ? 0 : -1"
           style="padding: 2px 3px; cursor: pointer"
           class="tabs-label"
           :class="activeTab === 'prompt' ? 'active' : ''"
           @click="activeTab = 'prompt'"
         >
           prompt
-        </div>
+        </button>
       </div>
       <div
+        id="pp2-tabpanel"
+        role="tabpanel"
+        :aria-labelledby="`pp2-tab-${activeTab}`"
         style="padding: 32px; border: 1px solid #333; background-color: black"
       >
         <pre v-if="activeTab === 'options'">{{ options }}</pre>
@@ -214,5 +258,30 @@ const output = computed(() => {
   background-color: #333;
   opacity: 1;
   color: white;
+}
+
+.tabs-label {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.tabs-label:focus-visible {
+  outline: 2px solid var(--vp-c-brand, #818cf8);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 </style>

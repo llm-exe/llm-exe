@@ -54,6 +54,22 @@
   opacity: 0.25;
 }
 
+/*
+ * Honor the user's reduced-motion preference for every transition and
+ * animation on this site. The marker, list bullets, and any future
+ * animated component all collapse to no movement.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 .marker-highlight.marker-highlight-yellow::after {
   opacity: 1;
   background: linear-gradient(to right, #fbbf24, #fbbf24);

@@ -1,0 +1,60 @@
+# Accessibility check for the VitePress docs site.
+#
+# Security note: this workflow does not consume any user-controlled
+# `github.event.*` input inside `run:` blocks. It builds the docs from the
+# checked-out tree, serves them on a loopback port, and runs Pa11y against
+# a fixed URL list committed under .github/a11y/. No issue titles,
+# PR bodies, commit messages, or branch names are interpolated.
+
+name: Docs / Accessibility
+
+# Manual-trigger only for now. Once the canonical URL list and the Pa11y
+# baseline are stable, flip this to also run on pull_request paths
+# affecting docs/** and .github/a11y/**.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pa11y:
+    name: Pa11y CI on built docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js environment
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build docs
+        run: npm run docs:update-providers && npm run docs:build
+
+      - name: Serve built docs in the background
+        run: |
+          npx --yes serve@14 docs/.vitepress/dist -l 4173 > /tmp/serve.log 2>&1 &
+          echo $! > /tmp/serve.pid
+          for i in $(seq 1 30); do
+            if curl -sSf http://127.0.0.1:4173/ > /dev/null; then
+              echo "Server is up."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server did not start in time. Logs:"
+          cat /tmp/serve.log
+          exit 1
+
+      - name: Run Pa11y CI
+        run: npx --yes pa11y-ci@3 --config .github/a11y/pa11yci.json
+
+      - name: Stop the static server
+        if: always()
+        run: |
+          if [ -f /tmp/serve.pid ]; then
+            kill "$(cat /tmp/serve.pid)" 2>/dev/null || true
+          fi

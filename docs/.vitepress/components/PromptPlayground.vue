@@ -2,27 +2,48 @@
   <div v-if="ready" class="grid-wrap">
     <div class="grid-left-side">
       <div>
-        <input type="checkbox" v-model="parseUserTemplates" />
+        <label>
+          <input
+            type="checkbox"
+            v-model="parseUserTemplates"
+          />
+          Parse Handlebars templates inside user messages
+        </label>
       </div>
 
       <div>
-        <div><button @click="createNewPrompt">Reset</button></div>
+        <div>
+          <button type="button" @click="createNewPrompt">Reset</button>
+        </div>
         <PromptMessage
           @update="handleMessageUpdate"
           v-for="(message, index) in messages"
           :message="message"
           :index="index"
         />
-        <button @click="addUserMessage">Add user message</button>
-        <button @click="addUserMessage">Add assistant message</button>
+        <button type="button" @click="addUserMessage">Add user message</button>
+        <button type="button" @click="addAssistantMessage">Add assistant message</button>
       </div>
       <div>
-        <div><textarea v-model="json"></textarea></div>
+        <label for="prompt-playground-json">
+          Template input (JSON)
+        </label>
+        <div>
+          <textarea
+            id="prompt-playground-json"
+            v-model="json"
+            aria-describedby="prompt-playground-json-help"
+          ></textarea>
+        </div>
+        <p id="prompt-playground-json-help" class="field-help">
+          Object passed to <code>prompt.format()</code>. Keys must match the
+          variables referenced in the messages above.
+        </p>
       </div>
     </div>
     <div class="grid-right-side">
-      <pre>{{ output }}</pre>
-      <pre>{{ prompt }}</pre>
+      <pre aria-label="Rendered prompt output">{{ output }}</pre>
+      <pre aria-label="Prompt object">{{ prompt }}</pre>
     </div>
 
   </div>

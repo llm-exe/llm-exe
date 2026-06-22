@@ -1,0 +1,49 @@
+name: Feature request
+description: Propose a new feature, parser, provider shorthand, or option.
+title: "[feat]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, please read the [Feature Evaluation](https://github.com/llm-exe/llm-exe/blob/development/CLAUDE.md#feature-evaluation--read-this-before-adding-features) section. We do not race to support every new LLM capability, and many proposals are best implemented in user code on top of the existing primitives.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem are you trying to solve? Describe the use case, not the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Sketch the API or behavior you have in mind. TypeScript snippets are welcome.
+      render: ts
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What workarounds exist today? Why are they insufficient?
+    validations:
+      required: false
+  - type: checkboxes
+    id: criteria
+    attributes:
+      label: Feature evaluation criteria
+      description: Help us assess fit. Check every item that applies.
+      options:
+        - label: Multiple providers support (or are likely to support) this capability.
+        - label: This is stable enough that we will not have to redesign it in six months.
+        - label: It keeps the library lightweight and does not require new heavy dependencies.
+        - label: Inputs and outputs can be typed without introducing `any`.
+        - label: It fits cleanly inside one of the four pillars (Prompt, LLM, Parser, Executor) or composes them.
+  - type: textarea
+    id: breaking
+    attributes:
+      label: Backwards compatibility
+      description: Would this change require existing user code to be modified? If yes, explain how.
+    validations:
+      required: true

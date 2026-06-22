@@ -34,7 +34,7 @@ The repository runs three layers of automation, each with a different cadence an
 | Release pipeline | Promote work from `development` to `main`, bump versions, draft releases, publish to npm, deploy docs to AWS S3 plus CloudFront. | Pull request events, release events, manual dispatch | End users of the npm package |
 | Infrastructure hygiene | Test matrix on PRs, cache cleanup on PR close, weekly email digest, bot mention responder. | PR events, release events, scheduled crons, issue comments | CI health and maintainer awareness |
 
-There are twenty-one GitHub Actions workflow files, two reusable composite actions, one shell entry point (`scripts/maintain.sh`), one shared config library (`scripts/agents/config.sh`), nine Markdown prompt files, and a writable `scripts/agents/logs/` directory that the agents both read from and append to across runs.
+There are twenty-two GitHub Actions workflow files, two reusable composite actions, one shell entry point (`scripts/maintain.sh`), one shared config library (`scripts/agents/config.sh`), nine Markdown prompt files, and a writable `scripts/agents/logs/` directory that the agents both read from and append to across runs.
 
 ---
 
@@ -55,7 +55,7 @@ flowchart LR
     T["Events<br/>cron, dispatch, PR, release,<br/>issue_comment, workflow_run, push"]:::trig
     A["Agent layer<br/>8 workflows, LLM-driven"]:::agent
     R["Release pipeline<br/>6 workflows, development to npm + S3"]:::rel
-    H["CI hygiene<br/>6 workflows, tests + caches + rebases"]:::hyg
+    H["CI hygiene<br/>7 workflows, tests + caches + rebases + a11y"]:::hyg
     X["External services<br/>Anthropic, GitHub, npm, AWS, Microsoft Graph"]:::ext
 
     T --> A
@@ -157,6 +157,7 @@ flowchart LR
     T4["cache-cleanup<br/>Actions cache GC"]:::job
     T5["update-prs-with-development<br/>on-demand rebase"]:::job
     T6["test-github-action<br/>smoke-test llm-exe action"]:::job
+    T7["a11y-docs<br/>Pa11y scan of built VitePress docs"]:::job
 
     p --> T1
     p --> T3
@@ -168,6 +169,7 @@ flowchart LR
     d --> T4
     d --> T5
     d --> T6
+    d --> T7
 ```
 
 ### 2.5. Identity and runtime (shared infrastructure)
@@ -224,6 +226,7 @@ Every workflow, every event it accepts, every cron expression, and every job-lev
 | `docs-sync.yml` | yes, with `target` (string) and `full_refresh` (boolean) inputs | none | none | none | invoked by `docs-sync-trigger.yml` or manual dispatch |
 | `vitals.yml` | yes, no inputs | `0 8 * * *` daily | none | none | regenerates AUTOMATION.md on development |
 | `test-github-action.yml` | yes, with `provider` (choice: `openai.chat.v1`, `anthropic.chat.v1`) and `model` (string, default `gpt-4o-mini`) | none | none | none | none |
+| `a11y-docs.yml` | yes, no inputs | none | none | none | none (manual-only for now; comments document future plan to add `pull_request` paths `docs/**` and `.github/a11y/**`) |
 
 ### Concurrency groups
 
@@ -353,7 +356,8 @@ The minimal tree, annotated with why each path exists. A replica must reproduce 
 │   │   ├── docs-sync-trigger.yml        detects workflow/script changes on push to development, dispatches docs-sync.yml
 │   │   ├── docs-sync.yml                keeps workflow deep-dive markdown in sync with source; invoked by trigger or manual dispatch
 │   │   ├── vitals.yml                   daily cron + dispatch; regenerates AUTOMATION.md on development
-│   │   └── test-github-action.yml        dispatch only: smoke-tests llm-exe/github-action@v1 with a real LLM call and assertion
+│   │   ├── test-github-action.yml        dispatch only: smoke-tests llm-exe/github-action@v1 with a real LLM call and assertion
+│   │   └── a11y-docs.yml                 dispatch only: builds the VitePress docs site, serves on loopback, runs Pa11y CI against a committed URL list
 │   └── WORKFLOW_ARCHITECTURE.md          this document
 ├── scripts/
 │   ├── maintain.sh                       local entry point; same prompt assembly as CI but runs claude interactively
@@ -875,6 +879,21 @@ PR body truncation: capped at 65000 characters.
 | Output | Pass/fail status only. No artifacts, no PRs, no issues. |
 
 This workflow is standalone: it does not interact with any other workflow in the repo. It exists so the maintainer can verify that the external `llm-exe/github-action` works end to end with real provider credentials.
+
+### 9.19. `a11y-docs.yml` - Pa11y accessibility scan on the built docs
+
+| Field | Value |
+|-------|-------|
+| Trigger | `workflow_dispatch` only (comments document a future plan to also fire on `pull_request` paths `docs/**` and `.github/a11y/**` once the URL list and Pa11y baseline are stable) |
+| Permissions | `contents: read` only; no App token, no bot identity, no secrets referenced |
+| Timeout | 15 minutes |
+| Concurrency | not set |
+| Steps | `actions/checkout@v4` -> `./.github/actions/setup-node` -> `npm install` -> `npm run docs:update-providers && npm run docs:build` -> background `npx serve@14 docs/.vitepress/dist -l 4173` with a 30-second poll loop against `http://127.0.0.1:4173/` -> `npx pa11y-ci@3 --config .github/a11y/pa11yci.json` -> stop-server step gated `if: always()` that kills the pid recorded at `/tmp/serve.pid`. |
+| External calls | `registry.npmjs.org` (npm + npx) and the loopback static server. No outbound to GitHub APIs, Anthropic, AWS, Microsoft Graph, or any provider. |
+| Output | Job pass/fail and pa11y-ci stdout in the run log. Does not open PRs, file issues, or commit anything. |
+| Security note | The workflow's header comment explicitly states it does not consume any user-controlled `github.event.*` input inside `run:` blocks. The URL list and Pa11y config live under `.github/a11y/`, which is repo-owned. |
+
+This workflow is standalone like `test-github-action.yml`: it does not interact with any other workflow in the repo. It exists so the maintainer can verify the published docs site stays accessible.
 
 ---
 

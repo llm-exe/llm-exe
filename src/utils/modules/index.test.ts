@@ -24,6 +24,7 @@ describe("exports correct utils", () => {
     expect(typeof utils.maybeStringifyJSON).toBe("function");
     expect(typeof utils.replaceTemplateString).toBe("function");
     expect(typeof utils.replaceTemplateStringAsync).toBe("function")
+    expect(typeof utils.escapeTemplateString).toBe("function");
     expect(typeof utils.registerHelpers).toBe("function");
     expect(typeof utils.registerPartials).toBe("function");
     expect(typeof utils.isObjectStringified).toBe("function");

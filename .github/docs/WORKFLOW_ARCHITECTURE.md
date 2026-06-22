@@ -1114,7 +1114,7 @@ flowchart LR
 
 Distinctive design points worth replicating:
 
-- The curator never edits code; only the coder does. This separation makes the curator a cheap, high-judgment filter (40 turns of sonnet-grade reasoning) and the coder a focused, code-only worker.
+- The curator never edits code; only the coder does. This separation makes the curator a cheap, high-judgment filter (80 turns of sonnet-grade reasoning) and the coder a focused, code-only worker.
 - The coder cannot pick its own issue when running scheduled; the workflow file picks for it via `find-issues`. This eliminates a class of "agent wandered off" failures.
 - `agent-ok` is a maintainer-controlled label that whitelists an issue for the coder even if its other labels are ambiguous.
 - The dedup procedure in the curator and scout prompts (search `/tmp/all-issues.json` AND `gh search issues`, "when in doubt, comment, don't create") is non-negotiable and the agents are told to log their searches so duplicates are auditable.

@@ -50,6 +50,8 @@ jobs:
           exit 1
 
       - name: Run Pa11y CI
+        env:
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
         run: npx --yes pa11y-ci@3 --config .github/a11y/pa11yci.json
 
       - name: Stop the static server

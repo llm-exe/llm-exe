@@ -41,7 +41,7 @@ features:
 <div class="home-block-left">
  <div class="home-block-title"><span class="marker-highlight">Every</span> LLM API Works Differently</div>
     <div class="home-block-description">Every LLM project starts like this: debugging JSON errors, writing boilerplate retries, juggling timeouts, and praying your parse didn’t break. It sucks.</div>
-      <ul class="home-block-description-list">
+      <ul class="home-block-description-list" role="list">
   <li>JSON.parse() with fingers crossed</li>
   <li>Everything is type any</li>
   <li>Manual validation for every response</li>
@@ -81,7 +81,7 @@ if (!["bug", "feature", "question"].includes(category)) {
 <div class="home-block-left">
  <div class="home-block-title">What if LLM Calls Were Just <span class="marker-highlight-full">Normal Functions?</span></div>
     <div class="home-block-description">What if every LLM call was as reliable as calling a regular function? <span class="marker-underline">Type-safe inputs</span>, validated outputs, built-in retries. Just async functions that happen to be powered by AI.</div>
-  <ul class="home-block-description-list">
+  <ul class="home-block-description-list" role="list">
   <li><span class="marker-underline">Real TypeScript types</span>, no more any/unknown</li>
   <li>Validated outputs that match your schema</li>
   <li>Just import and call, like any other function</li>
@@ -125,7 +125,7 @@ const category = await llmClassifier(userInput);
 <div class="home-block-left">
  <div class="home-block-title">Build <span class="marker-highlight">Complex Flows</span> from Simple Parts</div>
     <div class="home-block-description">Build complex AI workflows from simple, modular functions. Each executor is <span class="marker-underline">self-contained</span>—swap models, update prompts, or change parsers without touching the rest of your code.</div>
-  <ul class="home-block-description-list">
+  <ul class="home-block-description-list" role="list">
   <li>Prompt + LLM + Parser = Executor</li>
   <li>Each piece is swappable</li>
   <li>Chain them together</li>
@@ -165,7 +165,7 @@ const spanish = await translator.execute({
 <div class="home-block-left">
  <div class="home-block-title">Production-Ready <span class="marker-highlight-full">Out of the Box</span></div>
     <div class="home-block-description">No more manual retry loops. No more parsing prayers. <span class="marker-underline">Built-in error handling</span>, timeouts, and hooks. If the output doesn't match your schema, you'll know immediately.</div>
-  <ul class="home-block-description-list">
+  <ul class="home-block-description-list" role="list">
   <li>Automatic retries and timeouts</li>
   <li><span class="marker-underline">Schema validation</span> that throws on mismatch</li>
   <li>Hooks for logging and monitoring</li>
@@ -217,7 +217,7 @@ analyst.on("onComplete", (result) => {
 <div class="home-block-left">
  <div class="home-block-title">Build <span class="marker-highlight">Agents</span> with Your Functions</div>
     <div class="home-block-description">Transform any function into an agent capability. Build autonomous AI agents that can use your database, APIs, and business logic—even with models that don't natively support function calling. <span class="marker-underline">You control what agents can do</span>.</div>
-  <ul class="home-block-description-list">
+  <ul class="home-block-description-list" role="list">
   <li>Works with ALL models, even without native function calling</li>
   <li>The LLM plans what to do, you control execution</li>
   <li>Build agents without complex frameworks</li>

@@ -89,7 +89,7 @@ v3 uses `LlmExeError` for llm-exe errors. These errors expose:
 Migration:
 
 ```ts
-import { isLlmExeError, formatLlmExeErrorForLog } from "llm-exe";
+import { isLlmExeError } from "llm-exe";
 
 try {
   await executor.execute(input);
@@ -98,7 +98,9 @@ try {
     // Queue, retry later, or fall back.
   }
 
-  logger.error(formatLlmExeErrorForLog(error));
+  if (isLlmExeError(error)) {
+    logger.error(error.toJSON());
+  }
 }
 ```
 

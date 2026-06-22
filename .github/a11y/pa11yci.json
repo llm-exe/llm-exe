@@ -1,0 +1,29 @@
+{
+  "defaults": {
+    "standard": "WCAG2AA",
+    "timeout": 60000,
+    "wait": 1500,
+    "chromeLaunchConfig": {
+      "args": ["--no-sandbox", "--disable-setuid-sandbox"]
+    },
+    "ignore": [
+      "warning",
+      "notice"
+    ]
+  },
+  "urls": [
+    "http://127.0.0.1:4173/",
+    "http://127.0.0.1:4173/intro/install.html",
+    "http://127.0.0.1:4173/intro/what_is_llm_function.html",
+    "http://127.0.0.1:4173/llm/index.html",
+    "http://127.0.0.1:4173/llm/openai.html",
+    "http://127.0.0.1:4173/llm/anthropic.html",
+    "http://127.0.0.1:4173/prompt/index.html",
+    "http://127.0.0.1:4173/prompt/chat.html",
+    "http://127.0.0.1:4173/prompt/why-handlebars.html",
+    "http://127.0.0.1:4173/parser/index.html",
+    "http://127.0.0.1:4173/parser/included-parsers.html",
+    "http://127.0.0.1:4173/executor/index.html",
+    "http://127.0.0.1:4173/state/index.html"
+  ]
+}

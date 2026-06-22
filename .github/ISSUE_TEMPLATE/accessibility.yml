@@ -1,0 +1,84 @@
+name: Accessibility issue
+description: Report a barrier on the documentation site or in library output.
+title: "[a11y]: "
+labels: ["a11y", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report this. We treat accessibility reports as expertise, not complaints.
+
+        Please read [ACCESSIBILITY.md](https://github.com/llm-exe/llm-exe/blob/development/ACCESSIBILITY.md) for our goals, supported environments, and severity taxonomy.
+  - type: input
+    id: location
+    attributes:
+      label: Where did you encounter this?
+      description: URL on llm-exe.com, file path in the repo, or a description of the library output.
+      placeholder: "https://llm-exe.com/parser/index.html"
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface is affected?
+      options:
+        - Documentation site (llm-exe.com)
+        - README or markdown on GitHub
+        - Library output (error messages, logs)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to be able to do?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead? Include steps to reproduce.
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: Use the [severity taxonomy](https://github.com/llm-exe/llm-exe/blob/development/ACCESSIBILITY.md#severity-taxonomy) in ACCESSIBILITY.md.
+      options:
+        - Critical (blocks core tasks)
+        - High (significant difficulty, workaround exists)
+        - Medium (annoyance or inconsistency)
+        - Low (minor friction or cosmetic)
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Help us reproduce. Include what is relevant.
+      value: |
+        - Operating system:
+        - Browser and version:
+        - Assistive technology and version (e.g. VoiceOver on macOS 14, NVDA 2024.1, JAWS 2024):
+        - Zoom level or text scaling:
+        - Forced colors / high contrast mode: yes / no
+    validations:
+      required: false
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots or screen recordings
+      description: Optional. Recordings with assistive technology output are extremely helpful but are not required.
+    validations:
+      required: false
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround
+      description: Have you found a way to complete the task in spite of the issue? Describe it here.
+    validations:
+      required: false

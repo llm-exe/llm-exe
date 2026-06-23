@@ -36,6 +36,7 @@ This document states our goals, the standards we hold ourselves to, and how to r
 
 - Code blocks in the docs site rely on syntax-highlighting colors. Each example also includes a textual explanation so the meaning does not depend on the colors. If you find an example that does not, it is a bug.
 - The library is text-in / text-out. We do not ship image, audio, or video features, so the relevant subset of WCAG (alt text, captions, audio descriptions) only applies to docs media, not to the library surface.
+- The docs site currently has a baseline of WCAG2AA contrast failures captured as per-URL thresholds in `.github/a11y/pa11yci.json`. These are mostly inside syntax-highlighted code blocks, the brand button, and the home-block descriptions, and stem from theme color choices rather than per-page content. The Pa11y CI workflow passes today against this baseline and fails on any regression above it. Lowering the thresholds is a tracked follow-up.
 
 ## Supported environments
 

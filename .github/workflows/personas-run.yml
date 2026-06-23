@@ -145,11 +145,11 @@ jobs:
             Read the file /tmp/agent-prompt.txt for your full instructions. Follow them exactly.
           claude_args: |
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch"
-            --max-turns 40
+            --max-turns 80
             --model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 
       - name: Upload agent prompt
-        if: steps.prompt.outputs.log_file != ''
+        if: always() && steps.prompt.outputs.log_file != ''
         uses: actions/upload-artifact@v7
         with:
           name: agent-prompt-persona-${{ matrix.persona }}-${{ github.run_id }}
@@ -227,11 +227,11 @@ jobs:
             Read the file /tmp/agent-prompt.txt for your full instructions. Follow them exactly.
           claude_args: |
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch"
-            --max-turns 40
+            --max-turns 80
             --model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 
       - name: Upload agent prompt
-        if: steps.prompt.outputs.log_file != ''
+        if: always() && steps.prompt.outputs.log_file != ''
         uses: actions/upload-artifact@v7
         with:
           name: agent-prompt-curator-${{ github.run_id }}

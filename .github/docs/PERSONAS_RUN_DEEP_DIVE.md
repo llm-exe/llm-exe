@@ -256,8 +256,9 @@ flowchart TB
         c4["setup-node@v6 + npm ci"]:::step
         c5["Build curator prompt"]:::step
         c6["Run curator\nclaude-code-action@v1"]:::step
-        c7["Clock out (if: always())"]:::step
-        c1 --> c2 --> c3 --> c4 --> c5 --> c6 --> c7
+        c7["Upload agent prompt artifact\n(if: always() and log_file set)"]:::step
+        c8["Clock out (if: always())"]:::step
+        c1 --> c2 --> c3 --> c4 --> c5 --> c6 --> c7 --> c8
     end
 ```
 
@@ -314,6 +315,7 @@ sequenceDiagram
         CCA->>API: streaming inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)
         API-->>CCA: tool calls (Bash, Read, Write, Edit, Glob, Grep, WebFetch, WebSearch)
         Note over CCA: persona writes findings to its log file ONLY (no PRs, no issues)
+        RP->>FS: upload-artifact@v7 /tmp/agent-prompt.txt (always, 7-day retention)
         RP->>C: clock_out (always) stamps status
     end
 
@@ -331,10 +333,11 @@ sequenceDiagram
     CCA->>API: gh search issues per finding (dedup)
     CCA->>API: gh issue create OR gh issue comment
     CCA->>FS: rewrite curator log Summary, Files Changed, Next Steps
+    CR->>FS: upload-artifact@v7 /tmp/agent-prompt.txt (always, 7-day retention)
     CR->>C: clock_out (always)
 ```
 
-Source: [.github/workflows/personas-run.yml](../workflows/personas-run.yml) lines 72-155 (run-persona), 157-229 (run-curator).
+Source: [.github/workflows/personas-run.yml](../workflows/personas-run.yml) lines 72-163 (run-persona), 165-245 (run-curator).
 
 [Back to top](#navigate)
 
@@ -492,7 +495,7 @@ flowchart LR
     end
 
     subgraph During["While the LLM runs (persona OR curator)"]
-        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)\ncost meter: --max-turns 40"]:::llm
+        d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)\ncost meter: --max-turns 80"]:::llm
         d2["api.github.com (gh CLI)\nauth: bot token\nused by: curator only\ncalls: gh issue list, gh search issues, gh issue create, gh issue comment"]:::gh
         d3["origin remote (git push)\nauth: bot token\nused by: both (branch push for log commits)"]:::gh
     end
@@ -508,11 +511,11 @@ Tool allowlist passed to `claude-code-action@v1` (identical for persona and cura
 
 ```
 --allowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch"
---max-turns 40
+--max-turns 80
 --model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 ```
 
-Note the lower `--max-turns 40` here vs `50` in [agent-run.yml](../workflows/agent-run.yml): personas and curator do less coordination work per session than the docs/tester/scout agents.
+The `--max-turns 80` budget here is higher than the `50` used by [agent-run.yml](../workflows/agent-run.yml) docs/tester/scout agents. Personas exercise the library through many small steps (read, run, observe, write finding) and the curator iterates per-finding through dedup search + create/comment, so the extra headroom keeps them from running out of turns mid-session.
 
 [Back to top](#navigate)
 
@@ -572,7 +575,7 @@ stateDiagram-v2
     PersonaRunning --> PersonaWorking: claude-code-action started
     PersonaWorking --> PersonaWorking: tool calls within scope (read-only on src)
     PersonaWorking --> PersonaLogged: writes findings to its log
-    PersonaWorking --> PersonaTimedOut: 20m job timeout OR --max-turns 40
+    PersonaWorking --> PersonaTimedOut: 20m job timeout OR --max-turns 80
     PersonaTimedOut --> PersonaLogged: clock_out always() stamps interrupted
     PersonaLogged --> NextSlot: more personas in matrix?
     NextSlot --> PersonaRunning: yes (max-parallel: 1, serial)
@@ -681,7 +684,7 @@ flowchart LR
     K9["Curator condition"]:::k --- V9["always() && proceed && != cancelled"]:::v
     K10["Identity"]:::k --- V10["llm-exe-bot[bot] via App token"]:::v
     K11["Model"]:::k --- V11["vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6"]:::v
-    K12["Max turns"]:::k --- V12["40"]:::v
+    K12["Max turns"]:::k --- V12["80"]:::v
     K13["Tool allowlist"]:::k --- V13["Bash, Read, Write, Edit, Glob, Grep, WebFetch, WebSearch"]:::v
     K14["Gate caps"]:::k --- V14["bot PRs &lt;= 20, open issues &lt;= 40"]:::v
     K15["Persona branches"]:::k --- V15["agent/&lt;persona&gt;/&lt;YYYY-MM-DD&gt;"]:::v
@@ -694,6 +697,7 @@ flowchart LR
     K22["Curator dedup scratch"]:::k --- V22["/tmp/all-issues.json"]:::v
     K23["Persona writes"]:::k --- V23["log file ONLY (no PRs, no issues)"]:::v
     K24["Curator writes"]:::k --- V24["GitHub issues + comments + log file"]:::v
+    K25["Prompt artifact"]:::k --- V25["upload-artifact@v7, /tmp/agent-prompt.txt, 7-day retention (both jobs)"]:::v
 ```
 
 Direct links:

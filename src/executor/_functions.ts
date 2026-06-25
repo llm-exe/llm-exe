@@ -6,6 +6,7 @@ import {
   ParserOutput,
   ExecutorWithLlmOptions,
   CoreExecutorExecuteOptions,
+  ExecutionContext,
   LlmExecutorHooks,
 } from "@/types";
 import { BaseParser } from "@/parser";
@@ -24,7 +25,7 @@ import { LlmExecutorWithFunctions } from "./llm-openai-function";
  * @returns - A new CoreExecutor instance.
  */
 export function createCoreExecutor<I extends PlainObject, O>(
-  handler: (input: I) => Promise<O> | O,
+  handler: (input: I, context?: ExecutionContext<I, O>) => Promise<O> | O,
   options?: CoreExecutorExecuteOptions<I, O>
 ) {
   return new CoreExecutor<I, O>({ handler }, options);

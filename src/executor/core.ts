@@ -14,7 +14,7 @@ export class CoreExecutor<I extends PlainObject, O> extends BaseExecutor<I, O> {
 
   constructor(
     fn: CoreExecutorInput<I, O>,
-    options?: CoreExecutorExecuteOptions
+    options?: CoreExecutorExecuteOptions<I, O>
   ) {
     const name = fn?.name
       ? fn.name

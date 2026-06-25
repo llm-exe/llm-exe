@@ -480,8 +480,8 @@ Read the file /tmp/agent-prompt.txt for your full instructions. Follow them exac
 | tester | same | 50 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | coder | same | 50 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | scout | same | 50 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
-| personas (each) | same | 40 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
-| curator | same | 40 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
+| personas (each) | same | 80 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
+| curator | same | 80 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | reviewer | `Bash,Read,Glob,Grep,WebFetch` (read-only set) | 60 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | bot-respond | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch` | 90 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | docs-sync | `Bash,Read,Write,Edit,Glob,Grep,WebFetch` | 80 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
@@ -684,7 +684,8 @@ Four jobs: `gate`, `pick-personas`, `run-persona` (matrix), `run-curator`.
 |-------|-------|
 | Triggers | `workflow_dispatch` with `count` choice (`1|2|3|4`, default `2`); cron `0 6 * * 0` (Sunday) |
 | Selection | `pick-personas` shuffles `beginner harsh-critic speed-runner enterprise` and takes `count` of them. Output is a JSON array consumed by the matrix. |
-| Persona matrix | `max-parallel: 1`, 20-minute timeout per leg, `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6`, 40 turns. Each persona writes only its own log file; it does not commit code. |
+| Persona matrix | `max-parallel: 1`, 20-minute timeout per leg, `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6`, 80 turns. Each persona writes only its own log file; it does not commit code. After the agent step, the assembled `/tmp/agent-prompt.txt` is uploaded as an artifact (`agent-prompt-persona-<name>-<run_id>`, 7-day retention) for debugging. |
+| Curator turns | 80 (matches the persona budget). |
 | Curator job | Depends on `gate` and `run-persona`. Runs even if some persona matrix legs failed, as long as the matrix was not cancelled: `if: always() && needs.gate.outputs.proceed == 'true' && needs.run-persona.result != 'cancelled'`. The curator reads `scripts/agents/logs/personas/*/` and files GitHub issues. |
 | Output | Persona log files committed to `scripts/agents/logs/personas/<persona>/`, one curator log in `scripts/agents/logs/curator/`, and zero or more GitHub issues (with deduplication against `/tmp/all-issues.json`). |
 
@@ -888,7 +889,7 @@ This workflow is standalone: it does not interact with any other workflow in the
 | Permissions | `contents: read` only; no App token, no bot identity, no secrets referenced |
 | Timeout | 15 minutes |
 | Concurrency | not set |
-| Steps | `actions/checkout@v4` -> `./.github/actions/setup-node` -> `npm install` -> `npm run docs:update-providers && npm run docs:build` -> background `npx serve@14 docs/.vitepress/dist -l 4173` with a 30-second poll loop against `http://127.0.0.1:4173/` -> `npx pa11y-ci@3 --config .github/a11y/pa11yci.json` -> stop-server step gated `if: always()` that kills the pid recorded at `/tmp/serve.pid`. |
+| Steps | `actions/checkout@v5` -> `./.github/actions/setup-node` -> `npm install` -> `npm run docs:update-providers && npm run docs:build` -> background `npx serve@14 docs/.vitepress/dist -l 4173` with a 30-second poll loop against `http://127.0.0.1:4173/` -> `npx pa11y-ci@3 --config .github/a11y/pa11yci.json` -> stop-server step gated `if: always()` that kills the pid recorded at `/tmp/serve.pid`. |
 | External calls | `registry.npmjs.org` (npm + npx) and the loopback static server. No outbound to GitHub APIs, Anthropic, AWS, Microsoft Graph, or any provider. |
 | Output | Job pass/fail and pa11y-ci stdout in the run log. Does not open PRs, file issues, or commit anything. |
 | Security note | The workflow's header comment explicitly states it does not consume any user-controlled `github.event.*` input inside `run:` blocks. The URL list and Pa11y config live under `.github/a11y/`, which is repo-owned. |
@@ -1113,7 +1114,7 @@ flowchart LR
 
 Distinctive design points worth replicating:
 
-- The curator never edits code; only the coder does. This separation makes the curator a cheap, high-judgment filter (40 turns of sonnet-grade reasoning) and the coder a focused, code-only worker.
+- The curator never edits code; only the coder does. This separation makes the curator a cheap, high-judgment filter (80 turns of sonnet-grade reasoning) and the coder a focused, code-only worker.
 - The coder cannot pick its own issue when running scheduled; the workflow file picks for it via `find-issues`. This eliminates a class of "agent wandered off" failures.
 - `agent-ok` is a maintainer-controlled label that whitelists an issue for the coder even if its other labels are ambiguous.
 - The dedup procedure in the curator and scout prompts (search `/tmp/all-issues.json` AND `gh search issues`, "when in doubt, comment, don't create") is non-negotiable and the agents are told to log their searches so duplicates are auditable.

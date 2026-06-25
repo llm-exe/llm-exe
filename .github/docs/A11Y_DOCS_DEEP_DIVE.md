@@ -109,7 +109,7 @@ flowchart TB
 
     subgraph J["Job: pa11y (ubuntu-latest, timeout 15m)"]
         direction TB
-        s1["actions/checkout@v4"]:::step
+        s1["actions/checkout@v5"]:::step
         s2["./.github/actions/setup-node\n(Node 24, cache: npm)"]:::step
         s3["npm install"]:::step
         s4["npm run docs:update-providers\n&& npm run docs:build"]:::step
@@ -143,7 +143,7 @@ sequenceDiagram
     participant CFG as .github/a11y/pa11yci.json
 
     E->>J: workflow_dispatch
-    J->>G: checkout@v4 (default token, read-only)
+    J->>G: checkout@v5 (default token, read-only)
     J->>N: setup-node@v6 via composite (node 24, cache npm)
     J->>N: npm install
     J->>V: npm run docs:update-providers + npm run docs:build
@@ -208,7 +208,7 @@ flowchart LR
     classDef loop fill:#064e3b,color:#fff,stroke:#000
 
     subgraph Pre["Before the job runs"]
-        c1["actions/checkout@v4\nauth: GITHUB_TOKEN (read-only)\nwhy: pull docs/ and a11y/ at HEAD"]:::pre
+        c1["actions/checkout@v5\nauth: GITHUB_TOKEN (read-only)\nwhy: pull docs/ and a11y/ at HEAD"]:::pre
         c2["./.github/actions/setup-node\nauth: none\nwhy: install Node 24, prime npm cache"]:::pre
     end
 

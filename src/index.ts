@@ -66,6 +66,8 @@ export type { CreateParserType } from "@/interfaces/parser";
 
 export { LlmExeError, LLM_EXE_ERROR_SYMBOL } from "./errors/LlmExeError";
 export { isLlmExeError } from "./errors/isLlmExeError";
+export { serializeLlmExeError } from "./errors/serialize";
+export { formatLlmExeErrorForLog } from "./errors/format";
 export type {
   ErrorCategory,
   ErrorCodes,

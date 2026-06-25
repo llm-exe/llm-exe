@@ -29,7 +29,9 @@ export class LlmExecutor<
 > extends BaseExecutor<
   PromptInput<Prompt>,
   ParserOutput<Parser>,
-  LlmExecutorHooks
+  LlmExecutorHooks,
+  BaseLlCall,
+  ReturnType<Prompt["format"]>
 > {
   public llm;
   public prompt;
@@ -38,7 +40,13 @@ export class LlmExecutor<
 
   constructor(
     llmConfiguration: ExecutorWithLlmOptions<Llm, Prompt, Parser, State>,
-    options?: CoreExecutorExecuteOptions<LlmExecutorHooks>
+    options?: CoreExecutorExecuteOptions<
+      PromptInput<Prompt>,
+      ParserOutput<Parser>,
+      BaseLlCall,
+      ReturnType<Prompt["format"]>,
+      LlmExecutorHooks
+    >
   ) {
     super(
       llmConfiguration.name || "anonymous-llm-executor",

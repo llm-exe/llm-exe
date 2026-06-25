@@ -104,6 +104,27 @@ describe("getResultAsMessage", () => {
     expect(() => getResultAsMessage(input)).toThrow("Invalid response");
   });
 
+  it("omits responseExcerpt when JSON.stringify throws on the content (e.g. circular references)", () => {
+    // Force JSON.stringify to throw so the catch branch sets responseExcerpt
+    // to undefined. A circular structure is the canonical real-world trigger.
+    const circular: any = { type: "text", text: "first" };
+    const second: any = { type: "text", text: "second" };
+    circular.cycle = second;
+    second.cycle = circular;
+    const input = [circular, second, { type: "text", text: "third" }];
+    try {
+      getResultAsMessage(input as any);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("llm.invalid_response_shape");
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      expect(ctx.responseExcerpt).toBeUndefined();
+      // received metadata still populates even when the excerpt is dropped.
+      expect((ctx.received as { count: number }).count).toBe(3);
+    }
+  });
+
   it("throws LlmExeError with llm.invalid_response_shape on unsupported content", () => {
     const input: OutputResultContent[] = [
       { type: "unsupported_type" as any, content: "Test" } as any,

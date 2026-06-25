@@ -38,22 +38,15 @@ type ExecutionContextShape<I, O> = {
 };
 ```
 
-## Executor Handlers
+## Where ExecutionContext Is Available
 
-Executor handlers receive context as the third argument.
+`ExecutionContext` is exposed in three places:
 
-```ts
-const executor = createCoreExecutor({
-  name: "normalize",
-  handler: async (input, context?: ExecutionContext) => {
-    return {
-      value: input.value,
-      traceId: context?.traceId,
-      executorName: context?.executor.name,
-    };
-  },
-});
-```
+- **Parser callbacks** — `createCustomParser(name, (text, context) => ...)`
+- **Hooks** — the first argument to `onSuccess`, `onError`, and `onComplete` is execution metadata; pair it with the executor metadata as the second argument
+- **Trace IDs** — `executor.withTraceId(id)` sets `traceId` on the context surfaced to parsers and hooks
+
+`createCoreExecutor(handler)` wraps a plain function, and that function only receives the executor input — it does not currently receive an `ExecutionContext` argument.
 
 ## Parser Callbacks
 

@@ -18,8 +18,19 @@ export type ProviderKey = keyof typeof configs;
  * Construction-time options for the executor (hooks, etc.). This is the
  * SECOND arg to `createLlm*Executor`, kept distinct from `executorOptions`
  * (which is execute-time state, the second arg to `.execute()`).
+ *
+ * `CoreExecutorExecuteOptions` now leads with the executor's I/O/R/HI type
+ * params; the hook key set is the LAST param. A config-driven executor can't
+ * know those concrete types, so they stay `any` and only the hook set is
+ * pinned to `LlmExecutorHooks`.
  */
-export type ExecutorCreateOptions = CoreExecutorExecuteOptions<LlmExecutorHooks>;
+export type ExecutorCreateOptions = CoreExecutorExecuteOptions<
+  any,
+  any,
+  any,
+  any,
+  LlmExecutorHooks
+>;
 
 /**
  * Canonical normalized config. The JSON Schema in `schema.ts` validates this

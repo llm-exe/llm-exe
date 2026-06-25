@@ -1,6 +1,9 @@
 import {
   BaseLlm,
+  BaseLlCall,
   PlainObject,
+  PromptInput,
+  ParserOutput,
   ExecutorWithLlmOptions,
   CoreExecutorExecuteOptions,
   ExecutionContext,
@@ -9,6 +12,7 @@ import {
 import { BaseParser } from "@/parser";
 import { BasePrompt } from "@/prompt";
 import { BaseState } from "@/state";
+import { LlmFunctionParser } from "@/parser/parsers/LlmNativeFunctionParser";
 import { CoreExecutor } from "./core";
 import { LlmExecutor } from "./llm";
 import { LlmExecutorWithFunctions } from "./llm-openai-function";
@@ -22,7 +26,7 @@ import { LlmExecutorWithFunctions } from "./llm-openai-function";
  */
 export function createCoreExecutor<I extends PlainObject, O>(
   handler: (input: I, context?: ExecutionContext<I, O>) => Promise<O> | O,
-  options?: CoreExecutorExecuteOptions
+  options?: CoreExecutorExecuteOptions<I, O>
 ) {
   return new CoreExecutor<I, O>({ handler }, options);
 }
@@ -43,7 +47,13 @@ export function createLlmExecutor<
   State extends BaseState,
 >(
   llmConfiguration: ExecutorWithLlmOptions<Llm, Prompt, Parser, State>,
-  options?: CoreExecutorExecuteOptions<LlmExecutorHooks>
+  options?: CoreExecutorExecuteOptions<
+    PromptInput<Prompt>,
+    ParserOutput<Parser>,
+    BaseLlCall,
+    ReturnType<Prompt["format"]>,
+    LlmExecutorHooks
+  >
 ) {
   return new LlmExecutor<Llm, Prompt, Parser, State>(llmConfiguration, options);
 }
@@ -55,7 +65,13 @@ export function createLlmFunctionExecutor<
   State extends BaseState,
 >(
   llmConfiguration: ExecutorWithLlmOptions<Llm, Prompt, Parser, State>,
-  options?: CoreExecutorExecuteOptions<LlmExecutorHooks>
+  options?: CoreExecutorExecuteOptions<
+    PromptInput<Prompt>,
+    ParserOutput<LlmFunctionParser<Parser>>,
+    BaseLlCall,
+    ReturnType<Prompt["format"]>,
+    LlmExecutorHooks
+  >
 ) {
   return new LlmExecutorWithFunctions<Llm, Prompt, Parser, State>(
     llmConfiguration,

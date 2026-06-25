@@ -53,12 +53,23 @@ export interface HookErrorRecord {
   errorCause?: unknown;
 }
 
-export interface ExecutorExecutionMetadata<I = any, O = any> {
+export interface ExecutorExecutionMetadata<
+  I = any,
+  O = any,
+  R = any,
+  HI = any,
+> {
   start: null | number;
   end: null | number;
   input: I;
-  handlerInput?: any;
-  handlerOutput?: any;
+  // The handler's resolved input. For LLM executors this is the formatted
+  // prompt — `IChatMessages` for chat prompts, `string` for text prompts.
+  // Defaults to `any` for executors that don't pin it.
+  handlerInput?: HI;
+  // Raw, pre-parse handler return. For LLM executors this is the normalized
+  // `BaseLlCall`, so hooks can reach `handlerOutput.getResult().usage` with
+  // full types. Defaults to `any` for executors that don't pin it.
+  handlerOutput?: R;
   output?: O;
   errorMessage?: string;
   error?: Error;
@@ -124,12 +135,39 @@ export interface LlmExecutorHooks extends BaseExecutorHooks {
    */
 }
 
-export type CoreExecutorHookInput<H = BaseExecutorHooks> = {
-  [key in keyof H]?: ListenerFunction | ListenerFunction[];
+/**
+ * A single executor hook callback. Receives the per-run execution metadata
+ * (input/output/error fields typed via I/O) followed by the executor's own
+ * identity metadata. This is the shape fired for onSuccess / onError /
+ * onComplete — the metadata fields that are populated differ per event
+ * (`output` on success, `error` on failure), but all are optional on
+ * {@link ExecutorExecutionMetadata}, so one signature covers every hook.
+ */
+export type ExecutorHookFunction<I = any, O = any, R = any, HI = any> = (
+  metadata: ExecutorExecutionMetadata<I, O, R, HI>,
+  executor: ExecutorMetadata
+) => void;
+
+export type CoreExecutorHookInput<
+  I = any,
+  O = any,
+  R = any,
+  HI = any,
+  H = BaseExecutorHooks,
+> = {
+  [key in keyof H]?:
+    | ExecutorHookFunction<I, O, R, HI>
+    | ExecutorHookFunction<I, O, R, HI>[];
 };
 
-export interface CoreExecutorExecuteOptions<T = BaseExecutorHooks> {
-  hooks?: CoreExecutorHookInput<T>;
+export interface CoreExecutorExecuteOptions<
+  I = any,
+  O = any,
+  R = any,
+  HI = any,
+  T = BaseExecutorHooks,
+> {
+  hooks?: CoreExecutorHookInput<I, O, R, HI, T>;
 }
 
 export interface CallableExecutorCore {

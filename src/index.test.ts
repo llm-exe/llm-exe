@@ -67,6 +67,14 @@ describe("llmExe", () => {
      */
     expect(llmExe).toHaveProperty("registerHelpers");
     expect(llmExe).toHaveProperty("registerPartials");
+    /**
+     * Errors
+     */
+    expect(llmExe).toHaveProperty("LlmExeError");
+    expect(llmExe).toHaveProperty("LLM_EXE_ERROR_SYMBOL");
+    expect(llmExe).toHaveProperty("isLlmExeError");
+    expect(llmExe).toHaveProperty("serializeLlmExeError");
+    expect(llmExe).toHaveProperty("formatLlmExeErrorForLog");
   });
 
   test("exported functions are callable", () => {
@@ -149,5 +157,31 @@ describe("llmExe", () => {
   test("createChatPrompt via index creates correct prompt", () => {
     const prompt = llmExe.createChatPrompt("Test instruction");
     expect(prompt).toBeInstanceOf(llmExe.ChatPrompt);
+  });
+
+  test("error helpers are exported and callable from index", () => {
+    expect(typeof llmExe.isLlmExeError).toBe("function");
+    expect(typeof llmExe.serializeLlmExeError).toBe("function");
+    expect(typeof llmExe.formatLlmExeErrorForLog).toBe("function");
+
+    const err = new llmExe.LlmExeError("boom", {
+      code: "parser.parse_failed",
+    });
+    expect(llmExe.isLlmExeError(err)).toBe(true);
+
+    const serialized = llmExe.serializeLlmExeError(err) as {
+      name: string;
+      message: string;
+      code: string;
+    };
+    expect(serialized).toMatchObject({
+      name: "LlmExeError",
+      message: "boom",
+      code: "parser.parse_failed",
+    });
+
+    const formatted = llmExe.formatLlmExeErrorForLog(err);
+    expect(formatted).toContain("boom");
+    expect(formatted).toContain("parser.parse_failed");
   });
 });

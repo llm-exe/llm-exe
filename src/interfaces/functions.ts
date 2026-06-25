@@ -22,7 +22,7 @@ export interface ExecutorWithLlmOptions<Llm, Prompt, Parser, State> {
 
 export interface CoreExecutorInput<I, O> {
   name?: string;
-  handler: (input: I) => Promise<O> | O;
+  handler: (input: I, context?: ExecutionContext<I, O>) => Promise<O> | O;
   getHandlerInput?(input: I): Promise<any>;
   getHandlerOutput?(out: any): O;
 }

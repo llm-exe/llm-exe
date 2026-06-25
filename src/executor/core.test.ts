@@ -1,4 +1,5 @@
 import { CoreExecutor } from "@/executor";
+import { ExecutionContext } from "@/types";
 
 /**
  * Tests CoreExecutor
@@ -129,7 +130,14 @@ describe("llm-exe:executor/CoreExecutor", () => {
       const handler = jest.fn().mockReturnValue("result");
       const executor = new CoreExecutor({ handler });
       await executor.execute({ a: 1, b: 2 });
-      expect(handler).toHaveBeenCalledWith({ a: 1, b: 2 });
+      expect(handler).toHaveBeenCalledWith(
+        { a: 1, b: 2 },
+        expect.objectContaining({
+          executor: expect.objectContaining({ type: "function-executor" }),
+          execution: expect.objectContaining({ input: { a: 1, b: 2 } }),
+          attributes: {},
+        })
+      );
     });
 
     it("sets type to function-executor", () => {
@@ -150,6 +158,58 @@ describe("llm-exe:executor/CoreExecutor", () => {
         { hooks: { onComplete } }
       );
       expect(executor.hooks.onComplete).toHaveLength(1);
+    });
+  });
+
+  describe("execution context", () => {
+    it("handler receives ExecutionContext as the second argument", async () => {
+      let captured: ExecutionContext | undefined;
+      const handler = (input: { x: number }, context?: ExecutionContext) => {
+        captured = context;
+        return { doubled: input.x * 2 };
+      };
+      const executor = new CoreExecutor({ handler, name: "ctx-aware" });
+      await executor.execute({ x: 3 });
+
+      expect(captured).toBeDefined();
+      expect(captured!.executor.name).toBe("ctx-aware");
+      expect(captured!.executor.type).toBe("function-executor");
+      expect(captured!.execution.input).toEqual({ x: 3 });
+      expect(captured!.execution.handlerInput).toEqual({ x: 3 });
+      expect(captured!.attributes).toEqual({});
+    });
+
+    it("handler can read traceId from the context", async () => {
+      let capturedTrace: string | undefined;
+      const handler = (_input: any, context?: ExecutionContext) => {
+        capturedTrace = context?.traceId;
+        return _input;
+      };
+      const executor = new CoreExecutor({ handler, name: "trace-aware" });
+      executor.withTraceId("trace-abc");
+      await executor.execute({ key: "value" });
+
+      expect(capturedTrace).toBe("trace-abc");
+    });
+
+    it("traceId is undefined when no traceId is set", async () => {
+      let captured: ExecutionContext | undefined;
+      const handler = (_input: any, context?: ExecutionContext) => {
+        captured = context;
+        return _input;
+      };
+      const executor = new CoreExecutor({ handler });
+      await executor.execute({});
+
+      expect(captured).toBeDefined();
+      expect(captured!.traceId).toBeUndefined();
+    });
+
+    it("handlers that ignore the context argument still work", async () => {
+      const handler = (input: { x: number }) => ({ x: input.x + 1 });
+      const executor = new CoreExecutor({ handler });
+      const result = await executor.execute({ x: 41 });
+      expect(result).toEqual({ x: 42 });
     });
   });
 });

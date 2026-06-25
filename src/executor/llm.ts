@@ -43,9 +43,9 @@ export class LlmExecutor<
     options?: CoreExecutorExecuteOptions<
       PromptInput<Prompt>,
       ParserOutput<Parser>,
+      LlmExecutorHooks,
       BaseLlCall,
-      ReturnType<Prompt["format"]>,
-      LlmExecutorHooks
+      ReturnType<Prompt["format"]>
     >
   ) {
     super(

@@ -32,9 +32,9 @@ export class LlmExecutorWithFunctions<
     options?: CoreExecutorExecuteOptions<
       PromptInput<Prompt>,
       ParserOutput<LlmFunctionParser<Parser>>,
+      LlmExecutorHooks,
       BaseLlCall,
-      ReturnType<Prompt["format"]>,
-      LlmExecutorHooks
+      ReturnType<Prompt["format"]>
     >
   ) {
     super(
@@ -69,9 +69,9 @@ export class LlmExecutorOpenAiFunctions<
     options?: CoreExecutorExecuteOptions<
       PromptInput<Prompt>,
       ParserOutput<LlmNativeFunctionParser<Parser>>,
+      LlmExecutorHooks,
       BaseLlCall,
-      ReturnType<Prompt["format"]>,
-      LlmExecutorHooks
+      ReturnType<Prompt["format"]>
     >
   ) {
     super(

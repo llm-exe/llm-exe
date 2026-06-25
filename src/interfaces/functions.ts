@@ -148,12 +148,16 @@ export type ExecutorHookFunction<I = any, O = any, R = any, HI = any> = (
   executor: ExecutorMetadata
 ) => void;
 
+// Generic order mirrors `BaseExecutor<I, O, H, R, HI>` so call sites pass the
+// class type params straight through without reordering. `H` (the hook key
+// set) stays in position 3 to match the public, back-compat-frozen
+// `BaseExecutor` signature.
 export type CoreExecutorHookInput<
   I = any,
   O = any,
+  H = BaseExecutorHooks,
   R = any,
   HI = any,
-  H = BaseExecutorHooks,
 > = {
   [key in keyof H]?:
     | ExecutorHookFunction<I, O, R, HI>
@@ -163,11 +167,11 @@ export type CoreExecutorHookInput<
 export interface CoreExecutorExecuteOptions<
   I = any,
   O = any,
+  H = BaseExecutorHooks,
   R = any,
   HI = any,
-  T = BaseExecutorHooks,
 > {
-  hooks?: CoreExecutorHookInput<I, O, R, HI, T>;
+  hooks?: CoreExecutorHookInput<I, O, H, R, HI>;
 }
 
 export interface CallableExecutorCore {

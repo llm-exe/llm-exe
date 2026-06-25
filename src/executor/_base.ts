@@ -3,6 +3,7 @@ import {
   ExecutorMetadata,
   HookErrorRecord,
   ListenerFunction,
+  ExecutorHookFunction,
   CoreExecutorHookInput,
   ExecutorExecutionMetadata,
   CoreExecutorExecuteOptions,
@@ -70,7 +71,7 @@ export abstract class BaseExecutor<
   constructor(
     name: string,
     type: string,
-    options?: CoreExecutorExecuteOptions<I, O, R, HI, H>
+    options?: CoreExecutorExecuteOptions<I, O, H, R, HI>
   ) {
     this.id = uuid();
     this.type = type;
@@ -273,7 +274,7 @@ export abstract class BaseExecutor<
     }
     return errors;
   }
-  setHooks(hooks: CoreExecutorHookInput<I, O, R, HI, H> = {}) {
+  setHooks(hooks: CoreExecutorHookInput<I, O, H, R, HI> = {}) {
     const hookKeys = Object.keys(hooks) as (keyof typeof hooks)[];
     for (const hookKey of hookKeys.filter((k) =>
       this.allowedHooks.includes(k)
@@ -313,7 +314,7 @@ export abstract class BaseExecutor<
     return this;
   }
 
-  removeHook(eventName: keyof H, fn: ListenerFunction) {
+  removeHook(eventName: keyof H, fn: ExecutorHookFunction<I, O, R, HI>) {
     if (typeof fn !== "function") return this;
     const lis = this.hooks[eventName];
     if (!lis) return this;
@@ -326,17 +327,17 @@ export abstract class BaseExecutor<
     return this;
   }
 
-  on(eventName: keyof H, fn: ListenerFunction) {
+  on(eventName: keyof H, fn: ExecutorHookFunction<I, O, R, HI>) {
     return this.setHooks({
       [eventName]: fn,
-    } as CoreExecutorHookInput<I, O, R, HI, H>);
+    } as CoreExecutorHookInput<I, O, H, R, HI>);
   }
 
-  off(eventName: keyof H, fn: ListenerFunction) {
+  off(eventName: keyof H, fn: ExecutorHookFunction<I, O, R, HI>) {
     return this.removeHook(eventName, fn);
   }
 
-  once(eventName: keyof H, fn: ListenerFunction) {
+  once(eventName: keyof H, fn: ExecutorHookFunction<I, O, R, HI>) {
     if (typeof fn !== "function") return this;
 
     // Enforce hook limit to prevent unbounded memory growth
@@ -364,9 +365,12 @@ export abstract class BaseExecutor<
     // Wrapper that removes itself after first execution. try/finally so a
     // throwing fn still self-removes — otherwise runHook() catches the throw,
     // off() never runs, and the wrapper stays registered forever.
-    const onceWrapper: ListenerFunction = (...args: any[]) => {
+    const onceWrapper: ExecutorHookFunction<I, O, R, HI> = (
+      metadata,
+      executor
+    ) => {
       try {
-        fn(...args);
+        fn(metadata, executor);
       } finally {
         this.off(eventName, onceWrapper);
       }

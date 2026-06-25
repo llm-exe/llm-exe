@@ -49,9 +49,9 @@ export function createLlmExecutor<
   options?: CoreExecutorExecuteOptions<
     PromptInput<Prompt>,
     ParserOutput<Parser>,
+    LlmExecutorHooks,
     BaseLlCall,
-    ReturnType<Prompt["format"]>,
-    LlmExecutorHooks
+    ReturnType<Prompt["format"]>
   >
 ) {
   return new LlmExecutor<Llm, Prompt, Parser, State>(llmConfiguration, options);
@@ -67,9 +67,9 @@ export function createLlmFunctionExecutor<
   options?: CoreExecutorExecuteOptions<
     PromptInput<Prompt>,
     ParserOutput<LlmFunctionParser<Parser>>,
+    LlmExecutorHooks,
     BaseLlCall,
-    ReturnType<Prompt["format"]>,
-    LlmExecutorHooks
+    ReturnType<Prompt["format"]>
   >
 ) {
   return new LlmExecutorWithFunctions<Llm, Prompt, Parser, State>(

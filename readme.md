@@ -14,7 +14,7 @@ A package that provides simplified base components to make building and maintain
 - Allow LLM's to call functions (or call other LLM executors).
 - Not very opinionated. You have control on how you use it.
 
-![llm-exe](https://assets.llm-exe.com/llm-exe-featured-2025.png)
+![llm-exe project logo](https://assets.llm-exe.com/llm-exe-featured-2025.png)
 
 See full docs here: [https://llm-exe.com](https://llm-exe.com)
 

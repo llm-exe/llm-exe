@@ -1,0 +1,29 @@
+{
+  "defaults": {
+    "standard": "WCAG2AA",
+    "timeout": 60000,
+    "wait": 1500,
+    "chromeLaunchConfig": {
+      "args": ["--no-sandbox", "--disable-setuid-sandbox"]
+    },
+    "ignore": [
+      "warning",
+      "notice"
+    ]
+  },
+  "urls": [
+    { "url": "http://127.0.0.1:4173/",                              "threshold": 46 },
+    { "url": "http://127.0.0.1:4173/intro/install.html",            "threshold": 23 },
+    { "url": "http://127.0.0.1:4173/intro/what_is_llm_function.html","threshold": 26 },
+    { "url": "http://127.0.0.1:4173/llm/index.html",                "threshold": 3 },
+    { "url": "http://127.0.0.1:4173/llm/openai.html",               "threshold": 7 },
+    { "url": "http://127.0.0.1:4173/llm/anthropic.html",            "threshold": 8 },
+    { "url": "http://127.0.0.1:4173/prompt/index.html",             "threshold": 9 },
+    { "url": "http://127.0.0.1:4173/prompt/chat.html",              "threshold": 10 },
+    { "url": "http://127.0.0.1:4173/prompt/why-handlebars.html",    "threshold": 6 },
+    { "url": "http://127.0.0.1:4173/parser/index.html",             "threshold": 28 },
+    { "url": "http://127.0.0.1:4173/parser/included-parsers.html",  "threshold": 3 },
+    { "url": "http://127.0.0.1:4173/executor/index.html",           "threshold": 5 },
+    { "url": "http://127.0.0.1:4173/state/index.html",              "threshold": 12 }
+  ]
+}

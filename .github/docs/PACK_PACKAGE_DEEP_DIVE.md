@@ -48,10 +48,10 @@ flowchart LR
     end
 
     subgraph X["External"]
-        x1["actions/checkout@v4"]:::ext
+        x1["actions/checkout@v6"]:::ext
         x2["actions/setup-node@v6\nNode 24.x"]:::ext
-        x3["actions/cache@v4\nnode_modules"]:::ext
-        x4["actions/upload-artifact@v4"]:::ext
+        x3["actions/cache@v5\nnode_modules"]:::ext
+        x4["actions/upload-artifact@v7"]:::ext
         x5["registry.npmjs.org\n(install only)"]:::ext
     end
 
@@ -134,7 +134,7 @@ flowchart TB
 
     subgraph J["Job: pack-package (ubuntu-latest)"]
         direction TB
-        s1["actions/checkout@v4"]:::step
+        s1["actions/checkout@v6"]:::step
         s2["./.github/actions/setup-node\nNode 24.x"]:::step
         s3["./.github/actions/cache\nnode_modules"]:::step
         s4["npm install"]:::step
@@ -142,7 +142,7 @@ flowchart TB
         s6["npm pack"]:::step
         s7["ls -la"]:::step
         s8["find tgz, write PACKED_PACKAGE_PATH to GITHUB_ENV"]:::step
-        s9["actions/upload-artifact@v4\nname: package, retention: 30d"]:::step
+        s9["actions/upload-artifact@v7\nname: package, retention: 30d"]:::step
         s1 --> s2 --> s3 --> s4 --> s5 --> s6 --> s7 --> s8 --> s9
     end
 ```

@@ -34,7 +34,7 @@ The repository runs three layers of automation, each with a different cadence an
 | Release pipeline | Promote work from `development` to `main`, bump versions, draft releases, publish to npm, deploy docs to AWS S3 plus CloudFront. | Pull request events, release events, manual dispatch | End users of the npm package |
 | Infrastructure hygiene | Test matrix on PRs, cache cleanup on PR close, weekly email digest, bot mention responder. | PR events, release events, scheduled crons, issue comments | CI health and maintainer awareness |
 
-There are twenty-one GitHub Actions workflow files, two reusable composite actions, one shell entry point (`scripts/maintain.sh`), one shared config library (`scripts/agents/config.sh`), nine Markdown prompt files, and a writable `scripts/agents/logs/` directory that the agents both read from and append to across runs.
+There are twenty-two GitHub Actions workflow files, two reusable composite actions, one shell entry point (`scripts/maintain.sh`), one shared config library (`scripts/agents/config.sh`), nine Markdown prompt files, and a writable `scripts/agents/logs/` directory that the agents both read from and append to across runs.
 
 ---
 
@@ -55,7 +55,7 @@ flowchart LR
     T["Events<br/>cron, dispatch, PR, release,<br/>issue_comment, workflow_run, push"]:::trig
     A["Agent layer<br/>8 workflows, LLM-driven"]:::agent
     R["Release pipeline<br/>6 workflows, development to npm + S3"]:::rel
-    H["CI hygiene<br/>6 workflows, tests + caches + rebases"]:::hyg
+    H["CI hygiene<br/>7 workflows, tests + caches + rebases + a11y"]:::hyg
     X["External services<br/>Anthropic, GitHub, npm, AWS, Microsoft Graph"]:::ext
 
     T --> A
@@ -157,6 +157,7 @@ flowchart LR
     T4["cache-cleanup<br/>Actions cache GC"]:::job
     T5["update-prs-with-development<br/>on-demand rebase"]:::job
     T6["test-github-action<br/>smoke-test llm-exe action"]:::job
+    T7["a11y-docs<br/>Pa11y scan of built VitePress docs"]:::job
 
     p --> T1
     p --> T3
@@ -168,6 +169,7 @@ flowchart LR
     d --> T4
     d --> T5
     d --> T6
+    d --> T7
 ```
 
 ### 2.5. Identity and runtime (shared infrastructure)
@@ -178,8 +180,8 @@ flowchart LR
     classDef tok fill:#1e3a8a,color:#fff,stroke:#000
     classDef rt fill:#581c87,color:#fff,stroke:#000
 
-    APP[APP_ID + APP_PRIVATE_KEY<br/>repo secrets]:::sec
-    MINT[actions/create-github-app-token@v1]:::tok
+    APP[APP_CLIENT_ID + APP_PRIVATE_KEY<br/>repo var + secret]:::sec
+    MINT[actions/create-github-app-token@v3]:::tok
     BOT[llm-exe-bot[bot] token<br/>short-lived]:::tok
     CCA[anthropics/claude-code-action@v1<br/>vars.ANTHROPIC_OPUS_LATEST or sonnet-4-6]:::rt
     CFG[scripts/agents/config.sh<br/>shared bash helpers]:::rt
@@ -224,6 +226,7 @@ Every workflow, every event it accepts, every cron expression, and every job-lev
 | `docs-sync.yml` | yes, with `target` (string) and `full_refresh` (boolean) inputs | none | none | none | invoked by `docs-sync-trigger.yml` or manual dispatch |
 | `vitals.yml` | yes, no inputs | `0 8 * * *` daily | none | none | regenerates AUTOMATION.md on development |
 | `test-github-action.yml` | yes, with `provider` (choice: `openai.chat.v1`, `anthropic.chat.v1`) and `model` (string, default `gpt-4o-mini`) | none | none | none | none |
+| `a11y-docs.yml` | yes, no inputs | none | none | none | none (manual-only for now; comments document future plan to add `pull_request` paths `docs/**` and `.github/a11y/**`) |
 
 ### Concurrency groups
 
@@ -252,7 +255,7 @@ Every system outside this repository that one or more workflows depend on at run
 | GitHub API (REST and GraphQL) | every workflow that talks to issues, PRs, releases, caches | Either the workflow-default `GITHUB_TOKEN`, an App-generated `llm-exe-bot[bot]` token, or the dedicated `llm-exe-review-bot[bot]` token | Creating PRs, listing issues, posting comments, reviewing PRs, creating releases, deleting cache entries |
 | Anthropic Claude API | `agent-run`, `coder-run`, `personas-run`, `agent-review-pr`, `agent-digest`, `bot-respond`, `docs-sync` | `CLAUDE_CODE_OAUTH_TOKEN` secret passed to `anthropics/claude-code-action@v1` | Runs the agent. Model is configurable via the `vars.ANTHROPIC_OPUS_LATEST` repository variable (default: `claude-opus-4-6`) for all task agents, persona runners, curator, reviewer, bot responder, and docs-sync; `claude-sonnet-4-6` for the weekly digest. |
 | `anthropics/claude-code-action@v1` Marketplace action | every agent workflow | OAuth token above plus an App-generated GitHub token | The harness that executes Claude with a constrained tool allowlist and a `--max-turns` budget. |
-| `actions/create-github-app-token@v1` | every agent workflow plus the release and hygiene workflows that need write access beyond `GITHUB_TOKEN` | `APP_ID`/`APP_PRIVATE_KEY`, or `LLM_EXE_REVIEW_BOT_APP_ID`/`LLM_EXE_REVIEW_BOT_PRIVATE_KEY` for reviews | Mints short-lived GitHub App installation tokens. The main bot authors work and triggers downstream workflows; the review bot posts reviews and approvals. |
+| `actions/create-github-app-token@v3` | every agent workflow plus the release and hygiene workflows that need write access beyond `GITHUB_TOKEN` | `APP_CLIENT_ID` (repo var) / `APP_PRIVATE_KEY`, or `LLM_EXE_REVIEW_BOT_CLIENT_ID` (repo var) / `LLM_EXE_REVIEW_BOT_PRIVATE_KEY` for reviews | Mints short-lived GitHub App installation tokens. The main bot authors work and triggers downstream workflows; the review bot posts reviews and approvals. |
 | npm registry (`registry.npmjs.org`) | `publish-release.yml` | NPM token configured via `NODE_AUTH_TOKEN` env var (set by `registry-url`); both publish scripts pass `--provenance` explicitly, which requires OIDC `id-token: write` | Publishing the `llm-exe` package on every release. |
 | AWS S3 | `deploy-docs.yml` | OIDC federation via `aws-actions/configure-aws-credentials@v4`, assuming role from `AWS_ROLE_DEPLOY_ARN`, region from `AWS_REGION`, bucket from `AWS_S3_BUCKET` | Stores versioned docs at `s3://<bucket>/docs/<version>-<timestamp>/`. |
 | AWS CloudFront | `deploy-docs.yml` | Same OIDC federation, distribution ID from `AWS_CLOUDFRONT_DISTRIBUTION_ID` | Rotates the `OriginPath` to the new versioned folder and invalidates `/*`. |
@@ -271,8 +274,8 @@ Three identities operate this repository, and they are not interchangeable.
 | Identity | Created by | Used for | Why it matters |
 |----------|-----------|----------|----------------|
 | `github-actions[bot]` (the default `GITHUB_TOKEN`) | GitHub | Read operations, simple writes inside `tests.yml`, `check-semantic-versioning.yml`, `create-draft-release.yml`, `publish-release.yml`, `deploy-docs.yml` | Writes by this identity do not trigger further workflows. That is why agent workflows do not use it. |
-| `llm-exe-bot[bot]` (GitHub App installation token) | `actions/create-github-app-token@v1` reading `APP_ID` and `APP_PRIVATE_KEY` | Work-producing agent operations and any release-pipeline write that must trigger another workflow. Configured git author when committing from CI: `llm-exe-bot[bot]` with email `${{ secrets.APP_ID }}+llm-exe-bot[bot]@users.noreply.github.com`. | Writes by this identity DO trigger downstream workflows (for example, a bot PR fires `tests.yml` and `agent-review-pr.yml`). It does not approve its own PRs. |
-| `llm-exe-review-bot[bot]` (GitHub App installation token) | `actions/create-github-app-token@v1` reading `LLM_EXE_REVIEW_BOT_APP_ID` and `LLM_EXE_REVIEW_BOT_PRIVATE_KEY` | `agent-review-pr.yml` only: review comments, request-changes, close decisions, and approvals. | Dedicated review identity, separate from the bot that authored the PR, so GitHub accepts approvals on `llm-exe-bot[bot]` PRs. |
+| `llm-exe-bot[bot]` (GitHub App installation token) | `actions/create-github-app-token@v3` reading `APP_CLIENT_ID` (repo var) and `APP_PRIVATE_KEY` | Work-producing agent operations and any release-pipeline write that must trigger another workflow. Configured git author when committing from CI: `llm-exe-bot[bot]` with email `${{ vars.APP_BOT_USER_ID }}+llm-exe-bot[bot]@users.noreply.github.com`. | Writes by this identity DO trigger downstream workflows (for example, a bot PR fires `tests.yml` and `agent-review-pr.yml`). It does not approve its own PRs. |
+| `llm-exe-review-bot[bot]` (GitHub App installation token) | `actions/create-github-app-token@v3` reading `LLM_EXE_REVIEW_BOT_CLIENT_ID` (repo var) and `LLM_EXE_REVIEW_BOT_PRIVATE_KEY` | `agent-review-pr.yml` only: review comments, request-changes, close decisions, and approvals. | Dedicated review identity, separate from the bot that authored the PR, so GitHub accepts approvals on `llm-exe-bot[bot]` PRs. |
 
 ### Secret inventory
 
@@ -280,10 +283,8 @@ Stored under repository or organization secrets:
 
 | Secret | Where it is used |
 |--------|------------------|
-| `APP_ID` | App-token minting in every workflow that needs the bot. |
-| `APP_PRIVATE_KEY` | Same. |
-| `LLM_EXE_REVIEW_BOT_APP_ID` | App-token minting in `agent-review-pr.yml` for the dedicated review bot. |
-| `LLM_EXE_REVIEW_BOT_PRIVATE_KEY` | Same. |
+| `APP_PRIVATE_KEY` | App-token minting for `llm-exe-bot[bot]` in every workflow that needs the bot. |
+| `LLM_EXE_REVIEW_BOT_PRIVATE_KEY` | App-token minting for `llm-exe-review-bot[bot]` in `agent-review-pr.yml`. |
 | `CLAUDE_CODE_OAUTH_TOKEN` | Every agent workflow that invokes `anthropics/claude-code-action@v1`. |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`, `DEEPSEEK_API_KEY` | `test-package.yml` and `publish-release.yml` (run-examples-tests job), scoped to the `Examples Test` environment. Also `test-github-action.yml` (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY` only). |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` (env-scoped) | `publish-release.yml` run-examples-tests job, scoped to `Examples Test` environment. |
@@ -297,6 +298,9 @@ Stored under repository or organization variables:
 
 | Variable | Where it is used |
 |----------|------------------|
+| `APP_CLIENT_ID` | OAuth Client ID for `llm-exe-bot[bot]`. Passed as `client-id` to `actions/create-github-app-token@v3` in every workflow that mints a main bot token. |
+| `APP_BOT_USER_ID` | Numeric GitHub user ID for `llm-exe-bot[bot]` (265913398). Used as the prefix in `git config user.email` so bot commits get proper noreply attribution. |
+| `LLM_EXE_REVIEW_BOT_CLIENT_ID` | OAuth Client ID for `llm-exe-review-bot[bot]`. Passed as `client-id` to `actions/create-github-app-token@v3` in `agent-review-pr.yml`. |
 | `ANTHROPIC_OPUS_LATEST` | Every agent workflow that invokes `claude-code-action@v1` (except `agent-digest.yml` which uses sonnet). Falls back to `claude-opus-4-6` if unset. Allows upgrading all agents to a newer Opus model by changing one variable. |
 | `AWS_ROLE_DEPLOY_ARN`, `AWS_REGION`, `AWS_S3_BUCKET`, `AWS_CLOUDFRONT_DISTRIBUTION_ID` | `deploy-docs.yml` |
 
@@ -352,7 +356,8 @@ The minimal tree, annotated with why each path exists. A replica must reproduce 
 │   │   ├── docs-sync-trigger.yml        detects workflow/script changes on push to development, dispatches docs-sync.yml
 │   │   ├── docs-sync.yml                keeps workflow deep-dive markdown in sync with source; invoked by trigger or manual dispatch
 │   │   ├── vitals.yml                   daily cron + dispatch; regenerates AUTOMATION.md on development
-│   │   └── test-github-action.yml        dispatch only: smoke-tests llm-exe/github-action@v1 with a real LLM call and assertion
+│   │   ├── test-github-action.yml        dispatch only: smoke-tests llm-exe/github-action@v1 with a real LLM call and assertion
+│   │   └── a11y-docs.yml                 dispatch only: builds the VitePress docs site, serves on loopback, runs Pa11y CI against a committed URL list
 │   └── WORKFLOW_ARCHITECTURE.md          this document
 ├── scripts/
 │   ├── maintain.sh                       local entry point; same prompt assembly as CI but runs claude interactively
@@ -422,7 +427,7 @@ sequenceDiagram
     participant GH as GitHub API
 
     Cron->>Runner: dispatch event
-    Runner->>App: mint installation token (APP_ID, APP_PRIVATE_KEY)
+    Runner->>App: mint installation token (APP_CLIENT_ID, APP_PRIVATE_KEY)
     App-->>Runner: short-lived token for llm-exe-bot[bot]
     Runner->>Git: checkout fetch-depth: 0 using bot token
     Runner->>Runner: git config user.name llm-exe-bot[bot]
@@ -475,9 +480,9 @@ Read the file /tmp/agent-prompt.txt for your full instructions. Follow them exac
 | tester | same | 50 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | coder | same | 50 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | scout | same | 50 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
-| personas (each) | same | 40 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
-| curator | same | 40 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
-| reviewer | `Bash,Read,Glob,Grep,WebFetch` (read-only set) | 30 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
+| personas (each) | same | 80 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
+| curator | same | 80 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
+| reviewer | `Bash,Read,Glob,Grep,WebFetch` (read-only set) | 60 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | bot-respond | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch` | 90 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | docs-sync | `Bash,Read,Write,Edit,Glob,Grep,WebFetch` | 80 | `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6` |
 | digest | `Bash,Read,Glob,Grep,Write` | 15 | `claude-sonnet-4-6` |
@@ -679,7 +684,8 @@ Four jobs: `gate`, `pick-personas`, `run-persona` (matrix), `run-curator`.
 |-------|-------|
 | Triggers | `workflow_dispatch` with `count` choice (`1|2|3|4`, default `2`); cron `0 6 * * 0` (Sunday) |
 | Selection | `pick-personas` shuffles `beginner harsh-critic speed-runner enterprise` and takes `count` of them. Output is a JSON array consumed by the matrix. |
-| Persona matrix | `max-parallel: 1`, 20-minute timeout per leg, `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6`, 40 turns. Each persona writes only its own log file; it does not commit code. |
+| Persona matrix | `max-parallel: 1`, 20-minute timeout per leg, `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6`, 80 turns. Each persona writes only its own log file; it does not commit code. After the agent step, the assembled `/tmp/agent-prompt.txt` is uploaded as an artifact (`agent-prompt-persona-<name>-<run_id>`, 7-day retention) for debugging. |
+| Curator turns | 80 (matches the persona budget). |
 | Curator job | Depends on `gate` and `run-persona`. Runs even if some persona matrix legs failed, as long as the matrix was not cancelled: `if: always() && needs.gate.outputs.proceed == 'true' && needs.run-persona.result != 'cancelled'`. The curator reads `scripts/agents/logs/personas/*/` and files GitHub issues. |
 | Output | Persona log files committed to `scripts/agents/logs/personas/<persona>/`, one curator log in `scripts/agents/logs/curator/`, and zero or more GitHub issues (with deduplication against `/tmp/all-issues.json`). |
 
@@ -692,8 +698,8 @@ Three jobs: `tests`, `review`, `decide`. Tests and review run in parallel; decid
 | Triggers | `pull_request` `opened` and `synchronize` on `main` or `development`; `workflow_dispatch` with `pr_number`, `base_ref`, `head_ref` inputs (dispatched by `bot-respond.yml` for re-review) |
 | Job filters | `tests`: `base_ref == 'development'` OR dispatch with `inputs.base_ref == 'development'`. `review`: `(base_ref == 'development' && action == 'opened')` OR dispatch with `inputs.base_ref == 'development'`. `decide`: `always() && (base_ref == 'development'` OR dispatch equivalent`)`. |
 | Tests job | Node 18/20/22/24 matrix, mirrors `tests.yml`. Timeout 20m. Runs on opened, synchronize, and dispatch. On `workflow_dispatch`, an extra `gh pr checkout` step checks out the PR code. |
-| Review job | Auth via `llm-exe-review-bot[bot]` App token (`LLM_EXE_REVIEW_BOT_APP_ID`/`LLM_EXE_REVIEW_BOT_PRIVATE_KEY`). `allowed_bots: "llm-exe-bot[bot]"`. Tools: `Bash,Read,Glob,Grep,WebFetch` (read-only). Model: `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6`. Verdict written to `/tmp/review-verdict.txt` and exposed as job output. Timeout 15m, 30 max-turns. |
-| Decide job | Reads review verdict and tests result. Approves only when `verdict == approve AND tests == success`. Mints its own review bot token for `--approve` and a regular bot App token (`APP_ID`/`APP_PRIVATE_KEY`) only for `gh pr ready`. Only promotes draft to ready for `agent/*` branches. Timeout 5m. |
+| Review job | Auth via `llm-exe-review-bot[bot]` App token (`LLM_EXE_REVIEW_BOT_CLIENT_ID`/`LLM_EXE_REVIEW_BOT_PRIVATE_KEY`). `allowed_bots: "llm-exe-bot[bot]"`. Tools: `Bash,Read,Glob,Grep,WebFetch` (read-only). Model: `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6`. Verdict written to `/tmp/review-verdict.txt` and exposed as job output. Timeout 15m, 60 max-turns. |
+| Decide job | Reads review verdict and tests result. Approves only when `verdict == approve AND tests == success`. Mints its own review bot token for `--approve` and a regular bot App token (`APP_CLIENT_ID`/`APP_PRIVATE_KEY`) only for `gh pr ready`. Only promotes draft to ready for `agent/*` branches. Timeout 5m. |
 | Prompt substitutions | `$PR_NUMBER`, `$LOG_FILE`, `$PR_CONTEXT` (bot agent vs human contributor, computed from head_ref prefix). Substitution uses `perl -0pe` with env vars (not `sed`). |
 | Output | Exactly one of: `gh pr review --approve` (with optional `gh pr ready`), `gh pr review --request-changes`, `gh pr close`. Plus a log file in `scripts/agents/logs/reviewer/`. |
 
@@ -745,7 +751,7 @@ Body must be HTML fragment (no `<html>` / `<body>` tags) and must be the only th
 | Push rationale | Coverage upload is gated to Node 24.x. Without a `push` event on `main`, every Coveralls record is tagged with the source PR head branch (development / feature branches), so the docs-site badge that filters with `?branch=main` renders "unknown". The `push` trigger on `main` (always reached via `auto-merge-main-pr.yml`) produces a Coveralls record tagged for `main`. |
 | Bypass | Job-level `if` skips when `pull_request.base.ref == 'development' && pull_request.head.ref == 'bump-version-branch'`. On `push` and `workflow_dispatch` `pull_request` is null, so the bypass is false and the matrix runs. |
 | Matrix | Node 18, 20, 22, 24 |
-| Steps | `actions/checkout@v4` -> `actions/setup-node@v6` with `cache: npm` -> reusable cache action -> `npm install` -> `npm run test` -> coverage upload on Node 24 only |
+| Steps | `actions/checkout@v6` -> `actions/setup-node@v6` with `cache: npm` -> reusable cache action -> `npm install` -> `npm run test` -> coverage upload on Node 24 only |
 
 Note: this workflow does not use the App token. It only needs reads.
 
@@ -766,7 +772,7 @@ This is the only place real provider keys are used. It exists so the maintainer 
 |-------|-------|
 | Trigger | `pull_request` `closed` to `development`, plus dispatch |
 | Bypass | Skip the `bump-version-branch` head |
-| Output | `actions/upload-artifact@v4` with name `package`, contents `llm-exe-*.tgz`, retention 30 days |
+| Output | `actions/upload-artifact@v7` with name `package`, contents `llm-exe-*.tgz`, retention 30 days |
 
 ### 9.10. `cache-cleanup.yml` - Actions cache GC
 
@@ -874,6 +880,21 @@ PR body truncation: capped at 65000 characters.
 | Output | Pass/fail status only. No artifacts, no PRs, no issues. |
 
 This workflow is standalone: it does not interact with any other workflow in the repo. It exists so the maintainer can verify that the external `llm-exe/github-action` works end to end with real provider credentials.
+
+### 9.19. `a11y-docs.yml` - Pa11y accessibility scan on the built docs
+
+| Field | Value |
+|-------|-------|
+| Trigger | `workflow_dispatch` only (comments document a future plan to also fire on `pull_request` paths `docs/**` and `.github/a11y/**` once the URL list and Pa11y baseline are stable) |
+| Permissions | `contents: read` only; no App token, no bot identity, no secrets referenced |
+| Timeout | 15 minutes |
+| Concurrency | not set |
+| Steps | `actions/checkout@v5` -> `./.github/actions/setup-node` -> `npm install` -> `npm run docs:update-providers && npm run docs:build` -> background `npx serve@14 docs/.vitepress/dist -l 4173` with a 30-second poll loop against `http://127.0.0.1:4173/` -> `npx pa11y-ci@3 --config .github/a11y/pa11yci.json` -> stop-server step gated `if: always()` that kills the pid recorded at `/tmp/serve.pid`. |
+| External calls | `registry.npmjs.org` (npm + npx) and the loopback static server. No outbound to GitHub APIs, Anthropic, AWS, Microsoft Graph, or any provider. |
+| Output | Job pass/fail and pa11y-ci stdout in the run log. Does not open PRs, file issues, or commit anything. |
+| Security note | The workflow's header comment explicitly states it does not consume any user-controlled `github.event.*` input inside `run:` blocks. The URL list and Pa11y config live under `.github/a11y/`, which is repo-owned. |
+
+This workflow is standalone like `test-github-action.yml`: it does not interact with any other workflow in the repo. It exists so the maintainer can verify the published docs site stays accessible.
 
 ---
 
@@ -1093,7 +1114,7 @@ flowchart LR
 
 Distinctive design points worth replicating:
 
-- The curator never edits code; only the coder does. This separation makes the curator a cheap, high-judgment filter (40 turns of sonnet-grade reasoning) and the coder a focused, code-only worker.
+- The curator never edits code; only the coder does. This separation makes the curator a cheap, high-judgment filter (80 turns of sonnet-grade reasoning) and the coder a focused, code-only worker.
 - The coder cannot pick its own issue when running scheduled; the workflow file picks for it via `find-issues`. This eliminates a class of "agent wandered off" failures.
 - `agent-ok` is a maintainer-controlled label that whitelists an issue for the coder even if its other labels are ambiguous.
 - The dedup procedure in the curator and scout prompts (search `/tmp/all-issues.json` AND `gh search issues`, "when in doubt, comment, don't create") is non-negotiable and the agents are told to log their searches so duplicates are auditable.
@@ -1107,8 +1128,8 @@ If you wanted to clone this system into a different repository, here is the exac
 ### 13.1. One-time setup
 
 1. **Create a GitHub App** for the repo (or org). Permissions: contents:write, pull-requests:write, issues:write, actions:write, id-token:write, metadata:read. Install on the target repository. Save the App ID and download the private key PEM.
-2. **Store secrets** at repo level: `APP_ID`, `APP_PRIVATE_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`. If you want the digest, also `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `SMTP_USERNAME`, `MARKETING_EMAILS`. If you want `test-package.yml`, also the per-provider API keys.
-3. **Store variables** if you want docs deploy: `AWS_ROLE_DEPLOY_ARN`, `AWS_REGION`, `AWS_S3_BUCKET`, `AWS_CLOUDFRONT_DISTRIBUTION_ID`.
+2. **Store secrets** at repo level: `APP_PRIVATE_KEY`, `LLM_EXE_REVIEW_BOT_PRIVATE_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`. If you want the digest, also `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `SMTP_USERNAME`, `MARKETING_EMAILS`. If you want `test-package.yml`, also the per-provider API keys.
+3. **Store variables** at repo level: `APP_CLIENT_ID` (OAuth Client ID for main bot), `APP_BOT_USER_ID` (numeric GitHub user ID for `llm-exe-bot[bot]`; get it from `gh api /users/llm-exe-bot[bot] --jq .id`), `LLM_EXE_REVIEW_BOT_CLIENT_ID` (OAuth Client ID for review bot). If you want docs deploy: `AWS_ROLE_DEPLOY_ARN`, `AWS_REGION`, `AWS_S3_BUCKET`, `AWS_CLOUDFRONT_DISTRIBUTION_ID`.
 4. **Pick two branches**: `development` (default) and `main`. Protect `main` so only the auto-merge workflow can write.
 5. **Set the default branch to `development`** in repo settings.
 
@@ -1185,10 +1206,10 @@ gate:
   outputs:
     proceed: ${{ steps.check.outputs.proceed }}
   steps:
-    - uses: actions/create-github-app-token@v1
+    - uses: actions/create-github-app-token@v3
       id: bot-token
       with:
-        app-id: ${{ secrets.APP_ID }}
+        client-id: ${{ vars.APP_CLIENT_ID }}
         private-key: ${{ secrets.APP_PRIVATE_KEY }}
     - id: check
       env:
@@ -1266,7 +1287,7 @@ runs:
   using: 'composite'
   steps:
     - name: Cache node modules
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: node_modules
         key: ${{ runner.os }}-nodeModules-${{ matrix.node-version }}-${{ hashFiles('**/package.json') }}

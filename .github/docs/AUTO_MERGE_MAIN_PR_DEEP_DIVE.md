@@ -52,7 +52,7 @@ flowchart LR
     end
 
     subgraph S["Secrets and Identity"]
-        s1["APP_ID + APP_PRIVATE_KEY"]:::file
+        s1["APP_CLIENT_ID + APP_PRIVATE_KEY"]:::file
         bot["llm-exe-bot[bot]\nshort-lived token\nadmin on repo"]:::file
         s1 --> bot
     end
@@ -181,8 +181,8 @@ flowchart TB
 
     subgraph J["Job: auto-merge (ubuntu-latest)"]
         direction TB
-        s1["1. Checkout repository\nactions/checkout@v4"]:::step
-        s2["2. Generate bot token\ncreate-github-app-token@v1"]:::step
+        s1["1. Checkout repository\nactions/checkout@v6"]:::step
+        s2["2. Generate bot token\ncreate-github-app-token@v3"]:::step
         s3["3. Get PR number\ngh pr list, filter isDraft=false"]:::step
         c1{PR_NUMBER non-empty?}:::cond
         s4["4. Wait for checks\nloop max 10 x 30s"]:::step
@@ -227,7 +227,7 @@ sequenceDiagram
 
     E->>J: workflow_run completed OR pull_request event
     J->>J: evaluate if-gate (line 30)
-    J->>T: create-github-app-token (APP_ID, APP_PRIVATE_KEY)
+    J->>T: create-github-app-token (APP_CLIENT_ID, APP_PRIVATE_KEY)
     T-->>J: bot token (short-lived, admin)
     J->>GH: gh pr list base=main head=development state=open
     GH-->>J: PR number (filtered isDraft=false)
@@ -358,8 +358,8 @@ flowchart LR
     classDef act fill:#581c87,color:#fff,stroke:#000
 
     subgraph Pre["Setup"]
-        c1["actions/checkout@v4\nauth: GITHUB_TOKEN\nwhy: needed for context, not for diffs"]:::pre
-        c2["actions/create-github-app-token@v1\nauth: APP_ID + APP_PRIVATE_KEY\nwhy: mint admin-capable bot token"]:::pre
+        c1["actions/checkout@v6\nauth: GITHUB_TOKEN\nwhy: needed for context, not for diffs"]:::pre
+        c2["actions/create-github-app-token@v3\nauth: APP_CLIENT_ID + APP_PRIVATE_KEY\nwhy: mint admin-capable bot token"]:::pre
     end
 
     subgraph During["gh CLI calls"]
@@ -501,7 +501,7 @@ flowchart TB
     F3X["bump MAX_ATTEMPTS or sleep duration\nfor long-running CI matrices\nor add IN_PROGRESS check to step 5"]:::fix
     F3E --> F3X
 
-    F4["Bot token mint fails\n(APP_ID or APP_PRIVATE_KEY wrong)"]:::fail
+    F4["Bot token mint fails\n(APP_CLIENT_ID or APP_PRIVATE_KEY wrong)"]:::fail
     F4 --> F4E["step 2 fails, subsequent steps skipped\nworkflow fails loud"]:::effect
     F4X["rotate App key, re-add secret"]:::fix
     F4E --> F4X

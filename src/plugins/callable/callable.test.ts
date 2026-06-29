@@ -340,6 +340,43 @@ describe("llm-exe:callable/useExecutors", () => {
         attributes: { error: "validation failed" },
       });
     });
+
+    it("preserves message verbatim when validateInput throws an LlmExeError", async () => {
+      const callable = new CallableExecutor({
+        name: "validate_llm_exe",
+        description: "Throws typed error",
+        input: "{}",
+        handler: async () => "ok",
+        validateInput: async () => {
+          throw new LlmExeError("typed failure", {
+            code: "callable.validation_failed",
+            context: { operation: "validateInput.preexisting" },
+          });
+        },
+      });
+      const result = await callable.validateInput({});
+      expect(result).toEqual({
+        result: false,
+        attributes: { error: "typed failure" },
+      });
+    });
+
+    it("falls back to String(error) when validateInput throws a non-Error value", async () => {
+      const callable = new CallableExecutor({
+        name: "validate_string_throw",
+        description: "Throws raw value",
+        input: "{}",
+        handler: async () => "ok",
+        validateInput: async () => {
+          throw "bare-string-throw";
+        },
+      });
+      const result = await callable.validateInput({});
+      expect(result).toEqual({
+        result: false,
+        attributes: { error: "bare-string-throw" },
+      });
+    });
   });
 
   describe("v3 typed errors (internal — public return shapes unchanged)", () => {

@@ -1,0 +1,72 @@
+name: Bug report
+description: Something in llm-exe is broken or behaves differently than documented.
+title: "[bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. The more reproducible the report, the faster we can fix it.
+
+        If your issue is about the docs site being unusable with a keyboard, screen reader, or other assistive technology, please use the [Accessibility issue](./accessibility.yml) template instead.
+  - type: input
+    id: version
+    attributes:
+      label: llm-exe version
+      description: Output of `npm list llm-exe` or the version pinned in your `package.json`.
+      placeholder: "2.x.y"
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      description: Output of `node --version`.
+      placeholder: "v20.11.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: LLM provider involved
+      description: Which provider's path triggered the bug? Choose `n/a` for non-provider bugs.
+      options:
+        - openai
+        - anthropic
+        - google / gemini
+        - xai
+        - deepseek
+        - bedrock
+        - ollama
+        - n/a
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the actual behavior. Include error messages verbatim.
+    validations:
+      required: true
+  - type: textarea
+    id: what-expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: |
+        Paste the smallest possible code that triggers the bug. Use `openai.chat-mock.v1` if the bug does not require a real provider call. Strip API keys before posting.
+      render: ts
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Stack traces, screenshots, logs, related issues.
+    validations:
+      required: false

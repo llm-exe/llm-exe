@@ -22,3 +22,40 @@
 :root:not(.dark) .vp-doc div[class*="language-"] span[style*="color:#9ECBFF"] {
   color: #0550AE !important;
 }
+
+/*
+ * Remaining legacy github-dark token colors that leak into the LIGHT code
+ * panels (switcher / hero / inline code blocks). Each pastel token falls
+ * below the WCAG 2 AA 4.5:1 ratio on the light panel background, so we map
+ * it to its accessible github-light counterpart (all computed >= 5.3:1 on
+ * white). A selector that matches no span is a no-op, so these can only
+ * help — they never regress a page. Mirrors the overrides above. (#624)
+ */
+
+/* keyword (red) */
+:root:not(.dark) .switcher-root span[style*="color:#F97583"],
+:root:not(.dark) .hero-code-container span[style*="color:#F97583"],
+:root:not(.dark) .vp-doc div[class*="language-"] span[style*="color:#F97583"] {
+  color: #CF222E !important;
+}
+
+/* number / parameter (orange) */
+:root:not(.dark) .switcher-root span[style*="color:#FFAB70"],
+:root:not(.dark) .hero-code-container span[style*="color:#FFAB70"],
+:root:not(.dark) .vp-doc div[class*="language-"] span[style*="color:#FFAB70"] {
+  color: #953800 !important;
+}
+
+/* string (green) */
+:root:not(.dark) .switcher-root span[style*="color:#85E89D"],
+:root:not(.dark) .hero-code-container span[style*="color:#85E89D"],
+:root:not(.dark) .vp-doc div[class*="language-"] span[style*="color:#85E89D"] {
+  color: #0A3069 !important;
+}
+
+/* markup / deletion (light red) */
+:root:not(.dark) .switcher-root span[style*="color:#FDAEB7"],
+:root:not(.dark) .hero-code-container span[style*="color:#FDAEB7"],
+:root:not(.dark) .vp-doc div[class*="language-"] span[style*="color:#FDAEB7"] {
+  color: #82071E !important;
+}

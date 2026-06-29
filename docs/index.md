@@ -399,7 +399,12 @@ No complex agent frameworks. Just clean TypeScript composition.
 }
 
 .home-block-description {
-  color: var(--vp-c-text-2);
+  /* Use the primary text color (--vp-c-text-1) instead of the muted
+     --vp-c-text-2. The muted gray falls below the WCAG 2 AA 4.5:1
+     contrast ratio against the card background in both light and dark
+     themes (see issue #624). --vp-c-text-1 is the site's primary body
+     color and already meets AA everywhere. */
+  color: var(--vp-c-text-1);
   font-size: 1.0625rem;
   line-height: 1.6;
 }

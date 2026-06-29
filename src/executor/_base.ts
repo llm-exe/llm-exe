@@ -27,6 +27,8 @@ export abstract class BaseExecutor<
   I extends PlainObject,
   O = any,
   H extends BaseExecutorHooks = BaseExecutorHooks,
+  R = any,
+  HI = any,
 > {
   /**
    * @property id - internal id of the executor
@@ -68,7 +70,7 @@ export abstract class BaseExecutor<
   constructor(
     name: string,
     type: string,
-    options?: CoreExecutorExecuteOptions<H>
+    options?: CoreExecutorExecuteOptions<I, O, R, HI, H>
   ) {
     this.id = uuid();
     this.type = type;
@@ -271,7 +273,7 @@ export abstract class BaseExecutor<
     }
     return errors;
   }
-  setHooks(hooks: CoreExecutorHookInput<H> = {}) {
+  setHooks(hooks: CoreExecutorHookInput<I, O, R, HI, H> = {}) {
     const hookKeys = Object.keys(hooks) as (keyof typeof hooks)[];
     for (const hookKey of hookKeys.filter((k) =>
       this.allowedHooks.includes(k)
@@ -325,7 +327,9 @@ export abstract class BaseExecutor<
   }
 
   on(eventName: keyof H, fn: ListenerFunction) {
-    return this.setHooks({ [eventName]: fn } as CoreExecutorHookInput<H>);
+    return this.setHooks({
+      [eventName]: fn,
+    } as CoreExecutorHookInput<I, O, R, HI, H>);
   }
 
   off(eventName: keyof H, fn: ListenerFunction) {

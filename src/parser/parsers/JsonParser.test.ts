@@ -466,6 +466,62 @@ describe("llm-exe:parser/JsonParser", () => {
     });
   });
 
+  // Regression for issue #635. The report claimed that passing a schema with
+  // `required` fields WITHOUT `validateSchema: true` would strip unknown keys
+  // but silently accept input missing required fields (e.g. `{"age":25}` => `{}`).
+  // That described the old default-falsy behavior. The current contract is the
+  // opposite: when a schema is provided, validation — including `required` — is
+  // ON by default, and only `validateSchema: false` opts back into the
+  // filter/default-only path. These tests pin the issue's exact reproduction so
+  // the stale behavior cannot silently return.
+  describe("issue #635: required enforced by default when schema provided", () => {
+    const schema = defineSchema({
+      type: "object",
+      properties: { name: { type: "string" } },
+      required: ["name"],
+    });
+
+    it("throws on input missing a required field by default (no validateSchema)", () => {
+      const parser = new JsonParser({ schema });
+      try {
+        parser.parse('{"age": 25}');
+        fail("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toEqual(
+          "parser.schema_validation_failed",
+        );
+        expect((e as LlmExeError).message).toMatch(/name/);
+        expect((e as LlmExeError).context).toMatchObject({
+          operation: "JsonParser.parse",
+          parser: "json",
+        });
+      }
+    });
+
+    it("does NOT silently return a partial/empty object by default", () => {
+      const parser = new JsonParser({ schema });
+      // The bug report's claimed `=> {}` outcome must never happen by default.
+      expect(() => parser.parse('{"age": 25}')).toThrow(LlmExeError);
+    });
+
+    it("only opts back into filter-without-required when validateSchema: false", () => {
+      const parser = new JsonParser({ schema, validateSchema: false });
+      // Explicit opt-out: unknown keys stripped, missing required NOT flagged.
+      expect(parser.parse('{"age": 25}')).toEqual({});
+    });
+
+    it("validateSchema: true matches the default (required enforced)", () => {
+      const parser = new JsonParser({ schema, validateSchema: true });
+      expect(() => parser.parse('{"age": 25}')).toThrow(LlmExeError);
+    });
+
+    it("accepts input that satisfies the required field by default", () => {
+      const parser = new JsonParser({ schema });
+      expect(parser.parse('{"name": "Greg"}')).toEqual({ name: "Greg" });
+    });
+  });
+
   describe("extract: JSON-in-string brace-walker edge cases", () => {
     it("ignores braces nested inside JSON string values (escaped quotes)", () => {
       // The string value contains escaped quotes — exercises the escape-mode

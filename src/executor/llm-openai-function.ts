@@ -1,6 +1,8 @@
 import {
   BaseLlm,
+  BaseLlCall,
   PromptInput,
+  ParserOutput,
   CoreExecutorExecuteOptions,
   ExecutorWithLlmOptions,
   LlmExecutorHooks,
@@ -27,7 +29,13 @@ export class LlmExecutorWithFunctions<
 > extends LlmExecutor<Llm, Prompt, LlmFunctionParser<Parser>, State> {
   constructor(
     llmConfiguration: ExecutorWithLlmOptions<Llm, Prompt, Parser, State>,
-    options?: CoreExecutorExecuteOptions<LlmExecutorHooks>
+    options?: CoreExecutorExecuteOptions<
+      PromptInput<Prompt>,
+      ParserOutput<LlmFunctionParser<Parser>>,
+      BaseLlCall,
+      ReturnType<Prompt["format"]>,
+      LlmExecutorHooks
+    >
   ) {
     super(
       Object.assign({}, llmConfiguration, {
@@ -58,7 +66,13 @@ export class LlmExecutorOpenAiFunctions<
 > extends LlmExecutor<Llm, Prompt, LlmNativeFunctionParser<Parser>, State> {
   constructor(
     llmConfiguration: ExecutorWithLlmOptions<Llm, Prompt, Parser, State>,
-    options?: CoreExecutorExecuteOptions<LlmExecutorHooks>
+    options?: CoreExecutorExecuteOptions<
+      PromptInput<Prompt>,
+      ParserOutput<LlmNativeFunctionParser<Parser>>,
+      BaseLlCall,
+      ReturnType<Prompt["format"]>,
+      LlmExecutorHooks
+    >
   ) {
     super(
       Object.assign({}, llmConfiguration, {

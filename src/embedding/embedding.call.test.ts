@@ -342,6 +342,25 @@ describe("createEmbedding_call", () => {
       }
     });
 
+    it("tolerates a request.http_error that carries no context", async () => {
+      const err = new LlmExeError("no context at all", {
+        code: "request.http_error",
+      });
+      apiRequestMock.mockRejectedValue(err);
+      try {
+        await createEmbedding_call(mockState, "x");
+        throw new Error("Expected an error to be thrown");
+      } catch (e) {
+        const wrapped = e as InstanceType<typeof LlmExeError>;
+        expect(wrapped.code).toBe("embedding.provider_http_error");
+        const ctx = wrapped.context as Record<string, unknown>;
+        // ctx defaulted to {} then enriched with operation/provider/model
+        expect(ctx.operation).toBe("createEmbedding_call");
+        expect(ctx.provider).toBe("openai.embedding");
+        expect((e as unknown as { cause?: unknown }).cause).toBe(err);
+      }
+    });
+
     it("does not wrap non-request.http_error errors", async () => {
       apiRequestMock.mockRejectedValue(
         new LlmExeError("bad url", {

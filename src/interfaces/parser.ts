@@ -17,6 +17,18 @@ export interface ParserSchemaOptions<
   S extends JSONSchema | undefined = undefined,
 > {
   schema?: S;
+  /**
+   * Controls schema enforcement when `schema` is provided. Validation —
+   * including `required` fields and type/constraint checks — is **on by
+   * default** whenever a schema is set; invalid or incomplete input throws a
+   * `parser.schema_validation_failed` error.
+   *
+   * Set `validateSchema: false` to opt out into the legacy filter/default-only
+   * behavior: unknown keys are stripped and defaults applied, but `required`
+   * fields and constraints are NOT checked. Has no effect when no schema is set.
+   *
+   * @default true (when `schema` is provided)
+   */
   validateSchema?: boolean;
 }
 

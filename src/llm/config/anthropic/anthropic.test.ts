@@ -76,7 +76,6 @@ describe("anthropic config", () => {
       ["anthropic.claude-opus-4-5", "claude-opus-4-5"],
       ["anthropic.claude-haiku-4-5", "claude-haiku-4-5"],
       ["anthropic.claude-sonnet-4-5", "claude-sonnet-4-5"],
-      ["anthropic.claude-opus-4-1", "claude-opus-4-1-20250805"],
     ] as const)(
       "%s should resolve to %s",
       (shorthand, expectedModel) => {
@@ -85,6 +84,14 @@ describe("anthropic config", () => {
         expect(cfg.options.model.default).toBe(expectedModel);
       }
     );
+  });
+
+  describe("removed shorthands", () => {
+    it("no longer exposes anthropic.claude-opus-4-1 (model retired Aug 5, 2026)", () => {
+      expect(
+        (anthropic as Record<string, unknown>)["anthropic.claude-opus-4-1"]
+      ).toBeUndefined();
+    });
   });
 
   describe("sampling parameter guards", () => {
@@ -125,7 +132,6 @@ describe("anthropic config", () => {
         "claude-sonnet-4-6",
         "claude-haiku-4-5",
         "claude-sonnet-4-5",
-        "claude-opus-4-1-20250805",
         "claude-sonnet-4-0",
         "claude-opus-4-0",
       ]) {

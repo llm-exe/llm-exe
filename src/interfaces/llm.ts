@@ -655,9 +655,6 @@ export type AllUseLlmOptions = AllLlm & {
   "anthropic.claude-opus-4-6": {
     input: Omit<AnthropicRequest, "model">;
   };
-  "anthropic.claude-opus-4-1": {
-    input: Omit<AnthropicRequest, "model">;
-  };
   "anthropic.claude-sonnet-4-0": {
     input: Omit<AnthropicRequest, "model">;
   };

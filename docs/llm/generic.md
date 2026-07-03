@@ -1,8 +1,15 @@
+---
+title: "Configure Generic LLM Options in TypeScript | llm-exe"
+description: "Configure generic LLM options in TypeScript with llm-exe: timeout, retries, temperature, maxTokens, topP, and reasoning effort, normalized across providers."
+---
+
 # Generic Options
 
 llm-exe attempts to normalize the inputs for various llm vendors, providing a single interface that can be used to interact with different models. While this is not always possible, since certain vendors may implement features that others don't support, either way only the allowed options make it to the respective api calls.
 
 ## Options
+
+For a worked example of `timeout`, `numOfAttempts`, and `maxDelay` in a production setup, see [Add Retries and Timeouts to LLM Calls](/examples/concepts/retries-and-timeouts.html).
 
 | Option        | Type             | Default   | Description                                                                                                |
 | ------------- | ---------------- | --------- | ---------------------------------------------------------------------------------------------------------- |

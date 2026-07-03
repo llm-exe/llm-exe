@@ -1,3 +1,8 @@
+---
+title: "Use OpenAI Embeddings in TypeScript | llm-exe"
+description: "Create OpenAI embeddings like text-embedding-3-small in TypeScript with llm-exe, or point baseUrl at any OpenAI-compatible endpoint such as vLLM or Together AI."
+---
+
 # OpenAI Embeddings
 
 When using OpenAI embeddings, llm-exe will make POST requests to `https://api.openai.com/v1/embeddings` by default. Override `baseUrl` to point at any OpenAI-compatible embeddings endpoint (Baseten, Together, vLLM, TEI, etc.) — see [OpenAI-Compatible Endpoints](#openai-compatible-endpoints) below.

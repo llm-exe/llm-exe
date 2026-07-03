@@ -7,7 +7,7 @@ description: "Design powerful prompts with Handlebars templates, full type safet
 
 The prompt is the instruction for the LLM, usually sent in plain-text or an array of chat-style messages. When working with certain models, the prompt is formatted like chat messages, allowing you to control a system message, user message, and assistant message.
 
-llm-exe provides a prompt interface to simplify working with prompts. Ultimately a prompt is a string, but building elaborate prompts can quickly get complicated. The prompt utility provides a foundation for building complex prompts.
+llm-exe provides a prompt interface to simplify working with prompts. Ultimately a prompt is a string, but building elaborate prompts can quickly get complicated. The prompt utility provides a foundation for building complex prompts. For the recommended way to organize templates in a real app, see [Separate Prompts from Business Logic](/examples/prompt/separate-prompts-from-code.html).
 
 - Support for text-based or chat-based prompts.
 - Uses Handlebars as template engine, allowing you to use features such as custom templates, partials, functions, etc. See [handlebars documentation](https://handlebarsjs.com/guide/) for everything you can do.

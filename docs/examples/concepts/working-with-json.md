@@ -67,4 +67,45 @@ Now, we have instructed the LLM without directly telling it that:
 - We are able to hint that we don't want additional properties.
 
 You can also:
-- Set defaults
+- Set defaults on individual properties, which the parser applies when a value is missing.
+
+## Reusing the schema at parse time
+
+The same JSON Schema you put in the prompt can be handed to the [`json` parser](/parser/included-parsers.html#json) so the response is validated and typed at runtime. Wrap it in [`defineSchema`](/parser/index.html#defineschema) to keep full TypeScript inference:
+
+```ts
+import { defineSchema, createParser } from "llm-exe";
+
+const schema = defineSchema({
+  type: "object",
+  properties: {
+    thought: { type: "string" },
+    direction: { type: "string", enum: ["forward", "back", "left", "right"] },
+  },
+  required: ["thought", "direction"],
+  additionalProperties: false,
+});
+
+const parser = createParser("json", { schema });
+
+const parsed = parser.parse(llmResponse);
+// parsed is typed as { thought: string; direction: "forward" | "back" | "left" | "right" }
+```
+
+### What the parser does at runtime
+
+Providing a `schema` turns on validation **by default** (`validateSchema` defaults to `true` when a schema is set):
+
+- **`required` is enforced.** If the LLM omits a required field, the parser throws `parser.schema_validation_failed` rather than returning a partial object. This prevents incomplete LLM output from silently passing through as valid, typed data.
+- **Defaults are applied _after_ validation.** A `default` on a property does **not** satisfy a `required` constraint — the field must be present in the response.
+- **Unknown keys are stripped** and remaining values are coerced to the schema's types.
+
+If you intentionally want the legacy "strip unknown keys and apply defaults, but do not check `required`" behavior, opt out explicitly:
+
+```ts
+const parser = createParser("json", { schema, validateSchema: false });
+```
+
+::: warning
+With `validateSchema: false`, a response missing a `required` field is **not** flagged — it passes through as a partial object. Only disable validation when you deliberately want that behavior.
+:::

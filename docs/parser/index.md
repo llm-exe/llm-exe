@@ -54,6 +54,10 @@ const parsed = parser.parse(exampleOutputFromLlm);
 
 When instructing the LLM to respond with json or a format that can be parsed to json, it can be helpful to define schema. This allows you to validate, provide default values, and have a fully-typed response. In fact, the JSON Schema you define can be really useful (and re-used!) in your prompt. [See tips](/examples/concepts/working-with-json) for working with JSON.
 
+::: warning
+Passing a `schema` turns on validation **by default** — `validateSchema` defaults to `true` when a schema is set. Any `required` fields are enforced, and input missing them throws `parser.schema_validation_failed` instead of returning a partial object. Defaults are applied *after* validation, so a `default` does not satisfy a `required` field. Pass `validateSchema: false` to opt out into strip-and-default-only behavior. See the [JSON parser reference](/parser/included-parsers.html#json) for full details.
+:::
+
 ##### `defineSchema`
 
 The `defineSchema` helper narrows a JSON Schema definition to its literal type so TypeScript can infer the exact shape of the parsed output. It also sets `additionalProperties: false` to ensure strict validation. Use it whenever you define schemas for JSON parsers.

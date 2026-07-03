@@ -1,3 +1,8 @@
+---
+title: "Get Reliable JSON from LLM Responses | llm-exe"
+description: "Tips for getting reliable JSON from LLMs in TypeScript, including using JSON Schema in your prompt to specify types, required fields, enums, and defaults."
+---
+
 # Tips: Working with JSON
 
 Instructing an LLM to work with JSON can be difficult.  Below are some tricks to working with JSON.

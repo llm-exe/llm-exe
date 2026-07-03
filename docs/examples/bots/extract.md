@@ -1,3 +1,8 @@
+---
+title: "Extract Structured Data from Text with an LLM | llm-exe"
+description: "Extract structured data from conversations with an LLM in TypeScript, using a JSON schema to pull typed fields like cities and dates from natural language."
+---
+
 ## Extract 
 
 In this example, we will create a function that is able to tell the intent of the user's most recent message in the conversation.

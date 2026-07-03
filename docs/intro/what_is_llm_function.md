@@ -1,3 +1,8 @@
+---
+title: "Replace Complex Code with LLM Functions | llm-exe"
+description: "Learn what an LLM function is and how to replace brittle logic like regex with typed, LLM-powered TypeScript functions using llm-exe executors and parsers."
+---
+
 # What is an LLM function?
 
 As the usefulness of LLMs grows, you have the ability to replace (at least consider replacing) complex functionality in your application with simple calls to an LLM.

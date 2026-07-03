@@ -1,3 +1,8 @@
+---
+title: "Configure LLM Executor Options in TypeScript | llm-exe"
+description: "Configure llm-exe executors in TypeScript: set the LLM, prompt, parser, and state, attach hooks, and pass JSON schemas at execute time for structured output."
+---
+
 # Executor Options
 
 ## Creation Options

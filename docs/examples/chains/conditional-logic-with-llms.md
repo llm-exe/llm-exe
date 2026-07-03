@@ -1,5 +1,6 @@
 ---
 title: Conditional Logic and Branching in LLM Orchestration
+description: "Use an LLM classifier to branch between specialized executors in TypeScript, with plain if/else logic routing questions to factual or creative handlers."
 ---
 
 # Conditional Logic and Branching in LLM Orchestration

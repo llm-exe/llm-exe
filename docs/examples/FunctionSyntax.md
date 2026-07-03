@@ -1,3 +1,8 @@
+---
+title: "How to Structure LLM Executor Functions | llm-exe"
+description: "Patterns for wrapping LLM executors in reusable TypeScript functions, with tips for organizing prompts, parsers, and types into clean, testable files."
+---
+
 # LLM Executor Function Syntax
 
 llm-exe aims to be building blocks, allowing you to use the pieces as you wish. Below are suggestions on how to contain an LLM executor in a way that can be used throughout your application. Ultimately, do what you want.

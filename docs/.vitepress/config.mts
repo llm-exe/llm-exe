@@ -2,20 +2,49 @@ import { defineConfig } from "vitepress";
 // import { transformerTwoslash } from "@shikijs/vitepress-twoslash";
 
 // https://vitepress.dev/reference/site-config
+const SITE_URL = "https://llm-exe.com";
+const SITE_DESCRIPTION =
+  "llm-exe is a lightweight TypeScript package for building LLM-powered applications: typed prompts, output parsers, and composable executors that work with OpenAI, Anthropic, Google, and more.";
+
+function pagePathToCanonicalUrl(relativePath: string): string {
+  const path = relativePath
+    .replace(/(^|\/)index\.md$/, "$1")
+    .replace(/\.md$/, ".html");
+  return `${SITE_URL}/${path}`;
+}
+
 export default defineConfig({
   title: "llm-exe",
-  description: "",
+  description: SITE_DESCRIPTION,
   lang: "en-US",
   cleanUrls: false,
+  srcExclude: [
+    "**/*.part.md",
+    // empty placeholder — exclude until it has content
+    "misc/llm-exe-aws-sfn.md",
+  ],
   sitemap: {
     hostname: "https://llm-exe.com",
   },
+  transformPageData(pageData) {
+    const canonicalUrl = pagePathToCanonicalUrl(pageData.relativePath);
+    const pageTitle =
+      pageData.frontmatter?.title || pageData.title || "llm-exe";
+    const pageDescription =
+      pageData.frontmatter?.description ||
+      pageData.description ||
+      SITE_DESCRIPTION;
+
+    pageData.frontmatter.head ??= [];
+    pageData.frontmatter.head.push(
+      ["link", { rel: "canonical", href: canonicalUrl }],
+      ["meta", { property: "og:title", content: pageTitle }],
+      ["meta", { property: "og:url", content: canonicalUrl }],
+      ["meta", { property: "og:description", content: pageDescription }]
+    );
+  },
   head: [
-    [
-      "link",
-      { rel: "icon", href: "https://assets.llm-exe.com/favicon.ico" },
-      { rel: "canonical", href: "https://llm-exe.com" } as any,
-    ],
+    ["link", { rel: "icon", href: "https://assets.llm-exe.com/favicon.ico" }],
     [
       "meta",
       {
@@ -25,17 +54,7 @@ export default defineConfig({
     ],
     ["meta", { property: "og:locale", content: "en_US" } as any],
     ["meta", { property: "og:type", content: "website" }],
-    ["meta", { property: "og:title", content: "Typescript LLM Utilities" }],
-    ["meta", { property: "og:url", content: "https://llm-exe.com" }],
     ["meta", { property: "og:site_name", content: "llm-exe" }],
-    [
-      "meta",
-      {
-        property: "og:description",
-        content:
-          "A package that provides utilities, wrappers, and base abstractions to help make writing applications with llm-powered functions easier.",
-      },
-    ],
     [
       "script",
       {

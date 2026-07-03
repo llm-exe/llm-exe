@@ -1,3 +1,8 @@
+---
+title: "Intent Classification with LLMs in TypeScript | llm-exe"
+description: "Classify user intent from chat messages with an LLM in TypeScript, using a custom output parser to return a typed intent and confidence score you can act on."
+---
+
 ## Intent 
 
 In this example, we will create a function that is able to tell the intent of the user's most recent message in the conversation.

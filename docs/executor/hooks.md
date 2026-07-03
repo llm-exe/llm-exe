@@ -1,3 +1,8 @@
+---
+title: "Log and Monitor LLM Calls with Executor Hooks | llm-exe"
+description: "Use onSuccess, onError, and onComplete hooks to log and monitor llm-exe executions in TypeScript, with execution metadata, trace IDs, and hook error capture."
+---
+
 ## LLM Executor Hooks
 
 Hooks are available mostly for logging purposes, but can have more advanced use-cases. Hooks are functions you can define which get called at certain stages of the execution. Hooks are optional, and you can register more than one function per hook (meaning there can be many functions listening on the same hook).

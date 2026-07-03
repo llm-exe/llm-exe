@@ -1,3 +1,8 @@
+---
+title: "Create Text Prompts for LLMs in TypeScript | llm-exe"
+description: "Build simple text-based LLM prompts in TypeScript with llm-exe. Compose content, apply Handlebars template variables, and format prompts ready for any LLM."
+---
+
 # Text Prompt
 The text prompt returns a single formatted string, useful for simple completion-style prompts or when you need the prompt as a plain string rather than structured chat messages.
 

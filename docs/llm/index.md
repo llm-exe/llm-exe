@@ -1,28 +1,70 @@
 ---
 title: LLMs | Connect and Configure Models in llm-exe
-description: "Use any LLM with a consistent, composable API. llm-exe supports OpenAI, Anthropic, Amazon, and more—giving you full control over model config, retries, and usage patterns with minimal setup."
+description: "Use the same useLlm provider keys in prompt files or TypeScript. llm-exe supports OpenAI, Anthropic, Amazon, Google, xAI, Ollama, Deepseek, and custom providers."
 ---
 
 # LLM
 
-LLM is a wrapper around various LLM providers, making your function implementations LLM-agnostic.
+An LLM is the model/provider part of an llm-exe run.
 
-Note: llm-exe utilizes the underlying API's from the various providers. This means that you must have an account (and usually an API key) with them if you want to call those models using llm-exe.
+In a prompt file, this is the `provider` field:
 
-**LLM Features:**
+```yaml
+provider: openai.gpt-4o-mini
+message: "Answer briefly: {{question}}"
+data:
+  question: What is llm-exe?
+```
 
-- Built-in timeout mechanism for better control when a provider takes too long.
-- Automatic retry with configurable back-off for errors.
-- Use different LLM's with different configurations for different functions.
-Note: You can use and call methods on LLM's directly, but they are usually passed to an LLM executor and then called internally.
+Run it:
 
-## Using `useLlm`
+```bash
+llm-exe ./answer.yml
+```
 
-The `useLlm` function creates an LLM instance. It takes a provider key and an optional options object.
+`provider` is the same value you pass to [`useLlm`](#typescript). It can be a model shorthand or a generic provider key.
 
-### Provider Shorthand (by model)
+## Provider and Model
 
-Use a provider-specific model shorthand to get full type support for that model's options:
+Use a model shorthand when llm-exe has one:
+
+```yaml
+provider: openai.gpt-4o-mini
+message: "Summarize: {{text}}"
+```
+
+Or use a generic provider key with a model:
+
+```yaml
+provider: openai.chat.v1
+model: gpt-4o-mini
+message: "Summarize: {{text}}"
+```
+
+Use the generic form when you want the model to be easy to override:
+
+```bash
+llm-exe ./summarize.yml --model gpt-4.1
+```
+
+## LLM Options
+
+Provider options go under `llmOptions`.
+
+```yaml
+provider: openai.chat.v1
+model: gpt-4o-mini
+message: "Answer briefly: {{question}}"
+llmOptions:
+  temperature: 0
+  maxTokens: 200
+```
+
+All providers accept the [generic options](/llm/generic.html), such as timeout, retries, temperature, and max tokens. Each provider may also have provider-specific options.
+
+## TypeScript
+
+In TypeScript, use `useLlm`.
 
 ```ts
 import { useLlm } from "llm-exe";
@@ -30,49 +72,45 @@ import { useLlm } from "llm-exe";
 const llm = useLlm("openai.gpt-4o-mini");
 ```
 
-### Provider Key + Model Option
-
-Use a generic provider key and specify the model in the options. This lets you use any model the provider supports without needing a dedicated shorthand:
+Generic provider key with model:
 
 ```ts
 const llm = useLlm("openai.chat.v1", {
-  model: "gpt-4o",
+  model: "gpt-4o-mini",
+  temperature: 0,
 });
 ```
 
-### Options
-
-All providers accept the [generic options](/llm/generic.html) (timeout, retries, temperature, maxTokens, etc.). Each provider may also accept provider-specific options — see the individual provider pages below.
-
-### Deprecation Warnings
-
-Deprecated provider/model shorthands continue to resolve for compatibility, but emit a Node `DeprecationWarning` with code `LLM_EXE_DEPRECATED` on first use. See [Deprecation Warnings](/llm/deprecations.html).
-
-### Authentication
-
-Each provider requires an API key. You can provide it in three ways:
-
-1. **Environment variable** — set the provider's default env var (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`)
-2. **Setup options** — pass the key when creating the LLM (e.g., `{ openAiApiKey: "sk-..." }`)
-3. **Execute options** — pass the key at execution time
-
-See the individual provider pages for the exact option names and env var names.
-
-### Direct Usage
-
-While you'll typically pass the LLM instance to an [executor](/executor/), you can also call it directly:
+You usually pass the LLM to an [executor](/executor/index.html), but you can also call it directly.
 
 ```ts
-const llm = useLlm("openai.gpt-4o-mini");
 const response = await llm.call(prompt);
 console.log(response.getResultText());
 ```
 
+## Authentication
+
+Each provider requires its own account and API key.
+
+You can provide credentials through:
+
+1. Environment variables, such as `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
+2. Setup options when creating the LLM
+3. Execute options when running an executor
+
+The CLI uses the same environment variables as the TypeScript API.
+
+## Deprecation Warnings
+
+Deprecated provider/model shorthands continue to resolve for compatibility, but emit a Node `DeprecationWarning` with code `LLM_EXE_DEPRECATED` on first use.
+
+See [Deprecation Warnings](/llm/deprecations.html).
+
 ## Currently Supported Providers
 
-Currently, llm-exe supports calling LLM's from:
+llm-exe supports:
 
-- [OpenAi](/llm/openai.html)
+- [OpenAI](/llm/openai.html)
 - [Anthropic](/llm/anthropic.html)
 - [xAI](/llm/xai.html)
 - [Google](/llm/gemini.html)
@@ -81,13 +119,15 @@ Currently, llm-exe supports calling LLM's from:
 - [Deepseek](/llm/deepseek.html)
 - [Custom Providers](/llm/custom.html)
 
-## Adding Custom LLM's
+## Custom Providers
 
-You can create custom LLM configurations using `useLlmConfiguration`. This allows you to:
+Custom provider configuration is TypeScript-only.
 
-- Connect to OpenAI-compatible APIs
-- Use local models
-- Work with corporate proxies
-- Add support for new providers
+Use `useLlmConfiguration` when you need to:
 
-See the [Custom Provider Configuration](/llm/custom.html) guide for details.
+- connect to an OpenAI-compatible API
+- use a local model
+- work with a corporate proxy
+- add support for a new provider
+
+See [Custom Provider Configuration](/llm/custom.html).

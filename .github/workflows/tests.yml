@@ -39,6 +39,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # Structural guard: fail before tests if any Node-only module (node:fs, etc.)
+      # becomes reachable from the browser-safe root barrel (src/index.ts). This is
+      # the regression guard for the llm-exe/node subpath split — see
+      # scripts/assert-root-node-free.mjs. Ungated on purpose so a matrix edit
+      # can't silently disable it.
+      - name: Assert root graph is Node-free
+        run: npm run check:root-node-free
+
       - name: Test
         run: npm run test
 

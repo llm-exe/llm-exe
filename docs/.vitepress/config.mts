@@ -101,6 +101,10 @@ export default defineConfig({
             link: "/executor/index.html",
           },
           {
+            text: "Prompt Files",
+            link: "/config/index.html",
+          },
+          {
             text: "Embeddings",
             link: "/embeddings/index.html",
           },
@@ -303,6 +307,24 @@ export default defineConfig({
           {
             text: "Hooks",
             link: "/executor/hooks.html",
+          },
+        ],
+      },
+      {
+        text: "Prompt Files",
+        collapsed: true,
+        items: [
+          {
+            text: "Overview",
+            link: "/config/index.html",
+          },
+          {
+            text: "File Formats",
+            link: "/config/formats.html",
+          },
+          {
+            text: "CLI",
+            link: "/config/cli.html",
           },
         ],
       },

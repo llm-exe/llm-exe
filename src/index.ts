@@ -48,6 +48,22 @@ export {
 export { defineSchema } from "./utils/modules/defineSchema";
 export { registerHelpers, registerPartials } from "./utils";
 
+// Config/file execution layer — browser-safe surface only. File loading
+// (executorFromFile/loadConfigFromFile/runFile) is the `llm-exe/node` subpath.
+export {
+  loadExecutorConfig,
+  parseExecutorConfig,
+  executorFromConfig,
+  runConfig,
+  loadConfigFromUrl,
+} from "@/config";
+export type {
+  ExecutorConfig,
+  ExecutorConfigPatch,
+  Format,
+} from "@/config/types";
+export type { CreateParserType } from "@/interfaces/parser";
+
 export { LlmExeError, LLM_EXE_ERROR_SYMBOL } from "./errors/LlmExeError";
 export { isLlmExeError } from "./errors/isLlmExeError";
 export { serializeLlmExeError } from "./errors/serialize";

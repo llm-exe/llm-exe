@@ -29,7 +29,7 @@ describe("helloWorld", () => {
   itWithUseLlmMocked(
     "handle this simple instruction",
     [
-      "anthropic.claude-sonnet-4-6",
+      "anthropic.claude-sonnet-4-5",
       "openai.gpt-4o-mini",
       "google.gemini-2.5-flash",
       "xai.grok-3",

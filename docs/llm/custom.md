@@ -1,3 +1,8 @@
+---
+title: "Create Custom LLM Providers in TypeScript | llm-exe"
+description: "Define custom LLM providers in TypeScript with llm-exe. Connect OpenAI-compatible APIs, local models, and corporate proxies using useLlmConfiguration."
+---
+
 # Custom Provider Configuration
 
 The `useLlmConfiguration` function allows you to define custom LLM provider configurations. This is useful for:

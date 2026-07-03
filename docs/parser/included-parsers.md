@@ -1,3 +1,8 @@
+---
+title: "Parse LLM Output into JSON, Lists, and Booleans | llm-exe"
+description: "Reference for llm-exe's built-in parsers: JSON, number, boolean, lists, markdown code blocks, and more. Turn raw LLM responses into typed TypeScript data."
+---
+
 # Default Included Parsers
 
 [[toc]]
@@ -65,6 +70,8 @@ Options:
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `match` | `"exact" \| "extract"` | `"exact"` | `"exact"` requires the entire trimmed response to be one boolean literal. `"extract"` finds one boolean literal in surrounding text. |
+
+See a complete recipe using this parser: [Get a Yes/No Decision from an LLM](/examples/bots/yes-no.html).
 
 ::: code-group
 

@@ -1,3 +1,8 @@
+---
+title: "Replicate Amazon Lex with LLMs in TypeScript | llm-exe"
+description: "Rebuild Amazon Lex-style chatbots in TypeScript with composable LLM executors that identify intent, extract slots, confirm, and generate responses."
+---
+
 # Replicating Lex
 
 This is a non-exhaustive overview on how to replace some of the core concepts of Amazon Lex with a series of LLM executor functions.

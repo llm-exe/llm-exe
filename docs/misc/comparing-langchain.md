@@ -1,3 +1,8 @@
+---
+title: "llm-exe vs LangChain: A Lightweight Alternative"
+description: "Compare llm-exe and LangChain: how prompts, chains, agents, and memory map to llm-exe's lightweight TypeScript executors, callable functions, and state."
+---
+
 **Prompts**
 
 **Chains**

@@ -1,3 +1,8 @@
+---
+title: "Use Anthropic Claude on AWS Bedrock | llm-exe"
+description: "Run Anthropic Claude models on AWS Bedrock from TypeScript with llm-exe. Covers Bedrock model IDs, AWS authentication, and supported Claude options."
+---
+
 # Anthropic
 
 When using Anthropic models via AWS Bedrock, llm-exe will make POST requests to `https://bedrock-runtime.us-west-2.amazonaws.com/model/{MODEL_ID}/invoke`.

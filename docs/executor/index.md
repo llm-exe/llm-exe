@@ -1,5 +1,5 @@
 ---
-title: "LLM Executor | Structure Your LLM Calls with Type Safety"
+title: "LLM Executor | Structure Your LLM Calls with Type Safety | llm-exe"
 description: The core building block of llm-exe. Create modular, testable LLM functions with typed inputs, custom prompts, and reliable output parsers. Build AI features that are easy to reason about and reuse.
 ---
 

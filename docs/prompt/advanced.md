@@ -1,3 +1,8 @@
+---
+title: "Advanced Prompt Templates with Handlebars | llm-exe"
+description: "Use Handlebars templates in your LLM prompts: variables, conditionals, loops, and custom helpers and partials for reusable, dynamic prompts in TypeScript."
+---
+
 # Prompts with Templates
 
 Handlebars is used as a template engine when generating the prompt, so you can take advantage of advanced template features in the prompt. See full capabilities [here](https://handlebarsjs.com/guide/).

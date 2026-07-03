@@ -9,6 +9,8 @@ llm-exe attempts to normalize the inputs for various llm vendors, providing a si
 
 ## Options
 
+For a worked example of `timeout`, `numOfAttempts`, and `maxDelay` in a production setup, see [Add Retries and Timeouts to LLM Calls](/examples/concepts/retries-and-timeouts.html).
+
 | Option        | Type             | Default   | Description                                                                                                |
 | ------------- | ---------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
 | timeout       | number           | 30000     | Max execution time of API call to the LLM, in milliseconds.                                                |

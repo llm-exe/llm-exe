@@ -1,17 +1,53 @@
 ---
-title: "Log and Monitor LLM Calls with Executor Hooks | llm-exe"
-description: "Use onSuccess, onError, and onComplete hooks to log and monitor llm-exe executions in TypeScript, with execution metadata, trace IDs, and hook error capture."
+title: "LLM Hooks: Log, Monitor, and Instrument LLM Calls | llm-exe"
+description: "LLM hooks are lifecycle callbacks that fire around LLM calls, so you can log, measure latency, and alert on failures without cluttering business logic."
 ---
 
-## LLM Executor Hooks
+## LLM Hooks
 
-Hooks are available mostly for logging purposes, but can have more advanced use-cases. Hooks are functions you can define which get called at certain stages of the execution. Hooks are optional, and you can register more than one function per hook (meaning there can be many functions listening on the same hook).
+**LLM hooks are lifecycle callbacks that fire at specific points around an LLM call** — before results are returned, when a call fails, and when execution finishes. Instead of wrapping every LLM call in try/catch blocks and timing code, you register a hook once and it runs on every execution. This keeps cross-cutting concerns — logging, metrics, alerting, auditing — out of your business logic.
+
+Typical things you'd use LLM hooks for:
+
+- **Logging** every prompt input and parsed output for debugging or audit trails
+- **Latency tracking** — measure how long each LLM call takes and send it to your metrics system
+- **Error monitoring** — capture failures (timeouts, parse errors, provider errors) and alert on them
+- **Usage analytics** — count executions per function to see which LLM features get used
+
+In llm-exe, every executor supports hooks. They are optional, and you can register more than one function per hook (meaning there can be many functions listening on the same hook).
 
 The following hooks are available:
 
 - `onSuccess` — runs after a successful execution, once the output has been produced
 - `onError` — runs when the executor throws, before the error is re-thrown
 - `onComplete` — runs after `onSuccess` or `onError`, regardless of outcome
+
+### Common Patterns
+
+Log the duration of every LLM call:
+
+```typescript:no-line-numbers
+const classifier = createLlmExecutor({ name: "classify-ticket", llm, prompt, parser });
+
+classifier.on("onComplete", (exec, meta) => {
+  logger.info(`${meta.name} finished in ${exec.end - exec.start}ms`, {
+    executions: meta.executions,
+  });
+});
+```
+
+Alert on failures without touching the call site:
+
+```typescript:no-line-numbers
+classifier.on("onError", (exec, meta) => {
+  alerting.notify(`LLM call ${meta.name} failed: ${exec.errorMessage}`, {
+    code: exec.errorCode,
+    input: exec.input,
+  });
+});
+```
+
+The executor still throws on failure — `onError` observes the error, it does not swallow it. Your calling code handles the failure; the hook handles the telemetry. For a complete production setup combining hooks with retries and timeouts, see [Add Retries and Timeouts to LLM Calls](/examples/concepts/retries-and-timeouts.html).
 
 ### Hook Signature
 

@@ -5,14 +5,13 @@ description: "Extract structured data from conversations with an LLM in TypeScri
 
 ## Extract 
 
-In this example, we will create a function that is able to tell the intent of the user's most recent message in the conversation.
+In this example, we will create a function that extracts specific pieces of information from a conversation — like a city and travel dates — and returns them as typed, structured JSON. You define the fields you want with a JSON schema, and the parser guarantees the response matches it, filling in defaults for anything the user hasn't mentioned yet.
 
-This can be useful as:
-- First step in a pipeline to filter options
+This can be useful for:
+- Collecting required fields across a multi-turn conversation (slot filling)
+- Turning free-form user input into data your application can act on
 
-This takes advantage of a custom output parser to not only ensure formatting, but slightly transform the output.
-
-#### Step 1 - Prepare Types & Intents
+#### Step 1 - Prepare Types
 
 <<< ../../../examples/extractBot.ts#types
 
@@ -103,3 +102,9 @@ const response2 = await extractInformation({
 ### Complete File
 
 <<< ../../../examples/extractBot.ts#file
+
+### Related
+
+- [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function.html) — the same schema-driven typing with a fixed schema
+- [Working With JSON](/examples/concepts/working-with-json.html) — patterns for reliable JSON output
+- [Replicating Amazon Lex](/examples/concepts/replicating-lex.html) — extraction as slot filling in a conversation

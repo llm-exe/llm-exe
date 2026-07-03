@@ -81,3 +81,10 @@ const response2 = await identifyIntent().execute({
 
 ### Complete File
 <<< ../../../examples/intentBot.ts#file
+
+### Related
+
+- [Conditional Logic and Branching](/examples/chains/conditional-logic-with-llms.html) — route to different executors based on the detected intent
+- [Get a Yes/No Decision from an LLM](/examples/bots/yes-no.html) — the two-outcome version of this pattern
+- [Replicating Amazon Lex](/examples/concepts/replicating-lex.html) — intent detection plus slot filling
+- [Custom Parsers](/parser/custom.html) — how the custom output parser here works

@@ -71,6 +71,8 @@ Options:
 | --- | --- | --- | --- |
 | `match` | `"exact" \| "extract"` | `"exact"` | `"exact"` requires the entire trimmed response to be one boolean literal. `"extract"` finds one boolean literal in surrounding text. |
 
+See a complete recipe using this parser: [Get a Yes/No Decision from an LLM](/examples/bots/yes-no.html).
+
 ::: code-group
 
 ```[Output]

@@ -15,6 +15,8 @@ function pagePathToCanonicalUrl(relativePath: string): string {
 
 export default defineConfig({
   title: "llm-exe",
+  // Page titles from frontmatter already carry branding ("... | llm-exe",
+  titleTemplate: false,
   description: SITE_DESCRIPTION,
   lang: "en-US",
   cleanUrls: false,
@@ -352,73 +354,121 @@ export default defineConfig({
         link: "/examples",
         collapsed: true,
         items: [
-          // {
-          //   text: "Concepts",
-          //   link: "",
-          //   items: [
-          // {
-          //   text: "Executor Function Syntax",
-          //   link: "/examples/FunctionSyntax.html",
-          // },
-          // {
-          //   text: "Simple Combining",
-          //   link: "/examples/combining.html",
-          // },
-          // {
-          //   text: "ReAct: Search + Calculator",
-          //   link: "/examples/react.html",
-          // },
-          // {},
-          //   ],
-          // },
-          // {
-          //   text: "LLM Functions",
-          //   link: "/examples/FunctionSyntax",
-          // },
-          // {
-          //   text: "Executor Function Syntax",
-          //   link: "/examples/FunctionSyntax",
-          // },
-          // {
-          //   text: "LLM Functions",
-          //   link: "",
-          //   items: [
-          //     {
-          //       text: "Hello World",
-          //       link: "/examples/bots/hello.html",
-          //     },
-          //     {
-          //       text: "Validator",
-          //       link: "/examples/bots/validator.html",
-          //     },
-          //     {
-          //       text: "Intent",
-          //       link: "/examples/bots/intent.html",
-          //     },
-          //     {
-          //       text: "Extractor",
-          //       link: "/examples/bots/extract.html",
-          //     },
-          //   ],
-          // },
-          // {
-          //   text: "Misc",
-          //   link: "",
-          //   items: [
-          //     {
-          //       text: "Working With JSON",
-          //       link: "/examples/concepts/working-with-json.html",
-          //     },
-          //     {
-          //       text: "Replicating Lex",
-          //       link: "/examples/concepts/replicating-lex.html",
-          //     },
-          //   ],
-          // },
-          // {
-          //   text: "ReAct: Search + Calculator",
-          //   link: "/examples/react",
-          // },
+          {
+            text: "Hello World",
+            link: "/examples/bots/hello.html",
+          },
+          {
+            text: "Write a Type-Safe LLM Function",
+            link: "/examples/concepts/type-safe-llm-function.html",
+          },
+          {
+            text: "Structured Output",
+            items: [
+              {
+                text: "Yes/No Decisions",
+                link: "/examples/bots/yes-no.html",
+              },
+              {
+                text: "Extract Structured Data",
+                link: "/examples/bots/extract.html",
+              },
+              {
+                text: "Validate Statements",
+                link: "/examples/bots/validator.html",
+              },
+              {
+                text: "Working With JSON",
+                link: "/examples/concepts/working-with-json.html",
+              },
+            ],
+          },
+          {
+            text: "Classification & Routing",
+            items: [
+              {
+                text: "Intent Classification",
+                link: "/examples/bots/intent.html",
+              },
+              {
+                text: "Conditional Logic and Branching",
+                link: "/examples/chains/conditional-logic-with-llms.html",
+              },
+              {
+                text: "Replicating Amazon Lex",
+                link: "/examples/concepts/replicating-lex.html",
+              },
+            ],
+          },
+          {
+            text: "Chaining & Composition",
+            items: [
+              {
+                text: "Combine Two Executors",
+                link: "/examples/combining.html",
+              },
+              {
+                text: "Sequential Composition",
+                link: "/examples/chains/sequential-composition.html",
+              },
+              {
+                text: "Self-Refinement Loop",
+                link: "/examples/chains/self-refinement.html",
+              },
+            ],
+          },
+          {
+            text: "Code Generation",
+            items: [
+              {
+                text: "Write Code from Spec",
+                link: "/examples/bots/write-code-from-spec.html",
+              },
+              {
+                text: "Write Tests from Code",
+                link: "/examples/bots/write-tests-from-code.html",
+              },
+            ],
+          },
+          {
+            text: "Agents & Tools",
+            items: [
+              {
+                text: "ReAct: Search + Calculator",
+                link: "/examples/react.html",
+              },
+            ],
+          },
+          {
+            text: "Prompts",
+            items: [
+              {
+                text: "Separate Prompts from Code",
+                link: "/examples/prompt/separate-prompts-from-code.html",
+              },
+              {
+                text: "Loading Prompts Remotely",
+                link: "/examples/prompt/load-remote.html",
+              },
+            ],
+          },
+          {
+            text: "Production Patterns",
+            items: [
+              {
+                text: "Retries and Timeouts",
+                link: "/examples/concepts/retries-and-timeouts.html",
+              },
+              {
+                text: "LLM Calls in Lambda & Cron",
+                link: "/examples/concepts/llm-in-lambda.html",
+              },
+              {
+                text: "Prompt Injection Screening",
+                link: "/examples/concepts/prompt-injection-screening.html",
+              },
+            ],
+          },
         ],
       },
       {
@@ -438,14 +488,6 @@ export default defineConfig({
           {
             text: "Error Handling",
             link: "/misc/errors.html",
-          },
-          {
-            text: "Working With JSON",
-            link: "/examples/concepts/working-with-json.html",
-          },
-          {
-            text: "Replicating Lex",
-            link: "/examples/concepts/replicating-lex.html",
           },
         ],
       },

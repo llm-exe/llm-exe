@@ -1,3 +1,8 @@
+---
+title: "Validate Statements with an LLM in TypeScript | llm-exe"
+description: "Build an LLM-powered validator in TypeScript that checks true/false statements against a conversation, useful as a moderation layer or policy checker."
+---
+
 ## Validator
 
 In this example, we will create a function that is able to validate whether or not a series of statements is true.

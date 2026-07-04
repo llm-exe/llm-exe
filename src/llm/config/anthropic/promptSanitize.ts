@@ -1,5 +1,8 @@
 import { IChatMessage, IChatMessages } from "@/types";
-import { anthropicPromptMessageCallback } from "./promptSanitizeMessageCallback";
+import {
+  anthropicPromptMessageCallback,
+  AnthropicPromptSanitizeOptions,
+} from "./promptSanitizeMessageCallback";
 
 /**
  * Merge consecutive messages with the same role when both have array content.
@@ -35,11 +38,15 @@ function mergeConsecutiveSameRole(
 export function anthropicPromptSanitize(
   _messages: string | IChatMessages,
   _inputBodyObj: Record<string, any>,
-  _outputObj: Record<string, any>
+  _outputObj: Record<string, any>,
+  _options: AnthropicPromptSanitizeOptions = {}
 ) {
+  const toAnthropicMessage = (m: IChatMessage) =>
+    anthropicPromptMessageCallback(m, _options);
+
   if (typeof _messages === "string") {
     return [{ role: "user", content: _messages } as IChatMessage].map(
-      anthropicPromptMessageCallback
+      toAnthropicMessage
     );
   }
 
@@ -53,7 +60,7 @@ export function anthropicPromptSanitize(
     return [
       { role: "user", content: first.content } as IChatMessage,
       ...messages,
-    ].map(anthropicPromptMessageCallback);
+    ].map(toAnthropicMessage);
   }
 
   // if more than one message is passed in, and the first is a system message:
@@ -68,7 +75,7 @@ export function anthropicPromptSanitize(
         }
         return m;
       }) as IChatMessage[]
-    ).map(anthropicPromptMessageCallback);
+    ).map(toAnthropicMessage);
     return mergeConsecutiveSameRole(result);
   }
 
@@ -83,6 +90,6 @@ export function anthropicPromptSanitize(
         return m;
       }),
     ] as IChatMessage[]
-  ).map(anthropicPromptMessageCallback);
+  ).map(toAnthropicMessage);
   return mergeConsecutiveSameRole(result);
 }

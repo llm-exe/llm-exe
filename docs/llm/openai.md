@@ -1,3 +1,8 @@
+---
+title: "Use OpenAI Models in TypeScript with llm-exe"
+description: "Call OpenAI chat models like gpt-4o and gpt-4o-mini from TypeScript with llm-exe, with typed options, API key setup, retries, and JSON response mode."
+---
+
 # OpenAI
 
 When using OpenAi models, llm-exe will make POST requests to `https://api.openai.com/v1/chat/completions`. All models are supported if you pass `openai.chat.v1` as the first argument, and then specify a model in the options.
@@ -40,7 +45,7 @@ await llm.call(prompt);
 
 ## OpenAi-Specific Options
 
-In addition to the [generic options](/llm/generic.html), the following options are OpenAi-specific and can be passed in when creating a llm function.
+In addition to the [generic options](/llm/generic), the following options are OpenAi-specific and can be passed in when creating a llm function.
 
 | Option           | Type    | Default     | Description                                                    |
 | ---------------- | ------- | ----------- | -------------------------------------------------------------- |

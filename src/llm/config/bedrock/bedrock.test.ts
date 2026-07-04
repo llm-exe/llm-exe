@@ -52,11 +52,10 @@ describe("bedrock configuration", () => {
         ? cn?.mapBody?.prompt?.transform(messages, {}, {})
         : () => {};
       expect(transformd).toBe("transformd message");
-      expect(anthropicPromptSanitizeMock).toHaveBeenCalledWith(
-        messages,
-        {},
-        {}
-      );
+      expect(anthropicPromptSanitizeMock).toHaveBeenCalledWith(messages, {}, {}, {
+        provider: "amazon:anthropic.chat",
+        allowImageUrlSources: false,
+      });
     });
   });
 
@@ -147,6 +146,29 @@ describe("bedrock configuration", () => {
         "{{>DialogueHistory key='messages'}}",
         { messages: objectMessages }
       );
+    });
+
+    it("should reject messages containing image content", () => {
+      const messagesWithImage = [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "What is this?" },
+            {
+              type: "image_url",
+              image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+            },
+          ],
+        },
+      ];
+
+      const fn = bedrock["amazon:meta.chat.v1"];
+      expect(() =>
+        fn.mapBody.prompt.transform
+          ? fn.mapBody.prompt.transform(messagesWithImage, {}, {})
+          : undefined
+      ).toThrow(/Image content is not supported/);
+      expect(replaceTemplateStringMock).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,3 +1,8 @@
+---
+title: "Get Reliable JSON from LLM Responses | llm-exe"
+description: "Tips for getting reliable JSON from LLMs in TypeScript, including using JSON Schema in your prompt to specify types, required fields, enums, and defaults."
+---
+
 # Tips: Working with JSON
 
 Instructing an LLM to work with JSON can be difficult.  Below are some tricks to working with JSON.
@@ -102,3 +107,9 @@ A couple of things to keep in mind:
 - **Opt out with `validateSchema: false`.** This switches to filter/default-only behavior: unknown keys are stripped and defaults are applied, but `required` and constraints are **not** checked. Use it only if you intentionally want that looser behavior.
 
 See the [JSON parser reference](/parser/included-parsers.html#json) for the full option list.
+
+### Related
+
+- [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function) — schema-driven prompt, validation, and return type in one
+- [Extract Structured Data](/examples/bots/extract) — caller-supplied schemas for slot filling
+- [Included Parsers](/parser/included-parsers) — the JSON parser reference

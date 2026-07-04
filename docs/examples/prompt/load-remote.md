@@ -1,3 +1,8 @@
+---
+title: "Load LLM Prompts from a Remote Source | llm-exe"
+description: "Load prompt templates from GitHub, S3, or a CMS at runtime and use them with typed llm-exe executors in TypeScript, updating prompts without redeploying."
+---
+
 # Loading Prompts Remotely
 
 In `llm-exe`, prompts are just strings. You’re not locked into template literals or writing inline strings in your code.

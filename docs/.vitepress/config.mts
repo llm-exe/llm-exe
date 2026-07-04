@@ -6,6 +6,10 @@ const SITE_URL = "https://llm-exe.com";
 const SITE_DESCRIPTION =
   "llm-exe is a lightweight TypeScript package for building LLM-powered applications: typed prompts, output parsers, and composable executors that work with OpenAI, Anthropic, Google, and more.";
 
+// Canonical URL forms: leaf pages are extensionless (/llm/openai), section
+// indexes keep a trailing slash (/executor/). VitePress's dead-link checker
+// requires the trailing-slash form for index links, so this split is
+// load-bearing — don't "simplify" it to one shape.
 function pagePathToCanonicalUrl(relativePath: string): string {
   const path = relativePath
     .replace(/(^|\/)index\.md$/, "$1")

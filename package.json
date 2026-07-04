@@ -48,6 +48,7 @@
     "predocs:build": "npm run build:docs-examples && bash scripts/generate-llms-txt.sh",
     "docs:dev": "eval $(cat docs/.env) && concurrently \"vitepress dev docs\" \"npm run build:watch:docs-examples\"",
     "docs:build": "eval $(cat docs/.env) && vitepress build docs",
+    "postdocs:build": "node docs/.vitepress/scripts/verify-docs-build.mjs",
     "docs:update-providers": "ts-node --transpile-only -r tsconfig-paths/register docs/.vitepress/scripts/updateProviders.ts",
     "lint": "eslint .",
     "format:check": "prettier --check \"src\"",

@@ -88,3 +88,7 @@ const parsed = parser.parse(exampleOutputFromLlm);
  *
  */
 ```
+
+::: warning Schema validation is on by default
+When you provide a `schema`, the parser enforces it on the LLM's output by default (`validateSchema` defaults to `true`). Missing `required` fields or constraint violations throw `parser.schema_validation_failed` instead of returning a partial object, and defaults are applied **after** validation. Pass `validateSchema: false` to opt into filter/default-only behavior. See the [JSON parser reference](/parser/included-parsers.html#json) for details.
+:::

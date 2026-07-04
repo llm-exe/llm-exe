@@ -52,7 +52,7 @@ By default, formatted text prompt messages are separated using 2 line breaks (\\
 <<< ../../examples/prompt/text.ts#exampleCreateTextPromptCustomDelimiter
 </GenericOutput>
 
-See [prompt templates](/prompt/advanced.html) for more advanced prompt usage.
+See [prompt templates](/prompt/advanced) for more advanced prompt usage.
 
 #### Text Prompt Methods
 

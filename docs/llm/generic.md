@@ -9,7 +9,7 @@ llm-exe attempts to normalize the inputs for various llm vendors, providing a si
 
 ## Options
 
-For a worked example of `timeout`, `numOfAttempts`, and `maxDelay` in a production setup, see [Add Retries and Timeouts to LLM Calls](/examples/concepts/retries-and-timeouts.html).
+For a worked example of `timeout`, `numOfAttempts`, and `maxDelay` in a production setup, see [Add Retries and Timeouts to LLM Calls](/examples/concepts/retries-and-timeouts).
 
 | Option        | Type             | Default   | Description                                                                                                |
 | ------------- | ---------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
@@ -32,5 +32,5 @@ For a worked example of `timeout`, `numOfAttempts`, and `maxDelay` in a producti
 > - [xAI Chat Model Options](/llm/xai#xai-specific-options)
 > - [Deepseek Chat Model Options](/llm/deepseek#deepseek-specific-options)
 > - [Ollama Chat Model Options](/llm/ollama#ollama-specific-options)
-> - [AWS Bedrock Chat Model Options](/llm/bedrock/index.html)
+> - [AWS Bedrock Chat Model Options](/llm/bedrock/)
 

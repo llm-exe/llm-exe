@@ -53,7 +53,7 @@ Moreover, because each branch is a normal function call, you can log or inspect 
 
 ### How do you handle conditional branching based on LLM outputs?
 
-Constrain the LLM's output to a fixed set of values with a parser, then branch on the result with ordinary `if`/`else` or `switch` statements. The critical step is the constraint: an enum-restricted parser guarantees the output is one of your known categories, so your branching code never has to handle free-form text. In llm-exe, `createParser("stringExtract", { enum: [...] })` returns a typed union — TypeScript will even warn you if a `switch` misses a case. For binary decisions, the [boolean parser](/parser/included-parsers.html#boolean-parser) is even simpler — see [Get a Yes/No Decision from an LLM](/examples/bots/yes-no.html).
+Constrain the LLM's output to a fixed set of values with a parser, then branch on the result with ordinary `if`/`else` or `switch` statements. The critical step is the constraint: an enum-restricted parser guarantees the output is one of your known categories, so your branching code never has to handle free-form text. In llm-exe, `createParser("stringExtract", { enum: [...] })` returns a typed union — TypeScript will even warn you if a `switch` misses a case. For binary decisions, the [boolean parser](/parser/included-parsers#boolean-parser) is even simpler — see [Get a Yes/No Decision from an LLM](/examples/bots/yes-no).
 
 ### Can you branch on sentiment or other analysis from an LLM?
 

@@ -38,7 +38,7 @@
       "title": "Hello World",
       "description": "A basic function that introduces the library.",
       "prompt": "This prompt instructs the model to echo the user’s input in a fixed format without deviation, questions, or conversation.",
-      "path": "/examples/bots/hello.html",
+      "path": "/examples/bots/hello",
       "code": "",
       "group": "basics",
       "level": "basic",
@@ -48,7 +48,7 @@
     {
       "title": "Write a Type-Safe LLM Function",
       "description": "One schema drives the prompt, the runtime validation, and the inferred TypeScript return type.",
-      "path": "/examples/concepts/type-safe-llm-function.html",
+      "path": "/examples/concepts/type-safe-llm-function",
       "code": "",
       "level": "basic",
       "group": "basics",
@@ -59,7 +59,7 @@
       "title": "Yes/No Decisions",
       "description": "Ask the LLM a question and get back a real boolean you can branch on — no string checking.",
       "prompt": "This prompt instructs the model to answer a question with only yes or no.",
-      "path": "/examples/bots/yes-no.html",
+      "path": "/examples/bots/yes-no",
       "code": "",
       "level": "basic",
       "group": "structured-output",
@@ -69,7 +69,7 @@
       "title": "Extract Structured Data",
       "description": "Pull typed fields like cities and dates out of natural language, enforced by a JSON schema.",
       "prompt": "This prompt instructs the model to extract information from an input and return it in a structured format.",
-      "path": "/examples/bots/extract.html",
+      "path": "/examples/bots/extract",
       "code": "",
       "level": "basic",
       "group": "structured-output",
@@ -79,7 +79,7 @@
       "title": "Validate Statements",
       "description": "Check a list of statements against context and conversation, returning a typed verdict for each.",
       "prompt": "This prompt instructs the model to review the context and conversation and validate a list of sentences.",
-      "path": "/examples/bots/validator.html",
+      "path": "/examples/bots/validator",
       "code": "",
       "group": "structured-output",
       "level": "basic",
@@ -88,7 +88,7 @@
     {
       "title": "Working With JSON",
       "description": "Techniques for getting reliable, schema-valid JSON out of LLM responses.",
-      "path": "/examples/concepts/working-with-json.html",
+      "path": "/examples/concepts/working-with-json",
       "code": "",
       "level": "basic",
       "group": "structured-output",
@@ -98,7 +98,7 @@
       "title": "Intent Classification",
       "description": "Identify the intent of a user’s most recent message, restricted to categories you define.",
       "prompt": "This prompt instructs the model to identify the intent of the user’s input.",
-      "path": "/examples/bots/intent.html",
+      "path": "/examples/bots/intent",
       "code": "",
       "level": "basic",
       "group": "classification",
@@ -107,7 +107,7 @@
     {
       "title": "Conditional Logic and Branching",
       "description": "Use LLM outputs to control branching and route to specialized executors based on intent.",
-      "path": "/examples/chains/conditional-logic-with-llms.html",
+      "path": "/examples/chains/conditional-logic-with-llms",
       "level": "simple",
       "group": "classification",
       "tags": []
@@ -115,7 +115,7 @@
     {
       "title": "Replicating Amazon Lex",
       "description": "Rebuild a Lex-style bot with intent detection and slot filling using composable executors.",
-      "path": "/examples/concepts/replicating-lex.html",
+      "path": "/examples/concepts/replicating-lex",
       "code": "",
       "level": "simple",
       "group": "classification",
@@ -124,7 +124,7 @@
     {
       "title": "Combine Two Executors",
       "description": "A single function that wraps 2 executor functions",
-      "path": "/examples/combining.html",
+      "path": "/examples/combining",
       "code": "",
       "level": "simple",
       "group": "chains",
@@ -133,7 +133,7 @@
     {
       "title": "Story Writing with Sequential Composition",
       "description": "Takes an idea through outline to story using chained LLM calls.",
-      "path": "/examples/chains/sequential-composition.html",
+      "path": "/examples/chains/sequential-composition",
       "level": "simple",
       "group": "chains",
       "tags": []
@@ -141,7 +141,7 @@
     {
       "title": "Basic Self-Refinement Loop",
       "description": "An orchestration function that retries generating an answer until it includes a required word and is concise.",
-      "path": "/examples/chains/self-refinement.html",
+      "path": "/examples/chains/self-refinement",
       "level": "simple",
       "group": "chains",
       "tags": []
@@ -149,7 +149,7 @@
     {
       "title": "Write Code from Spec",
       "description": "A function that generates code from a specification.",
-      "path": "/examples/bots/write-code-from-spec.html",
+      "path": "/examples/bots/write-code-from-spec",
       "code": "",
       "level": "simple",
       "group": "code-generation",
@@ -158,7 +158,7 @@
     {
       "title": "Write Tests from Code",
       "description": "A function that generates Jest tests for the code you give it.",
-      "path": "/examples/bots/write-tests-from-code.html",
+      "path": "/examples/bots/write-tests-from-code",
       "code": "",
       "level": "simple",
       "group": "code-generation",
@@ -167,7 +167,7 @@
     {
       "title": "ReAct: Search + Calculator",
       "description": "An agent loop that reasons step by step and calls tools like search and a calculator until it reaches an answer.",
-      "path": "/examples/react.html",
+      "path": "/examples/react",
       "code": "",
       "level": "simple",
       "group": "agents",
@@ -176,7 +176,7 @@
     {
       "title": "Loading Prompts Remotely",
       "description": "Load prompt templates from a remote source at runtime, keeping prompt content out of your codebase.",
-      "path": "/examples/prompt/load-remote.html",
+      "path": "/examples/prompt/load-remote",
       "code": "",
       "level": "simple",
       "group": "prompts",
@@ -185,7 +185,7 @@
     {
       "title": "Separate Prompts from Business Logic",
       "description": "Keep prompt templates out of application code, with typed variables and prompts you can test without an API call.",
-      "path": "/examples/prompt/separate-prompts-from-code.html",
+      "path": "/examples/prompt/separate-prompts-from-code",
       "code": "",
       "level": "basic",
       "group": "prompts",
@@ -194,7 +194,7 @@
     {
       "title": "Retries and Timeouts",
       "description": "Make LLM calls production-safe with per-call timeouts, automatic retries with backoff, and typed error handling.",
-      "path": "/examples/concepts/retries-and-timeouts.html",
+      "path": "/examples/concepts/retries-and-timeouts",
       "code": "",
       "level": "simple",
       "group": "production",
@@ -203,7 +203,7 @@
     {
       "title": "LLM Calls in Lambda and Cron Jobs",
       "description": "Run typed LLM calls in AWS Lambda or scheduled jobs, with warm-start reuse and timeouts that respect the function limit.",
-      "path": "/examples/concepts/llm-in-lambda.html",
+      "path": "/examples/concepts/llm-in-lambda",
       "code": "",
       "level": "simple",
       "group": "production",
@@ -212,7 +212,7 @@
     {
       "title": "Prompt Injection Screening",
       "description": "A fail-closed guardrail: classify untrusted input before your real executor sees it, with an exact-match parser that blocks on anything unexpected.",
-      "path": "/examples/concepts/prompt-injection-screening.html",
+      "path": "/examples/concepts/prompt-injection-screening",
       "code": "",
       "level": "simple",
       "group": "production",

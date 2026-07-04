@@ -76,6 +76,6 @@ You can also:
 
 ### Related
 
-- [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function.html) — schema-driven prompt, validation, and return type in one
-- [Extract Structured Data](/examples/bots/extract.html) — caller-supplied schemas for slot filling
-- [Included Parsers](/parser/included-parsers.html) — the JSON parser reference
+- [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function) — schema-driven prompt, validation, and return type in one
+- [Extract Structured Data](/examples/bots/extract) — caller-supplied schemas for slot filling
+- [Included Parsers](/parser/included-parsers) — the JSON parser reference

@@ -41,13 +41,13 @@ const rendered = renderSupportReplyPrompt({
 
 1. **Exported constants** (this recipe) — right for most apps; prompts are versioned in git next to the code that uses them.
 2. **A dedicated prompts module** — one directory, all templates, easy to audit what your app says to models.
-3. **Loaded at runtime** — fetch templates from S3 or a CMS when non-engineers edit prompts or you want to change wording without deploying. See [Loading Prompts Remotely](/examples/prompt/load-remote.html).
+3. **Loaded at runtime** — fetch templates from S3 or a CMS when non-engineers edit prompts or you want to change wording without deploying. See [Loading Prompts Remotely](/examples/prompt/load-remote).
 
 The executor code is identical in all three — only where the template string comes from changes.
 
 ### Related
 
-- [Prompts](/prompt/index.html) — chat and text prompt reference
-- [Advanced Templates](/prompt/advanced.html) — partials, conditionals, and loops with Handlebars
-- [Loading Prompts Remotely](/examples/prompt/load-remote.html) — runtime-loaded templates
-- [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function.html) — typing the output side too
+- [Prompts](/prompt/) — chat and text prompt reference
+- [Advanced Templates](/prompt/advanced) — partials, conditionals, and loops with Handlebars
+- [Loading Prompts Remotely](/examples/prompt/load-remote) — runtime-loaded templates
+- [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function) — typing the output side too

@@ -86,4 +86,4 @@ const response = await piiDetector(input)
 
 The input and output of the `piiDetector` function are strongly typed, providing reliable structure and safety when integrating with the rest of your application.
 
-For a complete, step-by-step build of a function like this — schema, prompt, parser, and inferred types — see [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function.html).
+For a complete, step-by-step build of a function like this — schema, prompt, parser, and inferred types — see [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function).

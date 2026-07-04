@@ -7,7 +7,7 @@ description: "Turn an LLM into a typed boolean function in TypeScript: ask a que
 
 Sometimes you don't need a paragraph from an LLM — you need a boolean. "Does this comment contain a question?" "Is this ticket urgent?" "Should this PR run the expensive test suite?" This recipe builds a function that asks the LLM a question and returns an actual `true` or `false`, so the calling code can branch on it directly.
 
-The key is the [boolean parser](/parser/included-parsers.html): it converts the model's text answer ("yes", "No.", "true") into a real boolean, and throws if the response doesn't contain one — so your `if` statement never runs on a malformed answer.
+The key is the [boolean parser](/parser/included-parsers): it converts the model's text answer ("yes", "No.", "true") into a real boolean, and throws if the response doesn't contain one — so your `if` statement never runs on a malformed answer.
 
 #### Step 1 - Imports
 
@@ -45,14 +45,14 @@ Because the executor's return type is inferred from the parser, `yesNo` is a `Pr
 
 - **Pre-checks and gating** — decide whether to run an expensive step (moderation review, e2e tests, human escalation)
 - **Content filtering** — "does this message need a disclaimer?", "is this on-topic?"
-- **Input screening** — a first-pass gate on untrusted input; for the full fail-closed pattern see [Prompt Injection Screening](/examples/concepts/prompt-injection-screening.html)
+- **Input screening** — a first-pass gate on untrusted input; for the full fail-closed pattern see [Prompt Injection Screening](/examples/concepts/prompt-injection-screening)
 - **Workflow conditions** — a typed boolean drops straight into `if:` conditions in CI or any orchestration code
 
-For decisions with more than two outcomes, use the same shape with a category parser instead — see [Intent Classification](/examples/bots/intent.html) and [Conditional Logic and Branching](/examples/chains/conditional-logic-with-llms.html).
+For decisions with more than two outcomes, use the same shape with a category parser instead — see [Intent Classification](/examples/bots/intent) and [Conditional Logic and Branching](/examples/chains/conditional-logic-with-llms).
 
 ### Related
 
-- [Included Parsers](/parser/included-parsers.html) — the boolean parser and its options
-- [Conditional Logic and Branching](/examples/chains/conditional-logic-with-llms.html) — routing on multi-category LLM output
-- [Add Retries and Timeouts](/examples/concepts/retries-and-timeouts.html) — make decisions like this production-safe
-- [Error Handling](/misc/errors.html) — what the parser throws when no boolean is found
+- [Included Parsers](/parser/included-parsers) — the boolean parser and its options
+- [Conditional Logic and Branching](/examples/chains/conditional-logic-with-llms) — routing on multi-category LLM output
+- [Add Retries and Timeouts](/examples/concepts/retries-and-timeouts) — make decisions like this production-safe
+- [Error Handling](/misc/errors) — what the parser throws when no boolean is found

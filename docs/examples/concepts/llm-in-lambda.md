@@ -24,13 +24,13 @@ The enum-constrained parser means `category` is a typed union — the handler ca
 - **Budget retries inside the function timeout.** `numOfAttempts: 2` with `timeout: 20000` can take ~40+ seconds worst-case — make sure the Lambda timeout accommodates the whole retry budget, or lower it.
 - **Keys from environment/secrets manager**, never bundled. All providers accept keys via options (as shown) or standard env vars.
 - **Let failures fail.** In event-driven code, a thrown `LlmExeError` with the event going to your DLQ beats a swallowed error and a silent gap in your data.
-- **Log with hooks.** Attach `onComplete`/`onError` [hooks](/executor/hooks.html) at module scope for structured logs and latency metrics on every invocation.
+- **Log with hooks.** Attach `onComplete`/`onError` [hooks](/executor/hooks) at module scope for structured logs and latency metrics on every invocation.
 
 For deeper AWS integration — using llm-exe inside Step Functions state machines — that pattern works too; the executor is just an async function, so anything that can run Node can run it.
 
 ### Related
 
-- [Add Retries and Timeouts](/examples/concepts/retries-and-timeouts.html) — the timeout/retry options in depth
-- [Executor Hooks](/executor/hooks.html) — structured logging and latency metrics
-- [Intent Classification](/examples/bots/intent.html) — richer classification with custom parsers
-- [Get a Yes/No Decision from an LLM](/examples/bots/yes-no.html) — boolean decisions for workflow gating
+- [Add Retries and Timeouts](/examples/concepts/retries-and-timeouts) — the timeout/retry options in depth
+- [Executor Hooks](/executor/hooks) — structured logging and latency metrics
+- [Intent Classification](/examples/bots/intent) — richer classification with custom parsers
+- [Get a Yes/No Decision from an LLM](/examples/bots/yes-no) — boolean decisions for workflow gating

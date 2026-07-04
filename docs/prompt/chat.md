@@ -35,7 +35,7 @@ Chat prompts support more than just a basic text-based message. You can also add
 <<< ../../examples/prompt/chat.ts#exampleCreateChatPromptWithAssistant
 </GenericOutput>
 
-See [prompt templates](/prompt/advanced.html) for more advanced prompt usage.
+See [prompt templates](/prompt/advanced) for more advanced prompt usage.
 
 ## Chat Prompt Methods
 

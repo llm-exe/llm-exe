@@ -63,7 +63,7 @@ chatHistory.setUserMessage("Hey anyone there?");
 state.getDialogue("chatHistory").setAssistantMessage("Yep! What's up?");
 ```
 
-You can also create a standalone dialogue without state using `createDialogue`. See the [Dialogue](/state/dialogue.html) page for full details.
+You can also create a standalone dialogue without state using `createDialogue`. See the [Dialogue](/state/dialogue) page for full details.
 
 ## Saving State
 

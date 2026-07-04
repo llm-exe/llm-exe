@@ -105,6 +105,6 @@ const response2 = await extractInformation({
 
 ### Related
 
-- [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function.html) — the same schema-driven typing with a fixed schema
-- [Working With JSON](/examples/concepts/working-with-json.html) — patterns for reliable JSON output
-- [Replicating Amazon Lex](/examples/concepts/replicating-lex.html) — extraction as slot filling in a conversation
+- [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function) — the same schema-driven typing with a fixed schema
+- [Working With JSON](/examples/concepts/working-with-json) — patterns for reliable JSON output
+- [Replicating Amazon Lex](/examples/concepts/replicating-lex) — extraction as slot filling in a conversation

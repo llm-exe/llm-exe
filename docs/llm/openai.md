@@ -45,7 +45,7 @@ await llm.call(prompt);
 
 ## OpenAi-Specific Options
 
-In addition to the [generic options](/llm/generic.html), the following options are OpenAi-specific and can be passed in when creating a llm function.
+In addition to the [generic options](/llm/generic), the following options are OpenAi-specific and can be passed in when creating a llm function.
 
 | Option           | Type    | Default     | Description                                                    |
 | ---------------- | ------- | ----------- | -------------------------------------------------------------- |

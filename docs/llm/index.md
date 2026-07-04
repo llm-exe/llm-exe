@@ -42,11 +42,11 @@ const llm = useLlm("openai.chat.v1", {
 
 ### Options
 
-All providers accept the [generic options](/llm/generic.html) (timeout, retries, temperature, maxTokens, etc.). Each provider may also accept provider-specific options — see the individual provider pages below.
+All providers accept the [generic options](/llm/generic) (timeout, retries, temperature, maxTokens, etc.). Each provider may also accept provider-specific options — see the individual provider pages below.
 
 ### Deprecation Warnings
 
-Deprecated provider/model shorthands continue to resolve for compatibility, but emit a Node `DeprecationWarning` with code `LLM_EXE_DEPRECATED` on first use. See [Deprecation Warnings](/llm/deprecations.html).
+Deprecated provider/model shorthands continue to resolve for compatibility, but emit a Node `DeprecationWarning` with code `LLM_EXE_DEPRECATED` on first use. See [Deprecation Warnings](/llm/deprecations).
 
 ### Authentication
 
@@ -72,14 +72,14 @@ console.log(response.getResultText());
 
 Currently, llm-exe supports calling LLM's from:
 
-- [OpenAi](/llm/openai.html)
-- [Anthropic](/llm/anthropic.html)
-- [xAI](/llm/xai.html)
-- [Google](/llm/gemini.html)
-- [AWS Bedrock](/llm/bedrock/index.html)
-- [Ollama](/llm/ollama.html)
-- [Deepseek](/llm/deepseek.html)
-- [Custom Providers](/llm/custom.html)
+- [OpenAi](/llm/openai)
+- [Anthropic](/llm/anthropic)
+- [xAI](/llm/xai)
+- [Google](/llm/gemini)
+- [AWS Bedrock](/llm/bedrock/)
+- [Ollama](/llm/ollama)
+- [Deepseek](/llm/deepseek)
+- [Custom Providers](/llm/custom)
 
 ## Adding Custom LLM's
 
@@ -90,4 +90,4 @@ You can create custom LLM configurations using `useLlmConfiguration`. This allow
 - Work with corporate proxies
 - Add support for new providers
 
-See the [Custom Provider Configuration](/llm/custom.html) guide for details.
+See the [Custom Provider Configuration](/llm/custom) guide for details.

@@ -864,7 +864,7 @@ PR body truncation: capped at 65000 characters.
 | Triggers | `release` `published` (must target `main`) and dispatch (must run from `development` or `main`) |
 | Auth | OIDC -> assume `vars.AWS_ROLE_DEPLOY_ARN` in `vars.AWS_REGION` |
 | Versioning | `PACKAGE_ID = <package.json version>-<unix-timestamp>`; injected into `docs/.env` as `VITE_PACKAGE_ID` so the built site knows its own identifier. |
-| Build | `npm run docs:update-providers && npm run docs:build`. Output at `docs/.vitepress/dist`. |
+| Build | `npm run docs:update-providers && npm run docs:build`. The `docs:build` script auto-runs `postdocs:build` (`node docs/.vitepress/scripts/verify-docs-build.mjs`), which fails the build if the sitemap has fewer than 40 pages or expected pages are missing. Output at `docs/.vitepress/dist`. |
 | Ship | Copy to `s3://<bucket>/docs/<PACKAGE_ID>/`. Pull current CloudFront distribution config, set `.Origins.Items[0].OriginPath = "/docs/<PACKAGE_ID>"`, update with the captured ETag, invalidate `/*`. |
 
 ### 9.18. `test-github-action.yml` - Smoke test for llm-exe GitHub Action
@@ -889,7 +889,7 @@ This workflow is standalone: it does not interact with any other workflow in the
 | Permissions | `contents: read` only; no App token, no bot identity, no secrets referenced |
 | Timeout | 15 minutes |
 | Concurrency | not set |
-| Steps | `actions/checkout@v5` -> `./.github/actions/setup-node` -> `npm install` -> `npm run docs:update-providers && npm run docs:build` -> background `npx serve@14 docs/.vitepress/dist -l 4173` with a 30-second poll loop against `http://127.0.0.1:4173/` -> `npx pa11y-ci@3 --config .github/a11y/pa11yci.json` -> stop-server step gated `if: always()` that kills the pid recorded at `/tmp/serve.pid`. |
+| Steps | `actions/checkout@v5` -> `./.github/actions/setup-node` -> `npm install` -> `npm run docs:update-providers && npm run docs:build` (the latter auto-runs the `postdocs:build` sitemap guard) -> background `npx serve@14 docs/.vitepress/dist -l 4173` with a 30-second poll loop against `http://127.0.0.1:4173/` -> `npx pa11y-ci@3 --config .github/a11y/pa11yci.json` -> stop-server step gated `if: always()` that kills the pid recorded at `/tmp/serve.pid`. |
 | External calls | `registry.npmjs.org` (npm + npx) and the loopback static server. No outbound to GitHub APIs, Anthropic, AWS, Microsoft Graph, or any provider. |
 | Output | Job pass/fail and pa11y-ci stdout in the run log. Does not open PRs, file issues, or commit anything. |
 | Security note | The workflow's header comment explicitly states it does not consume any user-controlled `github.event.*` input inside `run:` blocks. The URL list and Pa11y config live under `.github/a11y/`, which is repo-owned. |

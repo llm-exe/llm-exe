@@ -60,21 +60,19 @@
   "license": "MIT",
   "dependencies": {
     "@aws-crypto/sha256-js": "5.2.0",
-    "@aws-sdk/credential-providers": "3.806.0",
+    "@aws-sdk/credential-providers": "3.1079.0",
     "@smithy/signature-v4": "5.1.0",
     "exponential-backoff": "3.1.2",
-    "handlebars": "4.7.8",
+    "handlebars": "4.7.9",
     "json-schema-to-ts": "3.1.1",
     "jsonschema": "1.5.0",
-    "shiki": "^3.8.1",
-    "uuid": "10.0.0"
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
     "@tsconfig/recommended": "1.0.8",
     "@types/jest": "^29.5.14",
     "@types/node": "^18.0.0",
     "@types/prettier": "2.6.0",
-    "@types/uuid": "10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.32.0",
     "@typescript-eslint/parser": "^8.32.0",
     "concurrently": "^8.2.2",
@@ -85,6 +83,7 @@
     "eslint-plugin-prettier": "^4.2.1",
     "jest": "29.7.0",
     "prettier": "3.5.3",
+    "shiki": "^3.8.1",
     "ts-jest": "29.3.2",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.16",

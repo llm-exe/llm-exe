@@ -1,18 +1,39 @@
+// Assigning these as keys walks or replaces the prototype chain instead of
+// setting a plain property ("__proto__.x" pollutes Object.prototype). They can
+// never be legitimate config paths, so they are dropped entirely.
+const PROTOTYPE_POLLUTING_KEYS = new Set([
+  "__proto__",
+  "constructor",
+  "prototype",
+]);
+
+function isUnsafeKeyPath(key: string): boolean {
+  return key.split(".").some((segment) => PROTOTYPE_POLLUTING_KEYS.has(segment));
+}
+
 export function convertDotNotation(
   obj: Record<string, any>
 ): Record<string, any> {
   const result: Record<string, any> = {};
-  
+
   // Process all non-dot notation keys first to establish base structure
   for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key) && !key.includes(".")) {
+    if (
+      Object.prototype.hasOwnProperty.call(obj, key) &&
+      !key.includes(".") &&
+      !PROTOTYPE_POLLUTING_KEYS.has(key)
+    ) {
       result[key] = obj[key];
     }
   }
-  
+
   // Then process dot notation keys
   for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key) && key.includes(".")) {
+    if (
+      Object.prototype.hasOwnProperty.call(obj, key) &&
+      key.includes(".") &&
+      !isUnsafeKeyPath(key)
+    ) {
       const keys = key.split(".");
       let currentLevel = result;
 

@@ -1,6 +1,31 @@
 import { convertDotNotation } from "@/utils/modules/convertDotNotation";
 
 describe("convertDotNotation", () => {
+  it("drops prototype-polluting dot-notation keys without touching Object.prototype", () => {
+    const input = {
+      "__proto__.polluted": "yes",
+      "a.constructor.polluted": "yes",
+      "b.prototype.polluted": "yes",
+      "a.b": "kept",
+    };
+
+    const result = convertDotNotation(input);
+
+    expect(result).toEqual({ a: { b: "kept" } });
+    expect(({} as any).polluted).toBeUndefined();
+    expect(Object.prototype).not.toHaveProperty("polluted");
+  });
+
+  it("drops a plain __proto__ key instead of replacing the result prototype", () => {
+    const input = JSON.parse('{"__proto__": {"polluted": "yes"}, "a": 1}');
+
+    const result = convertDotNotation(input);
+
+    expect(result).toEqual({ a: 1 });
+    expect((result as any).polluted).toBeUndefined();
+    expect(({} as any).polluted).toBeUndefined();
+  });
+
   it("should convert single-level dot notation to nested objects", () => {
     const input = { "a.b": 1, "c.d.e": 2 };
     const expectedOutput = { a: { b: 1 }, c: { d: { e: 2 } } };

@@ -80,6 +80,47 @@ describe("apiRequestWrapper", () => {
     });
   });
 
+  it("should redact every provider credential option from metadata", () => {
+    const secretOptions = {
+      openAiApiKey: "sk-openai",
+      anthropicApiKey: "sk-anthropic",
+      geminiApiKey: "sk-gemini",
+      xAiApiKey: "sk-xai",
+      deepseekApiKey: "sk-deepseek",
+      ollamaApiKey: "sk-ollama",
+      apiKey: "sk-generic",
+      awsSecretKey: "aws-secret",
+      awsAccessKey: "aws-access",
+      awsSessionToken: "aws-session",
+      password: "hunter2",
+      credentials: "creds",
+    };
+    const apiRequest = apiRequestWrapper(
+      mockConfig,
+      { ...mockOptions, ...secretOptions },
+      mockHandler,
+      []
+    );
+    const metadata = apiRequest.getMetadata();
+    for (const [key, value] of Object.entries(secretOptions)) {
+      expect(metadata).not.toHaveProperty(key);
+      expect(JSON.stringify(metadata)).not.toContain(value);
+    }
+  });
+
+  it("should keep non-secret options in metadata", () => {
+    const apiRequest = apiRequestWrapper(
+      mockConfig,
+      { ...mockOptions, model: "gpt-4o-mini", maxTokens: 512 },
+      mockHandler,
+      []
+    );
+    const metadata = apiRequest.getMetadata();
+    expect(metadata.model).toBe("gpt-4o-mini");
+    expect(metadata.maxTokens).toBe(512);
+    expect(metadata.traceId).toBe("test-trace-id");
+  });
+
   it("should return the correct traceId", () => {
     const apiRequest = setupAPIRequestWrapper();
     expect(apiRequest.getTraceId()).toBe("test-trace-id");

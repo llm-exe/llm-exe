@@ -11,6 +11,16 @@ import { emitDeprecationWarning } from "@/llm/_utils.deprecationWarning";
 
 // const doNotRetryErrorMessages: string[] = [];
 
+/**
+ * Matches option keys that hold credentials so getMetadata() never exposes
+ * them to hooks or logs. Pattern-based (not a per-provider list) so that new
+ * providers are redacted by default — the previous explicit destructure
+ * silently leaked geminiApiKey/xAiApiKey/deepseekApiKey when those providers
+ * were added.
+ */
+export const SECRET_OPTION_KEY_PATTERN =
+  /api[-_]?key|secret|access[-_]?key|session[-_]?token|password|credential/i;
+
 export function apiRequestWrapper<T extends Record<string, any>, I>(
   config: Config<any>,
   options: Record<string, any>,
@@ -93,13 +103,12 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
   }
 
   function getMetadata() {
-    const {
-      awsSecretKey,
-      awsAccessKey,
-      openAiApiKey,
-      anthropicApiKey,
-      ...rest
-    } = options;
+    const rest: Record<string, any> = {};
+    for (const [key, value] of Object.entries(options)) {
+      if (!SECRET_OPTION_KEY_PATTERN.test(key)) {
+        rest[key] = value;
+      }
+    }
     return Object.assign(
       {
         traceId: getTraceId(),

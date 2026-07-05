@@ -2,7 +2,6 @@ import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
 import { SignatureV4 } from "@smithy/signature-v4";
 import { HttpRequest } from "@smithy/protocol-http";
 import { Sha256 } from "@aws-crypto/sha256-js";
-import { runWithTemporaryEnv } from "@/utils/modules/runWithTemporaryEnv";
 import { LlmExeError } from "@/errors";
 
 type AuthProps = {
@@ -35,23 +34,23 @@ export async function getAwsAuthorizationHeaders(
     );
   }
   
-  const providerChain = fromNodeProviderChain();
-  const credentials = await runWithTemporaryEnv(
-    () => {
-      // Only set env vars for non-empty string values
-      // Prevents accidentally clearing existing AWS credentials
-      if (props.awsAccessKey && typeof props.awsAccessKey === 'string') {
-        process.env["AWS_ACCESS_KEY_ID"] = props.awsAccessKey;
-      }
-      if (props.awsSecretKey && typeof props.awsSecretKey === 'string') {
-        process.env["AWS_SECRET_ACCESS_KEY"] = props.awsSecretKey;
-      }
-      if (props.awsSessionToken && typeof props.awsSessionToken === 'string') {
-        process.env["AWS_SESSION_TOKEN"] = props.awsSessionToken;
-      }
-    },
-    () => providerChain()
-  );
+  // Explicit per-call keys go straight to the signer as a static credentials
+  // object. Routing them through fromNodeProviderChain required mutating
+  // process.env, which is process-global: concurrent calls with different
+  // keys could sign with each other's credentials. The provider chain is only
+  // consulted when no explicit key pair is configured (partial pairs are
+  // ignored — an access key without a secret cannot sign anything), so it
+  // reads the real, untouched environment.
+  const credentials =
+    props.awsAccessKey && props.awsSecretKey
+      ? {
+          accessKeyId: props.awsAccessKey,
+          secretAccessKey: props.awsSecretKey,
+          ...(props.awsSessionToken
+            ? { sessionToken: props.awsSessionToken }
+            : {}),
+        }
+      : await fromNodeProviderChain()();
 
   const signer = new SignatureV4({
     service: "bedrock",

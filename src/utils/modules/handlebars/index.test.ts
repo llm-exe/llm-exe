@@ -25,7 +25,11 @@ describe("useHandlebars", () => {
     expect(hbsInstance.handlebars).toHaveProperty("helpers");
     expect(hbsInstance.handlebars).toHaveProperty("partials");
     expect(hbsInstance.handlebars).toHaveProperty("VERSION");
-    expect(hbsInstance.handlebars.VERSION).toEqual("4.7.8");
+    // Assert against the installed package so security bumps don't require
+    // touching this test; the point is that hbs wraps real handlebars.
+    expect(hbsInstance.handlebars.VERSION).toEqual(
+      require("handlebars/package.json").version
+    );
   });
 
 });

@@ -550,5 +550,24 @@ describe("llm-exe:parser/JsonParser", () => {
       const parser = new JsonParser({ match: "extract" });
       expect(parser.parse('open { set then {"b":2} end')).toEqual({ b: 2 });
     });
+
+    it("recovers nested JSON when an enclosing balanced block is not valid JSON", () => {
+      // The outer braces balance but the block is not JSON; the inner object is.
+      const parser = new JsonParser({ match: "extract" });
+      expect(parser.parse('{ not json but contains {"a":1} }')).toEqual({
+        a: 1,
+      });
+    });
+
+    it("handles a long run of unbalanced openers in linear time", () => {
+      // Regression guard: the previous scanner restarted from every opener,
+      // so 50k unmatched `{` cost ~50k full-string rescans (seconds of
+      // blocking). The single-pass scanner finishes in milliseconds.
+      const parser = new JsonParser({ match: "extract" });
+      const input = "{".repeat(50_000) + '{"a":1}';
+      const startedAt = Date.now();
+      expect(parser.parse(input)).toEqual({ a: 1 });
+      expect(Date.now() - startedAt).toBeLessThan(1000);
+    });
   });
 });

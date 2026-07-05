@@ -204,35 +204,56 @@ export abstract class UseExecutorsBase<
           a.visibilityHandler(_input, _attributes))
     );
   }
+  /**
+   * callFunction is the dispatch surface for LLM tool-call output, so it
+   * enforces the same gates as getVisibleFunctions(): a handler hidden by its
+   * visibilityHandler is reported with the identical not-found error (callers
+   * must not be able to probe for hidden functions), and the handler's
+   * declared validateInput must pass before execution. Failures throw a typed
+   * LlmExeError; errors thrown by the handler itself propagate unchanged.
+   */
   async callFunction(
     name: string,
-    input: string
+    input: string,
+    attributes: Record<string, any> = {}
   ): Promise<{
     result: any;
     attributes: any;
   }> {
-    try {
-      const handler = this.getFunction(name);
-      if (!handler) {
-        throw new LlmExeError(
-          `[invalid handler] The handler (${name}) does not exist.`,
-          {
-            code: "callable.handler_not_found",
-            context: {
-              operation: "UseExecutorsBase.callFunction",
-              functionName: name,
-              availableFunctions: this.handlers.map((h) => h.name),
-            },
-          }
-        );
-      }
-      const result = await handler.execute(ensureInputIsObject(input) as any);
-      return result;
-    } catch (error: any) {
-      // Public return shape preserved: callFunction returns the message string
-      // on failure. The typed error stays internal-only for now.
-      return error.message;
+    const handler = this.getFunction(name);
+    if (!handler || !handler.visibilityHandler(input, attributes)) {
+      throw new LlmExeError(
+        `[invalid handler] The handler (${name}) does not exist.`,
+        {
+          code: "callable.handler_not_found",
+          context: {
+            operation: "UseExecutorsBase.callFunction",
+            functionName: name,
+            availableFunctions: this.getVisibleFunctions(
+              input,
+              attributes
+            ).map((h) => h.name),
+          },
+        }
+      );
     }
+    const validation = await handler.validateInput(
+      ensureInputIsObject(input) as any
+    );
+    if (!validation.result) {
+      throw new LlmExeError(
+        `[invalid input] Input validation failed for handler (${name}).`,
+        {
+          code: "callable.validation_failed",
+          context: {
+            operation: "UseExecutorsBase.callFunction",
+            functionName: name,
+            received: validation.attributes?.error,
+          },
+        }
+      );
+    }
+    return handler.execute(ensureInputIsObject(input) as any);
   }
   async validateFunctionInput(name: string, input: string) {
     try {
@@ -255,7 +276,10 @@ export abstract class UseExecutorsBase<
       );
       return result;
     } catch (error: any) {
-      return { result: false, attributes: { error: error.message } };
+      return {
+        result: false,
+        attributes: { error: error?.message ?? String(error) },
+      };
     }
   }
 }

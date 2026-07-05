@@ -50,6 +50,12 @@ export abstract class BaseState {
   }
 
   setAttribute(key: string, value: any) {
+    // These keys write to the prototype chain instead of setting a plain
+    // property, letting one state's attribute leak into every object.
+    assert(
+      !["__proto__", "constructor", "prototype"].includes(key),
+      `Invalid attribute key (${key})`
+    );
     this.attributes[key] = value;
   }
 

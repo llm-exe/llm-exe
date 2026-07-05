@@ -199,6 +199,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
    * @return ChatPrompt so it can be chained.
    */
   addFromHistory(history: IChatMessages): ChatPrompt<I> {
+    const firstAddedIndex = this.messages.length;
     if (history && Array.isArray(history)) {
       for (const message of history) {
         switch (message.role) {
@@ -219,6 +220,17 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
             break;
         }
       }
+    }
+    // History content is runtime conversation data — assistant entries are raw
+    // LLM output — never developer-authored template source. Mark it so
+    // format() does not compile it with the template engine, matching how the
+    // DialogueHistory placeholder path already treats history.
+    for (
+      let index = firstAddedIndex;
+      index < this.messages.length;
+      index += 1
+    ) {
+      this.messages[index].noTemplate = true;
     }
     return this;
   }
@@ -382,14 +394,16 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
       } else if (message.role === "function") {
         messagesOut.push(
           Object.assign({}, message, {
-            content: this.replaceTemplateString(message.content, replacements, {
-              partials: this.partials,
-              helpers: this.helpers,
-            }),
+            content: message.noTemplate
+              ? message.content
+              : this.replaceTemplateString(message.content, replacements, {
+                  partials: this.partials,
+                  helpers: this.helpers,
+                }),
           })
         );
       } else {
-        if (safeToParseTemplate.includes(message.role)) {
+        if (safeToParseTemplate.includes(message.role) && !message.noTemplate) {
           if (Array.isArray(message.content)) {
             const content = message.content.map((m) =>
               m.text
@@ -465,7 +479,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
         }
       }
     }
-    return messagesOut;
+    return this._stripInternalMessageFlags(messagesOut);
   }
 
   /**
@@ -566,18 +580,20 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
       } else if (message.role === "function") {
         messagesOut.push(
           Object.assign({}, message, {
-            content: await this.replaceTemplateStringAsync(
-              message.content,
-              replacements,
-              {
-                partials: this.partials,
-                helpers: this.helpers,
-              }
-            ),
+            content: message.noTemplate
+              ? message.content
+              : await this.replaceTemplateStringAsync(
+                  message.content,
+                  replacements,
+                  {
+                    partials: this.partials,
+                    helpers: this.helpers,
+                  }
+                ),
           })
         );
       } else {
-        if (safeToParseTemplate.includes(message.role)) {
+        if (safeToParseTemplate.includes(message.role) && !message.noTemplate) {
           if (Array.isArray(message.content)) {
             const content = [];
 
@@ -659,6 +675,20 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
         }
       }
     }
-    return messagesOut;
+    return this._stripInternalMessageFlags(messagesOut);
+  }
+
+  /**
+   * noTemplate is prompt-internal bookkeeping; messages handed to the LLM
+   * must carry only provider-relevant fields.
+   */
+  private _stripInternalMessageFlags(messages: IChatMessages): IChatMessages {
+    return messages.map((message) => {
+      if ("noTemplate" in message) {
+        const { noTemplate: _noTemplate, ...rest } = message;
+        return rest as IChatMessage;
+      }
+      return message;
+    });
   }
 }

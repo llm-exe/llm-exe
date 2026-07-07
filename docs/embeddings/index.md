@@ -1,3 +1,8 @@
+---
+title: "Generate Text Embeddings in TypeScript | llm-exe"
+description: "Generate text embeddings in TypeScript with llm-exe using OpenAI, Amazon Titan, or Cohere. One createEmbedding API with built-in retries and timeouts."
+---
+
 # Embeddings
 
 Embeddings is a wrapper around various embeddings providers, making your function implementations vendor-agnostic.

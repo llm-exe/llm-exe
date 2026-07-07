@@ -1,3 +1,8 @@
+---
+title: "Use Anthropic Claude in TypeScript with llm-exe"
+description: "Connect Anthropic Claude models like claude-sonnet-4-6 to your TypeScript app with llm-exe. Covers setup, API key authentication, and Claude-specific options."
+---
+
 # Anthropic
 
 When using Anthropic models, llm-exe will make POST requests to `https://api.anthropic.com/v1/messages`.

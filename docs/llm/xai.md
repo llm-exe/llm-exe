@@ -1,3 +1,8 @@
+---
+title: "Use xAI Grok Models in TypeScript with llm-exe"
+description: "Call xAI Grok models like grok-4 and grok-3-mini from TypeScript with llm-exe. Covers typed model shorthands, API key setup, and xAI-specific options."
+---
+
 # xAI
 
 When using xAI models, llm-exe will make POST requests to `https://api.x.ai/v1/chat/completions`. All models are supported if you pass `xai.chat.v1` as the first argument, and then specify a model in the options.

@@ -1,3 +1,8 @@
+---
+title: "Use Meta Llama on AWS Bedrock in TypeScript | llm-exe"
+description: "Run Meta Llama models on AWS Bedrock from TypeScript with llm-exe. Covers Bedrock model IDs, AWS credentials, and Llama-specific options like maxTokens."
+---
+
 # Meta
 
 When using Meta models via AWS Bedrock, llm-exe will make POST requests to `https://bedrock-runtime.us-west-2.amazonaws.com/model/{MODEL_ID}/invoke`.

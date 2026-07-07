@@ -1,6 +1,8 @@
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { replaceTemplateString } from "@/utils/modules/replaceTemplateString";
 import { anthropicPromptSanitize } from "../anthropic/promptSanitize";
+import { isImageUrlContentBlock } from "../_utils/imageContent";
+import { LlmExeError } from "@/errors";
 import { Config } from "@/types";
 import { OutputAnthropicClaude3Chat } from "@/llm/output/claude";
 import { OutputMetaLlama3Chat } from "@/llm/output/llama";
@@ -29,7 +31,12 @@ const amazonAnthropicChatV1: Config = {
   mapBody: {
     prompt: {
       key: "messages",
-      transform: anthropicPromptSanitize,
+      transform: (v: any, i: Record<string, any>, o: Record<string, any>) =>
+        anthropicPromptSanitize(v, i, o, {
+          provider: "amazon:anthropic.chat",
+          // Bedrock's invoke API only accepts base64 image sources
+          allowImageUrlSources: false,
+        }),
     },
     topP: {
       key: "top_p",
@@ -88,6 +95,24 @@ const amazonMetaChatV1: Config = {
         if (typeof messages === "string") {
           return messages;
         } else {
+          const hasImageContent = messages.some(
+            (message: any) =>
+              Array.isArray(message?.content) &&
+              message.content.some(isImageUrlContentBlock)
+          );
+          if (hasImageContent) {
+            throw new LlmExeError("Image content is not supported", {
+              code: "prompt.invalid_messages",
+              context: {
+                operation: "amazonMetaChatV1.prompt.transform",
+                provider: "amazon:meta.chat",
+                received: "a message with image content",
+                expected: "text-only messages",
+                resolution:
+                  "This model accepts a flattened text prompt and cannot receive images.",
+              },
+            });
+          }
           return replaceTemplateString(`{{>DialogueHistory key='messages'}}`, {
             messages,
           });

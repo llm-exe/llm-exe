@@ -252,4 +252,36 @@ describe("google configuration", () => {
       });
     });
   });
+
+  describe("image content through mapBody", () => {
+    it("converts image_url blocks into inlineData parts in the request body", () => {
+      const body = mapBody(googleChatV1.mapBody, {
+        model: "gemini-2.0-flash",
+        prompt: [
+          { role: "user", content: "intro" },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "What is in this image?" },
+              {
+                type: "image_url",
+                image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(body.contents).toEqual([
+        {
+          role: "user",
+          parts: [
+            { text: "intro" },
+            { text: "What is in this image?" },
+            { inlineData: { mimeType: "image/png", data: "iVBORw0KGgo=" } },
+          ],
+        },
+      ]);
+    });
+  });
 });

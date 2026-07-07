@@ -1,3 +1,8 @@
+---
+title: "Generate TypeScript Code from a Spec with an LLM | llm-exe"
+description: "Turn a plain-text specification into working TypeScript code with an LLM, using a markdown code block parser to reliably extract the generated function."
+---
+
 # **Write Code From Spec**
 
 This example shows how to create a simple LLM function that generates TypeScript code from a plain-text specification. It's ideal when you want a quick implementation based on a natural language prompt.

@@ -11,7 +11,7 @@ Core pattern: **Prompt → LLM → Parser → Typed Result** — make LLM calls 
 - **Provider-agnostic.** One interface, any LLM. We internally normalize messages, responses, and tool calls so application code never touches provider-specific shapes.
 - **TypeScript-first. This is non-negotiable.** Full type inference must flow from prompt input → parser output → executor return type. No `any` types. No broken inference chains. No manual casting. The type safety on LLM responses is what makes llm-exe valuable — tiny leaks in the response types destroy the entire value prop.
 - **Modular.** Four pillars — Prompt, LLM, Parser, Executor — each works independently and composes together. Respect module boundaries: prompt logic in prompts, parsing in parsers, orchestration in executors, provider calls in LLM.
-- **Text-only scope** (currently). We support tool/function calls via our normalized interface, but we are text-in/text-out. No image, audio, or video support at this time.
+- **Text-out scope** (currently). We support tool/function calls via our normalized interface, and image *input* via `image_url` content blocks (https URL or base64 `data:` URI, converted to each provider's native shape at the provider-config layer). Output is text-only — no image generation, audio, or video support at this time.
 
 ## Feature Evaluation — Read This Before Adding Features
 

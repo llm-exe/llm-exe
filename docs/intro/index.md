@@ -1,3 +1,8 @@
+---
+title: "Build LLM-Powered Functions in TypeScript | llm-exe"
+description: "See how llm-exe simplifies LLM-powered functions in TypeScript by structuring prompts, executors, and parsers into reusable, testable components."
+---
+
 # Introduction
 
 When writing llm-powered functions, you'll end up repeating a lot of code, and will end up needing some structure. A prompt may seem simple, but as your instructions grow, you may end up needing to add some more advanced abstractions. Likewise, if you're calling an llm in various functions in your code, you'll end up writing some wrapper around the llm so that you can share functionality like logging, collecting metrics, handling failures/timeouts/retry/etc. Furthermore, the LLM will be returning a string that you may need to validate or parse into a usable data type. Will you be duplicating code? Or creating sharable output parsers.

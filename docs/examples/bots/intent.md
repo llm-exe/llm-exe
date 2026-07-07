@@ -1,3 +1,8 @@
+---
+title: "Intent Classification with LLMs in TypeScript | llm-exe"
+description: "Classify user intent from chat messages with an LLM in TypeScript, using a custom output parser to return a typed intent and confidence score you can act on."
+---
+
 ## Intent 
 
 In this example, we will create a function that is able to tell the intent of the user's most recent message in the conversation.
@@ -76,3 +81,10 @@ const response2 = await identifyIntent().execute({
 
 ### Complete File
 <<< ../../../examples/intentBot.ts#file
+
+### Related
+
+- [Conditional Logic and Branching](/examples/chains/conditional-logic-with-llms) — route to different executors based on the detected intent
+- [Get a Yes/No Decision from an LLM](/examples/bots/yes-no) — the two-outcome version of this pattern
+- [Replicating Amazon Lex](/examples/concepts/replicating-lex) — intent detection plus slot filling
+- [Custom Parsers](/parser/custom) — how the custom output parser here works

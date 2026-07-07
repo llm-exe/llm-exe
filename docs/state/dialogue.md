@@ -1,3 +1,8 @@
+---
+title: "Manage Chat History and Conversation State in TypeScript | llm-exe"
+description: "Use the Dialogue class to manage chat history for multi-turn LLM conversations in TypeScript. Add messages, load history, and capture LLM output automatically."
+---
+
 # Dialogue
 
 The `Dialogue` class manages conversation history for multi-turn LLM interactions. It's used internally by `state`, but you can also use it independently with `createDialogue`.

@@ -262,6 +262,31 @@ Line 3: AKIAIOSFODNN7EXAMPLE`;
       expect(out).not.toContain("AIzaSyntheticGoogleApiKeyAAAAAAAAAAAAAA");
     });
   });
+
+  // x-api-key is the auth header Anthropic (and others) use, and providers
+  // routinely echo request headers back inside JSON error bodies — which
+  // apiRequest scrubs before storing in error context. These pin the two
+  // working shapes and document the leaking one (issue #652).
+  describe("x-api-key across shapes", () => {
+    it("fully redacts x-api-key in the header/colon form", () => {
+      const out = maskApiKeys("request header x-api-key: shhh-secret-value");
+      expect(out).not.toContain("shhh-secret-value");
+      expect(out).toBe("request header x-api-key: [redacted]");
+    });
+
+    it("fully redacts the api_key JSON field", () => {
+      const out = maskApiKeys('{"api_key":"shhh-secret-value"}');
+      expect(out).not.toContain("shhh-secret-value");
+    });
+
+    // BUG (issue #652): the JSON pattern anchors the opening quote directly
+    // before `api`, so the `x-` prefix on `"x-api-key"` breaks the match and
+    // a short (non-token-shaped) secret leaks. Flip to `it` once #652 is fixed.
+    it.failing("should fully redact x-api-key in a JSON body", () => {
+      const out = maskApiKeys('{"x-api-key":"shhh-secret-value"}');
+      expect(out).not.toContain("shhh-secret-value");
+    });
+  });
 });
 
 describe("safeRequestUrl", () => {

@@ -1,3 +1,8 @@
+---
+title: "Run Local LLMs with Ollama in TypeScript | llm-exe"
+description: "Run local models like deepseek-r1 through Ollama in TypeScript with llm-exe. Covers endpoint configuration, model selection, and direct LLM calls."
+---
+
 # Ollama
 
 When using Ollama models, llm-exe will make POST requests to `http://localhost:11434`. You can also override this by setting the environment variable `OLLAMA_ENDPOINT`. All models are supported if you pass `ollama.chat.v1` as the first argument, and then specify a model in the options (assuming you have downloaded this model).

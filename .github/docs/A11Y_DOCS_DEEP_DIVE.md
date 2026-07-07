@@ -112,7 +112,7 @@ flowchart TB
         s1["actions/checkout@v5"]:::step
         s2["./.github/actions/setup-node\n(Node 24, cache: npm)"]:::step
         s3["npm install"]:::step
-        s4["npm run docs:update-providers\n&& npm run docs:build"]:::step
+        s4["npm run docs:update-providers\n&& npm run docs:build (auto postdocs:build guard)"]:::step
         s5["serve docs/.vitepress/dist on :4173\nbackgrounded; poll up to 30s"]:::step
         s6["npx pa11y-ci@3\n--config .github/a11y/pa11yci.json"]:::step
         s7["Stop the static server\n(if: always())"]:::step
@@ -147,6 +147,7 @@ sequenceDiagram
     J->>N: setup-node@v6 via composite (node 24, cache npm)
     J->>N: npm install
     J->>V: npm run docs:update-providers + npm run docs:build
+    V->>V: postdocs:build guard (verify-docs-build.mjs checks sitemap)
     V-->>J: docs/.vitepress/dist
     J->>S: spawn serve@14 dist -l 4173 (background)
     Note over J,S: poll http://127.0.0.1:4173/ for up to 30 seconds
@@ -288,7 +289,7 @@ flowchart TB
     F1 --> F1E["job fails before build step"]:::effect
     F1E --> F1X["check package-lock alignment; rerun"]:::fix
 
-    F2["docs build fails\n(VitePress error)"]:::fail
+    F2["docs build fails\n(VitePress error, or postdocs:build\nguard rejects an incomplete sitemap)"]:::fail
     F2 --> F2E["no dist/ produced; serve step fails"]:::effect
     F2E --> F2X["reproduce locally with npm run docs:build"]:::fix
 
@@ -325,7 +326,7 @@ flowchart LR
     K7["Identity"]:::k --- V7["default GITHUB_TOKEN (read-only)"]:::v
     K8["Runner"]:::k --- V8["ubuntu-latest"]:::v
     K9["Node version"]:::k --- V9["24 (via composite setup-node)"]:::v
-    K10["Build commands"]:::k --- V10["npm run docs:update-providers && npm run docs:build"]:::v
+    K10["Build commands"]:::k --- V10["npm run docs:update-providers && npm run docs:build (auto postdocs:build guard)"]:::v
     K11["Static server"]:::k --- V11["npx serve@14 docs/.vitepress/dist -l 4173"]:::v
     K12["Scanner"]:::k --- V12["npx pa11y-ci@3"]:::v
     K13["Config file"]:::k --- V13[".github/a11y/pa11yci.json"]:::v

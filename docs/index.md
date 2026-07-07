@@ -12,10 +12,10 @@ hero:
   actions:
     - theme: brand
       text: Get Started
-      link: /intro/install.html
+      link: /intro/install
     - theme: alt
       text: See Examples
-      link: /examples
+      link: /examples/
     - theme: text
       text: Github
       link: https://github.com/llm-exe/llm-exe
@@ -311,7 +311,7 @@ Create powerful AI agents with llm-exe's composable architecture:
 
 No complex agent frameworks. Just clean TypeScript composition.
 
-[See Agent Examples →](/examples#reasoning-agent)
+[See Agent Examples →](/examples/#reasoning-agent)
 -->
 
 ## <span class="testimonials-title">Why Developers Love llm-exe</span>
@@ -341,8 +341,8 @@ No complex agent frameworks. Just clean TypeScript composition.
   <h2>Ready to Build Something Incredible?</h2>
   <p>Stop wrestling with LLM APIs. Start shipping AI features that actually work.</p>
   <div class="cta-buttons">
-    <a href="/intro/install.html" class="cta-primary">Get Started →</a>
-    <a href="/examples" class="cta-secondary">Browse Examples</a>
+    <a href="/intro/install" class="cta-primary">Get Started →</a>
+    <a href="/examples/" class="cta-secondary">Browse Examples</a>
   </div>
 </div>
 </div>

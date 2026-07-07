@@ -1,5 +1,17 @@
+import { isImageUrlContentBlock } from "../_utils/imageContent";
+
 export function openaiPromptMessageCallback(_message: any) {
   let message = { ..._message };
+
+  if (Array.isArray(message.content)) {
+    // the previous loose content typing accepted image blocks with any
+    // `type` (e.g. "image"); normalize them to OpenAI's "image_url"
+    message.content = message.content.map((block: any) =>
+      isImageUrlContentBlock(block) && block.type !== "image_url"
+        ? { ...block, type: "image_url" }
+        : block
+    );
+  }
 
   if (message.role === "function") {
     message.role = "tool";

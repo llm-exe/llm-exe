@@ -52,6 +52,9 @@ export const openai = {
   "openai.chat.v1": openAiChatV1,
   "openai.chat-mock.v1": openAiChatMockV1,
   // GPT-5 family
+  "openai.gpt-5.5": withDefaultModel(openAiChatV1, "gpt-5.5"),
+  "openai.gpt-5.4": withDefaultModel(openAiChatV1, "gpt-5.4"),
+  "openai.gpt-5.4-mini": withDefaultModel(openAiChatV1, "gpt-5.4-mini"),
   "openai.gpt-5.2": withDefaultModel(openAiChatV1, "gpt-5.2"),
   "openai.gpt-5-mini": withDefaultModel(openAiChatV1, "gpt-5-mini"),
   "openai.gpt-5-nano": withDefaultModel(openAiChatV1, "gpt-5-nano"),

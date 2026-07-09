@@ -279,12 +279,12 @@ Line 3: AKIAIOSFODNN7EXAMPLE`;
       expect(out).not.toContain("shhh-secret-value");
     });
 
-    // BUG (issue #652): the JSON pattern anchors the opening quote directly
-    // before `api`, so the `x-` prefix on `"x-api-key"` breaks the match and
-    // a short (non-token-shaped) secret leaks. Flip to `it` once #652 is fixed.
-    it.failing("should fully redact x-api-key in a JSON body", () => {
+    // FIXED (issue #652): the JSON pattern now lists `x-api-key` explicitly, so
+    // the `x-` prefix no longer breaks the match and short secrets are redacted.
+    it("fully redacts x-api-key in a JSON body", () => {
       const out = maskApiKeys('{"x-api-key":"shhh-secret-value"}');
       expect(out).not.toContain("shhh-secret-value");
+      expect(out).toBe('{"x-api-key": "[redacted]"}');
     });
   });
 });

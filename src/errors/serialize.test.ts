@@ -371,4 +371,29 @@ describe("serializeLlmExeError", () => {
     const out = serializeLlmExeError(errLike) as any;
     expect(out).toEqual({ name: "Boom", message: 42 });
   });
+
+  it("serializes a null context field to null", () => {
+    // context is present (not undefined) but null — it should round-trip as null
+    // rather than being dropped or throwing.
+    const fake = {
+      isLlmExeError: true,
+      message: "boom",
+      category: "parser",
+      code: "parser.parse_failed",
+      context: null,
+    };
+    const out = serializeLlmExeError(fake) as any;
+    expect(out.context).toBeNull();
+  });
+
+  it("preserves null values nested inside context objects and arrays", () => {
+    const err = new LlmExeError("nested nulls", {
+      code: "parser.parse_failed",
+      context: { received: null, list: [1, null, undefined, "x"] } as any,
+    });
+    const out = serializeLlmExeError(err) as any;
+    expect(out.context.received).toBeNull();
+    // Array holes/undefined become null (arrays are not compacted like objects).
+    expect(out.context.list).toEqual([1, null, null, "x"]);
+  });
 });

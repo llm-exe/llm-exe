@@ -158,8 +158,17 @@ const parser = createParser("listToArray");
 ## List to Key/Value[]
 
 `listToKeyValue`
-Converts a list of `key: value` pairs (separated by newlines) to an array of key/value objects.
+Converts a list of `key: value` pairs (separated by newlines) to an array of key/value objects. Each line is split at the first colon; duplicate keys are preserved because the output is an ordered array.
 Returns `Array<{ key: string; value: string; }>`
+
+```ts
+const parser = createParser("listToKeyValue");
+```
+
+Options:
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `keyTransform` | `"preserve" \| "camelCase"` | `"preserve"` | How to transform keys. `"preserve"` returns keys exactly as written (trimmed). `"camelCase"` converts keys like "First Name" to "firstName", matching [`listToJson`](#list-to-json)'s key normalization. |
 
 ::: code-group
 

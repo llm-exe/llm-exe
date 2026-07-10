@@ -105,6 +105,12 @@ const anthropicChatV1: Config = {
 
 export const anthropic = {
   "anthropic.chat.v1": anthropicChatV1,
+  // Claude Fable 5 models
+  "anthropic.claude-fable-5": withDefaultModel(
+    anthropicChatV1,
+    "claude-fable-5"
+  ),
+
   // Claude 4.8 models
   "anthropic.claude-opus-4-8": withDefaultModel(
     anthropicChatV1,

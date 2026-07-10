@@ -2,20 +2,55 @@ import { defineConfig } from "vitepress";
 // import { transformerTwoslash } from "@shikijs/vitepress-twoslash";
 
 // https://vitepress.dev/reference/site-config
+const SITE_URL = "https://llm-exe.com";
+const SITE_DESCRIPTION =
+  "llm-exe is a lightweight TypeScript package for building LLM-powered applications: typed prompts, output parsers, and composable executors that work with OpenAI, Anthropic, Google, and more.";
+
+// Canonical URL forms: leaf pages are extensionless (/llm/openai), section
+// indexes keep a trailing slash (/executor/). VitePress's dead-link checker
+// requires the trailing-slash form for index links, so this split is
+// load-bearing — don't "simplify" it to one shape.
+function pagePathToCanonicalUrl(relativePath: string): string {
+  const path = relativePath
+    .replace(/(^|\/)index\.md$/, "$1")
+    .replace(/\.md$/, "");
+  return `${SITE_URL}/${path}`;
+}
+
 export default defineConfig({
   title: "llm-exe",
-  description: "",
+  // Page titles from frontmatter already carry branding ("... | llm-exe",
+  titleTemplate: false,
+  description: SITE_DESCRIPTION,
   lang: "en-US",
-  cleanUrls: false,
+  cleanUrls: true,
+  srcExclude: [
+    "**/*.part.md",
+    // empty placeholder — exclude until it has content
+    "misc/llm-exe-aws-sfn.md",
+  ],
   sitemap: {
     hostname: "https://llm-exe.com",
   },
+  transformPageData(pageData) {
+    const canonicalUrl = pagePathToCanonicalUrl(pageData.relativePath);
+    const pageTitle =
+      pageData.frontmatter?.title || pageData.title || "llm-exe";
+    const pageDescription =
+      pageData.frontmatter?.description ||
+      pageData.description ||
+      SITE_DESCRIPTION;
+
+    pageData.frontmatter.head ??= [];
+    pageData.frontmatter.head.push(
+      ["link", { rel: "canonical", href: canonicalUrl }],
+      ["meta", { property: "og:title", content: pageTitle }],
+      ["meta", { property: "og:url", content: canonicalUrl }],
+      ["meta", { property: "og:description", content: pageDescription }]
+    );
+  },
   head: [
-    [
-      "link",
-      { rel: "icon", href: "https://assets.llm-exe.com/favicon.ico" },
-      { rel: "canonical", href: "https://llm-exe.com" } as any,
-    ],
+    ["link", { rel: "icon", href: "https://assets.llm-exe.com/favicon.ico" }],
     [
       "meta",
       {
@@ -25,17 +60,7 @@ export default defineConfig({
     ],
     ["meta", { property: "og:locale", content: "en_US" } as any],
     ["meta", { property: "og:type", content: "website" }],
-    ["meta", { property: "og:title", content: "Typescript LLM Utilities" }],
-    ["meta", { property: "og:url", content: "https://llm-exe.com" }],
     ["meta", { property: "og:site_name", content: "llm-exe" }],
-    [
-      "meta",
-      {
-        property: "og:description",
-        content:
-          "A package that provides utilities, wrappers, and base abstractions to help make writing applications with llm-powered functions easier.",
-      },
-    ],
     [
       "script",
       {
@@ -65,15 +90,15 @@ export default defineConfig({
         items: [
           {
             text: "Getting Started",
-            link: "/intro/install.html",
+            link: "/intro/install",
           },
           {
             text: "Installation",
-            link: "/intro/install.html",
+            link: "/intro/install",
           },
           {
             text: "What's a LLM Function?",
-            link: "/intro/what_is_llm_function.html",
+            link: "/intro/what_is_llm_function",
           },
         ],
       },
@@ -82,31 +107,31 @@ export default defineConfig({
         items: [
           {
             text: "Prompt",
-            link: "/prompt/index.html",
+            link: "/prompt/",
           },
           {
             text: "Parser",
-            link: "/parser/index.html",
+            link: "/parser/",
           },
           {
             text: "State",
-            link: "/state/index.html",
+            link: "/state/",
           },
           {
             text: "LLM",
-            link: "/llm/index.html",
+            link: "/llm/",
           },
           {
             text: "LLM Executor",
-            link: "/executor/index.html",
+            link: "/executor/",
           },
           {
             text: "Embeddings",
-            link: "/embeddings/index.html",
+            link: "/embeddings/",
           },
         ],
       },
-      { text: "Examples", link: "/examples" },
+      { text: "Examples", link: "/examples/" },
     ],
 
     sidebar: [
@@ -117,89 +142,89 @@ export default defineConfig({
         items: [
           {
             text: "Installation",
-            link: "/intro/install.html",
+            link: "/intro/install",
             items: [],
           },
           {
             text: "Intro",
-            link: "/intro/index.html",
+            link: "/intro/",
             items: [],
           },
           {
             text: "What's a LLM Function?",
-            link: "/intro/what_is_llm_function.html",
+            link: "/intro/what_is_llm_function",
             items: [],
           },
           {
             text: "Executor Function Syntax",
-            link: "/examples/FunctionSyntax.html",
+            link: "/examples/FunctionSyntax",
           },
         ],
       },
       {
         text: "LLM",
-        link: "/llm/index.html",
+        link: "/llm/",
         collapsed: false,
         items: [
           {
             text: "Generic Options",
-            link: "/llm/generic.html",
+            link: "/llm/generic",
             items: [],
           },
           {
             text: "OpenAi",
-            link: "/llm/openai.html",
+            link: "/llm/openai",
             items: [],
           },
           {
             text: "Anthropic",
-            link: "/llm/anthropic.html",
+            link: "/llm/anthropic",
             items: [],
           },
           {
             text: "Google Gemini",
-            link: "/llm/gemini.html",
+            link: "/llm/gemini",
             items: [],
           },
           {
             text: "AWS Bedrock",
-            link: "/llm/bedrock/index.html",
+            link: "/llm/bedrock/",
             items: [
               {
                 text: "Anthropic",
-                link: "/llm/bedrock/anthropic.html",
+                link: "/llm/bedrock/anthropic",
                 items: [],
               },
               {
                 text: "Meta",
-                link: "/llm/bedrock/meta.html",
+                link: "/llm/bedrock/meta",
                 items: [],
               },
             ],
           },
           {
             text: "xAI",
-            link: "/llm/xai.html",
+            link: "/llm/xai",
             items: [],
           },
           {
             text: "Ollama",
-            link: "/llm/ollama.html",
+            link: "/llm/ollama",
             items: [],
           },
           {
             text: "Deepseek",
-            link: "/llm/deepseek.html",
+            link: "/llm/deepseek",
             items: [],
           },
           {
             text: "Custom Providers",
-            link: "/llm/custom.html",
+            link: "/llm/custom",
             items: [],
           },
           {
             text: "Deprecation Warnings",
-            link: "/llm/deprecations.html",
+            link: "/llm/deprecations",
             items: [],
           },
         ],
@@ -210,69 +235,69 @@ export default defineConfig({
         items: [
           {
             text: "Getting Started",
-            link: "/prompt/index.html",
+            link: "/prompt/",
             items: [],
           },
           {
             text: "Chat Prompt",
-            link: "/prompt/chat.html",
+            link: "/prompt/chat",
             items: [],
           },
           {
             text: "Validation",
-            link: "/prompt/validation.html",
+            link: "/prompt/validation",
             items: [],
           },
           {
             text: "Text Prompt",
-            link: "/prompt/text.html",
+            link: "/prompt/text",
             items: [],
           },
 
           {
             text: "Advanced Templates",
-            link: "/prompt/advanced.html",
+            link: "/prompt/advanced",
             items: [],
           },
           {
             text: "Why Handlebars?",
-            link: "/prompt/why-handlebars.html",
+            link: "/prompt/why-handlebars",
             items: [],
           },
           // {
           //   text: "Playground",
-          //   link: "/prompt/playground.html",
+          //   link: "/prompt/playground",
           //   items: [],
           // },
         ],
       },
       {
         text: "Parser",
-        link: "/parser/index.html",
+        link: "/parser/",
         collapsed: true,
         items: [
           {
             text: "Getting Started",
-            link: "/parser/index.html",
+            link: "/parser/",
           },
           {
             text: "Included Parsers",
-            link: "/parser/included-parsers.html",
+            link: "/parser/included-parsers",
           },
           {
             text: "Custom Parsers",
-            link: "/parser/custom.html",
+            link: "/parser/custom",
           },
         ],
       },
       {
         text: "State",
-        link: "/state/index.html",
+        link: "/state/",
         collapsed: true,
         items: [
           {
             text: "Dialogue",
-            link: "/state/dialogue.html",
+            link: "/state/dialogue",
           },
         ],
       },
@@ -282,27 +307,27 @@ export default defineConfig({
         items: [
           {
             text: "Getting Started",
-            link: "/executor/index.html",
+            link: "/executor/",
           },
           {
             text: "Options",
-            link: "/executor/options.html",
+            link: "/executor/options",
           },
           {
             text: "ExecutionContext",
-            link: "/executor/execution-context.html",
+            link: "/executor/execution-context",
           },
           {
             text: "Functions (tools)",
-            link: "/executor/openai-functions.html",
+            link: "/executor/openai-functions",
           },
           {
             text: "Callable Executor",
-            link: "/callable/index.html",
+            link: "/callable/",
           },
           {
             text: "Hooks",
-            link: "/executor/hooks.html",
+            link: "/executor/hooks",
           },
         ],
       },
@@ -312,94 +337,142 @@ export default defineConfig({
         items: [
           {
             text: "Getting Started",
-            link: "/embeddings/index.html",
+            link: "/embeddings/",
           },
           {
             text: "OpenAi",
-            link: "/embeddings/openai.html",
+            link: "/embeddings/openai",
           },
           {
             text: "Amazon",
-            link: "/embeddings/amazon.html",
+            link: "/embeddings/amazon",
           },
           {
             text: "Cohere (via Bedrock)",
-            link: "/embeddings/cohere.html",
+            link: "/embeddings/cohere",
           },
         ],
       },
       {
         text: "Examples",
-        link: "/examples",
+        link: "/examples/",
         collapsed: true,
         items: [
-          // {
-          //   text: "Concepts",
-          //   link: "",
-          //   items: [
-          // {
-          //   text: "Executor Function Syntax",
-          //   link: "/examples/FunctionSyntax.html",
-          // },
-          // {
-          //   text: "Simple Combining",
-          //   link: "/examples/combining.html",
-          // },
-          // {
-          //   text: "ReAct: Search + Calculator",
-          //   link: "/examples/react.html",
-          // },
-          // {},
-          //   ],
-          // },
-          // {
-          //   text: "LLM Functions",
-          //   link: "/examples/FunctionSyntax",
-          // },
-          // {
-          //   text: "Executor Function Syntax",
-          //   link: "/examples/FunctionSyntax",
-          // },
-          // {
-          //   text: "LLM Functions",
-          //   link: "",
-          //   items: [
-          //     {
-          //       text: "Hello World",
-          //       link: "/examples/bots/hello.html",
-          //     },
-          //     {
-          //       text: "Validator",
-          //       link: "/examples/bots/validator.html",
-          //     },
-          //     {
-          //       text: "Intent",
-          //       link: "/examples/bots/intent.html",
-          //     },
-          //     {
-          //       text: "Extractor",
-          //       link: "/examples/bots/extract.html",
-          //     },
-          //   ],
-          // },
-          // {
-          //   text: "Misc",
-          //   link: "",
-          //   items: [
-          //     {
-          //       text: "Working With JSON",
-          //       link: "/examples/concepts/working-with-json.html",
-          //     },
-          //     {
-          //       text: "Replicating Lex",
-          //       link: "/examples/concepts/replicating-lex.html",
-          //     },
-          //   ],
-          // },
-          // {
-          //   text: "ReAct: Search + Calculator",
-          //   link: "/examples/react",
-          // },
+          {
+            text: "Hello World",
+            link: "/examples/bots/hello",
+          },
+          {
+            text: "Write a Type-Safe LLM Function",
+            link: "/examples/concepts/type-safe-llm-function",
+          },
+          {
+            text: "Structured Output",
+            items: [
+              {
+                text: "Yes/No Decisions",
+                link: "/examples/bots/yes-no",
+              },
+              {
+                text: "Extract Structured Data",
+                link: "/examples/bots/extract",
+              },
+              {
+                text: "Validate Statements",
+                link: "/examples/bots/validator",
+              },
+              {
+                text: "Working With JSON",
+                link: "/examples/concepts/working-with-json",
+              },
+            ],
+          },
+          {
+            text: "Classification & Routing",
+            items: [
+              {
+                text: "Intent Classification",
+                link: "/examples/bots/intent",
+              },
+              {
+                text: "Conditional Logic and Branching",
+                link: "/examples/chains/conditional-logic-with-llms",
+              },
+              {
+                text: "Replicating Amazon Lex",
+                link: "/examples/concepts/replicating-lex",
+              },
+            ],
+          },
+          {
+            text: "Chaining & Composition",
+            items: [
+              {
+                text: "Combine Two Executors",
+                link: "/examples/combining",
+              },
+              {
+                text: "Sequential Composition",
+                link: "/examples/chains/sequential-composition",
+              },
+              {
+                text: "Self-Refinement Loop",
+                link: "/examples/chains/self-refinement",
+              },
+            ],
+          },
+          {
+            text: "Code Generation",
+            items: [
+              {
+                text: "Write Code from Spec",
+                link: "/examples/bots/write-code-from-spec",
+              },
+              {
+                text: "Write Tests from Code",
+                link: "/examples/bots/write-tests-from-code",
+              },
+            ],
+          },
+          {
+            text: "Agents & Tools",
+            items: [
+              {
+                text: "ReAct: Search + Calculator",
+                link: "/examples/react",
+              },
+            ],
+          },
+          {
+            text: "Prompts",
+            items: [
+              {
+                text: "Separate Prompts from Code",
+                link: "/examples/prompt/separate-prompts-from-code",
+              },
+              {
+                text: "Loading Prompts Remotely",
+                link: "/examples/prompt/load-remote",
+              },
+            ],
+          },
+          {
+            text: "Production Patterns",
+            items: [
+              {
+                text: "Retries and Timeouts",
+                link: "/examples/concepts/retries-and-timeouts",
+              },
+              {
+                text: "LLM Calls in Lambda & Cron",
+                link: "/examples/concepts/llm-in-lambda",
+              },
+              {
+                text: "Prompt Injection Screening",
+                link: "/examples/concepts/prompt-injection-screening",
+              },
+            ],
+          },
         ],
       },
       {
@@ -410,23 +483,15 @@ export default defineConfig({
           // SidebarItem
           // {
           //   text: "Comparing to Langchain",
-          //   link: "/misc/comparing-langchain.html",
+          //   link: "/misc/comparing-langchain",
           // },
           {
             text: "v2 to v3 Migration",
-            link: "/misc/v2-to-v3-migration-guide.html",
+            link: "/misc/v2-to-v3-migration-guide",
           },
           {
             text: "Error Handling",
-            link: "/misc/errors.html",
-          },
-          {
-            text: "Working With JSON",
-            link: "/examples/concepts/working-with-json.html",
-          },
-          {
-            text: "Replicating Lex",
-            link: "/examples/concepts/replicating-lex.html",
+            link: "/misc/errors",
           },
         ],
       },
@@ -437,7 +502,7 @@ export default defineConfig({
         ariaLabel: "Medium",
         link: "https://medium.com/llm-exe",
         icon: {
-          svg: `<svg viewBox="0 -55 256 256" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid" fill="currentColor"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <g> <path d="M72.2009141,1.42108547e-14 C112.076502,1.42108547e-14 144.399375,32.5485469 144.399375,72.6964154 C144.399375,112.844284 112.074049,145.390378 72.2009141,145.390378 C32.327779,145.390378 0,112.844284 0,72.6964154 C0,32.5485469 32.325326,1.42108547e-14 72.2009141,1.42108547e-14 Z M187.500628,4.25836743 C207.438422,4.25836743 223.601085,34.8960455 223.601085,72.6964154 L223.603538,72.6964154 C223.603538,110.486973 207.440875,141.134463 187.503081,141.134463 C167.565287,141.134463 151.402624,110.486973 151.402624,72.6964154 C151.402624,34.9058574 167.562834,4.25836743 187.500628,4.25836743 Z M243.303393,11.3867175 C250.314,11.3867175 256,38.835526 256,72.6964154 C256,106.547493 250.316453,134.006113 243.303393,134.006113 C236.290333,134.006113 230.609239,106.554852 230.609239,72.6964154 C230.609239,38.837979 236.292786,11.3867175 243.303393,11.3867175 Z" fill="currentColor"> </path> </g> </g></svg>`,
+          svg: `<svg viewBox="0 -55 256 256" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid" fill="currentColor"><g stroke-width="0"></g><g stroke-linecap="round" stroke-linejoin="round"></g><g> <g> <path d="M72.2009141,1.42108547e-14 C112.076502,1.42108547e-14 144.399375,32.5485469 144.399375,72.6964154 C144.399375,112.844284 112.074049,145.390378 72.2009141,145.390378 C32.327779,145.390378 0,112.844284 0,72.6964154 C0,32.5485469 32.325326,1.42108547e-14 72.2009141,1.42108547e-14 Z M187.500628,4.25836743 C207.438422,4.25836743 223.601085,34.8960455 223.601085,72.6964154 L223.603538,72.6964154 C223.603538,110.486973 207.440875,141.134463 187.503081,141.134463 C167.565287,141.134463 151.402624,110.486973 151.402624,72.6964154 C151.402624,34.9058574 167.562834,4.25836743 187.500628,4.25836743 Z M243.303393,11.3867175 C250.314,11.3867175 256,38.835526 256,72.6964154 C256,106.547493 250.316453,134.006113 243.303393,134.006113 C236.290333,134.006113 230.609239,106.554852 230.609239,72.6964154 C230.609239,38.837979 236.292786,11.3867175 243.303393,11.3867175 Z" fill="currentColor"> </path> </g> </g></svg>`,
         },
       },
       { icon: "github", link: "https://github.com/llm-exe/llm-exe" },

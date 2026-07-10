@@ -351,4 +351,61 @@ describe("openaiPromptMessageCallback", () => {
       });
     });
   });
+
+  describe("image content handling", () => {
+    it("passes canonical image_url blocks through unchanged", () => {
+      const message = {
+        role: "user",
+        content: [
+          { type: "text", text: "What is this?" },
+          {
+            type: "image_url",
+            image_url: { url: "https://example.com/cat.png", detail: "low" },
+          },
+        ],
+      };
+
+      const result = openaiPromptMessageCallback(message);
+
+      expect(result).toEqual(message);
+    });
+
+    it("normalizes legacy blocks typed 'image' that carry image_url", () => {
+      const message = {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          },
+        ],
+      };
+
+      const result = openaiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          },
+        ],
+      });
+    });
+
+    it("leaves non-image blocks in arrays untouched", () => {
+      const message = {
+        role: "user",
+        content: [{ type: "text", text: "Hello" }],
+      };
+
+      const result = openaiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        content: [{ type: "text", text: "Hello" }],
+      });
+    });
+  });
 });

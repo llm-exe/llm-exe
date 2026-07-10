@@ -301,4 +301,132 @@ describe("googleGeminiPromptMessageCallback", () => {
       });
     });
   });
+
+  describe("array content handling", () => {
+    it("converts text blocks to text parts", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          { type: "text", text: "Hello" },
+          { type: "text", text: "World" },
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        parts: [{ text: "Hello" }, { text: "World" }],
+      });
+    });
+
+    it("converts a data: URI image block to an inlineData part", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          { type: "text", text: "What is this?" },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          },
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        parts: [
+          { text: "What is this?" },
+          { inlineData: { mimeType: "image/png", data: "iVBORw0KGgo=" } },
+        ],
+      });
+    });
+
+    it("converts Files API and gs:// URIs to fileData parts", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: {
+              url: "https://generativelanguage.googleapis.com/v1beta/files/abc123",
+            },
+          },
+          {
+            type: "image_url",
+            image_url: { url: "gs://my-bucket/cat.png" },
+          },
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        parts: [
+          {
+            fileData: {
+              fileUri:
+                "https://generativelanguage.googleapis.com/v1beta/files/abc123",
+            },
+          },
+          { fileData: { fileUri: "gs://my-bucket/cat.png" } },
+        ],
+      });
+    });
+
+    it("throws for arbitrary https image URLs", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "https://example.com/cat.png" },
+          },
+        ],
+      };
+
+      expect(() => googleGeminiPromptMessageCallback(message)).toThrow(
+        /Gemini cannot load images from arbitrary URLs/
+      );
+    });
+
+    it("converts legacy blocks typed 'image' that carry image_url", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          } as any,
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        parts: [
+          { inlineData: { mimeType: "image/png", data: "iVBORw0KGgo=" } },
+        ],
+      });
+    });
+
+    it("passes unrecognized blocks through as native parts", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          { inlineData: { mimeType: "image/png", data: "abc" } } as any,
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        parts: [{ inlineData: { mimeType: "image/png", data: "abc" } }],
+      });
+    });
+  });
 });

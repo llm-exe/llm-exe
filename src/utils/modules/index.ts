@@ -6,6 +6,7 @@ export { importPartials } from "./handlebars/utils/importPartials";
 export { importHelpers } from "./handlebars/utils/importHelpers";
 export { filterObjectOnSchema } from "./filterObjectOnSchema";
 export { replaceTemplateString } from "./replaceTemplateString";
+export { escapeTemplateString } from "./escapeTemplateString";
 export { replaceTemplateStringAsync } from "./replaceTemplateStringAsync";
 export { asyncCallWithTimeout } from "./asyncCallWithTimeout";
 export { guessProviderFromModel } from "./guessProviderFromModel";

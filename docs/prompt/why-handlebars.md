@@ -1,3 +1,8 @@
+---
+title: "Why Use Handlebars for LLM Prompts? | llm-exe"
+description: "Why llm-exe uses Handlebars instead of template literals for prompts: separation of logic and data, reusable partials, and typed inputs in TypeScript."
+---
+
 # Why Handlebars?
 
 When preparing your prompts, it may seem easier to use native Javascript template literals within your prompts instead of utilizing Handlebars. It is suggested you embrace the Handlebars approach.
@@ -141,11 +146,11 @@ const prompt = createChatPrompt<SomePromptInput>(`Your name is {{agentName}}.
 You will help the user learn about {{topic}}.`);
 ```
 
-![prompt-showing-types-being-passed-in](/images/prompt-showing-types-being-passed-in.jpg)
+![Screenshot of a code editor showing the createChatPrompt generic accepting a typed input object, with autocomplete suggesting agentName, topic, user, and tasks fields](/images/prompt-showing-types-being-passed-in.jpg)
 
 And an error if you pass in the wrong input:
 
-![prompt-showing-types-being-passed-in](/images/prompt-showing-types-being-passed-in-with-error.jpg)
+![Screenshot of the same prompt call with the wrong input shape, showing a TypeScript compiler error highlighting the missing required properties](/images/prompt-showing-types-being-passed-in-with-error.jpg)
 
 ### More Readable and Maintainable
 

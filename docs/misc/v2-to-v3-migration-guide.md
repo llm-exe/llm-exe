@@ -89,7 +89,7 @@ v3 uses `LlmExeError` for llm-exe errors. These errors expose:
 Migration:
 
 ```ts
-import { isLlmExeError, formatLlmExeErrorForLog } from "llm-exe";
+import { isLlmExeError } from "llm-exe";
 
 try {
   await executor.execute(input);
@@ -98,13 +98,15 @@ try {
     // Queue, retry later, or fall back.
   }
 
-  logger.error(formatLlmExeErrorForLog(error));
+  if (isLlmExeError(error)) {
+    logger.error(error.toJSON());
+  }
 }
 ```
 
 Provider HTTP failures use codes such as `llm.provider_rate_limited`, `llm.provider_auth_failed`, `llm.provider_invalid_request`, `llm.provider_unavailable`, and `llm.provider_http_error`.
 
-See [Error Handling](/misc/errors.html).
+See [Error Handling](/misc/errors).
 
 ## JSON Parser Is Strict
 
@@ -413,7 +415,7 @@ prompt.format({});
 
 Use `validateInput: "warn"` to emit a warning and continue rendering.
 
-See [Prompt Validation](/prompt/validation.html).
+See [Prompt Validation](/prompt/validation).
 
 ## Deprecation Warnings
 
@@ -433,7 +435,7 @@ process.on("warning", (warning) => {
 });
 ```
 
-See [Deprecation Warnings](/llm/deprecations.html).
+See [Deprecation Warnings](/llm/deprecations).
 
 
 ## Custom Parser Context Is Now ExecutionContext
@@ -483,7 +485,7 @@ Migration:
 - Use `context.traceId` for the resolved per-call trace ID.
 - `ExecutorContext` may still exist as a compatibility type, but it is no longer the runtime object passed to custom parsers.
 
-See [ExecutionContext](/executor/execution-context.html).
+See [ExecutionContext](/executor/execution-context).
 
 ## Parser Type Inference
 

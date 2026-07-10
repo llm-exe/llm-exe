@@ -245,4 +245,52 @@ describe("anthropic config", () => {
       expect(result.tools[1].name).toBe("b");
     });
   });
+
+  describe("image content through mapBody", () => {
+    it("converts image_url blocks into anthropic image sources in the request body", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-5",
+        maxTokens: 1024,
+        prompt: [
+          { role: "system", content: "You are helpful" },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "What is in this image?" },
+              {
+                type: "image_url",
+                image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+              },
+              {
+                type: "image_url",
+                image_url: { url: "https://example.com/cat.png" },
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(body.system).toBe("You are helpful");
+      expect(body.messages).toEqual([
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "What is in this image?" },
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: "image/png",
+                data: "iVBORw0KGgo=",
+              },
+            },
+            {
+              type: "image",
+              source: { type: "url", url: "https://example.com/cat.png" },
+            },
+          ],
+        },
+      ]);
+    });
+  });
 });

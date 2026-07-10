@@ -1155,6 +1155,28 @@ describe("useLlm_call", () => {
       }
     });
 
+    it("handles request.http_error with no context (defaults to llm.provider_http_error)", async () => {
+      const err = new LlmExeError("opaque failure", {
+        code: "request.http_error",
+      });
+      apiRequestMock.mockRejectedValue(err);
+      try {
+        await useLlm_call(mockStateOpenAi, "hi");
+        throw new Error("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as InstanceType<typeof LlmExeError>).code).toBe(
+          "llm.provider_http_error"
+        );
+        const ctx = (e as InstanceType<typeof LlmExeError>).context as Record<
+          string,
+          unknown
+        >;
+        expect(ctx.operation).toBe("useLlm_call");
+        expect(ctx.provider).toBe("openai.chat");
+      }
+    });
+
     it("does not wrap non-request.http_error errors", async () => {
       apiRequestMock.mockRejectedValue(
         new LlmExeError("bad url", {

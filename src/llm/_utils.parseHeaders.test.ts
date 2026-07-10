@@ -241,6 +241,25 @@ describe("parseHeaders", () => {
     }
   });
 
+  it("truncates the redacted excerpt when the replaced string exceeds the max length", async () => {
+    // Build an oversized invalid-JSON blob (over 500 chars) so safeReplacedHeaders
+    // hits the truncation branch when slicing for the error context.
+    const oversized = "X".repeat(600) + "broken";
+    (replaceTemplateStringSimple as jest.Mock).mockReturnValue(oversized);
+
+    try {
+      await parseHeaders(config, replacements, payload);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      const ctx = (e as LlmExeError).context as Record<string, unknown>;
+      const excerpt = String(ctx.replacedHeadersExcerpt);
+      expect(excerpt).toContain("(truncated)");
+      // The truncated excerpt must be shorter than the original.
+      expect(excerpt.length).toBeLessThan(oversized.length);
+    }
+  });
+
   it("Should call getAwsAuthorizationHeaders when provider starts with amazon.", async () => {
     config.provider = "amazon.nova.chat" as any;
     const expectedHeaders = { Authorization: "AWS4-HMAC-SHA256" };

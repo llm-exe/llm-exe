@@ -1,3 +1,8 @@
+---
+title: "Use Anthropic Claude on AWS Bedrock | llm-exe"
+description: "Run Anthropic Claude models on AWS Bedrock from TypeScript with llm-exe. Covers Bedrock model IDs, AWS authentication, and supported Claude options."
+---
+
 # Anthropic
 
 When using Anthropic models via AWS Bedrock, llm-exe will make POST requests to `https://bedrock-runtime.us-west-2.amazonaws.com/model/{MODEL_ID}/invoke`.
@@ -14,7 +19,7 @@ const llm = useLlm("amazon:anthropic.chat.v1", {
 
 ## Bedrock Anthropic Options
 
-In addition to the [generic options](/llm/generic.html), the following options are available for Anthropic models on Bedrock.
+In addition to the [generic options](/llm/generic), the following options are available for Anthropic models on Bedrock.
 
 | Option      | Type   | Default   | Description                                                              |
 | ----------- | ------ | --------- | ------------------------------------------------------------------------ |
@@ -26,4 +31,4 @@ In addition to the [generic options](/llm/generic.html), the following options a
 | awsAccessKey| string | undefined | AWS Access Key. Can be set via `AWS_ACCESS_KEY_ID` environment variable  |
 
 > [!NOTE]
-> The Bedrock Anthropic provider maps a subset of the direct [Anthropic provider](/llm/anthropic.html) options. Options like `temperature`, `topK`, `stopSequences`, `metadata`, and `serviceTier` are not mapped for the Bedrock variant at this time.
+> The Bedrock Anthropic provider maps a subset of the direct [Anthropic provider](/llm/anthropic) options. Options like `temperature`, `topK`, `stopSequences`, `metadata`, and `serviceTier` are not mapped for the Bedrock variant at this time.

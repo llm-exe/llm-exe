@@ -1,3 +1,8 @@
+---
+title: "Build Callable Tools for LLM Agents in TypeScript | llm-exe"
+description: "Wrap TypeScript functions and executors into callable tools with createCallableExecutor, then group them with useExecutors to validate and invoke tools by name."
+---
+
 ## Callable Executor Wrapper
 
 When building LLM agents that need to call tools or functions, `createCallableExecutor` wraps your executors (or plain functions) into a standardized interface. Use `useExecutors` to group them into a collection you can query and invoke by name.

@@ -1,3 +1,8 @@
+---
+title: "Replace Complex Code with LLM Functions | llm-exe"
+description: "Learn what an LLM function is and how to replace brittle logic like regex with typed, LLM-powered TypeScript functions using llm-exe executors and parsers."
+---
+
 # What is an LLM function?
 
 As the usefulness of LLMs grows, you have the ability to replace (at least consider replacing) complex functionality in your application with simple calls to an LLM.
@@ -79,4 +84,6 @@ const response = await piiDetector(input)
  */
 ```
 
-The input and output of the `piiDetector` function are strongly typed, providing reliable structure and safety when integrating with the rest of your application
+The input and output of the `piiDetector` function are strongly typed, providing reliable structure and safety when integrating with the rest of your application.
+
+For a complete, step-by-step build of a function like this — schema, prompt, parser, and inferred types — see [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function).

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://llm-exe.com
+    about: Read the docs before filing an issue. Most usage questions are answered there.
+  - name: GitHub Discussions
+    url: https://github.com/llm-exe/llm-exe/discussions
+    about: Use Discussions for questions, ideas, and general support that do not fit a structured issue template.

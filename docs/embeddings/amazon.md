@@ -1,3 +1,7 @@
+---
+title: "Use Amazon Titan Embeddings on AWS Bedrock | llm-exe"
+description: "Generate Amazon Titan embeddings via AWS Bedrock in TypeScript with llm-exe. Covers model IDs, output dimensions, AWS regions, and credential setup."
+---
 
 # Amazon Embeddings
 

@@ -9,7 +9,11 @@ import { cleanJsonSchemaFor } from "@/llm/output/_utils/cleanJsonSchemaFor";
 const ANTHROPIC_VERSION = "2023-06-01";
 
 // Models that 400 if temperature / top_p / top_k are set to non-default values.
-const MODELS_REJECTING_SAMPLING_PARAMS = ["claude-opus-4-7", "claude-opus-4-8"];
+const MODELS_REJECTING_SAMPLING_PARAMS = [
+  "claude-opus-4-7",
+  "claude-opus-4-8",
+  "claude-fable-5",
+];
 
 // Claude 4.x rejects requests that set both temperature and top_p; keep temperature.
 const isClaude4x = (model: string) =>
@@ -39,6 +43,15 @@ const anthropicChatV1: Config = {
       required: [true, "maxTokens required"],
       default: 4096,
     },
+    // Every key mapped in mapBody must also be declared here:
+    // stateFromOptions picks only declared option keys, so an undeclared
+    // key never reaches mapBody (see issue #661).
+    temperature: {},
+    topP: {},
+    topK: {},
+    stopSequences: {},
+    metadata: {},
+    serviceTier: {},
     anthropicApiKey: {
       default: getEnvironmentVariable("ANTHROPIC_API_KEY"),
     },
@@ -72,9 +85,8 @@ const anthropicChatV1: Config = {
     stopSequences: {
       key: "stop_sequences",
     },
-    stream: {
-      key: "stream",
-    },
+    // No `stream` mapping: the request pipeline has no SSE support, so
+    // forwarding stream=true would return an unparseable response.
     metadata: {
       key: "metadata",
     },

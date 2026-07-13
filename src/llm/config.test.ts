@@ -97,6 +97,9 @@ describe("configs", () => {
           default: 4096,
           required: [true, "maxTokens required"],
         },
+        temperature: {},
+        topP: {},
+        topK: {},
         anthropicApiKey: {
           default: ANTHROPIC_API_KEY_AT_IMPORT,
         },

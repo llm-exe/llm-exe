@@ -9,7 +9,11 @@ import { cleanJsonSchemaFor } from "@/llm/output/_utils/cleanJsonSchemaFor";
 const ANTHROPIC_VERSION = "2023-06-01";
 
 // Models that 400 if temperature / top_p / top_k are set to non-default values.
-const MODELS_REJECTING_SAMPLING_PARAMS = ["claude-opus-4-7", "claude-opus-4-8"];
+const MODELS_REJECTING_SAMPLING_PARAMS = [
+  "claude-fable-5",
+  "claude-opus-4-7",
+  "claude-opus-4-8",
+];
 
 // Claude 4.x rejects requests that set both temperature and top_p; keep temperature.
 const isClaude4x = (model: string) =>
@@ -39,6 +43,12 @@ const anthropicChatV1: Config = {
       required: [true, "maxTokens required"],
       default: 4096,
     },
+    // Declared so stateFromOptions keeps them: without these keys the sampling
+    // params are picked out of the caller's options before the body is built,
+    // and the mapBody reject-list transforms below never see a real value.
+    temperature: {},
+    topP: {},
+    topK: {},
     anthropicApiKey: {
       default: getEnvironmentVariable("ANTHROPIC_API_KEY"),
     },

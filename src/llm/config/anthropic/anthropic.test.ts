@@ -1,5 +1,6 @@
 import { anthropic } from "@/llm/config/anthropic";
 import { mapBody } from "@/llm/_utils.mapBody";
+import { stateFromOptions } from "@/llm/_utils.stateFromOptions";
 import { anthropicPromptSanitize } from "./promptSanitize";
 
 describe("anthropic config", () => {
@@ -164,6 +165,65 @@ describe("anthropic config", () => {
         topK: 40,
       });
       expect(body.top_k).toBe(40);
+    });
+
+    it("drops temperature, top_p, and top_k for claude-fable-5", () => {
+      const body = buildBody({
+        model: "claude-fable-5",
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+      });
+      expect(body.temperature).toBeUndefined();
+      expect(body.top_p).toBeUndefined();
+      expect(body.top_k).toBeUndefined();
+    });
+  });
+
+  // Regression for #661: sampling params passed via useLlm(...) options must
+  // survive stateFromOptions (which picks only declared option keys) and reach
+  // the body. This mirrors how llm.call builds the outgoing body — state from
+  // options, then mapBody — so it catches the option-filter drop that the
+  // mapBody-direct tests above cannot see.
+  describe("sampling params flow through the public option path (#661)", () => {
+    const buildPublicBody = (
+      shorthand: keyof typeof anthropic,
+      options: Record<string, any>
+    ) => {
+      const cfg = anthropic[shorthand];
+      const state = stateFromOptions(options, cfg);
+      return mapBody(cfg.mapBody, {
+        ...state,
+        prompt: [{ role: "user", content: "hi" }],
+      });
+    };
+
+    it("forwards temperature/top_p/top_k on an accepting model (Claude 3.x)", () => {
+      const body = buildPublicBody("anthropic.claude-3-opus", {
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+      });
+      expect(body.temperature).toBe(0.5);
+      expect(body.top_p).toBe(0.9);
+      expect(body.top_k).toBe(40);
+    });
+
+    it("still strips sampling params on rejecting models via the public path", () => {
+      for (const shorthand of [
+        "anthropic.claude-fable-5",
+        "anthropic.claude-opus-4-7",
+        "anthropic.claude-opus-4-8",
+      ] as const) {
+        const body = buildPublicBody(shorthand, {
+          temperature: 0.5,
+          topP: 0.9,
+          topK: 40,
+        });
+        expect(body.temperature).toBeUndefined();
+        expect(body.top_p).toBeUndefined();
+        expect(body.top_k).toBeUndefined();
+      }
     });
   });
 

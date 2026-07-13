@@ -43,7 +43,7 @@ const executor = createLlmExecutor(
 
 ### Hooks
 
-See [Hooks](/executor/hooks.html) for full documentation on available hooks.
+See [Hooks](/executor/hooks) for full documentation on available hooks.
 
 ## Execute Options
 

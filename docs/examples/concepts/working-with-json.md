@@ -72,10 +72,44 @@ Now, we have instructed the LLM without directly telling it that:
 - We are able to hint that we don't want additional properties.
 
 You can also:
-- Set defaults
+- Set defaults with the `default` keyword on a property.
+
+## Enforcing the schema at parse time
+
+The schema is not only a prompting aid — when you pass it to the JSON parser it is enforced on the LLM's response:
+
+```ts
+import { defineSchema, createParser } from "llm-exe";
+
+const schema = defineSchema({
+  type: "object",
+  properties: {
+    thought: { type: "string" },
+    direction: { type: "string", enum: ["forward", "back", "left", "right"] },
+  },
+  required: ["thought", "direction"],
+  additionalProperties: false,
+});
+
+const parser = createParser("json", { schema });
+```
+
+Once a `schema` is provided, `required` fields and type/constraint checks are enforced **by default** (`validateSchema` defaults to `true` when a schema is set). Input that is missing a required field — or violates the schema — throws `parser.schema_validation_failed` rather than silently returning a partial object:
+
+```ts
+parser.parse(`{"thought": "I should go"}`);
+// throws: parser.schema_validation_failed — requires property "direction"
+```
+
+A couple of things to keep in mind:
+
+- **Defaults are applied _after_ validation.** A `default` on a `required` property does **not** satisfy that requirement — if the LLM omits the field, validation still fails.
+- **Opt out with `validateSchema: false`.** This switches to filter/default-only behavior: unknown keys are stripped and defaults are applied, but `required` and constraints are **not** checked. Use it only if you intentionally want that looser behavior.
+
+See the [JSON parser reference](/parser/included-parsers.html#json) for the full option list.
 
 ### Related
 
-- [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function.html) — schema-driven prompt, validation, and return type in one
-- [Extract Structured Data](/examples/bots/extract.html) — caller-supplied schemas for slot filling
-- [Included Parsers](/parser/included-parsers.html) — the JSON parser reference
+- [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function) — schema-driven prompt, validation, and return type in one
+- [Extract Structured Data](/examples/bots/extract) — caller-supplied schemas for slot filling
+- [Included Parsers](/parser/included-parsers) — the JSON parser reference

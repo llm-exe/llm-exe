@@ -6,10 +6,14 @@ const SITE_URL = "https://llm-exe.com";
 const SITE_DESCRIPTION =
   "llm-exe is a lightweight TypeScript package for building LLM-powered applications: typed prompts, output parsers, and composable executors that work with OpenAI, Anthropic, Google, and more.";
 
+// Canonical URL forms: leaf pages are extensionless (/llm/openai), section
+// indexes keep a trailing slash (/executor/). VitePress's dead-link checker
+// requires the trailing-slash form for index links, so this split is
+// load-bearing — don't "simplify" it to one shape.
 function pagePathToCanonicalUrl(relativePath: string): string {
   const path = relativePath
     .replace(/(^|\/)index\.md$/, "$1")
-    .replace(/\.md$/, ".html");
+    .replace(/\.md$/, "");
   return `${SITE_URL}/${path}`;
 }
 
@@ -19,7 +23,7 @@ export default defineConfig({
   titleTemplate: false,
   description: SITE_DESCRIPTION,
   lang: "en-US",
-  cleanUrls: false,
+  cleanUrls: true,
   srcExclude: [
     "**/*.part.md",
     // empty placeholder — exclude until it has content
@@ -86,15 +90,15 @@ export default defineConfig({
         items: [
           {
             text: "Getting Started",
-            link: "/intro/install.html",
+            link: "/intro/install",
           },
           {
             text: "Installation",
-            link: "/intro/install.html",
+            link: "/intro/install",
           },
           {
             text: "What's a LLM Function?",
-            link: "/intro/what_is_llm_function.html",
+            link: "/intro/what_is_llm_function",
           },
         ],
       },
@@ -103,31 +107,31 @@ export default defineConfig({
         items: [
           {
             text: "Prompt",
-            link: "/prompt/index.html",
+            link: "/prompt/",
           },
           {
             text: "Parser",
-            link: "/parser/index.html",
+            link: "/parser/",
           },
           {
             text: "State",
-            link: "/state/index.html",
+            link: "/state/",
           },
           {
             text: "LLM",
-            link: "/llm/index.html",
+            link: "/llm/",
           },
           {
             text: "LLM Executor",
-            link: "/executor/index.html",
+            link: "/executor/",
           },
           {
             text: "Embeddings",
-            link: "/embeddings/index.html",
+            link: "/embeddings/",
           },
         ],
       },
-      { text: "Examples", link: "/examples" },
+      { text: "Examples", link: "/examples/" },
     ],
 
     sidebar: [
@@ -138,89 +142,89 @@ export default defineConfig({
         items: [
           {
             text: "Installation",
-            link: "/intro/install.html",
+            link: "/intro/install",
             items: [],
           },
           {
             text: "Intro",
-            link: "/intro/index.html",
+            link: "/intro/",
             items: [],
           },
           {
             text: "What's a LLM Function?",
-            link: "/intro/what_is_llm_function.html",
+            link: "/intro/what_is_llm_function",
             items: [],
           },
           {
             text: "Executor Function Syntax",
-            link: "/examples/FunctionSyntax.html",
+            link: "/examples/FunctionSyntax",
           },
         ],
       },
       {
         text: "LLM",
-        link: "/llm/index.html",
+        link: "/llm/",
         collapsed: false,
         items: [
           {
             text: "Generic Options",
-            link: "/llm/generic.html",
+            link: "/llm/generic",
             items: [],
           },
           {
             text: "OpenAi",
-            link: "/llm/openai.html",
+            link: "/llm/openai",
             items: [],
           },
           {
             text: "Anthropic",
-            link: "/llm/anthropic.html",
+            link: "/llm/anthropic",
             items: [],
           },
           {
             text: "Google Gemini",
-            link: "/llm/gemini.html",
+            link: "/llm/gemini",
             items: [],
           },
           {
             text: "AWS Bedrock",
-            link: "/llm/bedrock/index.html",
+            link: "/llm/bedrock/",
             items: [
               {
                 text: "Anthropic",
-                link: "/llm/bedrock/anthropic.html",
+                link: "/llm/bedrock/anthropic",
                 items: [],
               },
               {
                 text: "Meta",
-                link: "/llm/bedrock/meta.html",
+                link: "/llm/bedrock/meta",
                 items: [],
               },
             ],
           },
           {
             text: "xAI",
-            link: "/llm/xai.html",
+            link: "/llm/xai",
             items: [],
           },
           {
             text: "Ollama",
-            link: "/llm/ollama.html",
+            link: "/llm/ollama",
             items: [],
           },
           {
             text: "Deepseek",
-            link: "/llm/deepseek.html",
+            link: "/llm/deepseek",
             items: [],
           },
           {
             text: "Custom Providers",
-            link: "/llm/custom.html",
+            link: "/llm/custom",
             items: [],
           },
           {
             text: "Deprecation Warnings",
-            link: "/llm/deprecations.html",
+            link: "/llm/deprecations",
             items: [],
           },
         ],
@@ -231,69 +235,69 @@ export default defineConfig({
         items: [
           {
             text: "Getting Started",
-            link: "/prompt/index.html",
+            link: "/prompt/",
             items: [],
           },
           {
             text: "Chat Prompt",
-            link: "/prompt/chat.html",
+            link: "/prompt/chat",
             items: [],
           },
           {
             text: "Validation",
-            link: "/prompt/validation.html",
+            link: "/prompt/validation",
             items: [],
           },
           {
             text: "Text Prompt",
-            link: "/prompt/text.html",
+            link: "/prompt/text",
             items: [],
           },
 
           {
             text: "Advanced Templates",
-            link: "/prompt/advanced.html",
+            link: "/prompt/advanced",
             items: [],
           },
           {
             text: "Why Handlebars?",
-            link: "/prompt/why-handlebars.html",
+            link: "/prompt/why-handlebars",
             items: [],
           },
           // {
           //   text: "Playground",
-          //   link: "/prompt/playground.html",
+          //   link: "/prompt/playground",
           //   items: [],
           // },
         ],
       },
       {
         text: "Parser",
-        link: "/parser/index.html",
+        link: "/parser/",
         collapsed: true,
         items: [
           {
             text: "Getting Started",
-            link: "/parser/index.html",
+            link: "/parser/",
           },
           {
             text: "Included Parsers",
-            link: "/parser/included-parsers.html",
+            link: "/parser/included-parsers",
           },
           {
             text: "Custom Parsers",
-            link: "/parser/custom.html",
+            link: "/parser/custom",
           },
         ],
       },
       {
         text: "State",
-        link: "/state/index.html",
+        link: "/state/",
         collapsed: true,
         items: [
           {
             text: "Dialogue",
-            link: "/state/dialogue.html",
+            link: "/state/dialogue",
           },
         ],
       },
@@ -303,27 +307,27 @@ export default defineConfig({
         items: [
           {
             text: "Getting Started",
-            link: "/executor/index.html",
+            link: "/executor/",
           },
           {
             text: "Options",
-            link: "/executor/options.html",
+            link: "/executor/options",
           },
           {
             text: "ExecutionContext",
-            link: "/executor/execution-context.html",
+            link: "/executor/execution-context",
           },
           {
             text: "Functions (tools)",
-            link: "/executor/openai-functions.html",
+            link: "/executor/openai-functions",
           },
           {
             text: "Callable Executor",
-            link: "/callable/index.html",
+            link: "/callable/",
           },
           {
             text: "Hooks",
-            link: "/executor/hooks.html",
+            link: "/executor/hooks",
           },
         ],
       },
@@ -333,53 +337,53 @@ export default defineConfig({
         items: [
           {
             text: "Getting Started",
-            link: "/embeddings/index.html",
+            link: "/embeddings/",
           },
           {
             text: "OpenAi",
-            link: "/embeddings/openai.html",
+            link: "/embeddings/openai",
           },
           {
             text: "Amazon",
-            link: "/embeddings/amazon.html",
+            link: "/embeddings/amazon",
           },
           {
             text: "Cohere (via Bedrock)",
-            link: "/embeddings/cohere.html",
+            link: "/embeddings/cohere",
           },
         ],
       },
       {
         text: "Examples",
-        link: "/examples",
+        link: "/examples/",
         collapsed: true,
         items: [
           {
             text: "Hello World",
-            link: "/examples/bots/hello.html",
+            link: "/examples/bots/hello",
           },
           {
             text: "Write a Type-Safe LLM Function",
-            link: "/examples/concepts/type-safe-llm-function.html",
+            link: "/examples/concepts/type-safe-llm-function",
           },
           {
             text: "Structured Output",
             items: [
               {
                 text: "Yes/No Decisions",
-                link: "/examples/bots/yes-no.html",
+                link: "/examples/bots/yes-no",
               },
               {
                 text: "Extract Structured Data",
-                link: "/examples/bots/extract.html",
+                link: "/examples/bots/extract",
               },
               {
                 text: "Validate Statements",
-                link: "/examples/bots/validator.html",
+                link: "/examples/bots/validator",
               },
               {
                 text: "Working With JSON",
-                link: "/examples/concepts/working-with-json.html",
+                link: "/examples/concepts/working-with-json",
               },
             ],
           },
@@ -388,15 +392,15 @@ export default defineConfig({
             items: [
               {
                 text: "Intent Classification",
-                link: "/examples/bots/intent.html",
+                link: "/examples/bots/intent",
               },
               {
                 text: "Conditional Logic and Branching",
-                link: "/examples/chains/conditional-logic-with-llms.html",
+                link: "/examples/chains/conditional-logic-with-llms",
               },
               {
                 text: "Replicating Amazon Lex",
-                link: "/examples/concepts/replicating-lex.html",
+                link: "/examples/concepts/replicating-lex",
               },
             ],
           },
@@ -405,15 +409,15 @@ export default defineConfig({
             items: [
               {
                 text: "Combine Two Executors",
-                link: "/examples/combining.html",
+                link: "/examples/combining",
               },
               {
                 text: "Sequential Composition",
-                link: "/examples/chains/sequential-composition.html",
+                link: "/examples/chains/sequential-composition",
               },
               {
                 text: "Self-Refinement Loop",
-                link: "/examples/chains/self-refinement.html",
+                link: "/examples/chains/self-refinement",
               },
             ],
           },
@@ -422,11 +426,11 @@ export default defineConfig({
             items: [
               {
                 text: "Write Code from Spec",
-                link: "/examples/bots/write-code-from-spec.html",
+                link: "/examples/bots/write-code-from-spec",
               },
               {
                 text: "Write Tests from Code",
-                link: "/examples/bots/write-tests-from-code.html",
+                link: "/examples/bots/write-tests-from-code",
               },
             ],
           },
@@ -435,7 +439,7 @@ export default defineConfig({
             items: [
               {
                 text: "ReAct: Search + Calculator",
-                link: "/examples/react.html",
+                link: "/examples/react",
               },
             ],
           },
@@ -444,11 +448,11 @@ export default defineConfig({
             items: [
               {
                 text: "Separate Prompts from Code",
-                link: "/examples/prompt/separate-prompts-from-code.html",
+                link: "/examples/prompt/separate-prompts-from-code",
               },
               {
                 text: "Loading Prompts Remotely",
-                link: "/examples/prompt/load-remote.html",
+                link: "/examples/prompt/load-remote",
               },
             ],
           },
@@ -457,15 +461,15 @@ export default defineConfig({
             items: [
               {
                 text: "Retries and Timeouts",
-                link: "/examples/concepts/retries-and-timeouts.html",
+                link: "/examples/concepts/retries-and-timeouts",
               },
               {
                 text: "LLM Calls in Lambda & Cron",
-                link: "/examples/concepts/llm-in-lambda.html",
+                link: "/examples/concepts/llm-in-lambda",
               },
               {
                 text: "Prompt Injection Screening",
-                link: "/examples/concepts/prompt-injection-screening.html",
+                link: "/examples/concepts/prompt-injection-screening",
               },
             ],
           },
@@ -479,15 +483,15 @@ export default defineConfig({
           // SidebarItem
           // {
           //   text: "Comparing to Langchain",
-          //   link: "/misc/comparing-langchain.html",
+          //   link: "/misc/comparing-langchain",
           // },
           {
             text: "v2 to v3 Migration",
-            link: "/misc/v2-to-v3-migration-guide.html",
+            link: "/misc/v2-to-v3-migration-guide",
           },
           {
             text: "Error Handling",
-            link: "/misc/errors.html",
+            link: "/misc/errors",
           },
         ],
       },

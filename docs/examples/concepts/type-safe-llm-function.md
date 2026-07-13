@@ -54,7 +54,7 @@ Rename `actionNeeded` in the schema and every usage becomes a compile error. Tha
 
 ### Related
 
-- [Working With JSON](/examples/concepts/working-with-json.html) — more patterns for reliable JSON output
-- [Extract Structured Data](/examples/bots/extract.html) — caller-supplied schemas for slot filling
-- [Parsers](/parser/index.html) — how parser output types flow into executor return types
-- [Add Retries and Timeouts](/examples/concepts/retries-and-timeouts.html) — production hardening for functions like this
+- [Working With JSON](/examples/concepts/working-with-json) — more patterns for reliable JSON output
+- [Extract Structured Data](/examples/bots/extract) — caller-supplied schemas for slot filling
+- [Parsers](/parser/) — how parser output types flow into executor return types
+- [Add Retries and Timeouts](/examples/concepts/retries-and-timeouts) — production hardening for functions like this

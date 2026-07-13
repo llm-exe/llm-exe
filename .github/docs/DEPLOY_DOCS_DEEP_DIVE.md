@@ -153,7 +153,7 @@ flowchart TB
         s5["read package.json version"]:::step
         s6["compute PACKAGE_ID = version-timestamp"]:::step
         s7["write docs/.env (VITE_PACKAGE_ID)"]:::step
-        s8["npm run docs:update-providers\nnpm run docs:build"]:::step
+        s8["npm run docs:update-providers\nnpm run docs:build (auto postdocs:build guard)"]:::step
         s9["upload-artifact@v7 name=docs"]:::step
         s10["configure-aws-credentials@v4 (OIDC)"]:::step
         s11["aws sts get-caller-identity"]:::step
@@ -202,6 +202,7 @@ sequenceDiagram
     R->>FS: write docs/.env (VITE_PACKAGE_ID)
     R->>R: npm run docs:update-providers
     R->>R: npm run docs:build (VitePress)
+    R->>FS: postdocs:build guard (verify-docs-build.mjs checks sitemap)
     R->>GH: upload-artifact docs (30 days)
     R->>STS: AssumeRoleWithWebIdentity (OIDC JWT)
     STS-->>R: temporary AWS credentials
@@ -334,6 +335,7 @@ flowchart LR
     subgraph Build["Build"]
         b1["npm run docs:update-providers\nupdates provider metadata in docs"]:::build
         b2["npm run docs:build\nVitePress build to docs/.vitepress/dist"]:::build
+        b2b["postdocs:build\nverify-docs-build.mjs guards sitemap >= 40 pages"]:::build
         b3["actions/upload-artifact@v7\nname: docs, 30-day retention"]:::art
     end
 
@@ -344,7 +346,7 @@ flowchart LR
         a4["AWS CloudFront\nauth: temporary creds\nwhy: GET/UPDATE config, create invalidation"]:::aws
     end
 
-    c1 --> c2 --> c3 --> c4 --> b1 --> b2 --> b3
+    c1 --> c2 --> c3 --> c4 --> b1 --> b2 --> b2b --> b3
     b3 --> a1
     a1 --> a2 --> a3
     a2 --> a4
@@ -457,7 +459,7 @@ stateDiagram-v2
     Guarding --> Authorized: branch ok
     Authorized --> Booting: deploy-docs starts
     Booting --> Installed: checkout + node + cache + npm install
-    Installed --> Built: docs:update-providers + docs:build
+    Installed --> Built: docs:update-providers + docs:build + postdocs:build guard
     Built --> Uploaded: upload-artifact succeeded
     Uploaded --> AwsAuthed: configure-aws-credentials returned creds
     AwsAuthed --> S3Deployed: aws s3 cp completed
@@ -508,7 +510,7 @@ flowchart TB
     F3F["grant role s3:PutObject on\narn:aws:s3:::(BUCKET)/docs/*"]:::fix
     F3E --> F3F
 
-    F4["VitePress build fails\n(broken docs/, missing partial)"]:::fail
+    F4["VitePress build fails\n(broken docs/, missing partial)\nor postdocs:build guard rejects\n(sitemap under 40 pages, missing pages)"]:::fail
     F4 --> F4E["npm run docs:build exits non-zero\nno artifact uploaded, no S3 PUT"]:::effect
     F4F["fix docs source, rerun"]:::fix
     F4E --> F4F
@@ -555,7 +557,7 @@ flowchart LR
     K6["Jobs"]:::k --- V6["check-deploy-branch, deploy-docs (needs guard)"]:::v
     K7["Node version"]:::k --- V7["24.x (./.github/actions/setup-node)"]:::v
     K8["Cache"]:::k --- V8["node_modules (./.github/actions/cache); ~/.npm via setup-node@v6 cache: npm"]:::v
-    K9["Build commands"]:::k --- V9["npm run docs:update-providers + docs:build"]:::v
+    K9["Build commands"]:::k --- V9["npm run docs:update-providers + docs:build (auto postdocs:build guard)"]:::v
     K10["Build output"]:::k --- V10["docs/.vitepress/dist/"]:::v
     K11["PACKAGE_ID"]:::k --- V11["(package.json version)-(unix timestamp)"]:::v
     K12["Build env injection"]:::k --- V12["docs/.env VITE_PACKAGE_ID + step env"]:::v
@@ -573,7 +575,7 @@ Direct links:
 
 - Workflow file: [.github/workflows/deploy-docs.yml](../workflows/deploy-docs.yml)
 - Composite actions: [setup-node](../actions/setup-node/action.yml), [cache](../actions/cache/action.yml)
-- Build scripts: `docs:update-providers`, `docs:build`, `predocs:build` in [package.json](../../package.json)
+- Build scripts: `docs:update-providers`, `docs:build`, `predocs:build`, `postdocs:build` (runs [verify-docs-build.mjs](../../docs/.vitepress/scripts/verify-docs-build.mjs)) in [package.json](../../package.json)
 - VitePress source: [docs/](../../docs/)
 
 [Back to top](#navigate)

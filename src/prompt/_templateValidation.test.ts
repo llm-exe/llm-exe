@@ -153,6 +153,41 @@ describe("_templateValidation", () => {
       expect(paths(refs)).toEqual(["items"]);
     });
 
+    it("collects root-level paths from the #each {{else}} block when block params are declared", () => {
+      // The inverse (else) of #each renders when the collection is empty, so
+      // paths inside it are root input references, not item references. With
+      // block params declared, the program body is walked and the inverse walk
+      // must still surface those root paths.
+      const refs = collectTemplateInputReferences(
+        "{{#each users as |user|}}{{user.name}}{{else}}{{emptyMessage}}{{/each}}"
+      );
+      expect(paths(refs).sort()).toEqual(["emptyMessage", "users"]);
+    });
+
+    it("does not collect bare {{else}} paths from a #each without block params", () => {
+      // Bare #each swallows its whole body (documented approximation), so the
+      // else-block `fallback` is not surfaced. Locks the current contract so a
+      // change here is caught.
+      const refs = collectTemplateInputReferences(
+        "{{#each items}}{{name}}{{else}}{{fallback}}{{/each}}"
+      );
+      expect(paths(refs)).toEqual(["items"]);
+    });
+
+    it("collects paths from both branches of #if / {{else}}", () => {
+      const refs = collectTemplateInputReferences(
+        "{{#if show}}{{whenTrue}}{{else}}{{whenFalse}}{{/if}}"
+      );
+      expect(paths(refs).sort()).toEqual(["show", "whenFalse", "whenTrue"]);
+    });
+
+    it("ignores ../parent paths in the else block of a block-param #each", () => {
+      const refs = collectTemplateInputReferences(
+        "{{#each rows as |row|}}{{row}}{{else}}{{../footer}}{{/each}}"
+      );
+      expect(paths(refs)).toEqual(["rows"]);
+    });
+
     it("treats unknown helper with args as missing helper", () => {
       const result = validateTemplateInputReferences(
         "{{unknownHelper createdAt}}",

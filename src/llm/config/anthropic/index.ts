@@ -157,6 +157,12 @@ const anthropicChatV1: Config = {
 
 export const anthropic = {
   "anthropic.chat.v1": anthropicChatV1,
+  // Claude Fable 5 models
+  "anthropic.claude-fable-5": withDefaultModel(
+    anthropicChatV1,
+    "claude-fable-5"
+  ),
+
   // Claude 4.8 models
   "anthropic.claude-opus-4-8": withDefaultModel(
     anthropicChatV1,
@@ -195,11 +201,9 @@ export const anthropic = {
     message:
       'Shorthand "anthropic.claude-opus-4-6" is deprecated and may be removed in a future release.',
   }),
-  ...deprecateShorthand("anthropic.claude-opus-4-1", {
-    config: withDefaultModel(anthropicChatV1, "claude-opus-4-1-20250805"),
-    message:
-      'Shorthand "anthropic.claude-opus-4-1" is deprecated and may be removed in a future release.',
-  }),
+  // NOTE: "anthropic.claude-opus-4-1" (claude-opus-4-1-20250805) was removed —
+  // Anthropic retires that model on Aug 5, 2026. Migrate to
+  // anthropic.claude-opus-4-5/-6/-7/-8.
   ...deprecateShorthand("anthropic.claude-sonnet-4", {
     config: withDefaultModel(anthropicChatV1, "claude-sonnet-4-0"),
     message:

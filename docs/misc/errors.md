@@ -123,3 +123,48 @@ if (isLlmExeError(error)) {
 The payload includes `name`, `message`, `code`, `category`, `context`, and a
 serialized `cause` when one is set. Secrets in provider error context are
 redacted before serialization.
+
+### Serializing any thrown value
+
+`toJSON()` is only available on `LlmExeError` instances. When you catch a value
+that might be a plain `Error`, a provider error, or something non-standard, use
+`serializeLlmExeError(error, options?)` — it accepts **any** value and always
+returns a JSON-safe payload, guarding against circular references and deeply
+nested causes.
+
+```ts
+import { serializeLlmExeError } from "llm-exe";
+
+try {
+  await executor.execute(input);
+} catch (error) {
+  logger.error(serializeLlmExeError(error));
+}
+```
+
+Options:
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `includeStack` | `boolean` | `false` | When `true`, includes the `stack` string in the serialized output. |
+
+### Formatting for a log line
+
+`formatLlmExeErrorForLog(error)` returns a compact, human-readable string
+instead of a structured object — useful for single-line log output. It renders a
+header (`Name [code]: message`) followed by a `Caused by:` chain that walks the
+underlying `cause` errors.
+
+```ts
+import { formatLlmExeErrorForLog } from "llm-exe";
+
+try {
+  await executor.execute(input);
+} catch (error) {
+  console.error(formatLlmExeErrorForLog(error));
+  // LlmExeError [provider.rate_limit]: Rate limit exceeded
+  // Caused by: Error: 429 Too Many Requests
+}
+```
+
+Like `serializeLlmExeError`, it accepts any thrown value, so you don't need to
+narrow with `isLlmExeError` first.

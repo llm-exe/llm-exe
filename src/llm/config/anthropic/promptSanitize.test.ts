@@ -149,7 +149,7 @@ describe("anthropicPromptSanitize", () => {
       "claude-sonnet-5",
       "claude-fable-5",
     ])(
-      "should warn on newer prefill-unsupported model %s (confirmed 400s live)",
+      "should warn on newer 4.6+/5-generation model %s",
       (model) => {
         const messages: IChatMessages = [
           { role: "user", content: "What's 2+2?" },

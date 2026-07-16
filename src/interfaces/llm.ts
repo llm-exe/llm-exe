@@ -587,6 +587,15 @@ export type AllLlm = {
 
 export type AllUseLlmOptions = AllLlm & {
   // OpenAI - GPT-5 family
+  "openai.gpt-5.6": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-5.6-terra": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-5.6-luna": {
+    input: Omit<OpenAiRequest, "model">;
+  };
   "openai.gpt-5.5": {
     input: Omit<OpenAiRequest, "model">;
   };
@@ -641,6 +650,11 @@ export type AllUseLlmOptions = AllLlm & {
 
   // Anthropic - Claude 4.8 models
   "anthropic.claude-opus-4-8": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+
+  // Anthropic - Claude Sonnet 5 models
+  "anthropic.claude-sonnet-5": {
     input: Omit<AnthropicRequest, "model">;
   };
 

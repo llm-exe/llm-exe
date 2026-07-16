@@ -60,7 +60,7 @@
   "license": "MIT",
   "dependencies": {
     "@aws-crypto/sha256-js": "5.2.0",
-    "@aws-sdk/credential-providers": "3.806.0",
+    "@aws-sdk/credential-providers": "3.1073.0",
     "@smithy/signature-v4": "5.1.0",
     "exponential-backoff": "3.1.2",
     "handlebars": "4.7.8",

@@ -12,6 +12,7 @@ const ANTHROPIC_VERSION = "2023-06-01";
 const MODELS_REJECTING_SAMPLING_PARAMS = [
   "claude-opus-4-7",
   "claude-opus-4-8",
+  "claude-sonnet-5",
   "claude-fable-5",
 ];
 
@@ -127,6 +128,12 @@ export const anthropic = {
   "anthropic.claude-opus-4-8": withDefaultModel(
     anthropicChatV1,
     "claude-opus-4-8"
+  ),
+
+  // Claude Sonnet 5 models
+  "anthropic.claude-sonnet-5": withDefaultModel(
+    anthropicChatV1,
+    "claude-sonnet-5"
   ),
 
   // Claude 4.7 models

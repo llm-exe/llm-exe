@@ -644,6 +644,11 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<AnthropicRequest, "model">;
   };
 
+  // Anthropic - Claude Sonnet 5 models
+  "anthropic.claude-sonnet-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+
   // Anthropic - Claude 4.7 models
   "anthropic.claude-opus-4-7": {
     input: Omit<AnthropicRequest, "model">;

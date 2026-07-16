@@ -123,3 +123,54 @@ if (isLlmExeError(error)) {
 The payload includes `name`, `message`, `code`, `category`, `context`, and a
 serialized `cause` when one is set. Secrets in provider error context are
 redacted before serialization.
+
+### `serializeLlmExeError`
+
+`error.toJSON()` only works when the value you caught is an `LlmExeError`. In a
+`catch` block you rarely know the type ahead of time — the error could be a
+plain `Error`, a rejected `fetch` `Response`, or something a dependency threw.
+`serializeLlmExeError(error, options?)` accepts **any** value and always returns
+a JSON-safe payload, so you can log it without a type guard.
+
+```ts
+import { serializeLlmExeError } from "llm-exe";
+
+try {
+  await executor.execute(input);
+} catch (error) {
+  logger.error(serializeLlmExeError(error));
+}
+```
+
+- Serializes `LlmExeError`, native `Error`, `Response`, and arbitrary objects.
+- Walks the `cause` chain (up to 5 levels; deeper causes are marked
+  `{ truncated: true }`).
+- Guards against circular references (rendered as `"[Circular]"`) and normalizes
+  values that are not JSON-safe (`BigInt`, `Date`, `Map`, functions, etc.).
+- Secrets in provider error context are redacted.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `includeStack` | `boolean` | `false` | Include the error's `stack` string in the payload. |
+
+### `formatLlmExeErrorForLog`
+
+When you want a compact, human-readable single string instead of a structured
+object — for a plain-text log line, for example — use
+`formatLlmExeErrorForLog(error)`. It also accepts any value and never throws.
+
+```ts
+import { formatLlmExeErrorForLog } from "llm-exe";
+
+try {
+  await executor.execute(input);
+} catch (error) {
+  console.error(formatLlmExeErrorForLog(error));
+  // LlmExeError [parser.schema_validation_failed]: requires property "name"
+  // Caused by: Error: Unexpected token
+}
+```
+
+The header is formatted as `Name [code]: message` (falling back to the
+`category`, then just the name when neither is present), followed by one
+`Caused by:` line per level of the `cause` chain (up to 5 levels).

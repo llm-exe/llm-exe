@@ -1,10 +1,19 @@
 import { IChatMessage, IChatMessages } from "@/types";
-import { anthropicPromptMessageCallback } from "./promptSanitizeMessageCallback";
+import {
+  anthropicPromptMessageCallback,
+  AnthropicPromptSanitizeOptions,
+} from "./promptSanitizeMessageCallback";
 
+// Models that 400 on a trailing assistant message (prefill). Confirmed live
+// against the Anthropic API: the 4.6+/5 generation rejects prefills, while the
+// 4.5 generation (opus/sonnet/haiku 4.5) still supports them.
 const PREFILL_UNSUPPORTED_MODELS = [
   "claude-opus-4-6",
   "claude-opus-4-7",
+  "claude-opus-4-8",
   "claude-sonnet-4-6",
+  "claude-sonnet-5",
+  "claude-fable-5",
 ];
 
 function modelBlocksPrefill(model: string | undefined): boolean {
@@ -63,11 +72,15 @@ function mergeConsecutiveSameRole(
 export function anthropicPromptSanitize(
   _messages: string | IChatMessages,
   _inputBodyObj: Record<string, any>,
-  _outputObj: Record<string, any>
+  _outputObj: Record<string, any>,
+  _options: AnthropicPromptSanitizeOptions = {}
 ) {
+  const toAnthropicMessage = (m: IChatMessage) =>
+    anthropicPromptMessageCallback(m, _options);
+
   if (typeof _messages === "string") {
     return [{ role: "user", content: _messages } as IChatMessage].map(
-      anthropicPromptMessageCallback
+      toAnthropicMessage
     );
   }
 
@@ -81,7 +94,7 @@ export function anthropicPromptSanitize(
     return [
       { role: "user", content: first.content } as IChatMessage,
       ...messages,
-    ].map(anthropicPromptMessageCallback);
+    ].map(toAnthropicMessage);
   }
 
   // if more than one message is passed in, and the first is a system message:
@@ -97,7 +110,7 @@ export function anthropicPromptSanitize(
           }
           return m;
         }) as IChatMessage[]
-      ).map(anthropicPromptMessageCallback)
+      ).map(toAnthropicMessage)
     );
     warnIfTrailingAssistantMessage(result, _inputBodyObj.model);
     return result;
@@ -115,7 +128,7 @@ export function anthropicPromptSanitize(
           return m;
         }),
       ] as IChatMessage[]
-    ).map(anthropicPromptMessageCallback)
+    ).map(toAnthropicMessage)
   );
   warnIfTrailingAssistantMessage(result, _inputBodyObj.model);
   return result;

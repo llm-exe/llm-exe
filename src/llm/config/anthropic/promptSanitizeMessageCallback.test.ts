@@ -354,4 +354,195 @@ describe("anthropicPromptMessageCallback", () => {
       });
     });
   });
+
+  describe("image content handling", () => {
+    it("converts a data: URI image block to an anthropic base64 source", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          },
+        ],
+      };
+
+      const result = anthropicPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: "image/png",
+              data: "iVBORw0KGgo=",
+            },
+          },
+        ],
+      });
+    });
+
+    it("converts an https image block to an anthropic url source", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "https://example.com/cat.png" },
+          },
+        ],
+      };
+
+      const result = anthropicPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: { type: "url", url: "https://example.com/cat.png" },
+          },
+        ],
+      });
+    });
+
+    it("converts legacy blocks typed 'image' that carry image_url", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            image_url: { url: "https://example.com/cat.png" },
+          } as any,
+        ],
+      };
+
+      const result = anthropicPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: { type: "url", url: "https://example.com/cat.png" },
+          },
+        ],
+      });
+    });
+
+    it("leaves text blocks and unknown blocks untouched", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          { type: "text", text: "What is in this image?" },
+          { type: "tool_result", tool_use_id: "abc", content: "ok" } as any,
+        ],
+      };
+
+      const result = anthropicPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        content: [
+          { type: "text", text: "What is in this image?" },
+          { type: "tool_result", tool_use_id: "abc", content: "ok" },
+        ],
+      });
+    });
+
+    it("handles mixed text and image content", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          { type: "text", text: "Describe:" },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/jpeg;base64,/9j/4AAQ" },
+          },
+        ],
+      };
+
+      const result = anthropicPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        content: [
+          { type: "text", text: "Describe:" },
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: "image/jpeg",
+              data: "/9j/4AAQ",
+            },
+          },
+        ],
+      });
+    });
+
+    it("throws for url images when allowImageUrlSources is false", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "https://example.com/cat.png" },
+          },
+        ],
+      };
+
+      expect(() =>
+        anthropicPromptMessageCallback(message, {
+          provider: "amazon:anthropic.chat",
+          allowImageUrlSources: false,
+        })
+      ).toThrow(/Image URLs are not supported/);
+    });
+
+    it("still allows base64 images when allowImageUrlSources is false", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          },
+        ],
+      };
+
+      const result = anthropicPromptMessageCallback(message, {
+        provider: "amazon:anthropic.chat",
+        allowImageUrlSources: false,
+      });
+
+      expect(result).toEqual({
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: "image/png",
+              data: "iVBORw0KGgo=",
+            },
+          },
+        ],
+      });
+    });
+
+    it("throws on a malformed data: URI", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          { type: "image_url", image_url: { url: "data:image/png,raw" } },
+        ],
+      };
+
+      expect(() => anthropicPromptMessageCallback(message)).toThrow(
+        /Malformed data: URI/
+      );
+    });
+  });
 });

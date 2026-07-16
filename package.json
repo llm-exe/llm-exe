@@ -1,6 +1,6 @@
 {
   "name": "llm-exe",
-  "version": "3.0.1",
+  "version": "3.0.3",
   "description": "Simplify building LLM-powered apps with easy-to-use base components, supporting text and chat-based prompts with handlebars template engine, output parsers, and flexible function calling capabilities.",
   "keywords": [
     "ai",
@@ -48,6 +48,7 @@
     "predocs:build": "npm run build:docs-examples && bash scripts/generate-llms-txt.sh",
     "docs:dev": "eval $(cat docs/.env) && concurrently \"vitepress dev docs\" \"npm run build:watch:docs-examples\"",
     "docs:build": "eval $(cat docs/.env) && vitepress build docs",
+    "postdocs:build": "node docs/.vitepress/scripts/verify-docs-build.mjs",
     "docs:update-providers": "ts-node --transpile-only -r tsconfig-paths/register docs/.vitepress/scripts/updateProviders.ts",
     "lint": "eslint .",
     "format:check": "prettier --check \"src\"",
@@ -59,7 +60,7 @@
   "license": "MIT",
   "dependencies": {
     "@aws-crypto/sha256-js": "5.2.0",
-    "@aws-sdk/credential-providers": "3.806.0",
+    "@aws-sdk/credential-providers": "3.1073.0",
     "@smithy/signature-v4": "5.1.0",
     "exponential-backoff": "3.1.2",
     "handlebars": "4.7.8",

@@ -17,7 +17,7 @@ const FULL_REDACTION_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   ],
   // JSON-shaped fields.
   [
-    /"(authorization|api[-_]?key|secret[-_]?key|access[-_]?key|secret|token|password|cookie|x-amz[a-z-]*)"\s*:\s*"[^"]*"/gi,
+    /"(authorization|x-api-key|api[-_]?key|secret[-_]?key|access[-_]?key|secret|token|password|cookie|x-amz[a-z-]*)"\s*:\s*"[^"]*"/gi,
     '"$1": "[redacted]"',
   ],
 ];

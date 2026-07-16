@@ -170,6 +170,7 @@ flowchart LR
     d --> T5
     d --> T6
     d --> T7
+    p --> T7
 ```
 
 ### 2.5. Identity and runtime (shared infrastructure)
@@ -226,7 +227,7 @@ Every workflow, every event it accepts, every cron expression, and every job-lev
 | `docs-sync.yml` | yes, with `target` (string) and `full_refresh` (boolean) inputs | none | none | none | invoked by `docs-sync-trigger.yml` or manual dispatch |
 | `vitals.yml` | yes, no inputs | `0 8 * * *` daily | none | none | regenerates AUTOMATION.md on development |
 | `test-github-action.yml` | yes, with `provider` (choice: `openai.chat.v1`, `anthropic.chat.v1`) and `model` (string, default `gpt-4o-mini`) | none | none | none | none |
-| `a11y-docs.yml` | yes, no inputs | none | none | none | none (manual-only for now; comments document future plan to add `pull_request` paths `docs/**` and `.github/a11y/**`) |
+| `a11y-docs.yml` | yes, no inputs | none | `pull_request` filtered to paths `docs/**`, `.github/a11y/**`, `.github/workflows/a11y-docs.yml` | none | none |
 
 ### Concurrency groups
 
@@ -357,7 +358,7 @@ The minimal tree, annotated with why each path exists. A replica must reproduce 
 │   │   ├── docs-sync.yml                keeps workflow deep-dive markdown in sync with source; invoked by trigger or manual dispatch
 │   │   ├── vitals.yml                   daily cron + dispatch; regenerates AUTOMATION.md on development
 │   │   ├── test-github-action.yml        dispatch only: smoke-tests llm-exe/github-action@v1 with a real LLM call and assertion
-│   │   └── a11y-docs.yml                 dispatch only: builds the VitePress docs site, serves on loopback, runs Pa11y CI against a committed URL list
+│   │   └── a11y-docs.yml                 dispatch + PR (paths docs/**, .github/a11y/**, self): builds the VitePress docs site, serves on loopback, runs Pa11y CI against a committed URL list
 │   └── WORKFLOW_ARCHITECTURE.md          this document
 ├── scripts/
 │   ├── maintain.sh                       local entry point; same prompt assembly as CI but runs claude interactively
@@ -864,7 +865,7 @@ PR body truncation: capped at 65000 characters.
 | Triggers | `release` `published` (must target `main`) and dispatch (must run from `development` or `main`) |
 | Auth | OIDC -> assume `vars.AWS_ROLE_DEPLOY_ARN` in `vars.AWS_REGION` |
 | Versioning | `PACKAGE_ID = <package.json version>-<unix-timestamp>`; injected into `docs/.env` as `VITE_PACKAGE_ID` so the built site knows its own identifier. |
-| Build | `npm run docs:update-providers && npm run docs:build`. Output at `docs/.vitepress/dist`. |
+| Build | `npm run docs:update-providers && npm run docs:build`. The `docs:build` script auto-runs `postdocs:build` (`node docs/.vitepress/scripts/verify-docs-build.mjs`), which fails the build if the sitemap has fewer than 40 pages or expected pages are missing. Output at `docs/.vitepress/dist`. |
 | Ship | Copy to `s3://<bucket>/docs/<PACKAGE_ID>/`. Pull current CloudFront distribution config, set `.Origins.Items[0].OriginPath = "/docs/<PACKAGE_ID>"`, update with the captured ETag, invalidate `/*`. |
 
 ### 9.18. `test-github-action.yml` - Smoke test for llm-exe GitHub Action
@@ -885,14 +886,14 @@ This workflow is standalone: it does not interact with any other workflow in the
 
 | Field | Value |
 |-------|-------|
-| Trigger | `workflow_dispatch` only (comments document a future plan to also fire on `pull_request` paths `docs/**` and `.github/a11y/**` once the URL list and Pa11y baseline are stable) |
+| Trigger | `workflow_dispatch` plus `pull_request` filtered to paths `docs/**`, `.github/a11y/**`, and `.github/workflows/a11y-docs.yml` (the URL list and Pa11y baseline are now stable, so PRs gate regressions past the committed baseline). Uses `pull_request`, not `pull_request_target`. |
 | Permissions | `contents: read` only; no App token, no bot identity, no secrets referenced |
 | Timeout | 15 minutes |
 | Concurrency | not set |
-| Steps | `actions/checkout@v5` -> `./.github/actions/setup-node` -> `npm install` -> `npm run docs:update-providers && npm run docs:build` -> background `npx serve@14 docs/.vitepress/dist -l 4173` with a 30-second poll loop against `http://127.0.0.1:4173/` -> `npx pa11y-ci@3 --config .github/a11y/pa11yci.json` -> stop-server step gated `if: always()` that kills the pid recorded at `/tmp/serve.pid`. |
+| Steps | `actions/checkout@v5` -> `./.github/actions/setup-node` -> `npm install` -> `npm run docs:update-providers && npm run docs:build` (the latter auto-runs the `postdocs:build` sitemap guard) -> background `npx serve@14 docs/.vitepress/dist -l 4173` with a 30-second poll loop against `http://127.0.0.1:4173/` -> `npx pa11y-ci@3 --config .github/a11y/pa11yci.json` -> stop-server step gated `if: always()` that kills the pid recorded at `/tmp/serve.pid`. |
 | External calls | `registry.npmjs.org` (npm + npx) and the loopback static server. No outbound to GitHub APIs, Anthropic, AWS, Microsoft Graph, or any provider. |
 | Output | Job pass/fail and pa11y-ci stdout in the run log. Does not open PRs, file issues, or commit anything. |
-| Security note | The workflow's header comment explicitly states it does not consume any user-controlled `github.event.*` input inside `run:` blocks. The URL list and Pa11y config live under `.github/a11y/`, which is repo-owned. |
+| Security note | The workflow's header comment explicitly states it does not consume any user-controlled `github.event.*` input inside `run:` blocks, which is why the `pull_request` trigger (not `pull_request_target`) is safe with only `contents: read`. The URL list and Pa11y config live under `.github/a11y/`, which is repo-owned. |
 
 This workflow is standalone like `test-github-action.yml`: it does not interact with any other workflow in the repo. It exists so the maintainer can verify the published docs site stays accessible.
 

@@ -1,3 +1,8 @@
+---
+title: "Generate Jest Tests with an LLM in TypeScript | llm-exe"
+description: "Build an LLM-powered test generator in TypeScript that reads a function and writes comprehensive Jest test cases, with markdown code block parsing built in."
+---
+
 # Generate Jest Tests
 
 This example creates an LLM-powered test generator that produces comprehensive Jest test cases based on a given TypeScript function.

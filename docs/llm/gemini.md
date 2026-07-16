@@ -1,3 +1,8 @@
+---
+title: "Use Google Gemini Models in TypeScript with llm-exe"
+description: "Call Google Gemini models like gemini-2.5-flash from TypeScript with llm-exe. Covers setup, API key authentication, and Gemini-specific options like effort."
+---
+
 # Google Gemini
 
 When using Google Gemini models, llm-exe will make POST requests to `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`. All models are supported if you pass `google.chat.v1` as the first argument, and then specify a model in the options.

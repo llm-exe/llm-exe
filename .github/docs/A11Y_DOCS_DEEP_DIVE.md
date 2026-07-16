@@ -32,7 +32,8 @@ flowchart LR
     classDef out fill:#581c87,color:#fff,stroke:#000
 
     subgraph T["Triggers"]
-        d1["workflow_dispatch\n(manual only)"]:::trig
+        d1["workflow_dispatch\n(manual)"]:::trig
+        d2["pull_request\n(paths docs/**, .github/a11y/**, self)"]:::trig
     end
 
     subgraph A["a11y-docs.yml"]
@@ -55,6 +56,7 @@ flowchart LR
     end
 
     d1 --> J
+    d2 --> J
     J --> cmp
     J --> cfg
     J --> urls
@@ -71,25 +73,27 @@ Standalone workflow. It does not write to GitHub, does not commit, does not open
 
 ## 2. Triggers
 
-One entry point, by design.
+Two entry points: manual dispatch and path-filtered pull requests.
 
 ```mermaid
 flowchart TB
     classDef manual fill:#9333ea,color:#fff,stroke:#000
-    classDef future fill:#374151,color:#fff,stroke:#000
+    classDef pr fill:#0b3954,color:#fff,stroke:#000
     classDef out fill:#1f2937,color:#fff,stroke:#000
 
     start([event arrives])
     start --> ev{event_name?}
     ev -->|workflow_dispatch| run[pa11y job runs]:::manual
+    ev -->|pull_request| pf{path filter?}
     ev -->|anything else| fail([no other trigger configured])
 
-    note["Future plan (per file comment):\nflip to also run on pull_request paths\naffecting docs/** and .github/a11y/**\nonce URL list and baseline are stable"]:::future
+    pf -->|"docs/**, .github/a11y/**,\n.github/workflows/a11y-docs.yml"| run2[pa11y job runs]:::pr
+    pf -->|no matching path| skip([workflow skipped])
 ```
 
-The workflow file's comments document the intent: manual-only for now to let the canonical URL list and the Pa11y baseline stabilize. Once those are settled, add a `pull_request` trigger filtered to `docs/**` and `.github/a11y/**`.
+The canonical URL list and the Pa11y baseline under `.github/a11y/` are now stable, so pull requests that touch the docs source, the baseline, or this workflow gate accessibility regressions past the committed baseline. The trigger is `pull_request`, not `pull_request_target`, because no `github.event.*` input is interpolated into any `run:` block and the job only needs `contents: read`.
 
-Source: [.github/workflows/a11y-docs.yml](../workflows/a11y-docs.yml) lines 12-15.
+Source: [.github/workflows/a11y-docs.yml](../workflows/a11y-docs.yml) lines 16-22.
 
 [Back to top](#navigate)
 
@@ -104,7 +108,7 @@ flowchart TB
     classDef job fill:#1e3a8a,color:#fff,stroke:#000
     classDef step fill:#374151,color:#fff,stroke:#000
 
-    start([workflow_dispatch])
+    start([workflow_dispatch or pull_request])
     start --> J
 
     subgraph J["Job: pa11y (ubuntu-latest, timeout 15m)"]
@@ -112,7 +116,7 @@ flowchart TB
         s1["actions/checkout@v5"]:::step
         s2["./.github/actions/setup-node\n(Node 24, cache: npm)"]:::step
         s3["npm install"]:::step
-        s4["npm run docs:update-providers\n&& npm run docs:build"]:::step
+        s4["npm run docs:update-providers\n&& npm run docs:build (auto postdocs:build guard)"]:::step
         s5["serve docs/.vitepress/dist on :4173\nbackgrounded; poll up to 30s"]:::step
         s6["npx pa11y-ci@3\n--config .github/a11y/pa11yci.json"]:::step
         s7["Stop the static server\n(if: always())"]:::step
@@ -120,7 +124,7 @@ flowchart TB
     end
 ```
 
-No concurrency group is configured. Two concurrent dispatches would run side by side. Since the job binds to a fixed local port inside its own runner, that is fine.
+No concurrency group is configured. Two concurrent runs (say two open PRs, or a PR plus a manual dispatch) would run side by side. Since the job binds to a fixed local port inside its own runner, that is fine.
 
 [Back to top](#navigate)
 
@@ -142,11 +146,12 @@ sequenceDiagram
     participant P as npx pa11y-ci@3
     participant CFG as .github/a11y/pa11yci.json
 
-    E->>J: workflow_dispatch
+    E->>J: workflow_dispatch or pull_request (docs paths)
     J->>G: checkout@v5 (default token, read-only)
     J->>N: setup-node@v6 via composite (node 24, cache npm)
     J->>N: npm install
     J->>V: npm run docs:update-providers + npm run docs:build
+    V->>V: postdocs:build guard (verify-docs-build.mjs checks sitemap)
     V-->>J: docs/.vitepress/dist
     J->>S: spawn serve@14 dist -l 4173 (background)
     Note over J,S: poll http://127.0.0.1:4173/ for up to 30 seconds
@@ -158,7 +163,7 @@ sequenceDiagram
     J->>S: kill pid in /tmp/serve.pid (if: always())
 ```
 
-Source: [.github/workflows/a11y-docs.yml](../workflows/a11y-docs.yml) lines 20-60.
+Source: [.github/workflows/a11y-docs.yml](../workflows/a11y-docs.yml) lines 27-69.
 
 [Back to top](#navigate)
 
@@ -240,12 +245,13 @@ flowchart TB
     G1["permissions: contents: read\nno write capability at all"]:::good
     G2["no github.event.* interpolation\nin run: blocks"]:::good
     G3["URL list is committed under .github/a11y/\nnot user-controlled"]:::good
+    G6["pull_request (not pull_request_target)\nruns with the PR's read-only token"]:::good
     G4["loopback only (127.0.0.1:4173)\nno public endpoint, no inbound"]:::good
     G5["no secrets referenced\nno provider keys, no App token"]:::good
     N1["external network: registry.npmjs.org\n(npm + npx download)"]:::neutral
 ```
 
-Source comment at the top of the workflow file explicitly calls this out: "this workflow does not consume any user-controlled `github.event.*` input inside `run:` blocks." Path filters are not yet enabled because the trigger is manual-only.
+Source comment at the top of the workflow file explicitly calls this out: "this workflow does not consume any user-controlled `github.event.*` input inside `run:` blocks." That is exactly why the `pull_request` trigger (not `pull_request_target`) is safe: forks run with a read-only `GITHUB_TOKEN`, and no PR-controlled string reaches a shell. Path filters (`docs/**`, `.github/a11y/**`, and this workflow) keep the scan scoped to changes that could affect accessibility.
 
 [Back to top](#navigate)
 
@@ -288,7 +294,7 @@ flowchart TB
     F1 --> F1E["job fails before build step"]:::effect
     F1E --> F1X["check package-lock alignment; rerun"]:::fix
 
-    F2["docs build fails\n(VitePress error)"]:::fail
+    F2["docs build fails\n(VitePress error, or postdocs:build\nguard rejects an incomplete sitemap)"]:::fail
     F2 --> F2E["no dist/ produced; serve step fails"]:::effect
     F2E --> F2X["reproduce locally with npm run docs:build"]:::fix
 
@@ -318,14 +324,14 @@ flowchart LR
 
     K1["File"]:::k --- V1[".github/workflows/a11y-docs.yml"]:::v
     K2["Name"]:::k --- V2["Docs / Accessibility"]:::v
-    K3["Triggers"]:::k --- V3["workflow_dispatch only"]:::v
+    K3["Triggers"]:::k --- V3["workflow_dispatch + pull_request (paths docs/**, .github/a11y/**, self)"]:::v
     K4["Permissions"]:::k --- V4["contents: read"]:::v
     K5["Timeout"]:::k --- V5["15 minutes"]:::v
     K6["Concurrency"]:::k --- V6["not set"]:::v
     K7["Identity"]:::k --- V7["default GITHUB_TOKEN (read-only)"]:::v
     K8["Runner"]:::k --- V8["ubuntu-latest"]:::v
     K9["Node version"]:::k --- V9["24 (via composite setup-node)"]:::v
-    K10["Build commands"]:::k --- V10["npm run docs:update-providers && npm run docs:build"]:::v
+    K10["Build commands"]:::k --- V10["npm run docs:update-providers && npm run docs:build (auto postdocs:build guard)"]:::v
     K11["Static server"]:::k --- V11["npx serve@14 docs/.vitepress/dist -l 4173"]:::v
     K12["Scanner"]:::k --- V12["npx pa11y-ci@3"]:::v
     K13["Config file"]:::k --- V13[".github/a11y/pa11yci.json"]:::v

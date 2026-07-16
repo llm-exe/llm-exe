@@ -1,3 +1,7 @@
+---
+title: "Use Cohere Embeddings via AWS Bedrock | llm-exe"
+description: "Generate Cohere Embed v3 and v4 embeddings via AWS Bedrock in TypeScript with llm-exe. Covers input types, batching, and variable output dimensions."
+---
 
 # Cohere Embeddings (via AWS Bedrock)
 

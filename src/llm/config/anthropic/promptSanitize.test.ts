@@ -144,6 +144,34 @@ describe("anthropicPromptSanitize", () => {
       expect(warnSpy).toHaveBeenCalledTimes(1);
     });
 
+    it.each([
+      "claude-opus-4-8",
+      "claude-sonnet-5",
+      "claude-fable-5",
+    ])(
+      "should warn on newer prefill-unsupported model %s (confirmed 400s live)",
+      (model) => {
+        const messages: IChatMessages = [
+          { role: "user", content: "What's 2+2?" },
+          { role: "assistant", content: "The answer is" },
+        ];
+        anthropicPromptSanitize(messages, { model }, {});
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("does not support assistant message prefills")
+        );
+      }
+    );
+
+    it("should not warn on 4.5-generation models that support prefills", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, { model: "claude-haiku-4-5" }, {});
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
     it("should warn for dated model variants", () => {
       const messages: IChatMessages = [
         { role: "user", content: "What's 2+2?" },

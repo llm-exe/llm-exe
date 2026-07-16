@@ -1,3 +1,8 @@
+---
+title: "Use Deepseek Models in TypeScript with llm-exe"
+description: "Call Deepseek chat models like deepseek-chat and deepseek-v4 from TypeScript with llm-exe. Covers typed shorthands, authentication, and model options."
+---
+
 # Deepseek
 
 When using Deepseek models, llm-exe will make POST requests to `https://api.deepseek.com/v1/chat/completions`. All models are supported if you pass `deepseek.chat.v1` as the first argument, and then specify a model in the options.

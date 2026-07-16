@@ -364,11 +364,61 @@ describe("serializeLlmExeError", () => {
     expect(out.message).toBe("no name");
   });
 
+  it("coerces a real Error instance's non-string message to an empty string", () => {
+    // isErrorLike matches via `instanceof Error`, so this reaches the Error
+    // branch even though `message` is not a string. The value must be coerced
+    // to "" rather than leaked verbatim into the serialized output.
+    const err = new Error("original");
+    Object.defineProperty(err, "message", { value: 42, configurable: true });
+    const out = serializeLlmExeError(err) as Record<string, unknown>;
+    expect(out.name).toBe("Error");
+    expect(out.message).toBe("");
+  });
+
+  it("does not leak a real Error's object-valued message and keeps its name", () => {
+    class ProviderError extends Error {
+      name = "ProviderError";
+    }
+    const err = new ProviderError("boom");
+    Object.defineProperty(err, "message", {
+      value: { leaked: true },
+      configurable: true,
+    });
+    const out = serializeLlmExeError(err) as Record<string, unknown>;
+    expect(out.name).toBe("ProviderError");
+    expect(out.message).toBe("");
+  });
+
   it("returns empty message string when a generic error-like message is non-string", () => {
     const errLike = { name: "Boom", message: 42 };
     // isErrorLike requires both message and name as strings, so this falls through
     // to the freshSafeValue branch and ends up as a plain serialized object.
     const out = serializeLlmExeError(errLike) as any;
     expect(out).toEqual({ name: "Boom", message: 42 });
+  });
+
+  it("serializes a null context field to null", () => {
+    // context is present (not undefined) but null — it should round-trip as null
+    // rather than being dropped or throwing.
+    const fake = {
+      isLlmExeError: true,
+      message: "boom",
+      category: "parser",
+      code: "parser.parse_failed",
+      context: null,
+    };
+    const out = serializeLlmExeError(fake) as any;
+    expect(out.context).toBeNull();
+  });
+
+  it("preserves null values nested inside context objects and arrays", () => {
+    const err = new LlmExeError("nested nulls", {
+      code: "parser.parse_failed",
+      context: { received: null, list: [1, null, undefined, "x"] } as any,
+    });
+    const out = serializeLlmExeError(err) as any;
+    expect(out.context.received).toBeNull();
+    // Array holes/undefined become null (arrays are not compacted like objects).
+    expect(out.context.list).toEqual([1, null, null, "x"]);
   });
 });

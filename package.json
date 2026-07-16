@@ -1,6 +1,6 @@
 {
   "name": "llm-exe",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "Simplify building LLM-powered apps with easy-to-use base components, supporting text and chat-based prompts with handlebars template engine, output parsers, and flexible function calling capabilities.",
   "keywords": [
     "ai",

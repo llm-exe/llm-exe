@@ -142,10 +142,16 @@
  *
  * Repoint the button's base background/border to `--vp-c-brand-1`
  * (#3451b2 -> 7.08:1). Hover already uses brand-2 (#3c63cc -> 5.46:1) and
- * active uses brand-1, both of which pass. This only darkens the button,
- * so it cannot regress any page. (#624)
+ * active uses brand-1, both of which pass.
+ *
+ * Scope this to the light theme only. `--vp-c-brand-*` are theme-dependent:
+ * in dark mode `--vp-c-brand-1` is a light lavender (#a8b1ff), so applying
+ * this override there would paint white text on a pale background (~2.0:1,
+ * failing AA). Dark mode already passes with its default brand-3 (#3e63dd
+ * -> ~5.2:1), so we leave it untouched. This mirrors the existing
+ * `:root:not(.dark)` convention in custom-shiki-theme.css. (#624)
  */
-.VPButton.brand {
+:root:not(.dark) .VPButton.brand {
   --vp-button-brand-bg: var(--vp-c-brand-1);
   --vp-button-brand-border: var(--vp-c-brand-1);
 }

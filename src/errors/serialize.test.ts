@@ -364,6 +364,31 @@ describe("serializeLlmExeError", () => {
     expect(out.message).toBe("no name");
   });
 
+  it("coerces a real Error instance's non-string message to an empty string", () => {
+    // isErrorLike matches via `instanceof Error`, so this reaches the Error
+    // branch even though `message` is not a string. The value must be coerced
+    // to "" rather than leaked verbatim into the serialized output.
+    const err = new Error("original");
+    Object.defineProperty(err, "message", { value: 42, configurable: true });
+    const out = serializeLlmExeError(err) as Record<string, unknown>;
+    expect(out.name).toBe("Error");
+    expect(out.message).toBe("");
+  });
+
+  it("does not leak a real Error's object-valued message and keeps its name", () => {
+    class ProviderError extends Error {
+      name = "ProviderError";
+    }
+    const err = new ProviderError("boom");
+    Object.defineProperty(err, "message", {
+      value: { leaked: true },
+      configurable: true,
+    });
+    const out = serializeLlmExeError(err) as Record<string, unknown>;
+    expect(out.name).toBe("ProviderError");
+    expect(out.message).toBe("");
+  });
+
   it("returns empty message string when a generic error-like message is non-string", () => {
     const errLike = { name: "Boom", message: 42 };
     // isErrorLike requires both message and name as strings, so this falls through

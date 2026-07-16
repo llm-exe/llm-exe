@@ -51,6 +51,14 @@ function normalizeExactResponseJsonText(input: string) {
  * mismatch and give up). One pass keeps extraction O(n) — rescanning from
  * every opener is O(n²) on inputs with long runs of unbalanced brackets,
  * which stalls the event loop on large model responses.
+ *
+ * Quotes are only treated as string delimiters while a bracket is open. Text
+ * outside any bracket is surrounding prose (extract mode's whole purpose), and
+ * a stray or unbalanced quote there — dialogue, an inch mark like `5"`, odd
+ * quoting in reasoning text — must not leak `inString` state into the JSON that
+ * follows. The previous per-opener scanner started with fresh string state at
+ * each `{`/`[`, so preamble quotes could not corrupt a later object's scan;
+ * gating on `openerIndexes.length` preserves that isolation in one pass.
  */
 function mapBalancedJsonEnds(input: string): Map<number, number> {
   const balancedEnds = new Map<number, number>();
@@ -73,7 +81,11 @@ function mapBalancedJsonEnds(input: string): Map<number, number> {
     }
 
     if (char === '"') {
-      inString = true;
+      // Only start tracking a string inside an open bracket; quotes in the
+      // surrounding prose are ignored so they can't swallow the real opener.
+      if (openerIndexes.length > 0) {
+        inString = true;
+      }
       continue;
     }
 

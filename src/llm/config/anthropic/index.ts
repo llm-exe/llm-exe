@@ -171,16 +171,12 @@ export const anthropic = {
   // NOTE: "anthropic.claude-opus-4-1" (claude-opus-4-1-20250805) was removed —
   // Anthropic retires that model on Aug 5, 2026. Migrate to
   // anthropic.claude-opus-4-5/-6/-7/-8.
-  ...deprecateShorthand("anthropic.claude-sonnet-4", {
-    config: withDefaultModel(anthropicChatV1, "claude-sonnet-4-0"),
-    message:
-      'Shorthand "anthropic.claude-sonnet-4" is deprecated and may be removed in a future release.',
-  }),
-  ...deprecateShorthand("anthropic.claude-opus-4", {
-    config: withDefaultModel(anthropicChatV1, "claude-opus-4-0"),
-    message:
-      'Shorthand "anthropic.claude-opus-4" is deprecated and may be removed in a future release.',
-  }),
+  // NOTE: "anthropic.claude-sonnet-4" (claude-sonnet-4-0) and
+  // "anthropic.claude-opus-4" (claude-opus-4-0) were removed — Anthropic has
+  // retired both models. Both the base aliases and the dated snapshots
+  // (claude-opus-4-20250514 / claude-sonnet-4-20250514) now return HTTP 404,
+  // so these shorthands could only ever error. Migrate to
+  // anthropic.claude-opus-4-5/-6/-7/-8 or anthropic.claude-sonnet-4-5/-4-6/-5.
   ...deprecateShorthand("anthropic.claude-3-7-sonnet", {
     config: withDefaultModel(anthropicChatV1, "claude-3-7-sonnet-20250219"),
     message:

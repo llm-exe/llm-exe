@@ -53,8 +53,6 @@ describe("anthropic config", () => {
   describe("deprecated shorthands still resolve", () => {
     it.each([
       ["anthropic.claude-opus-4-6", "claude-opus-4-6"],
-      ["anthropic.claude-sonnet-4", "claude-sonnet-4-0"],
-      ["anthropic.claude-opus-4", "claude-opus-4-0"],
       ["anthropic.claude-3-7-sonnet", "claude-3-7-sonnet-20250219"],
       ["anthropic.claude-3-5-sonnet", "claude-3-5-sonnet-latest"],
       ["anthropic.claude-3-5-haiku", "claude-3-5-haiku-latest"],
@@ -93,6 +91,15 @@ describe("anthropic config", () => {
     it("no longer exposes anthropic.claude-opus-4-1 (model retired Aug 5, 2026)", () => {
       expect(
         (anthropic as Record<string, unknown>)["anthropic.claude-opus-4-1"]
+      ).toBeUndefined();
+    });
+
+    it.each([
+      "anthropic.claude-opus-4",
+      "anthropic.claude-sonnet-4",
+    ])("no longer exposes %s (model retired at Anthropic — HTTP 404)", (shorthand) => {
+      expect(
+        (anthropic as Record<string, unknown>)[shorthand]
       ).toBeUndefined();
     });
   });
@@ -159,8 +166,6 @@ describe("anthropic config", () => {
         "claude-sonnet-4-6",
         "claude-haiku-4-5",
         "claude-sonnet-4-5",
-        "claude-sonnet-4-0",
-        "claude-opus-4-0",
       ]) {
         const body = buildBody({ model, temperature: 0.5, topP: 0.9 });
         expect(body.temperature).toBe(0.5);

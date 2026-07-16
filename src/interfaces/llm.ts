@@ -683,18 +683,9 @@ export type AllUseLlmOptions = AllLlm & {
   "anthropic.claude-opus-4-6": {
     input: Omit<AnthropicRequest, "model">;
   };
-  "anthropic.claude-sonnet-4-0": {
-    input: Omit<AnthropicRequest, "model">;
-  };
-  "anthropic.claude-opus-4-0": {
-    input: Omit<AnthropicRequest, "model">;
-  };
-  "anthropic.claude-sonnet-4": {
-    input: Omit<AnthropicRequest, "model">;
-  };
-  "anthropic.claude-opus-4": {
-    input: Omit<AnthropicRequest, "model">;
-  };
+  // Removed: Claude Opus 4 / Sonnet 4 (claude-opus-4-0, claude-sonnet-4-0) are
+  // retired at Anthropic (HTTP 404). The claude-*-4-0 keys were type-only orphans
+  // with no runtime shorthand and threw "Invalid provider" if used.
   "anthropic.claude-3-7-sonnet": {
     input: Omit<AnthropicRequest, "model">;
   };

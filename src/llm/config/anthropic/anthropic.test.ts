@@ -73,6 +73,7 @@ describe("anthropic config", () => {
     it.each([
       ["anthropic.claude-fable-5", "claude-fable-5"],
       ["anthropic.claude-opus-4-8", "claude-opus-4-8"],
+      ["anthropic.claude-sonnet-5", "claude-sonnet-5"],
       ["anthropic.claude-opus-4-7", "claude-opus-4-7"],
       ["anthropic.claude-sonnet-4-6", "claude-sonnet-4-6"],
       ["anthropic.claude-opus-4-5", "claude-opus-4-5"],
@@ -119,6 +120,18 @@ describe("anthropic config", () => {
     it("drops temperature, top_p, and top_k for claude-opus-4-8", () => {
       const body = buildBody({
         model: "claude-opus-4-8",
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+      });
+      expect(body.temperature).toBeUndefined();
+      expect(body.top_p).toBeUndefined();
+      expect(body.top_k).toBeUndefined();
+    });
+
+    it("drops temperature, top_p, and top_k for claude-sonnet-5", () => {
+      const body = buildBody({
+        model: "claude-sonnet-5",
         temperature: 0.5,
         topP: 0.9,
         topK: 40,
@@ -268,6 +281,7 @@ describe("anthropic config", () => {
     it.each([
       ["anthropic.claude-opus-4-7"],
       ["anthropic.claude-opus-4-8"],
+      ["anthropic.claude-sonnet-5"],
       ["anthropic.claude-fable-5"],
     ] as const)(
       "%s drops all sampling params (model 400s if they are sent)",

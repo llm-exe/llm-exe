@@ -104,7 +104,7 @@ flowchart LR
 | [cache-cleanup.yml](../workflows/cache-cleanup.yml) | PR closed + release published + dispatch | Deletes Actions caches scoped to the closed PR or release ref | [CACHE_CLEANUP_DEEP_DIVE.md](CACHE_CLEANUP_DEEP_DIVE.md) |
 | [update-prs-with-development.yml](../workflows/update-prs-with-development.yml) | Dispatch only | Rebases every non-draft open PR targeting development | [UPDATE_PRS_DEEP_DIVE.md](UPDATE_PRS_DEEP_DIVE.md) |
 | [test-github-action.yml](../workflows/test-github-action.yml) | Dispatch only | Smoke-tests the external llm-exe/github-action with a real LLM call | [TEST_GITHUB_ACTION_DEEP_DIVE.md](TEST_GITHUB_ACTION_DEEP_DIVE.md) |
-| [a11y-docs.yml](../workflows/a11y-docs.yml) | Dispatch only | Pa11y accessibility scan against the built VitePress docs site | [A11Y_DOCS_DEEP_DIVE.md](A11Y_DOCS_DEEP_DIVE.md) |
+| [a11y-docs.yml](../workflows/a11y-docs.yml) | PR on docs paths + dispatch | Pa11y accessibility scan against the built VitePress docs site | [A11Y_DOCS_DEEP_DIVE.md](A11Y_DOCS_DEEP_DIVE.md) |
 
 ---
 

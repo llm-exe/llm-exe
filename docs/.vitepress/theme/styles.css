@@ -132,3 +132,20 @@
   transform: scaleX(1);
   transform-origin: left;
 }
+
+/*
+ * Brand button contrast (WCAG 2 AA). The VitePress default brand button
+ * paints white text on `--vp-c-brand-3` (#5672cd), which computes to
+ * 4.48:1 against white — just under the 4.5:1 AA threshold, and the source
+ * of the `.VPButton.medium.brand` violations in the Pa11y baseline. This
+ * repo does not override the brand palette, so the default applies.
+ *
+ * Repoint the button's base background/border to `--vp-c-brand-1`
+ * (#3451b2 -> 7.08:1). Hover already uses brand-2 (#3c63cc -> 5.46:1) and
+ * active uses brand-1, both of which pass. This only darkens the button,
+ * so it cannot regress any page. (#624)
+ */
+.VPButton.brand {
+  --vp-button-brand-bg: var(--vp-c-brand-1);
+  --vp-button-brand-border: var(--vp-c-brand-1);
+}

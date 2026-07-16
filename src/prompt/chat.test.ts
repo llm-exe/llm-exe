@@ -346,6 +346,64 @@ describe("llm-exe:prompt/ChatPrompt", () => {
     ]);
   });
 
+  describe("history content is never compiled as a template", () => {
+    const historyWithTemplateSyntax = [
+      { role: "user", content: "user injected {{secret}}" },
+      {
+        role: "assistant",
+        content: "model output {{secret}} with broken syntax {{#if",
+      },
+      {
+        role: "function",
+        name: "lookup",
+        content: "tool result {{secret}}",
+      },
+    ] as any;
+
+    it("passes history content through verbatim while still compiling authored messages", () => {
+      const prompt = new ChatPrompt<{ secret: string }>("System {{secret}}");
+      prompt.addFromHistory(historyWithTemplateSyntax);
+      const [system, user, assistant, fn] = prompt.format({
+        secret: "s3cr3t-value",
+      });
+      expect(system.content).toBe("System s3cr3t-value");
+      expect(user.content).toBe("user injected {{secret}}");
+      expect(assistant.content).toBe(
+        "model output {{secret}} with broken syntax {{#if"
+      );
+      expect(fn.content).toBe("tool result {{secret}}");
+    });
+
+    it("passes history content through verbatim (async)", async () => {
+      const prompt = new ChatPrompt<{ secret: string }>("System {{secret}}");
+      prompt.addFromHistory(historyWithTemplateSyntax);
+      const [system, user, assistant, fn] = await prompt.formatAsync({
+        secret: "s3cr3t-value",
+      });
+      expect(system.content).toBe("System s3cr3t-value");
+      expect(user.content).toBe("user injected {{secret}}");
+      expect(assistant.content).toBe(
+        "model output {{secret}} with broken syntax {{#if"
+      );
+      expect(fn.content).toBe("tool result {{secret}}");
+    });
+
+    it("still compiles assistant messages authored via addAssistantMessage", () => {
+      const prompt = new ChatPrompt<{ name: string }>("Hello");
+      prompt.addAssistantMessage("Hi {{name}}");
+      const [, assistant] = prompt.format({ name: "Greg" });
+      expect(assistant.content).toBe("Hi Greg");
+    });
+
+    it("does not leak the noTemplate flag into format output", () => {
+      const prompt = new ChatPrompt("Hello");
+      prompt.addFromHistory([{ role: "assistant", content: "previous reply" }]);
+      for (const message of prompt.format({})) {
+        expect(message).not.toHaveProperty("noTemplate");
+      }
+    });
+  });
+
   it("can add messages from history (async)", async () => {
     const prompt = new ChatPrompt("Hello");
 

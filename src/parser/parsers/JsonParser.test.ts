@@ -550,5 +550,68 @@ describe("llm-exe:parser/JsonParser", () => {
       const parser = new JsonParser({ match: "extract" });
       expect(parser.parse('open { set then {"b":2} end')).toEqual({ b: 2 });
     });
+
+    it("recovers nested JSON when an enclosing balanced block is not valid JSON", () => {
+      // The outer braces balance but the block is not JSON; the inner object is.
+      const parser = new JsonParser({ match: "extract" });
+      expect(parser.parse('{ not json but contains {"a":1} }')).toEqual({
+        a: 1,
+      });
+    });
+
+    it("handles a long run of unbalanced openers in linear time", () => {
+      // Regression guard: the previous scanner restarted from every opener,
+      // so 50k unmatched `{` cost ~50k full-string rescans (seconds of
+      // blocking). The single-pass scanner finishes in milliseconds.
+      const parser = new JsonParser({ match: "extract" });
+      const input = "{".repeat(50_000) + '{"a":1}';
+      const startedAt = Date.now();
+      expect(parser.parse(input)).toEqual({ a: 1 });
+      expect(Date.now() - startedAt).toBeLessThan(1000);
+    });
+
+    describe("unbalanced quotes in surrounding prose", () => {
+      // Regression guard: the single-pass scanner used one persistent inString
+      // flag toggled by any quote anywhere, so a stray/unclosed quote in the
+      // preamble left inString=true when the scan reached the real `{`, which
+      // was then swallowed as string content and never detected as an opener.
+      // Quotes outside an open bracket are prose and must be ignored.
+      it("recovers JSON after an unclosed dialogue quote in the preamble", () => {
+        const parser = new JsonParser({ match: "extract" });
+        expect(parser.parse('She said "yes {"answer":42}')).toEqual({
+          answer: 42,
+        });
+      });
+
+      it("recovers JSON after a lone stray quote in the preamble", () => {
+        const parser = new JsonParser({ match: "extract" });
+        expect(parser.parse('prefix " suffix {"a":1}')).toEqual({ a: 1 });
+      });
+
+      it("recovers JSON after an inch-mark quote in the preamble", () => {
+        const parser = new JsonParser({ match: "extract" });
+        expect(parser.parse('The 5" fitting: {"size":5}')).toEqual({ size: 5 });
+      });
+
+      it("recovers a JSON array after an unbalanced quote in the preamble", () => {
+        const parser = new JsonParser({ match: "extract" });
+        expect(parser.parse('note " then [{"a":1}]')).toEqual([{ a: 1 }]);
+      });
+
+      it("still tracks strings inside the JSON when the preamble has a stray quote", () => {
+        // The preamble quote must be ignored, but quotes inside the object must
+        // still delimit strings so a `}` inside a string value is not treated
+        // as the object's closer.
+        const parser = new JsonParser({ match: "extract" });
+        expect(parser.parse('said " {"note":"a } brace"}')).toEqual({
+          note: "a } brace",
+        });
+      });
+
+      it("still behaves identically with balanced quotes in the preamble (control)", () => {
+        const parser = new JsonParser({ match: "extract" });
+        expect(parser.parse('clean prefix {"a":1} suffix')).toEqual({ a: 1 });
+      });
+    });
   });
 });

@@ -43,13 +43,30 @@ function normalizeExactResponseJsonText(input: string) {
   return body.trim();
 }
 
-function findBalancedJsonEnd(input: string, start: number) {
-  const first = input[start];
-  const stack = first === "{" ? ["}"] : first === "[" ? ["]"] : [];
+/**
+ * Maps the index of each `{`/`[` opener to the index of its balanced closer,
+ * in a single string-aware pass. A closer that does not match the innermost
+ * open bracket invalidates every span still open at that point (matching the
+ * previous per-position scanner, where each of those scans would hit the same
+ * mismatch and give up). One pass keeps extraction O(n) — rescanning from
+ * every opener is O(n²) on inputs with long runs of unbalanced brackets,
+ * which stalls the event loop on large model responses.
+ *
+ * Quotes are only treated as string delimiters while a bracket is open. Text
+ * outside any bracket is surrounding prose (extract mode's whole purpose), and
+ * a stray or unbalanced quote there — dialogue, an inch mark like `5"`, odd
+ * quoting in reasoning text — must not leak `inString` state into the JSON that
+ * follows. The previous per-opener scanner started with fresh string state at
+ * each `{`/`[`, so preamble quotes could not corrupt a later object's scan;
+ * gating on `openerIndexes.length` preserves that isolation in one pass.
+ */
+function mapBalancedJsonEnds(input: string): Map<number, number> {
+  const balancedEnds = new Map<number, number>();
+  const openerIndexes: number[] = [];
   let inString = false;
   let escaping = false;
 
-  for (let index = start + 1; index < input.length; index += 1) {
+  for (let index = 0; index < input.length; index += 1) {
     const char = input[index];
 
     if (inString) {
@@ -64,12 +81,16 @@ function findBalancedJsonEnd(input: string, start: number) {
     }
 
     if (char === '"') {
-      inString = true;
+      // Only start tracking a string inside an open bracket; quotes in the
+      // surrounding prose are ignored so they can't swallow the real opener.
+      if (openerIndexes.length > 0) {
+        inString = true;
+      }
       continue;
     }
 
     if (char === "{" || char === "[") {
-      stack.push(char === "{" ? "}" : "]");
+      openerIndexes.push(index);
       continue;
     }
 
@@ -77,21 +98,28 @@ function findBalancedJsonEnd(input: string, start: number) {
       continue;
     }
 
-    if (stack[stack.length - 1] !== char) {
-      return undefined;
-    }
+    const openerIndex = openerIndexes[openerIndexes.length - 1];
+    const expectedCloser =
+      openerIndex === undefined
+        ? undefined
+        : input[openerIndex] === "{"
+          ? "}"
+          : "]";
 
-    stack.pop();
-    if (stack.length === 0) {
-      return index;
+    if (expectedCloser === char) {
+      openerIndexes.pop();
+      balancedEnds.set(openerIndex as number, index);
+    } else {
+      openerIndexes.length = 0;
     }
   }
 
-  return undefined;
+  return balancedEnds;
 }
 
 function extractJsonCandidates(input: string): JsonCandidate[] {
   const candidates: JsonCandidate[] = [];
+  const balancedEnds = mapBalancedJsonEnds(input);
 
   for (let index = 0; index < input.length; index += 1) {
     const char = input[index];
@@ -99,7 +127,7 @@ function extractJsonCandidates(input: string): JsonCandidate[] {
       continue;
     }
 
-    const end = findBalancedJsonEnd(input, index);
+    const end = balancedEnds.get(index);
     if (end === undefined) {
       continue;
     }
@@ -111,7 +139,7 @@ function extractJsonCandidates(input: string): JsonCandidate[] {
       });
       index = end;
     } catch {
-      // Balanced braces can still contain non-JSON content.
+      // Balanced brackets can still contain non-JSON content.
     }
   }
 

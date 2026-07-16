@@ -46,6 +46,13 @@ export interface IChatMessageContentDetailed {
 export interface IChatMessageBase {
   role: IChatMessageRole;
   content: string | null | IChatMessageContentDetailed[];
+  /**
+   * Internal. Set on messages whose content is runtime conversation data
+   * (e.g. added via addFromHistory) rather than developer-authored template
+   * source. format() skips template compilation for these messages and strips
+   * this flag from its output.
+   */
+  noTemplate?: boolean;
 }
 
 export interface IChatUserMessage extends IChatMessageBase {
@@ -81,6 +88,8 @@ export interface IChatSystemMessage extends IChatMessageBase {
 export interface IChatMessagesPlaceholder {
   role: "placeholder";
   content: string;
+  /** Internal. See {@link IChatMessageBase.noTemplate}. Never set on placeholders. */
+  noTemplate?: boolean;
 }
 
 export type IPromptMessages = (IChatSystemMessage | IChatMessagesPlaceholder)[];

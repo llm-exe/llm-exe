@@ -201,6 +201,16 @@ describe("llm-exe:state/BaseState", () => {
     expect(state.attributes).toHaveProperty("foo");
     expect(state.attributes.foo).toEqual("bar");
   });
+  it("state.setAttribute rejects prototype-polluting keys", () => {
+    const state = new MockState();
+    for (const key of ["__proto__", "constructor", "prototype"]) {
+      expect(() => state.setAttribute(key, { polluted: "yes" })).toThrow(
+        `Invalid attribute key (${key})`
+      );
+    }
+    expect(({} as any).polluted).toBeUndefined();
+    expect(Object.getPrototypeOf(state.attributes)).toBe(Object.prototype);
+  });
   it("state.deleteAttribute deletes attribute", () => {
     const state = new MockState();
     state.setAttribute("foo", "bar");

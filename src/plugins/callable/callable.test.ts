@@ -81,7 +81,7 @@ describe("llm-exe:callable/useExecutors", () => {
     expect(result).toEqual({ result: "Hello world", attributes: {} });
   });
 
-  it("CallableExecutor returns error if handler throws", async () => {
+  it("CallableExecutor propagates handler errors from callFunction", async () => {
     const callableFn1 = new CallableExecutor({
       key: "get_appointments",
       name: "get_appointments",
@@ -92,8 +92,9 @@ describe("llm-exe:callable/useExecutors", () => {
       },
     });
     const executors = useExecutors([callableFn1]);
-    const result = await executors.callFunction("get_appointments", "Hello");
-    expect(result).toEqual("Error from callable");
+    await expect(
+      executors.callFunction("get_appointments", "Hello")
+    ).rejects.toThrow("Error from callable");
   });
 
   it("CallableExecutor validateFunctionInput true if undefined", async () => {
@@ -252,12 +253,103 @@ describe("llm-exe:callable/useExecutors", () => {
   });
 
   describe("callFunction with non-existent handler", () => {
-    it("returns error message when handler does not exist", async () => {
+    it("throws a typed handler_not_found error when handler does not exist", async () => {
       const executors = useExecutors([callableFn]);
-      const result = await executors.callFunction("non_existent", "{}");
-      expect(result).toEqual(
-        "[invalid handler] The handler (non_existent) does not exist."
+      try {
+        await executors.callFunction("non_existent", "{}");
+        throw new Error("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toBe("callable.handler_not_found");
+        expect((e as Error).message).toBe(
+          "[invalid handler] The handler (non_existent) does not exist."
+        );
+      }
+    });
+  });
+
+  describe("callFunction authorization gates", () => {
+    it("refuses to call a handler hidden by its visibilityHandler, using the same not-found error", async () => {
+      const hidden = new CallableExecutor({
+        name: "hidden_fn",
+        description: "Always hidden",
+        input: "{}",
+        handler: async () => "should never run",
+        visibilityHandler: () => false,
+      });
+      const executors = useExecutors([hidden]);
+      try {
+        await executors.callFunction("hidden_fn", "{}");
+        throw new Error("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toBe("callable.handler_not_found");
+        // Identical message to a genuinely missing handler — callers must not
+        // be able to distinguish hidden from nonexistent.
+        expect((e as Error).message).toBe(
+          "[invalid handler] The handler (hidden_fn) does not exist."
+        );
+        const ctx = (e as LlmExeError).context as Record<string, any>;
+        expect(ctx.availableFunctions).not.toContain("hidden_fn");
+      }
+    });
+
+    it("passes input and attributes through to the visibilityHandler", async () => {
+      const visibilityHandler = jest.fn().mockReturnValue(true);
+      const callable = new CallableExecutor({
+        name: "gated_fn",
+        description: "Gated",
+        input: "{}",
+        handler: async () => "ok",
+        visibilityHandler,
+      });
+      const executors = useExecutors([callable]);
+      const attrs = { role: "admin" };
+      await executors.callFunction("gated_fn", "payload", attrs);
+      expect(visibilityHandler).toHaveBeenCalledWith(
+        "payload",
+        expect.any(Object),
+        attrs
       );
+    });
+
+    it("throws validation_failed when the handler's validateInput rejects the input", async () => {
+      const handler = jest.fn(async () => "should never run");
+      const callable = new CallableExecutor({
+        name: "validated_fn",
+        description: "Validates input",
+        input: "{}",
+        handler,
+        validateInput: async () => ({
+          result: false,
+          attributes: { error: "accountId is required" },
+        }),
+      });
+      const executors = useExecutors([callable]);
+      try {
+        await executors.callFunction("validated_fn", "{}");
+        throw new Error("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toBe("callable.validation_failed");
+        const ctx = (e as LlmExeError).context as Record<string, any>;
+        expect(ctx.received).toBe("accountId is required");
+      }
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it("executes when visibility and validation both pass", async () => {
+      const callable = new CallableExecutor({
+        name: "allowed_fn",
+        description: "Allowed",
+        input: "{}",
+        handler: async () => "ran",
+        visibilityHandler: () => true,
+        validateInput: async () => ({ result: true, attributes: {} }),
+      });
+      const executors = useExecutors([callable]);
+      const result = await executors.callFunction("allowed_fn", "{}");
+      expect(result).toEqual({ result: "ran", attributes: {} });
     });
   });
 
@@ -414,11 +506,11 @@ describe("llm-exe:callable/useExecutors", () => {
       }
     });
 
-    it("callFunction return shape stays a string when handler is missing", async () => {
+    it("callFunction throws a typed error when handler is missing", async () => {
       const executors = useExecutors([callableFn]);
-      const result = await executors.callFunction("missing_handler", "{}");
-      expect(typeof result).toBe("string");
-      expect(result).toBe(
+      await expect(
+        executors.callFunction("missing_handler", "{}")
+      ).rejects.toThrow(
         "[invalid handler] The handler (missing_handler) does not exist."
       );
     });

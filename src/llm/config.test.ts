@@ -98,6 +98,12 @@ describe("configs", () => {
           default: 4096,
           required: [true, "maxTokens required"],
         },
+        temperature: {},
+        topP: {},
+        topK: {},
+        stopSequences: {},
+        metadata: {},
+        serviceTier: {},
         anthropicApiKey: {
           default: ANTHROPIC_API_KEY_AT_IMPORT,
         },
@@ -130,9 +136,6 @@ describe("configs", () => {
         },
         stopSequences: {
           key: "stop_sequences",
-        },
-        stream: {
-          key: "stream",
         },
         metadata: {
           key: "metadata",

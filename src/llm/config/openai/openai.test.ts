@@ -234,6 +234,9 @@ describe("openai configuration", () => {
 
   describe("all shorthands resolve to expected default model", () => {
     it.each([
+      ["openai.gpt-5.6", "gpt-5.6-sol"],
+      ["openai.gpt-5.6-terra", "gpt-5.6-terra"],
+      ["openai.gpt-5.6-luna", "gpt-5.6-luna"],
       ["openai.gpt-5.5", "gpt-5.5"],
       ["openai.gpt-5.4", "gpt-5.4"],
       ["openai.gpt-5.4-mini", "gpt-5.4-mini"],
@@ -273,6 +276,9 @@ describe("openai configuration", () => {
         s: any
       ) => any;
       const reasoningShorthands = [
+        "openai.gpt-5.6",
+        "openai.gpt-5.6-terra",
+        "openai.gpt-5.6-luna",
         "openai.gpt-5.5",
         "openai.gpt-5.4",
         "openai.gpt-5.4-mini",

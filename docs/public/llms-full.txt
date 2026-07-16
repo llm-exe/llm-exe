@@ -2,6 +2,7 @@
 
 > Complete documentation for llm-exe — a lightweight TypeScript toolkit for building LLM-powered applications.
 
+
 # Install
 
 Install llm-exe using npm.
@@ -62,6 +63,7 @@ const response = await executor.execute({ input: "Hello!" });
 Passing a value as `{ input }` does **not** automatically append a user message — your prompt must reference it (for example with `{{input}}` in a template or by calling `.addUserMessage("{{input}}")`). The chat prompt always renders exactly the messages you build.
 :::
 ---
+
 
 # Introduction
 
@@ -156,6 +158,7 @@ This is a simple example, but to highlight some key differences:
 
 ---
 
+
 # What is an LLM function?
 
 As the usefulness of LLMs grows, you have the ability to replace (at least consider replacing) complex functionality in your application with simple calls to an LLM.
@@ -237,7 +240,9 @@ const response = await piiDetector(input)
  */
 ```
 
-The input and output of the `piiDetector` function are strongly typed, providing reliable structure and safety when integrating with the rest of your application
+The input and output of the `piiDetector` function are strongly typed, providing reliable structure and safety when integrating with the rest of your application.
+
+For a complete, step-by-step build of a function like this — schema, prompt, parser, and inferred types — see [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function).
 
 ---
 
@@ -281,11 +286,11 @@ const llm = useLlm("openai.chat.v1", {
 
 ### Options
 
-All providers accept the [generic options](/llm/generic.html) (timeout, retries, temperature, maxTokens, etc.). Each provider may also accept provider-specific options — see the individual provider pages below.
+All providers accept the [generic options](/llm/generic) (timeout, retries, temperature, maxTokens, etc.). Each provider may also accept provider-specific options — see the individual provider pages below.
 
 ### Deprecation Warnings
 
-Deprecated provider/model shorthands continue to resolve for compatibility, but emit a Node `DeprecationWarning` with code `LLM_EXE_DEPRECATED` on first use. See [Deprecation Warnings](/llm/deprecations.html).
+Deprecated provider/model shorthands continue to resolve for compatibility, but emit a Node `DeprecationWarning` with code `LLM_EXE_DEPRECATED` on first use. See [Deprecation Warnings](/llm/deprecations).
 
 ### Authentication
 
@@ -311,14 +316,14 @@ console.log(response.getResultText());
 
 Currently, llm-exe supports calling LLM's from:
 
-- [OpenAi](/llm/openai.html)
-- [Anthropic](/llm/anthropic.html)
-- [xAI](/llm/xai.html)
-- [Google](/llm/gemini.html)
-- [AWS Bedrock](/llm/bedrock/index.html)
-- [Ollama](/llm/ollama.html)
-- [Deepseek](/llm/deepseek.html)
-- [Custom Providers](/llm/custom.html)
+- [OpenAi](/llm/openai)
+- [Anthropic](/llm/anthropic)
+- [xAI](/llm/xai)
+- [Google](/llm/gemini)
+- [AWS Bedrock](/llm/bedrock/)
+- [Ollama](/llm/ollama)
+- [Deepseek](/llm/deepseek)
+- [Custom Providers](/llm/custom)
 
 ## Adding Custom LLM's
 
@@ -329,15 +334,18 @@ You can create custom LLM configurations using `useLlmConfiguration`. This allow
 - Work with corporate proxies
 - Add support for new providers
 
-See the [Custom Provider Configuration](/llm/custom.html) guide for details.
+See the [Custom Provider Configuration](/llm/custom) guide for details.
 
 ---
+
 
 # Generic Options
 
 llm-exe attempts to normalize the inputs for various llm vendors, providing a single interface that can be used to interact with different models. While this is not always possible, since certain vendors may implement features that others don't support, either way only the allowed options make it to the respective api calls.
 
 ## Options
+
+For a worked example of `timeout`, `numOfAttempts`, and `maxDelay` in a production setup, see [Add Retries and Timeouts to LLM Calls](/examples/concepts/retries-and-timeouts).
 
 | Option        | Type             | Default   | Description                                                                                                |
 | ------------- | ---------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
@@ -360,10 +368,11 @@ llm-exe attempts to normalize the inputs for various llm vendors, providing a si
 > - [xAI Chat Model Options](/llm/xai#xai-specific-options)
 > - [Deepseek Chat Model Options](/llm/deepseek#deepseek-specific-options)
 > - [Ollama Chat Model Options](/llm/ollama#ollama-specific-options)
-> - [AWS Bedrock Chat Model Options](/llm/bedrock/index.html)
+> - [AWS Bedrock Chat Model Options](/llm/bedrock/)
 
 
 ---
+
 
 # OpenAI
 
@@ -407,7 +416,7 @@ await llm.call(prompt);
 
 ## OpenAi-Specific Options
 
-In addition to the [generic options](/llm/generic.html), the following options are OpenAi-specific and can be passed in when creating a llm function.
+In addition to the [generic options](/llm/generic), the following options are OpenAi-specific and can be passed in when creating a llm function.
 
 | Option           | Type    | Default     | Description                                                    |
 | ---------------- | ------- | ----------- | -------------------------------------------------------------- |
@@ -423,6 +432,7 @@ In addition to the [generic options](/llm/generic.html), the following options a
 See [OpenAI API Reference](https://platform.openai.com/docs/api-reference/chat) for details on these parameters.
 
 ---
+
 
 # Anthropic
 
@@ -474,6 +484,7 @@ await llm.call("");
 
 <!--@include: ./anthropic.options.part.md-->
 ---
+
 
 # Google Gemini
 
@@ -532,6 +543,7 @@ See [Google Gemini API Reference](https://ai.google.dev/gemini-api/docs) for det
 
 ---
 
+
 # AWS Bedrock
 
 ## Setup
@@ -573,6 +585,7 @@ Make sure the respective role has the necessary permissions to access Bedrock.
 
 ---
 
+
 # Anthropic
 
 When using Anthropic models via AWS Bedrock, llm-exe will make POST requests to `https://bedrock-runtime.us-west-2.amazonaws.com/model/{MODEL_ID}/invoke`.
@@ -589,7 +602,7 @@ const llm = useLlm("amazon:anthropic.chat.v1", {
 
 ## Bedrock Anthropic Options
 
-In addition to the [generic options](/llm/generic.html), the following options are available for Anthropic models on Bedrock.
+In addition to the [generic options](/llm/generic), the following options are available for Anthropic models on Bedrock.
 
 | Option      | Type   | Default   | Description                                                              |
 | ----------- | ------ | --------- | ------------------------------------------------------------------------ |
@@ -601,8 +614,9 @@ In addition to the [generic options](/llm/generic.html), the following options a
 | awsAccessKey| string | undefined | AWS Access Key. Can be set via `AWS_ACCESS_KEY_ID` environment variable  |
 
 > [!NOTE]
-> The Bedrock Anthropic provider maps a subset of the direct [Anthropic provider](/llm/anthropic.html) options. Options like `temperature`, `topK`, `stopSequences`, `metadata`, and `serviceTier` are not mapped for the Bedrock variant at this time.
+> The Bedrock Anthropic provider maps a subset of the direct [Anthropic provider](/llm/anthropic) options. Options like `temperature`, `topK`, `stopSequences`, `metadata`, and `serviceTier` are not mapped for the Bedrock variant at this time.
 ---
+
 
 # Meta
 
@@ -632,6 +646,7 @@ In addition to the generic options, the following options are available for Meta
 | awsSecretKey| string | undefined | AWS Secret Key. Can be set via `AWS_SECRET_ACCESS_KEY` environment variable |
 | awsAccessKey| string | undefined | AWS Access Key. Can be set via `AWS_ACCESS_KEY_ID` environment variable  |
 ---
+
 
 # xAI
 
@@ -714,6 +729,7 @@ See [xAI API Reference](https://docs.x.ai/docs/overview) for details on these pa
 
 ---
 
+
 # Ollama
 
 When using Ollama models, llm-exe will make POST requests to `http://localhost:11434`. You can also override this by setting the environment variable `OLLAMA_ENDPOINT`. All models are supported if you pass `ollama.chat.v1` as the first argument, and then specify a model in the options (assuming you have downloaded this model).
@@ -762,6 +778,7 @@ await llm.call(prompt);
 See [Ollama Docs](https://ollama.com/) for details.
 
 ---
+
 
 # Deepseek
 
@@ -844,6 +861,7 @@ In addition to the generic options, the following options are Deepseek-specific 
 See [Deepseek API Reference](https://api-docs.deepseek.com/) for details on these parameters.
 
 ---
+
 
 # Custom Provider Configuration
 
@@ -1312,7 +1330,7 @@ const mockLlm = useLlmConfiguration({
 
 The prompt is the instruction for the LLM, usually sent in plain-text or an array of chat-style messages. When working with certain models, the prompt is formatted like chat messages, allowing you to control a system message, user message, and assistant message.
 
-llm-exe provides a prompt interface to simplify working with prompts. Ultimately a prompt is a string, but building elaborate prompts can quickly get complicated. The prompt utility provides a foundation for building complex prompts.
+llm-exe provides a prompt interface to simplify working with prompts. Ultimately a prompt is a string, but building elaborate prompts can quickly get complicated. The prompt utility provides a foundation for building complex prompts. For the recommended way to organize templates in a real app, see [Separate Prompts from Business Logic](/examples/prompt/separate-prompts-from-code).
 
 - Support for text-based or chat-based prompts.
 - Uses Handlebars as template engine, allowing you to use features such as custom templates, partials, functions, etc. See [handlebars documentation](https://handlebarsjs.com/guide/) for everything you can do.
@@ -1324,9 +1342,9 @@ There are 2 types of prompts included, along with a `BasePrompt` class that can 
 
 See:
 
-- [Text Prompt](/prompt/text.html)
-- [Chat Prompt](/prompt/chat.html)
-- [Prompt Validation](/prompt/validation.html)
+- [Text Prompt](/prompt/text)
+- [Chat Prompt](/prompt/chat)
+- [Prompt Validation](/prompt/validation)
 
 ## Basic Replacements
 
@@ -1337,13 +1355,13 @@ The object that you pass to `prompt.format` (or `.execute` when a prompt is part
 <<< ../../examples/prompt/basic.ts#exampleOne
 </GenericOutput>
 
-For advanced uses and working with custom helpers/partials, [see here](/prompt/advanced.html).
+For advanced uses and working with custom helpers/partials, [see here](/prompt/advanced).
 
 ## Validating Template Inputs
 
 Prompts can validate that required template variables and helpers are available before rendering. Use `prompt.validate(input)` directly, or set `validateInput: "strict"` / `"warn"` on a prompt to check calls to `format()`.
 
-See [Prompt Validation](/prompt/validation.html).
+See [Prompt Validation](/prompt/validation).
 
 ## Using Types with Prompts
 
@@ -1353,6 +1371,7 @@ See [Prompt Validation](/prompt/validation.html).
 </GenericOutput>
 
 ---
+
 
 # Chat Prompt
 
@@ -1386,7 +1405,7 @@ Chat prompts support more than just a basic text-based message. You can also add
 <<< ../../examples/prompt/chat.ts#exampleCreateChatPromptWithAssistant
 </GenericOutput>
 
-See [prompt templates](/prompt/advanced.html) for more advanced prompt usage.
+See [prompt templates](/prompt/advanced) for more advanced prompt usage.
 
 ## Chat Prompt Methods
 
@@ -1409,6 +1428,7 @@ Format the prompt for LLM. This processes the template as a handlebars template.
 Validate the prompt. Makes sure there are no unresolved tokens. -->
 
 ---
+
 
 # Text Prompt
 The text prompt returns a single formatted string, useful for simple completion-style prompts or when you need the prompt as a plain string rather than structured chat messages.
@@ -1459,7 +1479,7 @@ By default, formatted text prompt messages are separated using 2 line breaks (\\
 <<< ../../examples/prompt/text.ts#exampleCreateTextPromptCustomDelimiter
 </GenericOutput>
 
-See [prompt templates](/prompt/advanced.html) for more advanced prompt usage.
+See [prompt templates](/prompt/advanced) for more advanced prompt usage.
 
 #### Text Prompt Methods
 
@@ -1477,6 +1497,7 @@ Adds content to the prompt.
 `format`
 Processes the prompt template and returns prompt ready for LLM.
 ---
+
 
 # Prompts with Templates
 
@@ -1661,6 +1682,7 @@ const prompt = createChatPrompt("{{> greeting name='World'}} {{uppercase 'hello'
 
 ---
 
+
 # Why Handlebars?
 
 When preparing your prompts, it may seem easier to use native Javascript template literals within your prompts instead of utilizing Handlebars. It is suggested you embrace the Handlebars approach.
@@ -1804,11 +1826,11 @@ const prompt = createChatPrompt<SomePromptInput>(`Your name is {{agentName}}.
 You will help the user learn about {{topic}}.`);
 ```
 
-![prompt-showing-types-being-passed-in](/images/prompt-showing-types-being-passed-in.jpg)
+![Screenshot of a code editor showing the createChatPrompt generic accepting a typed input object, with autocomplete suggesting agentName, topic, user, and tasks fields](/images/prompt-showing-types-being-passed-in.jpg)
 
 And an error if you pass in the wrong input:
 
-![prompt-showing-types-being-passed-in](/images/prompt-showing-types-being-passed-in-with-error.jpg)
+![Screenshot of the same prompt call with the wrong input shape, showing a TypeScript compiler error highlighting the missing required properties](/images/prompt-showing-types-being-passed-in-with-error.jpg)
 
 ### More Readable and Maintainable
 
@@ -1827,7 +1849,7 @@ There are various default parsers included, and the parser class is easily exten
 
 When combined with an LLM executor, the parser is responsible for providing type hints to the Typescript compiler on the expected output for the LLM executor.
 
-**Note**: You can use and call methods on parsers directly, but they are usually passed to an [LLM executor](/executor/index.html) and then called internally.
+**Note**: You can use and call methods on parsers directly, but they are usually passed to an [LLM executor](/executor/) and then called internally.
 
 ## Getting Started
 
@@ -1835,8 +1857,8 @@ When combined with an LLM executor, the parser is responsible for providing type
 
 When working with output parsers, you have two options:
 
-1. Use a [default parser](/parser/included-parsers.html).
-2. Create a [custom parser](/parser/custom.html) for full control over output transformation.
+1. Use a [default parser](/parser/included-parsers).
+2. Create a [custom parser](/parser/custom) for full control over output transformation.
 
 #### Use a Default Parser
 
@@ -1903,7 +1925,12 @@ const parsed = parser.parse(exampleOutputFromLlm);
  */
 ```
 
+::: warning Schema validation is on by default
+When you provide a `schema`, the parser enforces it on the LLM's output by default (`validateSchema` defaults to `true`). Missing `required` fields or constraint violations throw `parser.schema_validation_failed` instead of returning a partial object, and defaults are applied **after** validation. Pass `validateSchema: false` to opt into filter/default-only behavior. See the [JSON parser reference](/parser/included-parsers.html#json) for details.
+:::
+
 ---
+
 
 # Default Included Parsers
 
@@ -1972,6 +1999,8 @@ Options:
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `match` | `"exact" \| "extract"` | `"exact"` | `"exact"` requires the entire trimmed response to be one boolean literal. `"extract"` finds one boolean literal in surrounding text. |
+
+See a complete recipe using this parser: [Get a Yes/No Decision from an LLM](/examples/bots/yes-no).
 
 ::: code-group
 
@@ -2058,8 +2087,17 @@ const parser = createParser("listToArray");
 ## List to Key/Value[]
 
 `listToKeyValue`
-Converts a list of `key: value` pairs (separated by newlines) to an array of key/value objects.
+Converts a list of `key: value` pairs (separated by newlines) to an array of key/value objects. Each line is split at the first colon; duplicate keys are preserved because the output is an ordered array.
 Returns `Array<{ key: string; value: string; }>`
+
+```ts
+const parser = createParser("listToKeyValue");
+```
+
+Options:
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `keyTransform` | `"preserve" \| "camelCase"` | `"preserve"` | How to transform keys. `"preserve"` returns keys exactly as written (trimmed). `"camelCase"` converts keys like "First Name" to "firstName", matching [`listToJson`](#list-to-json)'s key normalization. |
 
 ::: code-group
 
@@ -2205,6 +2243,7 @@ Options:
 | --- | --- | --- | --- |
 | `keyTransform` | `"camelCase" \| "preserve"` | `"camelCase"` | How to transform keys. `"camelCase"` converts keys like "First Name" to "firstName". `"preserve"` keeps the original key text (trimmed). |
 | `schema` | `JSONSchema` | `undefined` | Optional JSON Schema to validate and enforce types on the output. |
+| `validateSchema` | `boolean` | `true` (when `schema` is set) | When a schema is provided, `required` fields and type/constraint checks are enforced by default. Set to `false` to opt out into filter/default-only behavior (strips unknown keys and applies defaults, but does **not** check `required`). |
 
 ::: code-group
 
@@ -2244,8 +2283,13 @@ const parser = createParser("json");
 Options:
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `schema` | `JSONSchema` | `undefined` | Optional JSON Schema to validate and enforce types on the output. Use with [`defineSchema`](/parser/index.html#defineschema) for full type inference. |
+| `schema` | `JSONSchema` | `undefined` | Optional JSON Schema to validate and enforce types on the output. Use with [`defineSchema`](/parser/#defineschema) for full type inference. |
+| `validateSchema` | `boolean` | `true` (when `schema` is set) | When a schema is provided, `required` fields and type/constraint checks are enforced by default — invalid or incomplete input throws `parser.schema_validation_failed`. Set to `false` to opt out into filter/default-only behavior (strips unknown keys and applies defaults, but does **not** check `required`). |
 | `match` | `"exact" \| "extract"` | `"exact"` | `"exact"` parses the entire response as JSON. `"extract"` finds one JSON object or array in surrounding text. |
+
+::: warning
+Providing a `schema` enforces `required` fields by default. Input missing a required field throws rather than returning a partial object. Defaults are applied **after** validation, so a `default` does not satisfy a `required` field. Pass `validateSchema: false` only if you intentionally want the legacy strip-and-default behavior without `required` enforcement.
+:::
 
 ::: code-group
 
@@ -2270,6 +2314,7 @@ or
 
 
 ---
+
 
 # Custom Parser
 
@@ -2362,6 +2407,7 @@ Both approaches produce the same result — `createCustomParser` is a convenienc
 
 ---
 
+
 # State
 
 When calling an LLM from your code, the LLM only knows the history you provide it.
@@ -2422,7 +2468,7 @@ chatHistory.setUserMessage("Hey anyone there?");
 state.getDialogue("chatHistory").setAssistantMessage("Yep! What's up?");
 ```
 
-You can also create a standalone dialogue without state using `createDialogue`. See the [Dialogue](/state/dialogue.html) page for full details.
+You can also create a standalone dialogue without state using `createDialogue`. See the [Dialogue](/state/dialogue) page for full details.
 
 ## Saving State
 
@@ -2442,6 +2488,7 @@ class MyState extends DefaultState {
 }
 ```
 ---
+
 
 # Dialogue
 
@@ -2539,7 +2586,7 @@ const history = state.getDialogue("chatHistory").getHistory();
 
 # LLM Executor
 
-The LLM executor takes an [llm](/llm/index.html), a [prompt](/prompt/index.html), optionally a [parser](/parser/index.html), and wraps in a well-typed executor function. An LLM executor is a _container_ that can be used to call an LLM with a pre-defined input and output; with additional values provided at the time of execution. The executor is responsible for combining and calling the provided components, with added tracing, metadata, and extendable hooks.
+The LLM executor takes an [llm](/llm/), a [prompt](/prompt/), optionally a [parser](/parser/), and wraps in a well-typed executor function. An LLM executor is a _container_ that can be used to call an LLM with a pre-defined input and output; with additional values provided at the time of execution. The executor is responsible for combining and calling the provided components, with added tracing, metadata, and extendable hooks.
 
 An LLM executor's input and output types are determined by the prompt and parser respectively. These are inferred automatically when working with Typescript. See working with types in prompts and parsers.
 
@@ -2635,7 +2682,7 @@ const response = await executor.execute(
 
 `createLlmFunctionExecutor` Returns an instance of LlmExecutorWithFunctions.
 
-See [Tool Calling Executor](/executor/openai-functions.html) for full documentation and examples.
+See [Tool Calling Executor](/executor/openai-functions) for full documentation and examples.
 
 ## Core Executor
 
@@ -2657,6 +2704,7 @@ const result = await executor.execute({ text: "Hello world from llm-exe" });
 `createCoreExecutor` Returns an instance of CoreExecutor.
 
 ---
+
 
 # Tool Calling Executor
 
@@ -2705,15 +2753,52 @@ const response = await executor.execute({
 
 ---
 
-## LLM Executor Hooks
 
-Hooks are available mostly for logging purposes, but can have more advanced use-cases. Hooks are functions you can define which get called at certain stages of the execution. Hooks are optional, and you can register more than one function per hook (meaning there can be many functions listening on the same hook).
+## LLM Hooks
+
+**LLM hooks are lifecycle callbacks that fire at specific points around an LLM call** — before results are returned, when a call fails, and when execution finishes. Instead of wrapping every LLM call in try/catch blocks and timing code, you register a hook once and it runs on every execution. This keeps cross-cutting concerns — logging, metrics, alerting, auditing — out of your business logic.
+
+Typical things you'd use LLM hooks for:
+
+- **Logging** every prompt input and parsed output for debugging or audit trails
+- **Latency tracking** — measure how long each LLM call takes and send it to your metrics system
+- **Error monitoring** — capture failures (timeouts, parse errors, provider errors) and alert on them
+- **Usage analytics** — count executions per function to see which LLM features get used
+
+In llm-exe, every executor supports hooks. They are optional, and you can register more than one function per hook (meaning there can be many functions listening on the same hook).
 
 The following hooks are available:
 
 - `onSuccess` — runs after a successful execution, once the output has been produced
 - `onError` — runs when the executor throws, before the error is re-thrown
 - `onComplete` — runs after `onSuccess` or `onError`, regardless of outcome
+
+### Common Patterns
+
+Log the duration of every LLM call:
+
+```typescript:no-line-numbers
+const classifier = createLlmExecutor({ name: "classify-ticket", llm, prompt, parser });
+
+classifier.on("onComplete", (exec, meta) => {
+  logger.info(`${meta.name} finished in ${exec.end - exec.start}ms`, {
+    executions: meta.executions,
+  });
+});
+```
+
+Alert on failures without touching the call site:
+
+```typescript:no-line-numbers
+classifier.on("onError", (exec, meta) => {
+  alerting.notify(`LLM call ${meta.name} failed: ${exec.errorMessage}`, {
+    code: exec.errorCode,
+    input: exec.input,
+  });
+});
+```
+
+The executor still throws on failure — `onError` observes the error, it does not swallow it. Your calling code handles the failure; the hook handles the telemetry. For a complete production setup combining hooks with retries and timeouts, see [Add Retries and Timeouts to LLM Calls](/examples/concepts/retries-and-timeouts).
 
 ### Hook Signature
 
@@ -2869,6 +2954,7 @@ executor.on("onComplete", (exec, meta) => {
 
 ---
 
+
 # Executor Options
 
 ## Creation Options
@@ -2909,7 +2995,7 @@ const executor = createLlmExecutor(
 
 ### Hooks
 
-See [Hooks](/executor/hooks.html) for full documentation on available hooks.
+See [Hooks](/executor/hooks) for full documentation on available hooks.
 
 ## Execute Options
 
@@ -2927,6 +3013,7 @@ const result = await executor.execute(
 | jsonSchema | `Record<string, any>`     | JSON schema to pass to the LLM for structured output |
 
 ---
+
 
 # Embeddings
 
@@ -2969,18 +3056,21 @@ The returned object has a `.call(input)` method that returns a promise. The reso
 
 | Provider | Key | Details |
 |----------|-----|---------|
-| OpenAI | `openai.embedding.v1` | [OpenAI Embeddings](./openai.md) |
+| OpenAI (and OpenAI-compatible) | `openai.embedding.v1` | [OpenAI Embeddings](./openai.md) |
 | Amazon Titan | `amazon.embedding.v1` | [Amazon Embeddings](./amazon.md) |
 | Cohere (via Bedrock) | `amazon:cohere.embedding.v1` | [Cohere Embeddings](./cohere.md) |
+
+The `openai.embedding.v1` provider accepts a `baseUrl` option, so it can also be used with any OpenAI-compatible embeddings endpoint (Baseten, Together AI, vLLM, TEI, local servers, etc.). See [OpenAI Embeddings → OpenAI-Compatible Endpoints](./openai.md#openai-compatible-endpoints).
 
 ## Adding Custom Providers
 Custom embedding providers are not currently supported. If you need an embedding provider that isn't listed above, please open an issue.
 
 ---
 
+
 # OpenAI Embeddings
 
-When using OpenAI embeddings, llm-exe will make POST requests to `https://api.openai.com/v1/embeddings`.
+When using OpenAI embeddings, llm-exe will make POST requests to `https://api.openai.com/v1/embeddings` by default. Override `baseUrl` to point at any OpenAI-compatible embeddings endpoint (Baseten, Together, vLLM, TEI, etc.) — see [OpenAI-Compatible Endpoints](#openai-compatible-endpoints) below.
 
 ## Options
 
@@ -2989,7 +3079,8 @@ When using OpenAI embeddings, llm-exe will make POST requests to `https://api.op
 | `model` | `string` | — | The OpenAI embedding model to use (e.g., `text-embedding-3-small`) |
 | `dimensions` | `number` | `1536` | The number of dimensions for the output embedding |
 | `encodingFormat` | `string` | — | The encoding format (e.g., `float`, `base64`) |
-| `openAiApiKey` | `string` | `OPENAI_API_KEY` env var | Your OpenAI API key |
+| `openAiApiKey` | `string` | `OPENAI_API_KEY` env var | Your OpenAI (or compatible provider) API key. Sent as `Authorization: Bearer <key>` |
+| `baseUrl` | `string` | `https://api.openai.com/v1` | Base URL for the embeddings request. The final endpoint is `{baseUrl}/embeddings` |
 
 ## Basic Usage
 
@@ -3019,6 +3110,47 @@ const embeddings = createEmbedding("openai.embedding.v1", {
     dimensions: 512,
 });
 ```
+
+## OpenAI-Compatible Endpoints
+
+The `openai.embedding.v1` provider can talk to any service that implements the OpenAI `/embeddings` API shape. Pass `baseUrl` to redirect the request, and pass your provider's API key via `openAiApiKey` (it is sent as a bearer token regardless of which provider it belongs to).
+
+### Baseten
+
+```ts
+const embeddings = createEmbedding("openai.embedding.v1", {
+  baseUrl: "https://model-xyz.api.baseten.co/environments/production/sync/v1",
+  openAiApiKey: process.env.BASETEN_API_KEY,
+  model: "Qwen/Qwen3-Embedding-8B",
+});
+```
+
+### Together AI
+
+```ts
+const embeddings = createEmbedding("openai.embedding.v1", {
+  baseUrl: "https://api.together.xyz/v1",
+  openAiApiKey: process.env.TOGETHER_API_KEY,
+  model: "BAAI/bge-large-en-v1.5",
+});
+```
+
+### Local servers (vLLM, TEI, Ollama, LM Studio)
+
+For local OpenAI-compatible servers, point `baseUrl` at the server and pass a placeholder key if the server doesn't require auth:
+
+```ts
+const embeddings = createEmbedding("openai.embedding.v1", {
+  baseUrl: "http://localhost:8000/v1",
+  openAiApiKey: "not-needed",
+  model: "BAAI/bge-base-en-v1.5",
+});
+```
+
+Notes:
+
+- `{baseUrl}` is concatenated with `/embeddings`, so omit any trailing `/embeddings` from the URL.
+- If your compatible provider doesn't support `dimensions` or returns a fixed vector size, the default `dimensions: 1536` may need to be overridden or left to the provider — consult the provider's docs.
 
 ---
 
@@ -3058,6 +3190,7 @@ console.log(vector);
 ```
 
 ---
+
 
 ## Callable Executor Wrapper
 
@@ -3247,6 +3380,7 @@ const functionWithCallableExecutors = async (input: {
 
 ---
 
+
 # LLM Executor Function Syntax
 
 llm-exe aims to be building blocks, allowing you to use the pieces as you wish. Below are suggestions on how to contain an LLM executor in a way that can be used throughout your application. Ultimately, do what you want.
@@ -3351,6 +3485,7 @@ Its reasonable to pass an llm around.
 
 ---
 
+
 # Tips: Working with JSON
 
 Instructing an LLM to work with JSON can be difficult.  Below are some tricks to working with JSON.
@@ -3420,9 +3555,50 @@ Now, we have instructed the LLM without directly telling it that:
 - We are able to hint that we don't want additional properties.
 
 You can also:
-- Set defaults
+- Set defaults with the `default` keyword on a property.
+
+## Enforcing the schema at parse time
+
+The schema is not only a prompting aid — when you pass it to the JSON parser it is enforced on the LLM's response:
+
+```ts
+import { defineSchema, createParser } from "llm-exe";
+
+const schema = defineSchema({
+  type: "object",
+  properties: {
+    thought: { type: "string" },
+    direction: { type: "string", enum: ["forward", "back", "left", "right"] },
+  },
+  required: ["thought", "direction"],
+  additionalProperties: false,
+});
+
+const parser = createParser("json", { schema });
+```
+
+Once a `schema` is provided, `required` fields and type/constraint checks are enforced **by default** (`validateSchema` defaults to `true` when a schema is set). Input that is missing a required field — or violates the schema — throws `parser.schema_validation_failed` rather than silently returning a partial object:
+
+```ts
+parser.parse(`{"thought": "I should go"}`);
+// throws: parser.schema_validation_failed — requires property "direction"
+```
+
+A couple of things to keep in mind:
+
+- **Defaults are applied _after_ validation.** A `default` on a `required` property does **not** satisfy that requirement — if the LLM omits the field, validation still fails.
+- **Opt out with `validateSchema: false`.** This switches to filter/default-only behavior: unknown keys are stripped and defaults are applied, but `required` and constraints are **not** checked. Use it only if you intentionally want that looser behavior.
+
+See the [JSON parser reference](/parser/included-parsers.html#json) for the full option list.
+
+### Related
+
+- [Write a Type-Safe LLM Function](/examples/concepts/type-safe-llm-function) — schema-driven prompt, validation, and return type in one
+- [Extract Structured Data](/examples/bots/extract) — caller-supplied schemas for slot filling
+- [Included Parsers](/parser/included-parsers) — the JSON parser reference
 
 ---
+
 
 # Replicating Lex
 
@@ -3450,13 +3626,13 @@ We can also use some tricks to help get the best match:
 
 These are all prompt tricks. They are tips, not rules. Experiment yourself with what works.
 
-Note: See [intent](/examples/bots/intent.html) for detailed example of the intent executor.
+Note: See [intent](/examples/bots/intent) for detailed example of the intent executor.
 
 
 ## Extract Slots
 We'd use the result of the intent LLM to know which slots are available/required for the next step. Then, we'll ask the LLM if the specific information is included in the conversation.
 
-Note: See [extract](/examples/bots/extract.html) for detailed example of the confirm executor.
+Note: See [extract](/examples/bots/extract) for detailed example of the confirm executor.
 
 
 ## Confirm
@@ -3465,7 +3641,7 @@ To confirm the intent, you guessed it, we'll be asking an LLM if the user has co
 The validator LLM executor takes a conversation, and a series of true/false statements, and asks the LLM to work through the statements and identify if they are true or false. Our LLM Executor has a custom output parser which will summarize this output into something easily usable.
 
 
-Note: See [intent](/examples/bots/intent.html) for detailed example of the confirm executor.
+Note: See [intent](/examples/bots/intent) for detailed example of the confirm executor.
 
 ## Response Generator
 You can use a single LLM executor with some prompt templates to generate responses when you need to elicit intent, confirm, or carry on conversation.

@@ -112,9 +112,12 @@ const anthropicChatV1: Config = {
         const model: string = _s.model || "";
 
         const isAdaptive =
-          model.startsWith("claude-opus-4-7") ||
           model.startsWith("claude-opus-4-6") ||
-          model.startsWith("claude-sonnet-4-6");
+          model.startsWith("claude-opus-4-7") ||
+          model.startsWith("claude-opus-4-8") ||
+          model.startsWith("claude-sonnet-4-6") ||
+          model.startsWith("claude-sonnet-5") ||
+          model.startsWith("claude-fable-5");
 
         if (isAdaptive) {
           _output.thinking = { type: "adaptive" };
@@ -122,7 +125,14 @@ const anthropicChatV1: Config = {
             minimal: "low",
             low: "low",
             medium: "medium",
-            high: model.startsWith("claude-opus-4-7") ? "xhigh" : "high",
+            // Opus coding flagships take Anthropic's escalated "xhigh" for high
+            // effort (per the Opus 4.7 coding/agentic recommendation); other
+            // adaptive models use "high".
+            high:
+              model.startsWith("claude-opus-4-7") ||
+              model.startsWith("claude-opus-4-8")
+                ? "xhigh"
+                : "high",
           };
           return map[v];
         }
@@ -139,7 +149,18 @@ const anthropicChatV1: Config = {
             medium: 10240,
             high: 32768,
           };
-          _output.thinking = { type: "enabled", budget_tokens: budgetMap[v] };
+          const budget = budgetMap[v];
+          _output.thinking = { type: "enabled", budget_tokens: budget };
+          // Anthropic requires max_tokens > budget_tokens (thinking tokens count
+          // toward max_tokens). The default max_tokens (4096) is <= the low/medium/
+          // high budgets, which 400s. Raise max_tokens to fit the budget plus an
+          // output allowance, but never lower a caller's already-larger value.
+          const OUTPUT_ALLOWANCE = 4096;
+          const currentMax =
+            typeof _output.max_tokens === "number" ? _output.max_tokens : 0;
+          if (currentMax <= budget) {
+            _output.max_tokens = budget + OUTPUT_ALLOWANCE;
+          }
           return undefined;
         }
 

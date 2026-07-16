@@ -67,6 +67,13 @@ describe("anthropic config", () => {
         ["claude-opus-4-6", "high", "high"],
         ["claude-sonnet-4-6", "low", "low"],
         ["claude-sonnet-4-6", "high", "high"],
+        // Newer adaptive models (opus 4.8, sonnet 5, fable 5)
+        ["claude-opus-4-8", "high", "xhigh"],
+        ["claude-opus-4-8", "medium", "medium"],
+        ["claude-sonnet-5", "high", "high"],
+        ["claude-sonnet-5", "low", "low"],
+        ["claude-fable-5", "high", "high"],
+        ["claude-fable-5", "medium", "medium"],
       ] as const)(
         "%s with effort '%s' should return '%s'",
         (model, effort, expected) => {
@@ -78,12 +85,22 @@ describe("anthropic config", () => {
       );
     });
 
-    describe("adaptive thinking maps high to xhigh for Opus 4.7", () => {
-      it("should map high to xhigh for opus-4-7", () => {
-        const output: Record<string, any> = {};
-        const result = effortTransform("high", { model: "claude-opus-4-7" }, output);
-        expect(result).toBe("xhigh");
-        expect(output.thinking).toEqual({ type: "adaptive" });
+    describe("adaptive thinking maps high to xhigh for Opus coding flagships", () => {
+      it.each(["claude-opus-4-7", "claude-opus-4-8"])(
+        "should map high to xhigh for %s",
+        (model) => {
+          const output: Record<string, any> = {};
+          const result = effortTransform("high", { model }, output);
+          expect(result).toBe("xhigh");
+          expect(output.thinking).toEqual({ type: "adaptive" });
+        }
+      );
+
+      it("should map high to high (not xhigh) for non-opus adaptive models", () => {
+        for (const model of ["claude-sonnet-5", "claude-fable-5"]) {
+          const output: Record<string, any> = {};
+          expect(effortTransform("high", { model }, output)).toBe("high");
+        }
       });
 
       it("should map medium normally for opus-4-7", () => {
@@ -184,6 +201,43 @@ describe("anthropic config", () => {
         })
       );
       expect(body).not.toHaveProperty("output_config");
+    });
+
+    it("raises max_tokens above budget_tokens for legacy models (Anthropic requires max_tokens > budget)", () => {
+      // Default maxTokens (4096) <= medium budget (10240) would 400 without this.
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-4-5-20250929",
+        maxTokens: 4096,
+        effort: "medium",
+        prompt,
+      });
+      expect(body.thinking).toEqual({ type: "enabled", budget_tokens: 10240 });
+      expect(body.max_tokens).toBeGreaterThan(10240);
+    });
+
+    it("does not lower a caller's already-larger max_tokens for legacy models", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-4-5-20250929",
+        maxTokens: 50000,
+        effort: "medium",
+        prompt,
+      });
+      expect(body.max_tokens).toBe(50000);
+    });
+
+    it("produces adaptive body with xhigh for opus-4-8 (newer flagship)", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-opus-4-8",
+        maxTokens: 4096,
+        effort: "high",
+        prompt,
+      });
+      expect(body).toEqual(
+        expect.objectContaining({
+          thinking: { type: "adaptive" },
+          output_config: { effort: "xhigh" },
+        })
+      );
     });
 
     it("should not add thinking fields for claude-3 models", () => {

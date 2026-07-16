@@ -587,6 +587,15 @@ export type AllLlm = {
 
 export type AllUseLlmOptions = AllLlm & {
   // OpenAI - GPT-5 family
+  "openai.gpt-5.6": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-5.6-terra": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-5.6-luna": {
+    input: Omit<OpenAiRequest, "model">;
+  };
   "openai.gpt-5.5": {
     input: Omit<OpenAiRequest, "model">;
   };

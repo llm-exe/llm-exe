@@ -443,6 +443,13 @@ export interface CohereBedrockEmbeddingOptions
     | "classification"
     | "clustering";
   truncate?: "NONE" | "START" | "END" | "LEFT" | "RIGHT";
+  /**
+   * Escape hatch that writes Cohere Embed v4's `inputs` request field
+   * directly. Normally you do not set this: pass an EmbeddingContentItem[]
+   * as the call input instead, and the config routes it to `inputs` for you.
+   * A multimodal call input takes precedence over this value.
+   */
+  imageInputs?: EmbeddingContentItem[];
 }
 
 // Embed v3 returns `embeddings` as a plain array (response_type
@@ -840,7 +847,11 @@ export interface BaseLlCall {
 }
 
 export interface BaseEmbeddingCall {
-  getEmbedding: () => number[];
+  /**
+   * Returns the embedding at `index` from the batch, or the first embedding
+   * when `index` is omitted. Matches BaseEmbeddingOutput's implementation.
+   */
+  getEmbedding: (index?: number) => number[];
   getResult: () => EmbeddingOutputResult;
 }
 

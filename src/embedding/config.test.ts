@@ -383,6 +383,16 @@ describe("embeddingConfigs", () => {
       }
     });
 
+    it("drops `texts` for a text call input when an imageInputs option is also set", () => {
+      // `texts` and `inputs` are mutually exclusive on the wire — a text call
+      // input combined with the `imageInputs` escape hatch must still omit
+      // `texts`, or Cohere rejects the request for carrying both fields.
+      const transform = getTextsTransform();
+      expect(
+        transform("hello", { input: "hello", imageInputs: [imageItem] }, {})
+      ).toBeUndefined();
+    });
+
     it("emits `inputs` from a multimodal call input", () => {
       const transform = getInputsTransform();
       expect(
@@ -451,6 +461,35 @@ describe("embeddingConfigs", () => {
       const body = mapBody(embeddingConfigs[provider].mapBody, {
         model: "cohere.embed-v4:0",
         input: [imageItem],
+        inputType: "search_document",
+      });
+      expect(body).toEqual({
+        inputs: [imageItem],
+        input_type: "search_document",
+      });
+      expect(body).not.toHaveProperty("texts");
+    });
+
+    it("builds an inputs body from the imageInputs option when the call input is text, and omits texts", () => {
+      const body = mapBody(embeddingConfigs[provider].mapBody, {
+        model: "cohere.embed-v4:0",
+        input: "hello",
+        imageInputs: [imageItem],
+        inputType: "search_document",
+      });
+      expect(body).toEqual({
+        inputs: [imageItem],
+        input_type: "search_document",
+      });
+      expect(body).not.toHaveProperty("texts");
+    });
+
+    it("lets a multimodal call input win in the composed body when an imageInputs option is also set", () => {
+      const other = { content: [{ type: "text" as const, text: "other" }] };
+      const body = mapBody(embeddingConfigs[provider].mapBody, {
+        model: "cohere.embed-v4:0",
+        input: [imageItem],
+        imageInputs: [other],
         inputType: "search_document",
       });
       expect(body).toEqual({

@@ -102,25 +102,36 @@ export const embeddingConfigs: {
       input: {
         key: "texts",
         // `texts` and `inputs` are mutually exclusive in the Bedrock body.
-        // Returning undefined here omits `texts` entirely so the multimodal
-        // batch is carried by the `imageInputs` entry below. Returning the
-        // content items instead would JSON-serialize base64 image payloads
-        // into a field Cohere reads as plain text.
+        // Omit `texts` when EITHER the call input is multimodal OR the caller
+        // set the `imageInputs` escape hatch — in both cases the batch is
+        // carried by the `imageInputs` entry below instead. Checking only the
+        // call input would let a plain-text call combined with an
+        // `imageInputs` option produce a body with both fields, which Cohere
+        // rejects. Returning the content items here instead of omitting them
+        // would JSON-serialize base64 image payloads into a field Cohere
+        // reads as plain text.
         transform: (value: unknown, state: Record<string, any>) => {
           assertUniformEmbeddingInput(value, {
             operation: "embedding.textsTransform",
             provider: "amazon:cohere.embedding",
             model: state?.model,
           });
-          if (isMultimodalEmbeddingInput(value)) return undefined;
+          if (
+            isMultimodalEmbeddingInput(value) ||
+            isMultimodalEmbeddingInput(state?.imageInputs)
+          ) {
+            return undefined;
+          }
           return Array.isArray(value) ? value : [value];
         },
       },
       imageInputs: {
         key: "inputs",
-        // Cohere Embed v4's interleaved request field. Sourced from the call
-        // input when that input is multimodal, so callers never have to set
-        // the `imageInputs` option; the option is only an escape hatch.
+        // Cohere Embed v4's interleaved request field. A multimodal call
+        // input always wins over an explicit `imageInputs` option (the option
+        // is only an escape hatch for a text call input); either one alone is
+        // enough to populate this field, which is what keeps it mutually
+        // exclusive with `texts` above.
         transform: (
           value: unknown,
           state: Record<string, any>

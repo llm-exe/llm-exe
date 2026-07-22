@@ -2,6 +2,7 @@ import { EmbeddingProviderKey } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { embeddingConfigs, getEmbeddingConfig } from "./config";
 import { LlmExeError } from "@/errors";
+import { mapBody } from "@/llm/_utils.mapBody";
 
 jest.mock("@/utils/modules/getEnvironmentVariable");
 
@@ -187,6 +188,7 @@ describe("embeddingConfigs", () => {
       headers: `{"Content-Type": "application/json" }`,
       options: {
         input: {},
+        imageInputs: {},
         inputType: {
           default: "search_document",
         },
@@ -202,6 +204,10 @@ describe("embeddingConfigs", () => {
       mapBody: {
         input: {
           key: "texts",
+          transform: expect.any(Function),
+        },
+        imageInputs: {
+          key: "inputs",
           transform: expect.any(Function),
         },
         inputType: {
@@ -311,5 +317,147 @@ describe("embeddingConfigs", () => {
 
     expect(transform("hello", {}, {})).toEqual(["hello"]);
     expect(transform(["hello", "world"], {}, {})).toEqual(["hello", "world"]);
+  });
+
+  describe("multimodal routing on 'amazon:cohere.embedding.v1'", () => {
+    const provider: EmbeddingProviderKey = "amazon:cohere.embedding.v1";
+    const imageItem = {
+      content: [
+        { type: "text" as const, text: "a red square" },
+        {
+          type: "image_url" as const,
+          image_url: { url: "data:image/png;base64,AAAA" },
+        },
+      ],
+    };
+
+    function getTextsTransform() {
+      const transform = embeddingConfigs[provider].mapBody.input.transform;
+      if (!transform) {
+        throw new Error("input transform is missing from config");
+      }
+      return transform;
+    }
+
+    function getInputsTransform() {
+      const transform = embeddingConfigs[provider].mapBody.imageInputs.transform;
+      if (!transform) {
+        throw new Error("imageInputs transform is missing from config");
+      }
+      return transform;
+    }
+
+    it("drops `texts` when the batch is multimodal", () => {
+      const transform = getTextsTransform();
+      expect(
+        transform([imageItem], { input: [imageItem] }, {})
+      ).toBeUndefined();
+    });
+
+    it("still wraps plain text into `texts`", () => {
+      const transform = getTextsTransform();
+      expect(transform("hello", { input: "hello" }, {})).toEqual(["hello"]);
+      expect(
+        transform(["a", "b"], { input: ["a", "b"] }, {})
+      ).toEqual(["a", "b"]);
+    });
+
+    it("never stringifies a content item into `texts`", () => {
+      const transform = getTextsTransform();
+      const result = transform([imageItem], { input: [imageItem] }, {});
+      expect(JSON.stringify(result ?? null)).not.toContain("image_url");
+    });
+
+    it("throws embedding.unsupported_input on a mixed batch", () => {
+      const transform = getTextsTransform();
+      try {
+        transform(["a", imageItem], { input: ["a", imageItem] }, {});
+        fail("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toBe("embedding.unsupported_input");
+        const ctx = (e as LlmExeError).context as Record<string, unknown>;
+        expect(ctx.operation).toBe("embedding.textsTransform");
+        expect(ctx.provider).toBe("amazon:cohere.embedding");
+        expect(ctx.inputKind).toBe("mixed");
+      }
+    });
+
+    it("emits `inputs` from a multimodal call input", () => {
+      const transform = getInputsTransform();
+      expect(
+        transform(undefined, { input: [imageItem] }, {})
+      ).toEqual([imageItem]);
+    });
+
+    it("omits `inputs` for a plain text batch", () => {
+      const transform = getInputsTransform();
+      expect(transform(undefined, { input: "hello" }, {})).toBeUndefined();
+      expect(
+        transform(undefined, { input: ["a", "b"] }, {})
+      ).toBeUndefined();
+      expect(transform(undefined, {}, {})).toBeUndefined();
+    });
+
+    it("honours an explicit imageInputs option when the call input is text", () => {
+      const transform = getInputsTransform();
+      expect(
+        transform([imageItem], { input: "hello", imageInputs: [imageItem] }, {})
+      ).toEqual([imageItem]);
+    });
+
+    it("lets a multimodal call input win over an explicit imageInputs option", () => {
+      const transform = getInputsTransform();
+      const other = { content: [{ type: "text" as const, text: "other" }] };
+      expect(
+        transform([other], { input: [imageItem], imageInputs: [other] }, {})
+      ).toEqual([imageItem]);
+    });
+
+    it("ignores a non-multimodal imageInputs option", () => {
+      const transform = getInputsTransform();
+      expect(
+        transform("nonsense", { input: "hello", imageInputs: "nonsense" }, {})
+      ).toBeUndefined();
+    });
+  });
+
+  describe("mapBody composition for 'amazon:cohere.embedding.v1'", () => {
+    const provider: EmbeddingProviderKey = "amazon:cohere.embedding.v1";
+    const imageItem = {
+      content: [
+        { type: "text" as const, text: "a red square" },
+        {
+          type: "image_url" as const,
+          image_url: { url: "data:image/png;base64,AAAA" },
+        },
+      ],
+    };
+
+    it("builds a texts body for a plain batch", () => {
+      const body = mapBody(embeddingConfigs[provider].mapBody, {
+        model: "cohere.embed-v4:0",
+        input: ["hello", "world"],
+        inputType: "search_document",
+      });
+      expect(body).toEqual({
+        texts: ["hello", "world"],
+        input_type: "search_document",
+      });
+      expect(body).not.toHaveProperty("inputs");
+    });
+
+    it("builds an inputs body for a multimodal batch and omits texts", () => {
+      const body = mapBody(embeddingConfigs[provider].mapBody, {
+        model: "cohere.embed-v4:0",
+        input: [imageItem],
+        inputType: "search_document",
+      });
+      expect(body).toEqual({
+        inputs: [imageItem],
+        input_type: "search_document",
+      });
+      expect(body).not.toHaveProperty("texts");
+    });
   });
 });

@@ -1,6 +1,10 @@
-import { Config, EmbeddingProviderKey } from "@/types";
+import { Config, EmbeddingContentItem, EmbeddingProviderKey } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { LlmExeError } from "@/errors";
+import {
+  assertUniformEmbeddingInput,
+  isMultimodalEmbeddingInput,
+} from "./embedding.input";
 
 export const embeddingConfigs: {
   [key in EmbeddingProviderKey]: Config<EmbeddingProviderKey>;
@@ -78,6 +82,10 @@ export const embeddingConfigs: {
     headers: `{"Content-Type": "application/json" }`,
     options: {
       input: {},
+      // Declared so stateFromOptions' pick() does not drop a caller-supplied
+      // value. Normally left unset: a multimodal call input is routed to
+      // `inputs` by the transform below without any option being set.
+      imageInputs: {},
       inputType: {
         default: "search_document",
       },
@@ -93,8 +101,35 @@ export const embeddingConfigs: {
     mapBody: {
       input: {
         key: "texts",
-        transform: (value: string | string[]) =>
-          Array.isArray(value) ? value : [value],
+        // `texts` and `inputs` are mutually exclusive in the Bedrock body.
+        // Returning undefined here omits `texts` entirely so the multimodal
+        // batch is carried by the `imageInputs` entry below. Returning the
+        // content items instead would JSON-serialize base64 image payloads
+        // into a field Cohere reads as plain text.
+        transform: (value: unknown, state: Record<string, any>) => {
+          assertUniformEmbeddingInput(value, {
+            operation: "embedding.textsTransform",
+            provider: "amazon:cohere.embedding",
+            model: state?.model,
+          });
+          if (isMultimodalEmbeddingInput(value)) return undefined;
+          return Array.isArray(value) ? value : [value];
+        },
+      },
+      imageInputs: {
+        key: "inputs",
+        // Cohere Embed v4's interleaved request field. Sourced from the call
+        // input when that input is multimodal, so callers never have to set
+        // the `imageInputs` option; the option is only an escape hatch.
+        transform: (
+          value: unknown,
+          state: Record<string, any>
+        ): EmbeddingContentItem[] | undefined => {
+          const input = state?.input;
+          if (isMultimodalEmbeddingInput(input)) return input;
+          if (isMultimodalEmbeddingInput(value)) return value;
+          return undefined;
+        },
       },
       inputType: {
         key: "input_type",

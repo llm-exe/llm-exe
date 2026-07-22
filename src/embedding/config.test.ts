@@ -125,6 +125,7 @@ describe("embeddingConfigs", () => {
       mapBody: {
         input: {
           key: "input",
+          transform: expect.any(Function),
         },
         model: {
           key: "model",
@@ -166,6 +167,7 @@ describe("embeddingConfigs", () => {
       mapBody: {
         input: {
           key: "inputText",
+          transform: expect.any(Function),
         },
         dimensions: {
           key: "dimensions",
@@ -497,6 +499,77 @@ describe("embeddingConfigs", () => {
         input_type: "search_document",
       });
       expect(body).not.toHaveProperty("texts");
+    });
+  });
+
+  describe("text-only providers reject multimodal input", () => {
+    const imageItem = {
+      content: [
+        {
+          type: "image_url" as const,
+          image_url: { url: "data:image/png;base64,AAAA" },
+        },
+      ],
+    };
+
+    function getInputTransform(provider: EmbeddingProviderKey) {
+      const transform = embeddingConfigs[provider].mapBody.input.transform;
+      if (!transform) {
+        throw new Error(`input transform is missing from ${provider} config`);
+      }
+      return transform;
+    }
+
+    it.each<[EmbeddingProviderKey, string]>([
+      ["openai.embedding.v1", "openai.embedding"],
+      ["amazon.embedding.v1", "amazon.embedding"],
+    ])("%s throws embedding.unsupported_input", (providerKey, providerName) => {
+      const transform = getInputTransform(providerKey);
+      try {
+        transform([imageItem], { model: "some-model" }, {});
+        fail("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toBe("embedding.unsupported_input");
+        expect((e as LlmExeError).category).toBe("embedding");
+        expect((e as Error).message).toContain(
+          `Provider "${providerName}" does not accept multimodal embedding input`
+        );
+        const ctx = (e as LlmExeError).context as Record<string, unknown>;
+        expect(ctx.operation).toBe("embedding.inputTransform");
+        expect(ctx.provider).toBe(providerName);
+        expect(ctx.model).toBe("some-model");
+        expect(ctx.inputKind).toBe("multimodal");
+        expect(ctx.resolution).toMatch(/amazon:cohere\.embedding\.v1/);
+      }
+    });
+
+    it("openai.embedding.v1 passes plain text through unchanged", () => {
+      const transform = getInputTransform("openai.embedding.v1");
+      expect(transform("hello", {}, {})).toBe("hello");
+      expect(transform(["a", "b"], {}, {})).toEqual(["a", "b"]);
+    });
+
+    it("openai.embedding.v1 still accepts pre-tokenized input", () => {
+      const transform = getInputTransform("openai.embedding.v1");
+      expect(transform([[1, 2, 3], [4, 5]], {}, {})).toEqual([
+        [1, 2, 3],
+        [4, 5],
+      ]);
+    });
+
+    it("amazon.embedding.v1 passes plain text through unchanged", () => {
+      const transform = getInputTransform("amazon.embedding.v1");
+      expect(transform("hello", {}, {})).toBe("hello");
+    });
+
+    it("both providers leave undefined input alone", () => {
+      expect(
+        getInputTransform("openai.embedding.v1")(undefined, {}, {})
+      ).toBeUndefined();
+      expect(
+        getInputTransform("amazon.embedding.v1")(undefined, {}, {})
+      ).toBeUndefined();
     });
   });
 });

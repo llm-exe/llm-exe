@@ -2,6 +2,7 @@ import { Config, EmbeddingContentItem, EmbeddingProviderKey } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { LlmExeError } from "@/errors";
 import {
+  assertTextOnlyEmbeddingInput,
   assertUniformEmbeddingInput,
   isMultimodalEmbeddingInput,
 } from "./embedding.input";
@@ -33,6 +34,18 @@ export const embeddingConfigs: {
     mapBody: {
       input: {
         key: "input",
+        // OpenAI's embeddings endpoint accepts a string, a string[], or
+        // pre-tokenized number[][]. It has no image field, so a content item
+        // would be posted as an object where a string is expected and come
+        // back as an opaque 400. Reject it here with the provider named.
+        transform: (value: unknown, state: Record<string, any>) => {
+          assertTextOnlyEmbeddingInput(value, {
+            operation: "embedding.inputTransform",
+            provider: "openai.embedding",
+            model: state?.model,
+          });
+          return value;
+        },
       },
       model: {
         key: "model",
@@ -67,6 +80,18 @@ export const embeddingConfigs: {
     mapBody: {
       input: {
         key: "inputText",
+        // Titan's inputText is a single string. It has a separate multimodal
+        // model with a different request shape that this config does not
+        // target, so image content is a hard error rather than a silent
+        // object-in-a-string-field.
+        transform: (value: unknown, state: Record<string, any>) => {
+          assertTextOnlyEmbeddingInput(value, {
+            operation: "embedding.inputTransform",
+            provider: "amazon.embedding",
+            model: state?.model,
+          });
+          return value;
+        },
       },
       dimensions: {
         key: "dimensions",

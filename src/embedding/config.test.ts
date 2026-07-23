@@ -1,6 +1,11 @@
 import { EmbeddingProviderKey } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
-import { embeddingConfigs, getEmbeddingConfig } from "./config";
+import {
+  embeddingConfigs,
+  getEmbeddingConfig,
+  getEmbeddingCapabilities,
+} from "./config";
+import { cohereInterleavedInputs } from "./content/cohere";
 import { LlmExeError } from "@/errors";
 import { mapBody } from "@/llm/_utils.mapBody";
 
@@ -137,6 +142,16 @@ describe("embeddingConfigs", () => {
           key: "encoding_format",
         },
       },
+      capabilities: {
+        modalities: ["text"],
+        maxItemsPerRequest: 1,
+        maxRequestBytes: 1024 * 1024,
+        dimensions: {
+          mode: "range",
+          min: 256,
+          max: 1536,
+        },
+      },
     });
   });
 
@@ -171,6 +186,15 @@ describe("embeddingConfigs", () => {
         },
         dimensions: {
           key: "dimensions",
+        },
+      },
+      capabilities: {
+        modalities: ["text"],
+        maxItemsPerRequest: 1,
+        maxRequestBytes: 1024 * 1024,
+        dimensions: {
+          mode: "enum",
+          values: [256, 512, 1024],
         },
       },
     });
@@ -221,6 +245,22 @@ describe("embeddingConfigs", () => {
         dimensions: {
           key: "output_dimension",
           transform: expect.any(Function),
+        },
+      },
+      capabilities: {
+        modalities: ["text", "image"],
+        maxItemsPerRequest: 96,
+        maxRequestBytes: 18 * 1024 * 1024,
+        dimensions: {
+          mode: "enum",
+          values: [256, 512, 1024, 1536],
+        },
+        multimodal: {
+          fusion: "fused",
+          imageForm: "dataUri",
+          imageMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+          maxImageBytes: 5 * 1024 * 1024,
+          maxImagesPerItem: 1,
         },
       },
     });
@@ -571,5 +611,140 @@ describe("embeddingConfigs", () => {
         getInputTransform("amazon.embedding.v1")(undefined, {}, {})
       ).toBeUndefined();
     });
+  });
+});
+
+describe("embedding capability descriptors", () => {
+  const providers = Object.keys(embeddingConfigs) as EmbeddingProviderKey[];
+
+  it("declares at least the three known providers", () => {
+    expect(providers).toEqual(
+      expect.arrayContaining([
+        "openai.embedding.v1",
+        "amazon.embedding.v1",
+        "amazon:cohere.embedding.v1",
+      ])
+    );
+  });
+
+  it.each(providers)(
+    "%s declares a capabilities descriptor",
+    (provider) => {
+      const config = embeddingConfigs[provider];
+      expect(config.capabilities).toBeDefined();
+      expect(Array.isArray(config.capabilities.modalities)).toBe(true);
+      expect(config.capabilities.modalities.length).toBeGreaterThan(0);
+      expect(typeof config.capabilities.maxItemsPerRequest).toBe("number");
+      expect(typeof config.capabilities.maxRequestBytes).toBe("number");
+      expect(config.capabilities.dimensions).toBeDefined();
+    }
+  );
+
+  it.each(providers)(
+    "%s declares `multimodal` if and only if `modalities` includes \"image\"",
+    (provider) => {
+      const { capabilities } = embeddingConfigs[provider];
+      const declaresImage = capabilities.modalities.includes("image");
+      if (declaresImage) {
+        expect(capabilities.multimodal).toBeDefined();
+      } else {
+        expect(capabilities.multimodal).toBeUndefined();
+      }
+    }
+  );
+
+  it("text-only providers declare no multimodal block", () => {
+    expect(
+      embeddingConfigs["openai.embedding.v1"].capabilities.multimodal
+    ).toBeUndefined();
+    expect(
+      embeddingConfigs["amazon.embedding.v1"].capabilities.multimodal
+    ).toBeUndefined();
+  });
+
+  it("Cohere declares maxItemsPerRequest 96 and maxRequestBytes 18 MB", () => {
+    const { capabilities } =
+      embeddingConfigs["amazon:cohere.embedding.v1"];
+    expect(capabilities.maxItemsPerRequest).toBe(96);
+    expect(capabilities.maxRequestBytes).toBe(18 * 1024 * 1024);
+  });
+
+  it("Cohere declares fused multimodal semantics", () => {
+    const { capabilities } =
+      embeddingConfigs["amazon:cohere.embedding.v1"];
+    expect(capabilities.multimodal?.fusion).toBe("fused");
+    expect(capabilities.multimodal?.imageForm).toBe("dataUri");
+  });
+});
+
+describe("getEmbeddingCapabilities", () => {
+  it("returns the exact descriptor stored on the config for each provider", () => {
+    const providers = Object.keys(
+      embeddingConfigs
+    ) as EmbeddingProviderKey[];
+    for (const provider of providers) {
+      expect(getEmbeddingCapabilities(provider)).toEqual(
+        embeddingConfigs[provider].capabilities
+      );
+    }
+  });
+
+  it("throws the same embedding.invalid_provider error as getEmbeddingConfig for an unknown key", () => {
+    const invalidProvider = "invalid.provider" as EmbeddingProviderKey;
+    try {
+      getEmbeddingCapabilities(invalidProvider);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).code).toBe("embedding.invalid_provider");
+    }
+  });
+});
+
+describe("cohereInterleavedInputs", () => {
+  const imageItem = {
+    content: [
+      { type: "text" as const, text: "a red square" },
+      {
+        type: "image_url" as const,
+        image_url: { url: "data:image/png;base64,AAAA" },
+      },
+    ],
+  };
+  const otherImageItem = {
+    content: [
+      { type: "text" as const, text: "other" },
+      {
+        type: "image_url" as const,
+        image_url: { url: "data:image/png;base64,BBBB" },
+      },
+    ],
+  };
+
+  it("returns the call input when it is multimodal", () => {
+    expect(cohereInterleavedInputs([imageItem], undefined)).toEqual([
+      imageItem,
+    ]);
+  });
+
+  it("returns the imageInputs option when the call input is not multimodal", () => {
+    expect(cohereInterleavedInputs("hello", [imageItem])).toEqual([
+      imageItem,
+    ]);
+    expect(cohereInterleavedInputs(undefined, [imageItem])).toEqual([
+      imageItem,
+    ]);
+  });
+
+  it("lets a multimodal call input win over an explicit imageInputs option", () => {
+    expect(
+      cohereInterleavedInputs([imageItem], [otherImageItem])
+    ).toEqual([imageItem]);
+  });
+
+  it("returns undefined when neither the input nor the option is multimodal", () => {
+    expect(cohereInterleavedInputs("hello", undefined)).toBeUndefined();
+    expect(cohereInterleavedInputs(["a", "b"], "nonsense")).toBeUndefined();
+    expect(cohereInterleavedInputs(undefined, undefined)).toBeUndefined();
   });
 });

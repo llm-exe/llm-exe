@@ -13,6 +13,7 @@ export {
   createOpenAiCompatibleConfiguration,
 } from "./llm";
 export { createEmbedding } from "./embedding/embedding";
+export { getEmbeddingCapabilities } from "./embedding/config";
 
 export {
   BasePrompt,
@@ -78,6 +79,11 @@ export type {
   OpenAiEmbeddingOptions,
   AmazonEmbeddingOptions,
   CohereBedrockEmbeddingOptions,
+  EmbeddingModality,
+  EmbeddingImageForm,
+  EmbeddingFusion,
+  EmbeddingDimensionRule,
+  EmbeddingCapabilities,
   UseLlmKey,
   JsonParserMatch,
   JsonParserOptions,

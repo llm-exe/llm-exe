@@ -1,4 +1,8 @@
-import { Config, EmbeddingContentItem, EmbeddingProviderKey } from "@/types";
+import {
+  Config,
+  EmbeddingCapabilities,
+  EmbeddingProviderKey,
+} from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { LlmExeError } from "@/errors";
 import {
@@ -6,9 +10,35 @@ import {
   assertUniformEmbeddingInput,
   isMultimodalEmbeddingInput,
 } from "./embedding.input";
+import { cohereInterleavedInputs } from "./content/cohere";
+
+/**
+ * Adding a new multimodal embedding provider under this design is mechanical:
+ *
+ * 1. Declare its `capabilities` (modalities, batch/byte limits, dimension
+ *    rule, and - if it accepts images - the `multimodal` block including
+ *    `fusion`). Use documented numbers; mark anything undocumented as
+ *    conservative in a comment.
+ * 2. Write a renderer: a named, exported pure function under
+ *    `src/embedding/content/<provider>.ts` that shapes the provider's request
+ *    body from the call input (see `cohereInterleavedInputs` for the shape).
+ * 3. Wire the renderer into the config's `mapBody` transform(s) below.
+ * 4. Add an output parser under `src/embedding/output/` and register it in
+ *    `getEmbeddingOutputParser`.
+ * 5. Add tests: capabilities shape, renderer behavior, and mapBody
+ *    composition, mirroring the Cohere test blocks in `config.test.ts`.
+ *
+ * `EmbeddingCapabilities` is a compatibility gate, not a behavior switch:
+ * nothing in this file branches on `fusion`. It exists so a consumer (for
+ * example one writing into a dimension-locked vector index) can refuse a
+ * provider whose multimodal result is "averaged" or "perModality" instead of
+ * silently indexing a weaker or incomplete vector.
+ */
 
 export const embeddingConfigs: {
-  [key in EmbeddingProviderKey]: Config<EmbeddingProviderKey>;
+  [key in EmbeddingProviderKey]: Config<EmbeddingProviderKey> & {
+    capabilities: EmbeddingCapabilities;
+  };
 } = {
   "openai.embedding.v1": {
     key: "openai.embedding.v1",
@@ -57,6 +87,27 @@ export const embeddingConfigs: {
         key: "encoding_format",
       },
     },
+    capabilities: {
+      modalities: ["text"],
+      // core-stack's getEmbeddingInfo treats every non-Cohere embedding
+      // provider (this one included) as a single-item, 1 MB-budget call.
+      // Matching that here keeps behavior identical when core-stack switches
+      // to reading limits from this registry.
+      maxItemsPerRequest: 1,
+      maxRequestBytes: 1024 * 1024,
+      dimensions: {
+        mode: "range",
+        // OpenAI documents text-embedding-3-small's `dimensions` param as
+        // "any value from 256 to 1536". text-embedding-3-large accepts the
+        // same 256 floor and goes up to a native 3072, but this config's
+        // `model` option has no default and both models share this one key,
+        // so 1536 (the smaller model's native ceiling) is used as the
+        // conservative max rather than overclaiming 3072 for every model.
+        min: 256,
+        max: 1536,
+      },
+      // No `multimodal` block: this endpoint has no image field.
+    },
   },
 
   "amazon.embedding.v1": {
@@ -96,6 +147,26 @@ export const embeddingConfigs: {
       dimensions: {
         key: "dimensions",
       },
+    },
+    capabilities: {
+      modalities: ["text"],
+      // Titan's inputText schema has no array field: one text in, one vector
+      // out. core-stack's getEmbeddingInfo already treats this as
+      // maxBatchSize 1 / maxBatchBytes 1 MB for every non-Cohere provider;
+      // mirrored here verbatim.
+      maxItemsPerRequest: 1,
+      maxRequestBytes: 1024 * 1024,
+      dimensions: {
+        mode: "enum",
+        // Amazon Titan Text Embeddings V2 documents 1024 (its own default),
+        // 512, and 256 as the supported output sizes. This config's default
+        // of 512 is one of those three values, not the fixed-1536 V1
+        // generation's single size.
+        values: [256, 512, 1024],
+      },
+      // No `multimodal` block: Titan's multimodal model (amazon.titan-embed-image-v1)
+      // has a different request shape this config does not target - image
+      // content is a hard error here, not a silent object-in-a-string-field.
     },
   },
 
@@ -157,14 +228,8 @@ export const embeddingConfigs: {
         // is only an escape hatch for a text call input); either one alone is
         // enough to populate this field, which is what keeps it mutually
         // exclusive with `texts` above.
-        transform: (
-          value: unknown,
-          state: Record<string, any>
-        ): EmbeddingContentItem[] | undefined => {
-          const input = state?.input;
-          if (isMultimodalEmbeddingInput(input)) return input;
-          if (isMultimodalEmbeddingInput(value)) return value;
-          return undefined;
+        transform: (value: unknown, state: Record<string, any>) => {
+          return cohereInterleavedInputs(state?.input, value);
         },
       },
       inputType: {
@@ -205,6 +270,41 @@ export const embeddingConfigs: {
         },
       },
     },
+    capabilities: {
+      modalities: ["text", "image"],
+      // Matches core-stack's getEmbeddingInfo maxBatchSize for Cohere on
+      // Bedrock (96) - the one provider that branch treats differently from
+      // every other embedding provider. Also matches Cohere's documented
+      // "max 96 images per call".
+      maxItemsPerRequest: 96,
+      // Matches core-stack's getEmbeddingInfo maxBatchBytes for Cohere: 18 MB
+      // leaves headroom under Bedrock's ~20 MB request cap for base64
+      // expansion and JSON framing.
+      maxRequestBytes: 18 * 1024 * 1024,
+      dimensions: {
+        mode: "enum",
+        // Embed v4's output_dimension accepts these four Matryoshka sizes
+        // (Cohere docs, default 1536). Embed v3 is fixed at 1024 and rejects
+        // the field entirely - enforced by the dimensions transform above,
+        // not by this descriptor.
+        values: [256, 512, 1024, 1536],
+      },
+      multimodal: {
+        // Embed v4 encodes the interleaved text+image content of one `inputs`
+        // entry into a single vector (Cohere docs: multimodal embeddings).
+        fusion: "fused",
+        imageForm: "dataUri",
+        // Cohere docs: image must be image/jpeg, image/png, image/webp, or
+        // image/gif.
+        imageMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+        // Cohere docs: 5 MB max per image.
+        maxImageBytes: 5 * 1024 * 1024,
+        // Cohere docs: one `inputs.content[]` entry accepts text only, one
+        // image only, or text combined with ONE image - never more than one
+        // image per entry.
+        maxImagesPerItem: 1,
+      },
+    },
   },
 };
 
@@ -232,4 +332,15 @@ export function getEmbeddingConfig(provider: EmbeddingProviderKey) {
       resolution: "Provide a valid embedding provider key.",
     },
   });
+}
+
+/**
+ * Consumer-facing capability lookup. Prefer this over reading
+ * `embeddingConfigs[key].capabilities` directly or hard-coding a provider
+ * string in a compatibility check.
+ */
+export function getEmbeddingCapabilities(
+  key: EmbeddingProviderKey
+): EmbeddingCapabilities {
+  return getEmbeddingConfig(key).capabilities;
 }

@@ -144,7 +144,7 @@ describe("embeddingConfigs", () => {
       },
       capabilities: {
         modalities: ["text"],
-        maxItemsPerRequest: 1,
+        maxItemsPerRequest: 2048,
         maxRequestBytes: 1024 * 1024,
         dimensions: {
           mode: "range",

@@ -89,11 +89,10 @@ export const embeddingConfigs: {
     },
     capabilities: {
       modalities: ["text"],
-      // core-stack's getEmbeddingInfo treats every non-Cohere embedding
-      // provider (this one included) as a single-item, 1 MB-budget call.
-      // Matching that here keeps behavior identical when core-stack switches
-      // to reading limits from this registry.
-      maxItemsPerRequest: 1,
+      // OpenAI's /v1/embeddings accepts an array of up to 2048 inputs per
+      // request, and this config's `input` transform already passes `string[]`
+      // batches through. Reflect the provider's real limit.
+      maxItemsPerRequest: 2048,
       maxRequestBytes: 1024 * 1024,
       dimensions: {
         mode: "range",
@@ -150,10 +149,9 @@ export const embeddingConfigs: {
     },
     capabilities: {
       modalities: ["text"],
-      // Titan's inputText schema has no array field: one text in, one vector
-      // out. core-stack's getEmbeddingInfo already treats this as
-      // maxBatchSize 1 / maxBatchBytes 1 MB for every non-Cohere provider;
-      // mirrored here verbatim.
+      // Titan's `inputText` schema has no array field: one text in, one vector
+      // out, so a request carries a single item. 1 MB is a conservative body
+      // budget for that single-string request.
       maxItemsPerRequest: 1,
       maxRequestBytes: 1024 * 1024,
       dimensions: {
@@ -271,14 +269,18 @@ export const embeddingConfigs: {
       },
     },
     capabilities: {
+      // This descriptor reflects Cohere Embed v4, the multimodal model this
+      // config targets. NOTE: the same provider key can also invoke Embed v3
+      // (text-only, fixed 1024-dim), for which "image" and the non-1024
+      // dimensions below do NOT apply — the dimensions transform enforces v3's
+      // constraint at request time, but this static descriptor cannot vary by
+      // model. Fully per-model-accurate capabilities require splitting the
+      // Cohere key by model (tracked separately); until then, read this as the
+      // v4 capability envelope.
       modalities: ["text", "image"],
-      // Matches core-stack's getEmbeddingInfo maxBatchSize for Cohere on
-      // Bedrock (96) - the one provider that branch treats differently from
-      // every other embedding provider. Also matches Cohere's documented
-      // "max 96 images per call".
+      // Cohere documents max 96 inputs/images per Embed call.
       maxItemsPerRequest: 96,
-      // Matches core-stack's getEmbeddingInfo maxBatchBytes for Cohere: 18 MB
-      // leaves headroom under Bedrock's ~20 MB request cap for base64
+      // 18 MB leaves headroom under Bedrock's ~20 MB request cap for base64
       // expansion and JSON framing.
       maxRequestBytes: 18 * 1024 * 1024,
       dimensions: {

@@ -80,6 +80,7 @@ describe("openai configuration", () => {
       ["xai.grok-4.3", "grok-4.3"],
       ["xai.grok-4.20", "grok-4.20-0309-non-reasoning"],
       ["xai.grok-4.20-reasoning", "grok-4.20-0309-reasoning"],
+      ["xai.grok-4.5", "grok-4.5"],
     ] as const)(
       "%s should resolve to %s and share base config",
       (shorthand, expectedModel) => {
@@ -136,6 +137,18 @@ describe("openai configuration", () => {
       expect(transform("none", { model: "grok-4.3" })).toBeUndefined();
       expect(transform("xhigh", { model: "grok-4.3" })).toBeUndefined();
       expect(transform(123, { model: "grok-4.3" })).toBeUndefined();
+    });
+
+    it("passes through valid effort values for grok-4.5", () => {
+      for (const value of ["minimal", "low", "medium", "high"]) {
+        expect(transform(value, { model: "grok-4.5" })).toBe(value);
+      }
+    });
+
+    it("drops invalid effort values for grok-4.5", () => {
+      expect(transform("none", { model: "grok-4.5" })).toBeUndefined();
+      expect(transform("xhigh", { model: "grok-4.5" })).toBeUndefined();
+      expect(transform(123, { model: "grok-4.5" })).toBeUndefined();
     });
 
   });

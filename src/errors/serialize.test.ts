@@ -353,6 +353,23 @@ describe("serializeLlmExeError", () => {
     expect(out.code).toBe("unknown.unclassified");
   });
 
+  it("recognizes an LlmExeError-like value tagged only with the internal symbol", () => {
+    // No `isLlmExeError: true` property — recognition must come from the
+    // Symbol.for("llm-exe.error") brand alone.
+    const branded: Record<string | symbol, unknown> = {
+      message: "branded failure",
+      category: "internal",
+      code: "internal.unexpected",
+    };
+    branded[Symbol.for("llm-exe.error")] = true;
+
+    const out = serializeLlmExeError(branded) as any;
+    expect(out.name).toBe("LlmExeError");
+    expect(out.message).toBe("branded failure");
+    expect(out.category).toBe("internal");
+    expect(out.code).toBe("internal.unexpected");
+  });
+
   it("returns null for a non-finite number passed as the top-level error", () => {
     expect(serializeLlmExeError(NaN)).toBeNull();
   });

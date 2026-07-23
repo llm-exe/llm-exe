@@ -7,5 +7,4 @@ export * from "./prompt";
 export * from "./parser";
 export * from "./llm";
 export * from "./config";
-export * from "./embedding-capabilities";
 export * from "./errors";

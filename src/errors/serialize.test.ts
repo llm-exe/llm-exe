@@ -438,4 +438,77 @@ describe("serializeLlmExeError", () => {
     // Array holes/undefined become null (arrays are not compacted like objects).
     expect(out.context.list).toEqual([1, null, null, "x"]);
   });
+
+  describe("Response-like values", () => {
+    it("summarizes a top-level Response instead of dumping the stream", () => {
+      const response = new Response("body that must not leak", {
+        status: 429,
+        statusText: "Too Many Requests",
+      });
+      Object.defineProperty(response, "url", {
+        value: "https://api.example.com/v1/messages",
+      });
+
+      expect(serializeLlmExeError(response)).toEqual({
+        name: "Response",
+        status: 429,
+        statusText: "Too Many Requests",
+        url: "https://api.example.com/v1/messages",
+      });
+    });
+
+    it("defaults statusText and url when the Response omits them", () => {
+      expect(serializeLlmExeError(new Response(null, { status: 503 }))).toEqual({
+        name: "Response",
+        status: 503,
+        statusText: "",
+        url: "",
+      });
+    });
+  });
+
+  describe("cross-copy LlmExeError detection", () => {
+    // Two copies of llm-exe in node_modules means `instanceof LlmExeError` is
+    // false for an error thrown by the other copy. The registered symbol is
+    // what keeps serialization working across realms/copies.
+    it("serializes an error tagged with the registered llm-exe symbol", () => {
+      const foreign = {
+        [Symbol.for("llm-exe.error")]: true,
+        name: "LlmExeError",
+        message: "from another copy",
+        category: "llm",
+        code: "llm.request_failed",
+        context: { provider: "anthropic" },
+      };
+
+      expect(serializeLlmExeError(foreign)).toEqual({
+        name: "LlmExeError",
+        message: "from another copy",
+        category: "llm",
+        code: "llm.request_failed",
+        context: { provider: "anthropic" },
+      });
+    });
+
+    it("serializes a symbol-tagged error nested as a cause", () => {
+      const foreign = {
+        [Symbol.for("llm-exe.error")]: true,
+        name: "LlmExeError",
+        message: "inner",
+        category: "llm",
+        code: "llm.request_failed",
+      };
+      const err = new LlmExeError("outer", {
+        code: "parser.parse_failed",
+        cause: foreign,
+      });
+
+      const out = serializeLlmExeError(err) as any;
+      expect(out.cause).toMatchObject({
+        name: "LlmExeError",
+        message: "inner",
+        code: "llm.request_failed",
+      });
+    });
+  });
 });

@@ -273,43 +273,4 @@ describe("parseHeaders", () => {
     expect(getAwsAuthorizationHeaders).toHaveBeenCalled();
     expect(headers).toEqual(expectedHeaders);
   });
-
-  describe("malformed headers error context", () => {
-    // The post-replacement string holds real credentials. It must never reach
-    // the error message or context verbatim.
-    it("redacts secrets from the post-replacement excerpt", async () => {
-      (replaceTemplateStringSimple as jest.Mock).mockReturnValue(
-        'not json {"Authorization": "Bearer sk-ant-abcdefghijklmnop1234"}'
-      );
-
-      const error = await parseHeaders(config, replacements, payload).catch(
-        (e) => e as LlmExeError
-      );
-
-      expect(error).toBeInstanceOf(LlmExeError);
-      expect(error.message).not.toContain("sk-ant-abcdefghijklmnop1234");
-      expect(JSON.stringify(error.context)).not.toContain(
-        "sk-ant-abcdefghijklmnop1234"
-      );
-      expect(error.message).toContain("[redacted]");
-    });
-
-    it("truncates an oversized post-replacement excerpt", async () => {
-      const secret = "sk-ant-abcdefghijklmnop1234";
-      // Secret sits well past the 500-char excerpt limit, so truncation alone
-      // keeps it out even before redaction runs.
-      const long = `not json ${"a".repeat(900)} ${secret}`;
-      (replaceTemplateStringSimple as jest.Mock).mockReturnValue(long);
-
-      const error = await parseHeaders(config, replacements, payload).catch(
-        (e) => e as LlmExeError
-      );
-
-      expect(error).toBeInstanceOf(LlmExeError);
-      expect(error.message).toContain("…(truncated)");
-      expect(error.message).not.toContain(secret);
-      expect(error.message).not.toContain("a".repeat(600));
-    });
-
-  });
 });

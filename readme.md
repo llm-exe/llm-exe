@@ -6,11 +6,11 @@
 
 A package that provides simplified base components to make building and maintaining LLM-powered applications easier.
 
-- Write functions powered by LLM's with easy to use building blocks.
-- Pure Javascript and Typescript. Allows you to pass and infer types.
+- Write functions powered by LLMs with easy-to-use building blocks.
+- Pure JavaScript and TypeScript. Allows you to pass and infer types.
 - Supercharge your prompts by using handlebars within prompt template.
 - Support for text-based and chat-based prompts. (ChatGPT, Claude, Grok, Gemini, Bedrock, Ollama, etc)
-- Call LLM's from different providers without changing your code. (OpenAi/Anthropic/xAI/Google/AWS Bedrock/Ollama/Deepseek)
+- Call LLMs from different providers without changing your code. (OpenAI/Anthropic/xAI/Google/AWS Bedrock/Ollama/DeepSeek)
 - Allow LLM's to call functions (or call other LLM executors).
 - Not very opinionated. You have control on how you use it.
 

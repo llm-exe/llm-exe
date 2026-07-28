@@ -324,5 +324,14 @@ describe("anthropicPromptSanitize", () => {
 
       expect(result).toHaveLength(3);
     });
+
+    // BUG: an empty messages array destructures `first` as undefined and the
+    // `first.role` read throws a TypeError instead of returning []. Tracked in
+    // the tracker issue filed alongside this test.
+    it.failing("returns an empty array for an empty messages array", () => {
+      expect(anthropicPromptSanitize([], { model: "claude-opus-4-5" }, {})).toEqual(
+        []
+      );
+    });
   });
 });

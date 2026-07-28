@@ -2,6 +2,7 @@ import { EmbeddingProviderKey } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { embeddingConfigs, getEmbeddingConfig } from "./config";
 import { LlmExeError } from "@/errors";
+import { mapBody } from "@/llm/_utils.mapBody";
 
 jest.mock("@/utils/modules/getEnvironmentVariable");
 
@@ -124,6 +125,7 @@ describe("embeddingConfigs", () => {
       mapBody: {
         input: {
           key: "input",
+          transform: expect.any(Function),
         },
         model: {
           key: "model",
@@ -165,6 +167,7 @@ describe("embeddingConfigs", () => {
       mapBody: {
         input: {
           key: "inputText",
+          transform: expect.any(Function),
         },
         dimensions: {
           key: "dimensions",
@@ -187,6 +190,7 @@ describe("embeddingConfigs", () => {
       headers: `{"Content-Type": "application/json" }`,
       options: {
         input: {},
+        imageInputs: {},
         inputType: {
           default: "search_document",
         },
@@ -202,6 +206,10 @@ describe("embeddingConfigs", () => {
       mapBody: {
         input: {
           key: "texts",
+          transform: expect.any(Function),
+        },
+        imageInputs: {
+          key: "inputs",
           transform: expect.any(Function),
         },
         inputType: {
@@ -311,5 +319,257 @@ describe("embeddingConfigs", () => {
 
     expect(transform("hello", {}, {})).toEqual(["hello"]);
     expect(transform(["hello", "world"], {}, {})).toEqual(["hello", "world"]);
+  });
+
+  describe("multimodal routing on 'amazon:cohere.embedding.v1'", () => {
+    const provider: EmbeddingProviderKey = "amazon:cohere.embedding.v1";
+    const imageItem = {
+      content: [
+        { type: "text" as const, text: "a red square" },
+        {
+          type: "image_url" as const,
+          image_url: { url: "data:image/png;base64,AAAA" },
+        },
+      ],
+    };
+
+    function getTextsTransform() {
+      const transform = embeddingConfigs[provider].mapBody.input.transform;
+      if (!transform) {
+        throw new Error("input transform is missing from config");
+      }
+      return transform;
+    }
+
+    function getInputsTransform() {
+      const transform = embeddingConfigs[provider].mapBody.imageInputs.transform;
+      if (!transform) {
+        throw new Error("imageInputs transform is missing from config");
+      }
+      return transform;
+    }
+
+    it("drops `texts` when the batch is multimodal", () => {
+      const transform = getTextsTransform();
+      expect(
+        transform([imageItem], { input: [imageItem] }, {})
+      ).toBeUndefined();
+    });
+
+    it("still wraps plain text into `texts`", () => {
+      const transform = getTextsTransform();
+      expect(transform("hello", { input: "hello" }, {})).toEqual(["hello"]);
+      expect(
+        transform(["a", "b"], { input: ["a", "b"] }, {})
+      ).toEqual(["a", "b"]);
+    });
+
+    it("never stringifies a content item into `texts`", () => {
+      const transform = getTextsTransform();
+      const result = transform([imageItem], { input: [imageItem] }, {});
+      expect(JSON.stringify(result ?? null)).not.toContain("image_url");
+    });
+
+    it("throws embedding.unsupported_input on a mixed batch", () => {
+      const transform = getTextsTransform();
+      try {
+        transform(["a", imageItem], { input: ["a", imageItem] }, {});
+        fail("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toBe("embedding.unsupported_input");
+        const ctx = (e as LlmExeError).context as Record<string, unknown>;
+        expect(ctx.operation).toBe("embedding.textsTransform");
+        expect(ctx.provider).toBe("amazon:cohere.embedding");
+        expect(ctx.inputKind).toBe("mixed");
+      }
+    });
+
+    it("drops `texts` for a text call input when an imageInputs option is also set", () => {
+      // `texts` and `inputs` are mutually exclusive on the wire — a text call
+      // input combined with the `imageInputs` escape hatch must still omit
+      // `texts`, or Cohere rejects the request for carrying both fields.
+      const transform = getTextsTransform();
+      expect(
+        transform("hello", { input: "hello", imageInputs: [imageItem] }, {})
+      ).toBeUndefined();
+    });
+
+    it("emits `inputs` from a multimodal call input", () => {
+      const transform = getInputsTransform();
+      expect(
+        transform(undefined, { input: [imageItem] }, {})
+      ).toEqual([imageItem]);
+    });
+
+    it("omits `inputs` for a plain text batch", () => {
+      const transform = getInputsTransform();
+      expect(transform(undefined, { input: "hello" }, {})).toBeUndefined();
+      expect(
+        transform(undefined, { input: ["a", "b"] }, {})
+      ).toBeUndefined();
+      expect(transform(undefined, {}, {})).toBeUndefined();
+    });
+
+    it("honours an explicit imageInputs option when the call input is text", () => {
+      const transform = getInputsTransform();
+      expect(
+        transform([imageItem], { input: "hello", imageInputs: [imageItem] }, {})
+      ).toEqual([imageItem]);
+    });
+
+    it("lets a multimodal call input win over an explicit imageInputs option", () => {
+      const transform = getInputsTransform();
+      const other = { content: [{ type: "text" as const, text: "other" }] };
+      expect(
+        transform([other], { input: [imageItem], imageInputs: [other] }, {})
+      ).toEqual([imageItem]);
+    });
+
+    it("ignores a non-multimodal imageInputs option", () => {
+      const transform = getInputsTransform();
+      expect(
+        transform("nonsense", { input: "hello", imageInputs: "nonsense" }, {})
+      ).toBeUndefined();
+    });
+  });
+
+  describe("mapBody composition for 'amazon:cohere.embedding.v1'", () => {
+    const provider: EmbeddingProviderKey = "amazon:cohere.embedding.v1";
+    const imageItem = {
+      content: [
+        { type: "text" as const, text: "a red square" },
+        {
+          type: "image_url" as const,
+          image_url: { url: "data:image/png;base64,AAAA" },
+        },
+      ],
+    };
+
+    it("builds a texts body for a plain batch", () => {
+      const body = mapBody(embeddingConfigs[provider].mapBody, {
+        model: "cohere.embed-v4:0",
+        input: ["hello", "world"],
+        inputType: "search_document",
+      });
+      expect(body).toEqual({
+        texts: ["hello", "world"],
+        input_type: "search_document",
+      });
+      expect(body).not.toHaveProperty("inputs");
+    });
+
+    it("builds an inputs body for a multimodal batch and omits texts", () => {
+      const body = mapBody(embeddingConfigs[provider].mapBody, {
+        model: "cohere.embed-v4:0",
+        input: [imageItem],
+        inputType: "search_document",
+      });
+      expect(body).toEqual({
+        inputs: [imageItem],
+        input_type: "search_document",
+      });
+      expect(body).not.toHaveProperty("texts");
+    });
+
+    it("builds an inputs body from the imageInputs option when the call input is text, and omits texts", () => {
+      const body = mapBody(embeddingConfigs[provider].mapBody, {
+        model: "cohere.embed-v4:0",
+        input: "hello",
+        imageInputs: [imageItem],
+        inputType: "search_document",
+      });
+      expect(body).toEqual({
+        inputs: [imageItem],
+        input_type: "search_document",
+      });
+      expect(body).not.toHaveProperty("texts");
+    });
+
+    it("lets a multimodal call input win in the composed body when an imageInputs option is also set", () => {
+      const other = { content: [{ type: "text" as const, text: "other" }] };
+      const body = mapBody(embeddingConfigs[provider].mapBody, {
+        model: "cohere.embed-v4:0",
+        input: [imageItem],
+        imageInputs: [other],
+        inputType: "search_document",
+      });
+      expect(body).toEqual({
+        inputs: [imageItem],
+        input_type: "search_document",
+      });
+      expect(body).not.toHaveProperty("texts");
+    });
+  });
+
+  describe("text-only providers reject multimodal input", () => {
+    const imageItem = {
+      content: [
+        {
+          type: "image_url" as const,
+          image_url: { url: "data:image/png;base64,AAAA" },
+        },
+      ],
+    };
+
+    function getInputTransform(provider: EmbeddingProviderKey) {
+      const transform = embeddingConfigs[provider].mapBody.input.transform;
+      if (!transform) {
+        throw new Error(`input transform is missing from ${provider} config`);
+      }
+      return transform;
+    }
+
+    it.each<[EmbeddingProviderKey, string]>([
+      ["openai.embedding.v1", "openai.embedding"],
+      ["amazon.embedding.v1", "amazon.embedding"],
+    ])("%s throws embedding.unsupported_input", (providerKey, providerName) => {
+      const transform = getInputTransform(providerKey);
+      try {
+        transform([imageItem], { model: "some-model" }, {});
+        fail("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toBe("embedding.unsupported_input");
+        expect((e as LlmExeError).category).toBe("embedding");
+        expect((e as Error).message).toContain(
+          `Provider "${providerName}" does not accept multimodal embedding input`
+        );
+        const ctx = (e as LlmExeError).context as Record<string, unknown>;
+        expect(ctx.operation).toBe("embedding.inputTransform");
+        expect(ctx.provider).toBe(providerName);
+        expect(ctx.model).toBe("some-model");
+        expect(ctx.inputKind).toBe("multimodal");
+        expect(ctx.resolution).toMatch(/amazon:cohere\.embedding\.v1/);
+      }
+    });
+
+    it("openai.embedding.v1 passes plain text through unchanged", () => {
+      const transform = getInputTransform("openai.embedding.v1");
+      expect(transform("hello", {}, {})).toBe("hello");
+      expect(transform(["a", "b"], {}, {})).toEqual(["a", "b"]);
+    });
+
+    it("openai.embedding.v1 still accepts pre-tokenized input", () => {
+      const transform = getInputTransform("openai.embedding.v1");
+      expect(transform([[1, 2, 3], [4, 5]], {}, {})).toEqual([
+        [1, 2, 3],
+        [4, 5],
+      ]);
+    });
+
+    it("amazon.embedding.v1 passes plain text through unchanged", () => {
+      const transform = getInputTransform("amazon.embedding.v1");
+      expect(transform("hello", {}, {})).toBe("hello");
+    });
+
+    it("both providers leave undefined input alone", () => {
+      expect(
+        getInputTransform("openai.embedding.v1")(undefined, {}, {})
+      ).toBeUndefined();
+      expect(
+        getInputTransform("amazon.embedding.v1")(undefined, {}, {})
+      ).toBeUndefined();
+    });
   });
 });

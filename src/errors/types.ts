@@ -138,6 +138,16 @@ export type EmbeddingDimensionsContext = BaseErrorContext & {
   dimensions?: number;
 };
 
+export type EmbeddingInputContext = BaseErrorContext & {
+  provider?: string;
+  model?: string;
+  /**
+   * "multimodal" when a text-only provider was handed image content,
+   * "mixed" when a single batch interleaved plain strings and content items.
+   */
+  inputKind?: "text" | "multimodal" | "mixed";
+};
+
 export type ExecutorErrorContext = BaseErrorContext & {
   executorName?: string;
   executorType?: string;
@@ -210,6 +220,7 @@ export type ErrorContextByCode = {
   "embedding.missing_provider": ConfigurationProviderContext;
   "embedding.invalid_provider": ConfigurationProviderContext;
   "embedding.unsupported_dimensions": EmbeddingDimensionsContext;
+  "embedding.unsupported_input": EmbeddingInputContext;
   "embedding.invalid_response_shape": ProviderResponseContext;
   "executor.missing_prompt": ExecutorErrorContext;
   "executor.hook_limit_reached": ExecutorHookContext;

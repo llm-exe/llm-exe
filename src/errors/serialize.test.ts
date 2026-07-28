@@ -353,6 +353,23 @@ describe("serializeLlmExeError", () => {
     expect(out.code).toBe("unknown.unclassified");
   });
 
+  it("recognizes an LlmExeError-like value tagged only with the internal symbol", () => {
+    // No `isLlmExeError: true` property — recognition must come from the
+    // Symbol.for("llm-exe.error") brand alone.
+    const branded: Record<string | symbol, unknown> = {
+      message: "branded failure",
+      category: "internal",
+      code: "internal.unexpected",
+    };
+    branded[Symbol.for("llm-exe.error")] = true;
+
+    const out = serializeLlmExeError(branded) as any;
+    expect(out.name).toBe("LlmExeError");
+    expect(out.message).toBe("branded failure");
+    expect(out.category).toBe("internal");
+    expect(out.code).toBe("internal.unexpected");
+  });
+
   it("returns null for a non-finite number passed as the top-level error", () => {
     expect(serializeLlmExeError(NaN)).toBeNull();
   });
@@ -362,6 +379,31 @@ describe("serializeLlmExeError", () => {
     const out = serializeLlmExeError(errLike) as any;
     expect(out.name).toBe("Error");
     expect(out.message).toBe("no name");
+  });
+
+  it("coerces a real Error instance's non-string message to an empty string", () => {
+    // isErrorLike matches via `instanceof Error`, so this reaches the Error
+    // branch even though `message` is not a string. The value must be coerced
+    // to "" rather than leaked verbatim into the serialized output.
+    const err = new Error("original");
+    Object.defineProperty(err, "message", { value: 42, configurable: true });
+    const out = serializeLlmExeError(err) as Record<string, unknown>;
+    expect(out.name).toBe("Error");
+    expect(out.message).toBe("");
+  });
+
+  it("does not leak a real Error's object-valued message and keeps its name", () => {
+    class ProviderError extends Error {
+      name = "ProviderError";
+    }
+    const err = new ProviderError("boom");
+    Object.defineProperty(err, "message", {
+      value: { leaked: true },
+      configurable: true,
+    });
+    const out = serializeLlmExeError(err) as Record<string, unknown>;
+    expect(out.name).toBe("ProviderError");
+    expect(out.message).toBe("");
   });
 
   it("returns empty message string when a generic error-like message is non-string", () => {

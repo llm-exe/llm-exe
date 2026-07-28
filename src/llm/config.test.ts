@@ -93,6 +93,7 @@ describe("configs", () => {
       options: {
         prompt: {},
         system: {},
+        effort: {},
         maxTokens: {
           default: 4096,
           required: [true, "maxTokens required"],
@@ -141,6 +142,10 @@ describe("configs", () => {
         },
         serviceTier: {
           key: "service_tier",
+        },
+        effort: {
+          key: "output_config.effort",
+          transform: expect.any(Function),
         },
       },
       mapOptions: {

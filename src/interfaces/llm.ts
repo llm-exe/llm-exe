@@ -389,9 +389,34 @@ export interface BaseLlmOptions {
   headers?: Record<string, string>;
 }
 
+/**
+ * A single interleaved text + image request entry, as accepted by Cohere
+ * Embed v4 (Bedrock request body field `inputs`). The provider fuses every
+ * part of `content` into ONE vector, which is the whole point: a caption and
+ * its image become a single searchable embedding.
+ *
+ * `image_url.url` must be a complete data URI, e.g.
+ * "data:image/png;base64,iVBORw0KGgo...". A remote http(s) URL is NOT
+ * accepted by Bedrock; fetch the bytes and inline them.
+ */
+export interface EmbeddingContentItem {
+  content: Array<
+    | { type: "text"; text: string }
+    | { type: "image_url"; image_url: { url: string } }
+  >;
+}
+
+/**
+ * Accepted embedding input. A `string` or `string[]` is a plain text batch and
+ * is supported by every embedding provider. An `EmbeddingContentItem[]` is a
+ * multimodal batch and is supported ONLY by "amazon:cohere.embedding.v1";
+ * other providers throw `embedding.unsupported_input`.
+ */
+export type EmbeddingInput = string | string[] | EmbeddingContentItem[];
+
 export interface GenericEmbeddingOptions extends BaseLlmOptions {
   model?: string;
-  // input: string;
+  input?: EmbeddingInput;
   dimensions?: number;
 }
 
@@ -418,6 +443,13 @@ export interface CohereBedrockEmbeddingOptions
     | "classification"
     | "clustering";
   truncate?: "NONE" | "START" | "END" | "LEFT" | "RIGHT";
+  /**
+   * Escape hatch that writes Cohere Embed v4's `inputs` request field
+   * directly. Normally you do not set this: pass an EmbeddingContentItem[]
+   * as the call input instead, and the config routes it to `inputs` for you.
+   * A multimodal call input takes precedence over this value.
+   */
+  imageInputs?: EmbeddingContentItem[];
 }
 
 // Embed v3 returns `embeddings` as a plain array (response_type
@@ -587,6 +619,15 @@ export type AllLlm = {
 
 export type AllUseLlmOptions = AllLlm & {
   // OpenAI - GPT-5 family
+  "openai.gpt-5.6": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-5.6-terra": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-5.6-luna": {
+    input: Omit<OpenAiRequest, "model">;
+  };
   "openai.gpt-5.5": {
     input: Omit<OpenAiRequest, "model">;
   };
@@ -644,6 +685,11 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<AnthropicRequest, "model">;
   };
 
+  // Anthropic - Claude Sonnet 5 models
+  "anthropic.claude-sonnet-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+
   // Anthropic - Claude 4.7 models
   "anthropic.claude-opus-4-7": {
     input: Omit<AnthropicRequest, "model">;
@@ -669,18 +715,9 @@ export type AllUseLlmOptions = AllLlm & {
   "anthropic.claude-opus-4-6": {
     input: Omit<AnthropicRequest, "model">;
   };
-  "anthropic.claude-sonnet-4-0": {
-    input: Omit<AnthropicRequest, "model">;
-  };
-  "anthropic.claude-opus-4-0": {
-    input: Omit<AnthropicRequest, "model">;
-  };
-  "anthropic.claude-sonnet-4": {
-    input: Omit<AnthropicRequest, "model">;
-  };
-  "anthropic.claude-opus-4": {
-    input: Omit<AnthropicRequest, "model">;
-  };
+  // Removed: Claude Opus 4 / Sonnet 4 (claude-opus-4-0, claude-sonnet-4-0) are
+  // retired at Anthropic (HTTP 404). The claude-*-4-0 keys were type-only orphans
+  // with no runtime shorthand and threw "Invalid provider" if used.
   "anthropic.claude-3-7-sonnet": {
     input: Omit<AnthropicRequest, "model">;
   };
@@ -748,6 +785,9 @@ export type AllUseLlmOptions = AllLlm & {
   "xai.grok-4.20-reasoning": {
     input: Omit<XAiRequest, "model">;
   };
+  "xai.grok-4.5": {
+    input: Omit<XAiRequest, "model">;
+  };
 
   // Ollama
   "ollama.deepseek-r1": {
@@ -810,7 +850,11 @@ export interface BaseLlCall {
 }
 
 export interface BaseEmbeddingCall {
-  getEmbedding: () => number[];
+  /**
+   * Returns the embedding at `index` from the batch, or the first embedding
+   * when `index` is omitted. Matches BaseEmbeddingOutput's implementation.
+   */
+  getEmbedding: (index?: number) => number[];
   getResult: () => EmbeddingOutputResult;
 }
 

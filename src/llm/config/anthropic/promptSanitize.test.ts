@@ -102,6 +102,121 @@ describe("anthropicPromptSanitize", () => {
     ]);
   });
 
+  describe("trailing assistant message prefill warning", () => {
+    let warnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it("should warn when last message is assistant on claude-opus-4-6", () => {
+      const messages: IChatMessages = [
+        { role: "system", content: "You are helpful." },
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, { model: "claude-opus-4-6" }, {});
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("does not support assistant message prefills")
+      );
+    });
+
+    it("should warn when last message is assistant on claude-opus-4-7", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, { model: "claude-opus-4-7" }, {});
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("should warn when last message is assistant on claude-sonnet-4-6", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, { model: "claude-sonnet-4-6" }, {});
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      "claude-opus-4-8",
+      "claude-sonnet-5",
+      "claude-fable-5",
+    ])(
+      "should warn on newer 4.6+/5-generation model %s",
+      (model) => {
+        const messages: IChatMessages = [
+          { role: "user", content: "What's 2+2?" },
+          { role: "assistant", content: "The answer is" },
+        ];
+        anthropicPromptSanitize(messages, { model }, {});
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("does not support assistant message prefills")
+        );
+      }
+    );
+
+    it("should not warn on 4.5-generation models that support prefills", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, { model: "claude-haiku-4-5" }, {});
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("should warn for dated model variants", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(
+        messages,
+        { model: "claude-opus-4-7-20260501" },
+        {}
+      );
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not warn on older models that support prefills", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(
+        messages,
+        { model: "claude-3-5-sonnet-latest" },
+        {}
+      );
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("should not warn when last message is not assistant", () => {
+      const messages: IChatMessages = [
+        { role: "system", content: "You are helpful." },
+        { role: "user", content: "What's 2+2?" },
+      ];
+      anthropicPromptSanitize(messages, { model: "claude-opus-4-7" }, {});
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("should not warn when model is not provided", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, {}, {});
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe("mergeConsecutiveSameRole", () => {
     it("should merge consecutive tool_result messages with array content", () => {
       const messages: IChatMessages = [
@@ -208,6 +323,15 @@ describe("anthropicPromptSanitize", () => {
       const result = anthropicPromptSanitize(messages, {}, outputObj);
 
       expect(result).toHaveLength(3);
+    });
+
+    // BUG: an empty messages array destructures `first` as undefined and the
+    // `first.role` read throws a TypeError instead of returning []. Tracked in
+    // the tracker issue filed alongside this test.
+    it.failing("returns an empty array for an empty messages array", () => {
+      expect(anthropicPromptSanitize([], { model: "claude-opus-4-5" }, {})).toEqual(
+        []
+      );
     });
   });
 });

@@ -1,6 +1,6 @@
 {
   "name": "llm-exe",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "Simplify building LLM-powered apps with easy-to-use base components, supporting text and chat-based prompts with handlebars template engine, output parsers, and flexible function calling capabilities.",
   "keywords": [
     "ai",
@@ -60,10 +60,10 @@
   "license": "MIT",
   "dependencies": {
     "@aws-crypto/sha256-js": "5.2.0",
-    "@aws-sdk/credential-providers": "3.806.0",
+    "@aws-sdk/credential-providers": "3.1073.0",
     "@smithy/signature-v4": "5.1.0",
     "exponential-backoff": "3.1.2",
-    "handlebars": "4.7.8",
+    "handlebars": "4.7.9",
     "json-schema-to-ts": "3.1.1",
     "jsonschema": "1.5.0",
     "shiki": "^3.8.1",

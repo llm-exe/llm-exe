@@ -12,6 +12,7 @@ const ANTHROPIC_VERSION = "2023-06-01";
 const MODELS_REJECTING_SAMPLING_PARAMS = [
   "claude-opus-4-7",
   "claude-opus-4-8",
+  "claude-sonnet-5",
   "claude-fable-5",
 ];
 
@@ -39,6 +40,7 @@ const anthropicChatV1: Config = {
   options: {
     prompt: {},
     system: {},
+    effort: {},
     maxTokens: {
       required: [true, "maxTokens required"],
       default: 4096,
@@ -91,7 +93,79 @@ const anthropicChatV1: Config = {
       key: "metadata",
     },
     serviceTier: {
-      key: "service_tier", // Map camelCase to snake_case
+      key: "service_tier",
+    },
+    effort: {
+      key: "output_config.effort",
+      transform: (
+        v: unknown,
+        _s: Record<string, any>,
+        _output: Record<string, any>
+      ) => {
+        if (
+          typeof v !== "string" ||
+          !["minimal", "low", "medium", "high"].includes(v)
+        ) {
+          return undefined;
+        }
+
+        const model: string = _s.model || "";
+
+        const isAdaptive =
+          model.startsWith("claude-opus-4-6") ||
+          model.startsWith("claude-opus-4-7") ||
+          model.startsWith("claude-opus-4-8") ||
+          model.startsWith("claude-sonnet-4-6") ||
+          model.startsWith("claude-sonnet-5") ||
+          model.startsWith("claude-fable-5");
+
+        if (isAdaptive) {
+          _output.thinking = { type: "adaptive" };
+          const map: Record<string, string> = {
+            minimal: "low",
+            low: "low",
+            medium: "medium",
+            // Opus coding flagships take Anthropic's escalated "xhigh" for high
+            // effort (per the Opus 4.7 coding/agentic recommendation); other
+            // adaptive models use "high".
+            high:
+              model.startsWith("claude-opus-4-7") ||
+              model.startsWith("claude-opus-4-8")
+                ? "xhigh"
+                : "high",
+          };
+          return map[v];
+        }
+
+        const isLegacy =
+          model.startsWith("claude-opus-4-5") ||
+          model.startsWith("claude-sonnet-4-5") ||
+          model.startsWith("claude-haiku-4-5");
+
+        if (isLegacy) {
+          const budgetMap: Record<string, number> = {
+            minimal: 1024,
+            low: 4096,
+            medium: 10240,
+            high: 32768,
+          };
+          const budget = budgetMap[v];
+          _output.thinking = { type: "enabled", budget_tokens: budget };
+          // Anthropic requires max_tokens > budget_tokens (thinking tokens count
+          // toward max_tokens). The default max_tokens (4096) is <= the low/medium/
+          // high budgets, which 400s. Raise max_tokens to fit the budget plus an
+          // output allowance, but never lower a caller's already-larger value.
+          const OUTPUT_ALLOWANCE = 4096;
+          const currentMax =
+            typeof _output.max_tokens === "number" ? _output.max_tokens : 0;
+          if (currentMax <= budget) {
+            _output.max_tokens = budget + OUTPUT_ALLOWANCE;
+          }
+          return undefined;
+        }
+
+        return undefined;
+      },
     },
   },
   mapOptions: {
@@ -129,6 +203,12 @@ export const anthropic = {
     "claude-opus-4-8"
   ),
 
+  // Claude Sonnet 5 models
+  "anthropic.claude-sonnet-5": withDefaultModel(
+    anthropicChatV1,
+    "claude-sonnet-5"
+  ),
+
   // Claude 4.7 models
   "anthropic.claude-opus-4-7": withDefaultModel(
     anthropicChatV1,
@@ -164,16 +244,12 @@ export const anthropic = {
   // NOTE: "anthropic.claude-opus-4-1" (claude-opus-4-1-20250805) was removed —
   // Anthropic retires that model on Aug 5, 2026. Migrate to
   // anthropic.claude-opus-4-5/-6/-7/-8.
-  ...deprecateShorthand("anthropic.claude-sonnet-4", {
-    config: withDefaultModel(anthropicChatV1, "claude-sonnet-4-0"),
-    message:
-      'Shorthand "anthropic.claude-sonnet-4" is deprecated and may be removed in a future release.',
-  }),
-  ...deprecateShorthand("anthropic.claude-opus-4", {
-    config: withDefaultModel(anthropicChatV1, "claude-opus-4-0"),
-    message:
-      'Shorthand "anthropic.claude-opus-4" is deprecated and may be removed in a future release.',
-  }),
+  // NOTE: "anthropic.claude-sonnet-4" (claude-sonnet-4-0) and
+  // "anthropic.claude-opus-4" (claude-opus-4-0) were removed — Anthropic has
+  // retired both models. Both the base aliases and the dated snapshots
+  // (claude-opus-4-20250514 / claude-sonnet-4-20250514) now return HTTP 404,
+  // so these shorthands could only ever error. Migrate to
+  // anthropic.claude-opus-4-5/-6/-7/-8 or anthropic.claude-sonnet-4-5/-4-6/-5.
   ...deprecateShorthand("anthropic.claude-3-7-sonnet", {
     config: withDefaultModel(anthropicChatV1, "claude-3-7-sonnet-20250219"),
     message:

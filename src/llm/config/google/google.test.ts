@@ -235,6 +235,48 @@ describe("google configuration", () => {
     });
   });
 
+  describe("gemini-3.5-flash-lite", () => {
+    const googleGemini35FlashLite = google[
+      "google.gemini-3.5-flash-lite"
+    ] as Config;
+
+    it("should be based on googleChatV1 configuration", () => {
+      expect(googleGemini35FlashLite.endpoint).toEqual(googleChatV1.endpoint);
+      expect(googleGemini35FlashLite.method).toEqual(googleChatV1.method);
+      expect(googleGemini35FlashLite.headers).toEqual(googleChatV1.headers);
+    });
+
+    it("should override model in mapBody and options as gemini-3.5-flash-lite", () => {
+      expect(googleGemini35FlashLite.mapBody.model).toEqual({
+        default: "gemini-3.5-flash-lite",
+        key: "model",
+      });
+      expect(googleGemini35FlashLite.options.model).toEqual({
+        default: "gemini-3.5-flash-lite",
+      });
+    });
+  });
+
+  describe("gemini-3.6-flash", () => {
+    const googleGemini36Flash = google["google.gemini-3.6-flash"] as Config;
+
+    it("should be based on googleChatV1 configuration", () => {
+      expect(googleGemini36Flash.endpoint).toEqual(googleChatV1.endpoint);
+      expect(googleGemini36Flash.method).toEqual(googleChatV1.method);
+      expect(googleGemini36Flash.headers).toEqual(googleChatV1.headers);
+    });
+
+    it("should override model in mapBody and options as gemini-3.6-flash", () => {
+      expect(googleGemini36Flash.mapBody.model).toEqual({
+        default: "gemini-3.6-flash",
+        key: "model",
+      });
+      expect(googleGemini36Flash.options.model).toEqual({
+        default: "gemini-3.6-flash",
+      });
+    });
+  });
+
   describe("gemini-2.0-flash", () => {
     it("should be based on googleChatV1 configuration", () => {
       expect(googleGemini2Flash.endpoint).toEqual(googleChatV1.endpoint);

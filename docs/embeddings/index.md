@@ -38,7 +38,19 @@ const vector = embedding.getEmbedding();
 | `provider` | `EmbeddingProviderKey` | The embedding provider key (see supported providers below) |
 | `options` | `object` | Provider-specific options including `model` |
 
-The returned object has a `.call(input)` method that returns a promise. The resolved result has a `.getEmbedding()` method that returns the embedding vector as `number[]`.
+The returned object has a `.call(input)` method that returns a promise. The resolved result has a `.getEmbedding()` method that returns the embedding vector as `number[]`. When you embed a batch, pass an index — `.getEmbedding(1)` returns the vector for the second input.
+
+### Accepted Input
+
+`.call(input)` accepts an `EmbeddingInput`:
+
+| Input | Type | Supported by |
+|-------|------|--------------|
+| A single text | `string` | All providers |
+| A batch of texts | `string[]` | All providers (Amazon Titan embeds one string per call) |
+| A multimodal batch | `EmbeddingContentItem[]` | `amazon:cohere.embedding.v1` only |
+
+A multimodal entry interleaves text and images that are fused into a single vector — see [Cohere → Multimodal Input](./cohere.md#multimodal-input-embed-v4). Passing content items to a text-only provider throws an `embedding.unsupported_input` error naming the provider, instead of letting the request fail with an opaque provider-side 400.
 
 ## Supported Embedding Providers
 

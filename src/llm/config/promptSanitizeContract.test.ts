@@ -358,8 +358,13 @@ const ollamaExpectations: Record<string, Expectation> = {
   "remote https image content block": {
     throws: "Image URLs are not supported by ollama",
   },
+  // `ollamaPromptSanitize` returns early for any message whose content is not an
+  // array, so the llm-exe tool shape (`function_call`, `role: "function"`) goes
+  // out on the wire unconverted. Ollama's /api/chat actually expects
+  // `tool_calls: [{ function: { name, arguments } }]` and `role: "tool"`, so the
+  // two rows below record current behavior — they are not a provider capability
+  // and not a guarantee. Tracked in #706.
   "assistant tool call": {
-    // ollama's native chat API takes the llm-exe tool shape as-is
     prompt: [
       { role: "user", content: "weather?" },
       {
@@ -438,6 +443,11 @@ const PROVIDER_CONTRACTS: Record<string, ProviderContract> = {
   "ollama.chat": { bodyKey: "messages", expectations: ollamaExpectations },
 };
 
+/**
+ * Body keys a provider may lift system content onto. This list has to grow when
+ * a provider hoists to a key that isn't here — otherwise `hoistedFrom` returns
+ * `{}` and that provider silently passes with `hoisted: {}`.
+ */
 const HOISTED_KEYS = ["system", "system_instruction"];
 
 const CONFIG_KEYS_BY_PROVIDER = Object.entries(configs).reduce(
@@ -485,6 +495,12 @@ describe("cross-provider prompt contract", () => {
       describe.each(FIXTURES)("$name", (fixture) => {
         const expectation = contract.expectations[fixture.name];
 
+        it("has a recorded expectation", () => {
+          // adding a fixture without filling in every provider table should say
+          // which table is incomplete, not blow up inside the assertions below
+          expect(expectation).toBeDefined();
+        });
+
         it("produces the provider-native shape", () => {
           // every shorthand of a provider must agree — a shorthand rewired to a
           // different sanitizer fails here with its own key in the diff
@@ -511,6 +527,9 @@ describe("cross-provider prompt contract", () => {
         });
 
         it("does not mutate the caller's messages", () => {
+          // unlike the shape assertion above, this checks one config key rather
+          // than every shorthand — all shorthands of a provider share the same
+          // sanitizer, so the copying behavior is identical across them
           const config = configs[
             configKeys[0] as keyof typeof configs
           ] as Config;

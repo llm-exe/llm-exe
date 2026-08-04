@@ -41,6 +41,7 @@ flowchart LR
         H4["cache-cleanup"]:::hyg
         H5["update-prs-with-development"]:::hyg
         H6["test-github-action"]:::hyg
+        H7["a11y-docs"]:::hyg
     end
 
     A1 -- opens PR --> A4
@@ -116,12 +117,13 @@ flowchart LR
     classDef md fill:#1e3a8a,color:#fff,stroke:#000
     classDef lg fill:#581c87,color:#fff,stroke:#000
 
-    subgraph Small["5-8 diagrams"]
+    subgraph Small["7-10 diagrams"]
         S1["pack-package: 356 lines, 8"]:::sm
         S2["tests: 377 lines, 9"]:::sm
         S3["update-prs: 367 lines, 9"]:::sm
         S4["check-semver: 383 lines, 9"]:::sm
         S5["test-github-action: 7 diagrams"]:::sm
+        S6["a11y-docs: 350 lines, 10"]:::sm
     end
 
     subgraph Medium["11-12 diagrams"]

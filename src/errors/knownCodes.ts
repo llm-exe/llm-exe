@@ -28,6 +28,7 @@ const ALL_CODES = [
   "embedding.missing_provider",
   "embedding.invalid_provider",
   "embedding.unsupported_dimensions",
+  "embedding.unsupported_input",
   "embedding.invalid_response_shape",
   "executor.missing_prompt",
   "executor.hook_limit_reached",

@@ -116,33 +116,39 @@ flowchart LR
     classDef sm fill:#374151,color:#fff,stroke:#000
     classDef md fill:#1e3a8a,color:#fff,stroke:#000
     classDef lg fill:#581c87,color:#fff,stroke:#000
+    classDef xl fill:#701a75,color:#fff,stroke:#000
 
     subgraph Small["7-10 diagrams"]
         S1["pack-package: 356 lines, 8"]:::sm
-        S2["tests: 377 lines, 9"]:::sm
-        S3["update-prs: 367 lines, 9"]:::sm
+        S2["tests: 383 lines, 9"]:::sm
+        S3["update-prs: 362 lines, 9"]:::sm
         S4["check-semver: 383 lines, 9"]:::sm
-        S5["test-github-action: 7 diagrams"]:::sm
+        S5["test-github-action: 238 lines, 7"]:::sm
         S6["a11y-docs: 350 lines, 10"]:::sm
     end
 
     subgraph Medium["11-12 diagrams"]
-        M1["agent-review-pr: 566 lines, 12"]:::md
+        M1["agent-review-pr: 626 lines, 12"]:::md
         M2["cache-cleanup: 548 lines, 12"]:::md
-        M3["create-draft-release: 489 lines, 11"]:::md
-        M4["personas-run: 709 lines, 12"]:::md
-        M5["publish-release: 522 lines, 12"]:::md
+        M3["create-draft-release: 496 lines, 11"]:::md
+        M4["personas-run: 713 lines, 12"]:::md
+        M5["publish-release: 603 lines, 12"]:::md
         M6["test-package: 551 lines, 11"]:::md
     end
 
-    subgraph Large["13 diagrams"]
+    subgraph Large["13-14 diagrams"]
         L1["agent-run: 653 lines, 13"]:::lg
         L2["coder-run: 736 lines, 13"]:::lg
-        L3["draft-main-pr: 663 lines, 13"]:::lg
-        L4["deploy-docs: 579 lines, 13"]:::lg
-        L5["bot-respond: 581 lines, 13"]:::lg
+        L3["draft-main-pr: 677 lines, 13"]:::lg
+        L4["deploy-docs: 581 lines, 13"]:::lg
+        L5["bot-respond: 603 lines, 13"]:::lg
         L6["agent-digest: 591 lines, 13"]:::lg
         L7["auto-merge-main-pr: 567 lines, 13"]:::lg
+        L8["vitals: 454 lines, 14"]:::lg
+    end
+
+    subgraph XL["16 diagrams"]
+        X1["docs-sync: 639 lines, 16"]:::xl
     end
 ```
 

@@ -83,8 +83,43 @@ const embeddings = createEmbedding("amazon:cohere.embedding.v1", {
 });
 ```
 
+## Multimodal Input (Embed v4)
+
+Cohere Embed v4 can embed text and images together. Pass an array of `EmbeddingContentItem` objects instead of strings, and llm-exe routes them to Cohere's `inputs` field for you:
+
+```ts
+import { createEmbedding } from "llm-exe";
+import type { EmbeddingContentItem } from "llm-exe";
+
+const embeddings = createEmbedding("amazon:cohere.embedding.v1", {
+  model: "cohere.embed-v4:0",
+  awsRegion: "us-west-2",
+});
+
+const items: EmbeddingContentItem[] = [
+  {
+    content: [
+      { type: "text", text: "A diagram of the retrieval pipeline" },
+      { type: "image_url", image_url: { url: "data:image/png;base64,iVBORw0KGgo..." } },
+    ],
+  },
+];
+
+const embedding = await embeddings.call(items);
+const vector = embedding.getEmbedding(0);
+```
+
+Each `EmbeddingContentItem` collapses into **one** vector. That is the point: a caption and its image become a single searchable embedding, rather than two vectors you have to reconcile later.
+
+Things to know:
+
+- `image_url.url` must be a complete data URI (e.g. `data:image/png;base64,...`). Bedrock does **not** fetch remote `http(s)` URLs — read the bytes yourself and inline them.
+- Use a multimodal model. Embed v3 has no image support, and Bedrock will reject the request.
+- A batch must be uniform. Mixing strings and content items in one call throws `embedding.unsupported_input`, because Cohere's `texts` and `inputs` fields are mutually exclusive and silently splitting the batch would misalign every downstream index. Embed text and multimodal entries in separate calls.
+- Only `amazon:cohere.embedding.v1` accepts multimodal input. Passing content items to `openai.embedding.v1` or `amazon.embedding.v1` throws `embedding.unsupported_input` up front instead of producing an opaque provider-side 400.
+
 ## Notes
 
 - Cohere on Bedrock does not return token usage in the response, so `getResult().usage.input_tokens` will be `0`.
 - Cohere models on Bedrock are served from AWS Marketplace. The first invocation in your account must come from a user with `aws-marketplace:Subscribe` permissions, after which all users in the account can invoke the model.
-- llm-exe is text-only; image inputs to Cohere Embed v3/v4 are not supported.
+- `CohereBedrockEmbeddingOptions` also exposes an `imageInputs` option that writes Cohere's `inputs` field directly. It is an escape hatch — prefer passing content items as the call input, which takes precedence over the option.

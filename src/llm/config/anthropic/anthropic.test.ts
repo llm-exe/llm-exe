@@ -337,6 +337,34 @@ describe("anthropic config", () => {
       expect(body.max_tokens).toBe(4096);
     });
 
+    it("drops temperature/topP/topK when effort enables thinking on a non-reject adaptive model (issue #716)", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-4-6",
+        maxTokens: 4096,
+        effort: "high",
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+        prompt,
+      });
+      expect(body.thinking).toEqual({ type: "adaptive" });
+      expect(body.temperature).toBeUndefined();
+      expect(body.top_p).toBeUndefined();
+      expect(body.top_k).toBeUndefined();
+    });
+
+    it("keeps topP >= 0.95 when effort enables thinking (issue #716)", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-4-6",
+        maxTokens: 4096,
+        effort: "high",
+        topP: 0.97,
+        prompt,
+      });
+      expect(body.thinking).toEqual({ type: "adaptive" });
+      expect(body.top_p).toBe(0.97);
+    });
+
     it("should not add thinking fields for claude-3 models", () => {
       const body = mapBody(config.mapBody, {
         model: "claude-3-5-sonnet-latest",

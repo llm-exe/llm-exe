@@ -68,7 +68,9 @@ describe("anthropic config", () => {
         ["claude-sonnet-4-6", "low", "low"],
         ["claude-sonnet-4-6", "high", "high"],
         // Newer adaptive models (opus 5, opus 4.8, sonnet 5, fable 5)
-        ["claude-opus-5", "high", "xhigh"],
+        // Opus 5 keeps "high" (Anthropic recommends starting at high on Opus 5),
+        // unlike opus 4.7/4.8 which escalate to xhigh.
+        ["claude-opus-5", "high", "high"],
         ["claude-opus-5", "minimal", "low"],
         ["claude-opus-5", "medium", "medium"],
         ["claude-opus-4-8", "high", "xhigh"],
@@ -88,8 +90,8 @@ describe("anthropic config", () => {
       );
     });
 
-    describe("adaptive thinking maps high to xhigh for Opus coding flagships", () => {
-      it.each(["claude-opus-5", "claude-opus-4-7", "claude-opus-4-8"])(
+    describe("adaptive thinking maps high to xhigh for Opus 4.7/4.8 only", () => {
+      it.each(["claude-opus-4-7", "claude-opus-4-8"])(
         "should map high to xhigh for %s",
         (model) => {
           const output: Record<string, any> = {};
@@ -99,8 +101,12 @@ describe("anthropic config", () => {
         }
       );
 
-      it("should map high to high (not xhigh) for non-opus adaptive models", () => {
-        for (const model of ["claude-sonnet-5", "claude-fable-5"]) {
+      it("keeps high for adaptive models without the xhigh escalation", () => {
+        // Opus 5 sits here on purpose: Anthropic's per-model guidance is to
+        // start with "high" on Opus 5 and warns against carrying the 4.x
+        // escalation over, so "high" must remain reachable. Do not add opus-5
+        // back to the xhigh list above.
+        for (const model of ["claude-opus-5", "claude-sonnet-5", "claude-fable-5"]) {
           const output: Record<string, any> = {};
           expect(effortTransform("high", { model }, output)).toBe("high");
         }
@@ -115,7 +121,9 @@ describe("anthropic config", () => {
     });
 
     describe("escalated-effort max_tokens floor", () => {
-      const ESCALATED = ["claude-opus-5", "claude-opus-4-7", "claude-opus-4-8"];
+      // Only 4.7/4.8 escalate "high" -> "xhigh"; opus-5 stays "high" and never
+      // trips this floor.
+      const ESCALATED = ["claude-opus-4-7", "claude-opus-4-8"];
 
       it.each(ESCALATED)(
         "%s raises the default 4096 to 65536 when effort escalates to xhigh",

@@ -141,11 +141,13 @@ const anthropicChatV1: Config = {
             minimal: "low",
             low: "low",
             medium: "medium",
-            // Opus coding flagships take Anthropic's escalated "xhigh" for high
-            // effort (per the Opus 4.7 coding/agentic recommendation); other
-            // adaptive models use "high".
+            // Opus 4.7 and 4.8 escalate "high" to "xhigh": Anthropic's per-model
+            // guidance is to start with xhigh for coding/agentic work on those.
+            // Opus 5 is deliberately NOT escalated: Anthropic recommends starting
+            // with "high" (the default) on Opus 5 and explicitly warns against
+            // carrying the 4.x effort escalation over, so "high" must stay
+            // reachable. All other adaptive models also map "high" -> "high".
             high:
-              model.startsWith("claude-opus-5") ||
               model.startsWith("claude-opus-4-7") ||
               model.startsWith("claude-opus-4-8")
                 ? "xhigh"

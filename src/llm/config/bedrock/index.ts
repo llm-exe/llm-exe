@@ -1,6 +1,7 @@
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { replaceTemplateString } from "@/utils/modules/replaceTemplateString";
 import { anthropicPromptSanitize } from "../anthropic/promptSanitize";
+import { effortTransform, topPTransform } from "../anthropic/effort";
 import { isImageUrlContentBlock } from "../_utils/imageContent";
 import { LlmExeError } from "@/errors";
 import { Config } from "@/types";
@@ -20,6 +21,7 @@ const amazonAnthropicChatV1: Config = {
   options: {
     prompt: {},
     topP: {},
+    effort: {},
     maxTokens: {},
     awsRegion: {
       default: getEnvironmentVariable("AWS_REGION"),
@@ -40,6 +42,9 @@ const amazonAnthropicChatV1: Config = {
     },
     topP: {
       key: "top_p",
+      // Bedrock's Anthropic 4.7+/5 models 400 on non-default top_p (and drop it
+      // when temperature is also set on 4.x); shared with the direct provider.
+      transform: topPTransform,
     },
     maxTokens: {
       key: "max_tokens",
@@ -48,6 +53,14 @@ const amazonAnthropicChatV1: Config = {
     anthropic_version: {
       key: "anthropic_version",
       default: ANTHROPIC_BEDROCK_VERSION,
+    },
+    // effort maps to output_config.effort + thinking, shared with the direct
+    // Anthropic provider (Bedrock's invoke API accepts the same top-level shape).
+    // Placed after maxTokens so the #712 escalation floor sees the mapped
+    // max_tokens value when it runs. See ../anthropic/effort.
+    effort: {
+      key: "output_config.effort",
+      transform: effortTransform,
     },
   },
   mapOptions: {

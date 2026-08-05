@@ -1,5 +1,7 @@
 import { anthropicPromptSanitize } from "@/llm/config/anthropic/promptSanitize";
 import { bedrock } from "@/llm/config/bedrock";
+import { mapBody } from "@/llm/_utils.mapBody";
+import { PROVIDED_OPTION_KEYS } from "@/llm/_utils.stateFromOptions";
 import { replaceTemplateString } from "@/utils/modules/replaceTemplateString";
 
 // Mock the external dependencies
@@ -56,6 +58,80 @@ describe("bedrock configuration", () => {
         provider: "amazon:anthropic.chat",
         allowImageUrlSources: false,
       });
+    });
+  });
+
+  // Bedrock reuses the direct provider's effort/thinking + sampling-param
+  // handling (../anthropic/effort). These assert the outgoing InvokeModel body
+  // via mapBody with real Bedrock invoke model IDs (the prompt sanitizer is
+  // mocked above, but the effort/topP transforms are the real shared ones).
+  describe("amazon:anthropic.chat.v1 effort / thinking / sampling params", () => {
+    const cfg = bedrock["amazon:anthropic.chat.v1"];
+    const bodyWith = (
+      model: string,
+      opts: Record<string, any>,
+      provided: string[]
+    ) =>
+      mapBody(cfg.mapBody, {
+        model,
+        ...opts,
+        [PROVIDED_OPTION_KEYS]: new Set(provided),
+      });
+
+    it("escalates effort high->xhigh + adaptive and applies the 65536 floor for opus-4-8 (no caller maxTokens)", () => {
+      const body = bodyWith(
+        "us.anthropic.claude-opus-4-8",
+        { effort: "high" },
+        ["effort"]
+      );
+      expect(body.output_config).toEqual({ effort: "xhigh" });
+      expect(body.thinking).toEqual({ type: "adaptive" });
+      expect(body.max_tokens).toBe(65536);
+    });
+
+    it("honors an explicit maxTokens for opus-4-8 when escalating", () => {
+      const body = bodyWith(
+        "us.anthropic.claude-opus-4-8",
+        { effort: "high", maxTokens: 8000 },
+        ["effort", "maxTokens"]
+      );
+      expect(body.output_config).toEqual({ effort: "xhigh" });
+      expect(body.max_tokens).toBe(8000);
+    });
+
+    it("keeps effort high (no escalation) + adaptive for opus-5, leaving the Bedrock default max_tokens", () => {
+      const body = bodyWith(
+        "global.anthropic.claude-opus-5",
+        { effort: "high" },
+        ["effort"]
+      );
+      expect(body.output_config).toEqual({ effort: "high" });
+      expect(body.thinking).toEqual({ type: "adaptive" });
+      expect(body.max_tokens).toBe(10000);
+    });
+
+    it("drops top_p for a 4.7+/5 model (Bedrock 400s on sampling params there)", () => {
+      const body = bodyWith(
+        "us.anthropic.claude-opus-4-8",
+        { effort: "high", topP: 0.9 },
+        ["effort", "topP"]
+      );
+      expect(body.top_p).toBeUndefined();
+    });
+
+    it("keeps top_p for a non-reject model", () => {
+      const body = bodyWith(
+        "us.anthropic.claude-sonnet-4-6",
+        { topP: 0.9 },
+        ["topP"]
+      );
+      expect(body.top_p).toBe(0.9);
+    });
+
+    it("adds no effort/thinking fields when effort is not provided", () => {
+      const body = bodyWith("us.anthropic.claude-opus-4-8", {}, []);
+      expect(body).not.toHaveProperty("output_config");
+      expect(body).not.toHaveProperty("thinking");
     });
   });
 

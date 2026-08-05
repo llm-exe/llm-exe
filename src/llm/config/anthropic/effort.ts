@@ -11,7 +11,7 @@ import { PROVIDED_OPTION_KEYS } from "@/llm/_utils.stateFromOptions";
 export const ESCALATED_EFFORT_MIN_MAX_TOKENS = 65536;
 
 // Models that 400 if temperature / top_p / top_k are set to non-default values.
-export const MODELS_REJECTING_SAMPLING_PARAMS = [
+const MODELS_REJECTING_SAMPLING_PARAMS = [
   "claude-opus-5",
   "claude-opus-4-7",
   "claude-opus-4-8",
@@ -58,7 +58,7 @@ const modelRejectsSamplingParams = (model: string): boolean => {
 };
 
 // Claude 4.x rejects requests that set both temperature and top_p; keep temperature.
-export const isClaude4x = (model: string) =>
+const isClaude4x = (model: string) =>
   /^claude-(opus|sonnet|haiku)-4-/.test(canonicalAnthropicModel(model));
 
 export const dropIfModelRejectsSamplingParams = (

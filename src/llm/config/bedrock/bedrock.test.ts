@@ -99,6 +99,20 @@ describe("bedrock configuration", () => {
       expect(body.max_tokens).toBe(8000);
     });
 
+    it("maps effort to legacy budget thinking + raises max_tokens for a legacy Bedrock model (sonnet-4-5)", () => {
+      const body = bodyWith(
+        "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        { effort: "medium" },
+        ["effort"]
+      );
+      // Legacy models take enabled thinking with a budget, not output_config;
+      // max_tokens is raised above the budget (Anthropic requires max_tokens >
+      // budget_tokens), overriding the 10000 Bedrock default here (10000 <= 10240).
+      expect(body).not.toHaveProperty("output_config");
+      expect(body.thinking).toEqual({ type: "enabled", budget_tokens: 10240 });
+      expect(body.max_tokens).toBeGreaterThan(10240);
+    });
+
     it("keeps effort high (no escalation) + adaptive for opus-5, leaving the Bedrock default max_tokens", () => {
       const body = bodyWith(
         "global.anthropic.claude-opus-5",

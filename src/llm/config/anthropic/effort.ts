@@ -36,13 +36,16 @@ const THINKING_MIN_TOP_P = 0.95;
 // through unchanged.
 //
 // The prefix is anchored at the start so a name that merely contains the
-// substring (e.g. a custom "my-anthropic.claude-proxy") is left untouched. The
-// geo segment may contain hyphens ("us-gov.anthropic...") to cover GovCloud
-// cross-region profiles. Opaque identifiers with no recognizable "claude-..." (a
-// raw provisioned or custom-model ARN) return unchanged and therefore match no
-// gate: effort/thinking is not applied and sampling params are not dropped for
-// them. Model IDs are expected in their standard lowercase form (all real
-// Anthropic/Bedrock IDs are).
+// substring (e.g. a custom "my-anthropic.claude-proxy") is left untouched, and
+// the geo segment may contain hyphens ("us-gov.anthropic...") to cover GovCloud
+// cross-region profiles. A full ARN of any form returns unchanged and matches no
+// gate (effort/thinking is not applied, sampling params are not dropped): this
+// includes provisioned-/custom-model ARNs, which carry no model name, but also
+// inference-profile ARNs, which DO embed a "claude-..." mid-string that the
+// anchored pattern intentionally does not reach. Pass the bare profile/model id
+// ("us.anthropic.claude-opus-4-8") rather than its ARN to get effort handling.
+// Model IDs are expected in their standard lowercase form (all real Anthropic/
+// Bedrock IDs are).
 export function canonicalAnthropicModel(model: string): string {
   if (!model) return "";
   const match = /^(?:[a-z]+(?:-[a-z]+)*\.)?anthropic\.(claude-.+)$/.exec(model);

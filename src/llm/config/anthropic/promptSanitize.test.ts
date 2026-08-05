@@ -145,6 +145,7 @@ describe("anthropicPromptSanitize", () => {
     });
 
     it.each([
+      "claude-opus-5",
       "claude-opus-4-8",
       "claude-sonnet-5",
       "claude-fable-5",

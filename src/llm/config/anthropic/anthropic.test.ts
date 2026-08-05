@@ -1,5 +1,6 @@
 import { anthropic } from "@/llm/config/anthropic";
 import { mapBody } from "@/llm/_utils.mapBody";
+import { PROVIDED_OPTION_KEYS } from "@/llm/_utils.stateFromOptions";
 import { anthropicPromptSanitize } from "./promptSanitize";
 import { useLlm } from "@/llm";
 
@@ -117,6 +118,69 @@ describe("anthropic config", () => {
         const result = effortTransform("medium", { model: "claude-opus-4-7" }, output);
         expect(result).toBe("medium");
         expect(output.thinking).toEqual({ type: "adaptive" });
+      });
+    });
+
+    // issue #712: when llm-exe escalates the caller's "high" to "xhigh" for the
+    // Opus coding flagships, adaptive thinking needs more room than the 4096
+    // default or it truncates. The floor fires ONLY for that escalation and ONLY
+    // when the caller did not set maxTokens themselves (provenance comes from the
+    // PROVIDED_OPTION_KEYS marker on the state arg). A caller-set value is always
+    // honored, including 4096, and missing provenance is treated as caller-set.
+    describe("escalated-effort max_tokens floor (issue #712)", () => {
+      const stateWith = (model: string, provided: string[]) => ({
+        model,
+        [PROVIDED_OPTION_KEYS]: new Set(provided),
+      });
+
+      it("raises max_tokens to the floor when escalating high->xhigh and the caller did not set maxTokens", () => {
+        const output: Record<string, any> = { max_tokens: 4096 };
+        const result = effortTransform("high", stateWith("claude-opus-4-8", ["effort"]), output);
+        expect(result).toBe("xhigh");
+        expect(output.max_tokens).toBe(65536);
+      });
+
+      it("honors an explicit maxTokens of exactly 4096 when escalating high->xhigh", () => {
+        // The exact case that reproduced the original bug: an explicit 4096 is
+        // indistinguishable from the default unless provenance is tracked.
+        const output: Record<string, any> = { max_tokens: 4096 };
+        const result = effortTransform(
+          "high",
+          stateWith("claude-opus-4-8", ["effort", "maxTokens"]),
+          output
+        );
+        expect(result).toBe("xhigh");
+        expect(output.max_tokens).toBe(4096);
+      });
+
+      it("never lowers a caller's already-larger maxTokens when escalating", () => {
+        const output: Record<string, any> = { max_tokens: 100000 };
+        effortTransform("high", stateWith("claude-opus-4-7", ["effort", "maxTokens"]), output);
+        expect(output.max_tokens).toBe(100000);
+      });
+
+      it("fail-closed: without a provenance marker, treats maxTokens as caller-set and does not override", () => {
+        // e.g. a direct mapBody call that bypasses stateFromOptions.
+        const output: Record<string, any> = { max_tokens: 4096 };
+        const result = effortTransform("high", { model: "claude-opus-4-8" }, output);
+        expect(result).toBe("xhigh");
+        expect(output.max_tokens).toBe(4096);
+      });
+
+      it("does not apply the floor to non-escalated adaptive models (high stays high)", () => {
+        for (const model of ["claude-sonnet-5", "claude-fable-5"]) {
+          const output: Record<string, any> = { max_tokens: 4096 };
+          const result = effortTransform("high", stateWith(model, ["effort"]), output);
+          expect(result).toBe("high");
+          expect(output.max_tokens).toBe(4096);
+        }
+      });
+
+      it("does not apply the floor below xhigh (medium) even without maxTokens provenance", () => {
+        const output: Record<string, any> = { max_tokens: 4096 };
+        const result = effortTransform("medium", stateWith("claude-opus-4-8", ["effort"]), output);
+        expect(result).toBe("medium");
+        expect(output.max_tokens).toBe(4096);
       });
     });
 
@@ -247,6 +311,30 @@ describe("anthropic config", () => {
           output_config: { effort: "xhigh" },
         })
       );
+    });
+
+    it("raises max_tokens to the floor via mapBody when escalating and maxTokens is not caller-provided (issue #712)", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-opus-4-8",
+        maxTokens: 4096, // present as the defaulted value...
+        effort: "high",
+        prompt,
+        [PROVIDED_OPTION_KEYS]: new Set(["effort"]), // ...but not caller-set
+      });
+      expect(body.output_config).toEqual({ effort: "xhigh" });
+      expect(body.max_tokens).toBe(65536);
+    });
+
+    it("honors a caller-set maxTokens via mapBody when escalating (issue #712)", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-opus-4-8",
+        maxTokens: 4096,
+        effort: "high",
+        prompt,
+        [PROVIDED_OPTION_KEYS]: new Set(["effort", "maxTokens"]),
+      });
+      expect(body.output_config).toEqual({ effort: "xhigh" });
+      expect(body.max_tokens).toBe(4096);
     });
 
     it("should not add thinking fields for claude-3 models", () => {
@@ -538,6 +626,85 @@ describe("anthropic config", () => {
       await llm.call(messages);
 
       expect(outgoingBody.stream).toBeUndefined();
+    });
+  });
+
+  // Regression tests for issue #712: the unit and mapBody tests above hand-build
+  // the PROVIDED_OPTION_KEYS marker. These go through the public useLlm path so a
+  // break in the stateFromOptions -> *.call.ts -> mapBody provenance plumbing is
+  // caught, not just the transform logic in isolation.
+  describe("escalated-effort max_tokens floor reaches the request via useLlm (issue #712)", () => {
+    const originalFetch = globalThis.fetch;
+    let outgoingBody: Record<string, any> = {};
+
+    beforeEach(() => {
+      outgoingBody = {};
+      globalThis.fetch = (async (_url: any, init: any) => {
+        outgoingBody = JSON.parse(init?.body);
+        return new Response(
+          JSON.stringify({
+            id: "msg_test",
+            type: "message",
+            role: "assistant",
+            model: "claude-test",
+            content: [{ type: "text", text: "ok" }],
+            stop_reason: "end_turn",
+            usage: { input_tokens: 1, output_tokens: 1 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }) as typeof fetch;
+    });
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    const messages = [{ role: "user" as const, content: "hi" }];
+
+    it("raises max_tokens for opus-4-8 at effort high when the caller does not set maxTokens", async () => {
+      const llm = useLlm("anthropic.claude-opus-4-8", {
+        effort: "high",
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.output_config).toEqual({ effort: "xhigh" });
+      expect(outgoingBody.max_tokens).toBe(65536);
+    });
+
+    it("honors an explicit maxTokens of 4096 for opus-4-8 at effort high (no silent override)", async () => {
+      const llm = useLlm("anthropic.claude-opus-4-8", {
+        effort: "high",
+        maxTokens: 4096,
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.output_config).toEqual({ effort: "xhigh" });
+      expect(outgoingBody.max_tokens).toBe(4096);
+    });
+
+    it("honors an explicit larger maxTokens for opus-4-8 at effort high", async () => {
+      const llm = useLlm("anthropic.claude-opus-4-8", {
+        effort: "high",
+        maxTokens: 8000,
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.max_tokens).toBe(8000);
+    });
+
+    it("does not raise max_tokens for a non-escalated adaptive model (sonnet-5 keeps high)", async () => {
+      const llm = useLlm("anthropic.claude-sonnet-5", {
+        effort: "high",
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.output_config).toEqual({ effort: "high" });
+      expect(outgoingBody.max_tokens).toBe(4096);
     });
   });
 

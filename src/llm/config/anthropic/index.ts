@@ -1,5 +1,6 @@
 import { withDefaultModel } from "@/llm/_utils.withDefaultModel";
 import { deprecateShorthand } from "@/llm/_utils.deprecationWarning";
+import { PROVIDED_OPTION_KEYS } from "@/llm/_utils.stateFromOptions";
 import { Config } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { anthropicPromptSanitize } from "./promptSanitize";
@@ -7,6 +8,17 @@ import { OutputAnthropicClaude3Chat } from "@/llm/output/claude";
 import { cleanJsonSchemaFor } from "@/llm/output/_utils/cleanJsonSchemaFor";
 
 const ANTHROPIC_VERSION = "2023-06-01";
+
+// When llm-exe silently escalates the caller's "high" effort to "xhigh" for the
+// Opus coding flagships (4.7 / 4.8), adaptive thinking needs more room than the
+// 4096 max_tokens default or the response truncates mid-thought (issue #712).
+// Anthropic's guidance for xhigh is to allow a large max_tokens (~64k), so we
+// raise the ceiling to 65536 for that escalated case, but only when the caller
+// did not set maxTokens themselves. max_tokens is a ceiling, not a target: the
+// model stops when it is done, so a higher ceiling only adds headroom against
+// truncation and does not force longer (costlier) generations. Verified accepted
+// by opus-4-8 (its max_tokens limit is well above this).
+const ESCALATED_EFFORT_MIN_MAX_TOKENS = 65536;
 
 // Models that 400 if temperature / top_p / top_k are set to non-default values.
 const MODELS_REJECTING_SAMPLING_PARAMS = [
@@ -142,7 +154,33 @@ const anthropicChatV1: Config = {
                 ? "xhigh"
                 : "high",
           };
-          return map[v];
+          const mapped = map[v];
+
+          // Only the high->xhigh escalation above reaches "xhigh". When WE bump
+          // the caller's effort up, give adaptive thinking room so it does not
+          // truncate against the 4096 default. Fail-closed on provenance: raise
+          // the floor only when we can positively confirm the caller did not set
+          // maxTokens; a caller-set value (any value, including 4096) is always
+          // honored, and a missing provenance marker is treated as caller-set so
+          // we never override an explicit value. (issue #712)
+          if (mapped === "xhigh") {
+            const providedKeys = (_s as any)[PROVIDED_OPTION_KEYS] as
+              | Set<string>
+              | undefined;
+            const callerSetMaxTokens = providedKeys
+              ? providedKeys.has("maxTokens")
+              : true;
+            const currentMax =
+              typeof _output.max_tokens === "number" ? _output.max_tokens : 0;
+            if (
+              !callerSetMaxTokens &&
+              currentMax < ESCALATED_EFFORT_MIN_MAX_TOKENS
+            ) {
+              _output.max_tokens = ESCALATED_EFFORT_MIN_MAX_TOKENS;
+            }
+          }
+
+          return mapped;
         }
 
         const isLegacy =

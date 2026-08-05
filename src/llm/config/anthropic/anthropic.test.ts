@@ -128,7 +128,7 @@ describe("anthropic config", () => {
         const output: Record<string, any> = { max_tokens: 4096 };
         const result = effortTransform("high", stateWith("claude-opus-4-8", ["effort"]), output);
         expect(result).toBe("xhigh");
-        expect(output.max_tokens).toBe(32000);
+        expect(output.max_tokens).toBe(65536);
       });
 
       it("honors an explicit maxTokens of exactly 4096 when escalating high->xhigh", () => {
@@ -313,7 +313,7 @@ describe("anthropic config", () => {
         [PROVIDED_OPTION_KEYS]: new Set(["effort"]), // ...but not caller-set
       });
       expect(body.output_config).toEqual({ effort: "xhigh" });
-      expect(body.max_tokens).toBe(32000);
+      expect(body.max_tokens).toBe(65536);
     });
 
     it("honors a caller-set maxTokens via mapBody when escalating (issue #712)", () => {
@@ -647,7 +647,7 @@ describe("anthropic config", () => {
       await llm.call(messages);
 
       expect(outgoingBody.output_config).toEqual({ effort: "xhigh" });
-      expect(outgoingBody.max_tokens).toBe(32000);
+      expect(outgoingBody.max_tokens).toBe(65536);
     });
 
     it("honors an explicit maxTokens of 4096 for opus-4-8 at effort high (no silent override)", async () => {

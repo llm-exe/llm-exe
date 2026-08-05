@@ -12,10 +12,13 @@ const ANTHROPIC_VERSION = "2023-06-01";
 // When llm-exe silently escalates the caller's "high" effort to "xhigh" for the
 // Opus coding flagships (4.7 / 4.8), adaptive thinking needs more room than the
 // 4096 max_tokens default or the response truncates mid-thought (issue #712).
-// Raise the ceiling for that escalated case, but only when the caller did NOT
-// set maxTokens themselves. This value is a ceiling, not a target: the model
-// stops when it is done, so it does not force long (costly) generations.
-const ESCALATED_EFFORT_MIN_MAX_TOKENS = 32000;
+// Anthropic's guidance for xhigh is to allow a large max_tokens (~64k), so we
+// raise the ceiling to 65536 for that escalated case, but only when the caller
+// did not set maxTokens themselves. max_tokens is a ceiling, not a target: the
+// model stops when it is done, so a higher ceiling only adds headroom against
+// truncation and does not force longer (costlier) generations. Verified accepted
+// by opus-4-8 (its max_tokens limit is well above this).
+const ESCALATED_EFFORT_MIN_MAX_TOKENS = 65536;
 
 // Models that 400 if temperature / top_p / top_k are set to non-default values.
 const MODELS_REJECTING_SAMPLING_PARAMS = [

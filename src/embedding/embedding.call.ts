@@ -1,7 +1,6 @@
 import { apiRequest } from "@/utils/modules/request";
 import { replaceTemplateStringSimple } from "@/utils/modules/replaceTemplateStringSimple";
 import { mapBody } from "@/llm/_utils.mapBody";
-import { PROVIDED_OPTION_KEYS } from "@/llm/_utils.stateFromOptions";
 import { parseHeaders } from "@/llm/_utils.parseHeaders";
 import {
   LlmExeError,
@@ -33,12 +32,6 @@ export async function createEmbedding_call(
     config.mapBody,
     Object.assign({}, state, {
       input: _input,
-      // Carry option provenance onto the mapBody input so transforms can tell a
-      // caller-set value from a defaulted one (issue #712). It is non-enumerable
-      // on `state`, so Object.assign drops it; re-attach it explicitly. Keyed by
-      // Symbol and never declared in config.mapBody, it is never mapped into the
-      // outgoing request body.
-      [PROVIDED_OPTION_KEYS]: (state as any)[PROVIDED_OPTION_KEYS],
     })
   );
 

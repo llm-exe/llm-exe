@@ -10,11 +10,14 @@ import { LlmExeError } from "@/errors";
  *
  * mapBody transforms otherwise cannot tell "the user set maxTokens to 4096" from
  * "we defaulted maxTokens to 4096" once defaults are applied, which is the
- * provenance gap behind issue #712 (and the #661 note in this file). Keyed by a
- * Symbol and attached non-enumerably so it never appears in Object.keys /
- * JSON.stringify / equality checks and can never leak into an outgoing request
- * body. `*.call.ts` re-attaches it enumerably onto the mapBody input body so
- * transforms can read it from their frozen state argument.
+ * provenance gap behind issue #712 (and the #661 note in this file).
+ *
+ * Keyed by a Symbol so it is invisible to Object.keys / JSON.stringify and can
+ * never leak into an outgoing request body (mapBody only maps its declared
+ * template keys). It is left enumerable on purpose: that lets it ride along
+ * automatically through the `Object.assign({}, state, …)` bodies the call
+ * handlers build, so every current and future mapBody call site gets provenance
+ * with no extra wiring. A transform reads it from its frozen state argument.
  */
 export const PROVIDED_OPTION_KEYS = Symbol("llm-exe.providedOptionKeys");
 
@@ -76,12 +79,7 @@ export function stateFromOptions(options: Partial<GenericLLm>, config: Config) {
     }
   }
 
-  Object.defineProperty(state, PROVIDED_OPTION_KEYS, {
-    value: providedKeys,
-    enumerable: false,
-    writable: false,
-    configurable: false,
-  });
+  (state as any)[PROVIDED_OPTION_KEYS] = providedKeys;
 
   return state;
 }

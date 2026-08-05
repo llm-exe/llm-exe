@@ -10,6 +10,7 @@ const ANTHROPIC_VERSION = "2023-06-01";
 
 // Models that 400 if temperature / top_p / top_k are set to non-default values.
 const MODELS_REJECTING_SAMPLING_PARAMS = [
+  "claude-opus-5",
   "claude-opus-4-7",
   "claude-opus-4-8",
   "claude-sonnet-5",
@@ -112,6 +113,7 @@ const anthropicChatV1: Config = {
         const model: string = _s.model || "";
 
         const isAdaptive =
+          model.startsWith("claude-opus-5") ||
           model.startsWith("claude-opus-4-6") ||
           model.startsWith("claude-opus-4-7") ||
           model.startsWith("claude-opus-4-8") ||
@@ -120,14 +122,20 @@ const anthropicChatV1: Config = {
           model.startsWith("claude-fable-5");
 
         if (isAdaptive) {
+          // Opus 5 already runs adaptive thinking when `thinking` is omitted;
+          // sending it explicitly is equivalent and keeps one code path for the
+          // whole adaptive generation (4.6/4.7/4.8 need it stated to think).
           _output.thinking = { type: "adaptive" };
           const map: Record<string, string> = {
             minimal: "low",
             low: "low",
             medium: "medium",
-            // Opus coding flagships take Anthropic's escalated "xhigh" for high
-            // effort (per the Opus 4.7 coding/agentic recommendation); other
-            // adaptive models use "high".
+            // Opus 4.7 and 4.8 escalate "high" to "xhigh": Anthropic's per-model
+            // guidance is to start with xhigh for coding/agentic work on those.
+            // Opus 5 is deliberately NOT escalated: Anthropic recommends starting
+            // with "high" (the default) on Opus 5 and explicitly warns against
+            // carrying the 4.x effort escalation over, so "high" must stay
+            // reachable. All other adaptive models also map "high" -> "high".
             high:
               model.startsWith("claude-opus-4-7") ||
               model.startsWith("claude-opus-4-8")
@@ -196,6 +204,9 @@ export const anthropic = {
     anthropicChatV1,
     "claude-fable-5"
   ),
+
+  // Claude Opus 5 models
+  "anthropic.claude-opus-5": withDefaultModel(anthropicChatV1, "claude-opus-5"),
 
   // Claude 4.8 models
   "anthropic.claude-opus-4-8": withDefaultModel(

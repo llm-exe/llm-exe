@@ -67,7 +67,12 @@ describe("anthropic config", () => {
         ["claude-opus-4-6", "high", "high"],
         ["claude-sonnet-4-6", "low", "low"],
         ["claude-sonnet-4-6", "high", "high"],
-        // Newer adaptive models (opus 4.8, sonnet 5, fable 5)
+        // Newer adaptive models (opus 5, opus 4.8, sonnet 5, fable 5)
+        // Opus 5 keeps "high" (Anthropic recommends starting at high on Opus 5),
+        // unlike opus 4.7/4.8 which escalate to xhigh.
+        ["claude-opus-5", "high", "high"],
+        ["claude-opus-5", "minimal", "low"],
+        ["claude-opus-5", "medium", "medium"],
         ["claude-opus-4-8", "high", "xhigh"],
         ["claude-opus-4-8", "medium", "medium"],
         ["claude-sonnet-5", "high", "high"],
@@ -85,7 +90,7 @@ describe("anthropic config", () => {
       );
     });
 
-    describe("adaptive thinking maps high to xhigh for Opus coding flagships", () => {
+    describe("adaptive thinking maps high to xhigh for Opus 4.7/4.8 only", () => {
       it.each(["claude-opus-4-7", "claude-opus-4-8"])(
         "should map high to xhigh for %s",
         (model) => {
@@ -96,8 +101,12 @@ describe("anthropic config", () => {
         }
       );
 
-      it("should map high to high (not xhigh) for non-opus adaptive models", () => {
-        for (const model of ["claude-sonnet-5", "claude-fable-5"]) {
+      it("keeps high for adaptive models without the xhigh escalation", () => {
+        // Opus 5 sits here on purpose: Anthropic's per-model guidance is to
+        // start with "high" on Opus 5 and warns against carrying the 4.x
+        // escalation over, so "high" must remain reachable. Do not add opus-5
+        // back to the xhigh list above.
+        for (const model of ["claude-opus-5", "claude-sonnet-5", "claude-fable-5"]) {
           const output: Record<string, any> = {};
           expect(effortTransform("high", { model }, output)).toBe("high");
         }
@@ -272,6 +281,7 @@ describe("anthropic config", () => {
   describe("active shorthands", () => {
     it.each([
       ["anthropic.claude-fable-5", "claude-fable-5"],
+      ["anthropic.claude-opus-5", "claude-opus-5"],
       ["anthropic.claude-opus-4-8", "claude-opus-4-8"],
       ["anthropic.claude-sonnet-5", "claude-sonnet-5"],
       ["anthropic.claude-opus-4-7", "claude-opus-4-7"],
@@ -329,6 +339,18 @@ describe("anthropic config", () => {
     it("drops temperature, top_p, and top_k for claude-opus-4-8", () => {
       const body = buildBody({
         model: "claude-opus-4-8",
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+      });
+      expect(body.temperature).toBeUndefined();
+      expect(body.top_p).toBeUndefined();
+      expect(body.top_k).toBeUndefined();
+    });
+
+    it("drops temperature, top_p, and top_k for claude-opus-5", () => {
+      const body = buildBody({
+        model: "claude-opus-5",
         temperature: 0.5,
         topP: 0.9,
         topK: 40,
@@ -486,6 +508,7 @@ describe("anthropic config", () => {
     });
 
     it.each([
+      ["anthropic.claude-opus-5"],
       ["anthropic.claude-opus-4-7"],
       ["anthropic.claude-opus-4-8"],
       ["anthropic.claude-sonnet-5"],

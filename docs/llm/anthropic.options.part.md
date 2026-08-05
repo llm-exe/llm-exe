@@ -13,5 +13,7 @@
 
 > [!NOTE]
 > **Sampling parameter restrictions:** `claude-opus-4-7` rejects requests that include `temperature`, `topP`, or `topK` — llm-exe silently drops these for that model. For other Claude 4.x models, `topP` is silently dropped when `temperature` is also set, because the Anthropic API does not allow both simultaneously.
+>
+> **`maxTokens` default with escalated effort:** For `claude-opus-4-7` and `claude-opus-4-8`, llm-exe escalates `effort: "high"` to Anthropic's `xhigh`. In that case only, if you do not pass `maxTokens`, the default is raised from 4096 to 65536 so adaptive thinking is not truncated (Anthropic recommends a large `max_tokens` at `xhigh`). An explicit `maxTokens` (any value, including 4096) is always honored, and every other model keeps the 4096 default.
 
 Anthropic Docs: [link](https://docs.anthropic.com/en/api/messages)

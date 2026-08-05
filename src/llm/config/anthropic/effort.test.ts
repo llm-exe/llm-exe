@@ -24,6 +24,8 @@ describe("anthropic effort (shared direct + bedrock)", () => {
       ["us.anthropic.claude-opus-4-8", "claude-opus-4-8"],
       ["global.anthropic.claude-opus-5", "claude-opus-5"],
       ["eu.anthropic.claude-sonnet-5", "claude-sonnet-5"],
+      // GovCloud cross-region profile (hyphenated geo segment)
+      ["us-gov.anthropic.claude-opus-4-8", "claude-opus-4-8"],
       [
         "anthropic.claude-sonnet-4-5-20250929-v1:0",
         "claude-sonnet-4-5-20250929-v1:0",

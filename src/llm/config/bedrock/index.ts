@@ -42,8 +42,10 @@ const amazonAnthropicChatV1: Config = {
     },
     topP: {
       key: "top_p",
-      // Bedrock's Anthropic 4.7+/5 models 400 on non-default top_p (and drop it
-      // when temperature is also set on 4.x); shared with the direct provider.
+      // Bedrock's Anthropic 4.7+/5 models 400 on non-default top_p, so drop it
+      // for those (shared with the direct provider). The transform's additional
+      // "drop top_p when temperature is also set on 4.x" rule is inert here,
+      // since temperature is not a declared Bedrock option.
       transform: topPTransform,
     },
     maxTokens: {

@@ -29,14 +29,16 @@ export const MODELS_REJECTING_SAMPLING_PARAMS = [
 // through unchanged.
 //
 // The prefix is anchored at the start so a name that merely contains the
-// substring (e.g. a custom "my-anthropic.claude-proxy") is left untouched.
-// Opaque identifiers with no recognizable "claude-..." (a raw provisioned or
-// custom-model ARN) return unchanged and therefore match no gate: effort/thinking
-// is not applied and sampling params are not dropped for them. Model IDs are
-// expected in their standard lowercase form (all real Anthropic/Bedrock IDs are).
+// substring (e.g. a custom "my-anthropic.claude-proxy") is left untouched. The
+// geo segment may contain hyphens ("us-gov.anthropic...") to cover GovCloud
+// cross-region profiles. Opaque identifiers with no recognizable "claude-..." (a
+// raw provisioned or custom-model ARN) return unchanged and therefore match no
+// gate: effort/thinking is not applied and sampling params are not dropped for
+// them. Model IDs are expected in their standard lowercase form (all real
+// Anthropic/Bedrock IDs are).
 export function canonicalAnthropicModel(model: string): string {
   if (!model) return "";
-  const match = /^(?:[a-z]+\.)?anthropic\.(claude-.+)$/.exec(model);
+  const match = /^(?:[a-z]+(?:-[a-z]+)*\.)?anthropic\.(claude-.+)$/.exec(model);
   return match ? match[1] : model;
 }
 

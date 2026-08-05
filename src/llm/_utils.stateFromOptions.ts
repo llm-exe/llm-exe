@@ -3,8 +3,33 @@ import { Config, GenericLLm, LlmProvider, LlmProviderKey } from "@/types";
 import { pick } from "@/utils/modules/pick";
 import { LlmExeError } from "@/errors";
 
+/**
+ * Marks, on the produced state object, which declared option keys the CALLER
+ * actually supplied (a defined value) as opposed to keys that were filled from
+ * `config.options[key].default` by the loop below.
+ *
+ * mapBody transforms otherwise cannot tell "the user set maxTokens to 4096" from
+ * "we defaulted maxTokens to 4096" once defaults are applied, which is the
+ * provenance gap behind issue #712 (and the #661 note in this file). Keyed by a
+ * Symbol and attached non-enumerably so it never appears in Object.keys /
+ * JSON.stringify / equality checks and can never leak into an outgoing request
+ * body. `*.call.ts` re-attaches it enumerably onto the mapBody input body so
+ * transforms can read it from their frozen state argument.
+ */
+export const PROVIDED_OPTION_KEYS = Symbol("llm-exe.providedOptionKeys");
+
 export function stateFromOptions(options: Partial<GenericLLm>, config: Config) {
   const optionsKeys = Object.keys(config.options) as (keyof typeof options)[];
+
+  // Snapshot provenance from the raw options BEFORE the default-fill loop below
+  // overwrites undefined values: a declared key counts as caller-provided only
+  // when the caller passed a defined value for it.
+  const providedKeys = new Set<string>(
+    optionsKeys
+      .filter((key) => typeof options[key] !== "undefined")
+      .map((key) => String(key)),
+  );
+
   const state = Object.assign(pick(options, optionsKeys), {
     provider: config.provider,
     key: config.key,
@@ -50,6 +75,13 @@ export function stateFromOptions(options: Partial<GenericLLm>, config: Config) {
       }
     }
   }
+
+  Object.defineProperty(state, PROVIDED_OPTION_KEYS, {
+    value: providedKeys,
+    enumerable: false,
+    writable: false,
+    configurable: false,
+  });
 
   return state;
 }

@@ -1,7 +1,10 @@
 import { get } from "@/utils/modules/get";
 import { pick } from "@/utils/modules/pick";
 import { Config, GenericLLm, LlmProvider } from "@/types";
-import { stateFromOptions } from "@/llm/_utils.stateFromOptions";
+import {
+  stateFromOptions,
+  PROVIDED_OPTION_KEYS,
+} from "@/llm/_utils.stateFromOptions";
 import { LlmExeError } from "@/errors";
 
 describe("stateFromOptions", () => {
@@ -148,6 +151,39 @@ describe("stateFromOptions", () => {
       model: "gpt-3",
       key: "openai.chat.v1",
       provider: "openai.chat",
+    });
+  });
+
+  // issue #712: mapBody transforms need to distinguish a caller-set value from a
+  // defaulted one. stateFromOptions records the caller-provided keys under a
+  // non-enumerable Symbol so the information survives to mapBody without ever
+  // surfacing as an enumerable property (which would leak into request bodies).
+  describe("caller-provided option provenance (issue #712)", () => {
+    it("records only caller-provided keys, excluding those filled from defaults", () => {
+      // temperature is omitted (filled from its 0.7 default); maxTokens is set.
+      const state = stateFromOptions({ model: "gpt-3", maxTokens: 100 }, config);
+
+      const provided = (state as any)[PROVIDED_OPTION_KEYS] as Set<string>;
+      expect(provided).toBeInstanceOf(Set);
+      expect(provided.has("maxTokens")).toBe(true);
+      expect(provided.has("temperature")).toBe(false);
+    });
+
+    it("exposes the marker non-enumerably so it stays out of keys, JSON, and request bodies", () => {
+      const state = stateFromOptions({ model: "gpt-3", maxTokens: 100 }, config);
+
+      expect(Object.getOwnPropertySymbols(state)).toContain(PROVIDED_OPTION_KEYS);
+      expect(
+        Object.getOwnPropertyDescriptor(state, PROVIDED_OPTION_KEYS)?.enumerable
+      ).toBe(false);
+      expect(JSON.stringify(state)).not.toContain("providedOptionKeys");
+      expect(JSON.parse(JSON.stringify(state))).toEqual({
+        model: "gpt-3",
+        key: "openai.chat.v1",
+        provider: "openai.chat",
+        temperature: 0.7,
+        maxTokens: 100,
+      });
     });
   });
 });

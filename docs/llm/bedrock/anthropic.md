@@ -25,7 +25,7 @@ In addition to the [generic options](/llm/generic), the following options are av
 | ------------ | ------ | --------- | --------------------------------------------------------------------------- |
 | model        | string | —         | The Bedrock model id. Must be specified. See AWS Bedrock Docs               |
 | maxTokens    | number | 10000     | Maps to `max_tokens`. See Anthropic Docs                                    |
-| topP         | number | undefined | Maps to `top_p`. Dropped for models that reject sampling params.            |
+| topP         | number | undefined | Maps to `top_p`. Dropped for reject models, or `< 0.95` under `effort`.     |
 | effort       | string | undefined | Maps to `output_config.effort` + `thinking`. See Anthropic provider.        |
 | awsRegion    | string | undefined | AWS Region. Can be set via `AWS_REGION` environment variable                |
 | awsSecretKey | string | undefined | AWS Secret Key. Can be set via `AWS_SECRET_ACCESS_KEY` environment variable |
@@ -36,4 +36,4 @@ In addition to the [generic options](/llm/generic), the following options are av
 >
 > **`effort` and sampling params:** `effort` maps to `output_config.effort` and adaptive/extended `thinking`, identical to the direct provider, including the Opus 4.7 / 4.8 `high` -> `xhigh` escalation, which raises the default `max_tokens` to 65536 when you do not set it. `topP` is dropped for the models that 400 on sampling parameters (Opus 4.7, 4.8, and 5; Sonnet 5; Fable 5).
 >
-> Because `effort` enables thinking, and Anthropic disallows sampling parameters while thinking is active, omit `topP` (or set it `>= 0.95`) when you use `effort` — a lower `topP` returns a 400. This applies to the direct provider as well.
+> Because `effort` enables thinking, and Anthropic disallows sampling parameters while thinking is active, llm-exe drops `topP` below `0.95` whenever `effort` enables thinking (and drops `temperature` / `topK` on the direct provider, which maps them). Pass `topP >= 0.95` if you need it. This applies to the direct provider as well.

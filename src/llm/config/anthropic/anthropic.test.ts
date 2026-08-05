@@ -114,6 +114,60 @@ describe("anthropic config", () => {
       });
     });
 
+    describe("escalated-effort max_tokens floor", () => {
+      const ESCALATED = ["claude-opus-5", "claude-opus-4-7", "claude-opus-4-8"];
+
+      it.each(ESCALATED)(
+        "%s raises the default 4096 to 65536 when effort escalates to xhigh",
+        (model) => {
+          const output: Record<string, any> = { max_tokens: 4096 };
+          expect(effortTransform("high", { model }, output)).toBe("xhigh");
+          expect(output.max_tokens).toBe(65536);
+        }
+      );
+
+      it.each(ESCALATED)(
+        "%s never lowers a caller's larger max_tokens",
+        (model) => {
+          const output: Record<string, any> = { max_tokens: 128000 };
+          effortTransform("high", { model }, output);
+          expect(output.max_tokens).toBe(128000);
+        }
+      );
+
+      it.each(ESCALATED)(
+        "%s leaves an explicit non-default max_tokens alone, even below the floor",
+        (model) => {
+          // A deliberate cost cap. Unlike the legacy branch (where Anthropic
+          // 400s if max_tokens <= budget_tokens, so overriding is mandatory),
+          // a short max_tokens here is legal — it truncates rather than
+          // erroring — so the caller's choice wins.
+          const output: Record<string, any> = { max_tokens: 2000 };
+          effortTransform("high", { model }, output);
+          expect(output.max_tokens).toBe(2000);
+        }
+      );
+
+      it("does not raise max_tokens when effort does not escalate", () => {
+        for (const model of ["claude-sonnet-5", "claude-sonnet-4-6"]) {
+          const output: Record<string, any> = { max_tokens: 4096 };
+          expect(effortTransform("high", { model }, output)).toBe("high");
+          expect(output.max_tokens).toBe(4096);
+        }
+      });
+
+      it.each(ESCALATED)(
+        "%s does not raise max_tokens below high effort",
+        (model) => {
+          for (const effort of ["minimal", "low", "medium"]) {
+            const output: Record<string, any> = { max_tokens: 4096 };
+            effortTransform(effort, { model }, output);
+            expect(output.max_tokens).toBe(4096);
+          }
+        }
+      );
+    });
+
     describe("legacy thinking (4.5 models)", () => {
       it.each([
         ["claude-sonnet-4-5-20250929", "minimal", 1024],

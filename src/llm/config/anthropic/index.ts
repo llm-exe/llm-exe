@@ -8,6 +8,17 @@ import { cleanJsonSchemaFor } from "@/llm/output/_utils/cleanJsonSchemaFor";
 
 const ANTHROPIC_VERSION = "2023-06-01";
 
+// Referenced in two places that must agree: the `maxTokens` option default and
+// the escalated-effort floor below, which only raises a value it can identify
+// as "caller never chose one".
+const DEFAULT_MAX_TOKENS = 4096;
+
+// Thinking tokens count toward max_tokens. Anthropic's guidance for escalated
+// effort is to give the model room to think and act across tool calls (~64k as
+// a starting point); the default 4096 truncates on exactly the long-horizon
+// work the "xhigh" escalation exists for.
+const ESCALATED_EFFORT_MIN_MAX_TOKENS = 65536;
+
 // Models that 400 if temperature / top_p / top_k are set to non-default values.
 const MODELS_REJECTING_SAMPLING_PARAMS = [
   "claude-opus-5",
@@ -44,7 +55,7 @@ const anthropicChatV1: Config = {
     effort: {},
     maxTokens: {
       required: [true, "maxTokens required"],
-      default: 4096,
+      default: DEFAULT_MAX_TOKENS,
     },
     // Every key mapped in mapBody must also be declared here:
     // stateFromOptions picks only declared option keys, so an undeclared
@@ -140,7 +151,26 @@ const anthropicChatV1: Config = {
                 ? "xhigh"
                 : "high",
           };
-          return map[v];
+          const mapped = map[v];
+
+          // Raise the output ceiling for escalated effort, but ONLY when
+          // max_tokens is still the config default — that is the one value we
+          // can attribute to "caller never chose one". Any other value is a
+          // deliberate cost cap and is left alone even if it will truncate.
+          //
+          // The legacy branch below overrides max_tokens unconditionally; that
+          // is not an inconsistency to "fix". There, Anthropic 400s whenever
+          // max_tokens <= budget_tokens, so overriding is the only way to send
+          // a valid request. Here 4096 is perfectly legal, just short, so
+          // silently discarding a caller's explicit number would be wrong.
+          if (
+            mapped === "xhigh" &&
+            _output.max_tokens === DEFAULT_MAX_TOKENS
+          ) {
+            _output.max_tokens = ESCALATED_EFFORT_MIN_MAX_TOKENS;
+          }
+
+          return mapped;
         }
 
         const isLegacy =

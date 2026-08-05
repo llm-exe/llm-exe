@@ -35,3 +35,5 @@ In addition to the [generic options](/llm/generic), the following options are av
 > The Bedrock Anthropic provider maps a subset of the direct [Anthropic provider](/llm/anthropic) options. `temperature`, `topK`, `stopSequences`, `metadata`, and `serviceTier` are not mapped for the Bedrock variant at this time.
 >
 > **`effort` and sampling params:** `effort` maps to `output_config.effort` and adaptive/extended `thinking`, identical to the direct provider, including the Opus 4.7 / 4.8 `high` -> `xhigh` escalation, which raises the default `max_tokens` to 65536 when you do not set it. `topP` is dropped for the models that 400 on sampling parameters (Opus 4.7, 4.8, and 5; Sonnet 5; Fable 5).
+>
+> Because `effort` enables thinking, and Anthropic disallows sampling parameters while thinking is active, omit `topP` (or set it `>= 0.95`) when you use `effort` — a lower `topP` returns a 400. This applies to the direct provider as well.

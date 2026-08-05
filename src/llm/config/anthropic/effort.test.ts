@@ -157,4 +157,90 @@ describe("anthropic effort (shared direct + bedrock)", () => {
       ).toBe(40);
     });
   });
+
+  // issue #716: effort enables thinking, and Anthropic forbids sampling params
+  // while thinking is active (temperature/top_k unset, top_p unset or >= 0.95).
+  // These models normally ALLOW sampling (not on the unconditional reject list),
+  // so the drop must be gated on effort, not on the model alone.
+  describe("sampling params dropped when effort enables thinking (issue #716)", () => {
+    // Two adaptive 4.6 models + the three 4.5 legacy models: allow sampling
+    // without effort, but effort turns on thinking.
+    const thinkingModels = [
+      "claude-opus-4-6",
+      "claude-sonnet-4-6",
+      "claude-opus-4-5",
+      "claude-sonnet-4-5",
+      "claude-haiku-4-5",
+    ];
+
+    describe.each(thinkingModels)("%s with effort:'high'", (model) => {
+      it("drops temperature and topK", () => {
+        expect(
+          dropIfModelRejectsSamplingParams(0.5, { model, effort: "high" })
+        ).toBeUndefined();
+        expect(
+          dropIfModelRejectsSamplingParams(40, { model, effort: "high" })
+        ).toBeUndefined();
+      });
+
+      it("drops topP below 0.95", () => {
+        expect(topPTransform(0.9, { model, effort: "high" })).toBeUndefined();
+        expect(topPTransform(0.94, { model, effort: "high" })).toBeUndefined();
+      });
+
+      it("keeps topP at or above 0.95", () => {
+        expect(topPTransform(0.95, { model, effort: "high" })).toBe(0.95);
+        expect(topPTransform(0.99, { model, effort: "high" })).toBe(0.99);
+      });
+    });
+
+    it("keeps sampling params when no effort is set (thinking off)", () => {
+      expect(
+        dropIfModelRejectsSamplingParams(0.5, { model: "claude-sonnet-4-6" })
+      ).toBe(0.5);
+      expect(topPTransform(0.9, { model: "claude-sonnet-4-6" })).toBe(0.9);
+    });
+
+    it("keeps sampling params when effort targets a non-thinking model (Claude 3.x)", () => {
+      const body = { model: "claude-3-5-sonnet-latest", effort: "high" };
+      expect(dropIfModelRejectsSamplingParams(0.5, body)).toBe(0.5);
+      expect(topPTransform(0.9, body)).toBe(0.9);
+    });
+
+    it("keeps sampling params when effort is an invalid value", () => {
+      expect(
+        dropIfModelRejectsSamplingParams(0.5, {
+          model: "claude-sonnet-4-6",
+          effort: "max",
+        })
+      ).toBe(0.5);
+      expect(
+        topPTransform(0.9, { model: "claude-sonnet-4-6", effort: "nonsense" })
+      ).toBe(0.9);
+    });
+
+    it("reject-list models still drop topP unconditionally, even topP >= 0.95", () => {
+      // opus-4-8 rejects sampling params regardless of thinking, so the >= 0.95
+      // carve-out does not apply and 0.99 is still dropped.
+      expect(
+        topPTransform(0.99, { model: "claude-opus-4-8", effort: "high" })
+      ).toBeUndefined();
+      expect(topPTransform(0.99, { model: "claude-opus-4-8" })).toBeUndefined();
+    });
+
+    it("applies to Bedrock invoke IDs (canonicalized)", () => {
+      expect(
+        topPTransform(0.9, {
+          model: "us.anthropic.claude-sonnet-4-6",
+          effort: "high",
+        })
+      ).toBeUndefined();
+      expect(
+        topPTransform(0.96, {
+          model: "us.anthropic.claude-sonnet-4-6",
+          effort: "high",
+        })
+      ).toBe(0.96);
+    });
+  });
 });

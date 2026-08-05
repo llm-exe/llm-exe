@@ -142,6 +142,25 @@ describe("bedrock configuration", () => {
       expect(body.top_p).toBe(0.9);
     });
 
+    it("drops top_p on a non-reject model when effort enables thinking (issue #716)", () => {
+      const body = bodyWith(
+        "us.anthropic.claude-sonnet-4-6",
+        { effort: "high", topP: 0.9 },
+        ["effort", "topP"]
+      );
+      expect(body.thinking).toEqual({ type: "adaptive" });
+      expect(body.top_p).toBeUndefined();
+    });
+
+    it("keeps top_p >= 0.95 on a non-reject model when effort enables thinking (issue #716)", () => {
+      const body = bodyWith(
+        "us.anthropic.claude-sonnet-4-6",
+        { effort: "high", topP: 0.97 },
+        ["effort", "topP"]
+      );
+      expect(body.top_p).toBe(0.97);
+    });
+
     it("adds no effort/thinking fields when effort is not provided", () => {
       const body = bodyWith("us.anthropic.claude-opus-4-8", {}, []);
       expect(body).not.toHaveProperty("output_config");

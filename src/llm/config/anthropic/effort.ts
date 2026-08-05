@@ -19,6 +19,13 @@ const MODELS_REJECTING_SAMPLING_PARAMS = [
   "claude-fable-5",
 ];
 
+// Caller-facing effort values, mapped to provider effort/thinking shapes below.
+// Anything else is ignored (no thinking enabled).
+const EFFORT_VALUES = ["minimal", "low", "medium", "high"];
+
+// When thinking is active, Anthropic requires top_p to be unset or >= this value.
+const THINKING_MIN_TOP_P = 0.95;
+
 // Normalize a provider model identifier to the canonical "claude-..." name the
 // gates below match against. The direct Anthropic API uses bare names
 // ("claude-opus-4-8"); Amazon Bedrock uses invoke identifiers such as
@@ -50,6 +57,22 @@ export function canonicalAnthropicModel(model: string): string {
 const matchesModel = (canonical: string, name: string): boolean =>
   canonical === name || canonical.startsWith(`${name}-`);
 
+// Adaptive-thinking generation: effort sets output_config.effort + adaptive thinking.
+const isAdaptiveModel = (canonical: string): boolean =>
+  matchesModel(canonical, "claude-opus-5") ||
+  matchesModel(canonical, "claude-opus-4-6") ||
+  matchesModel(canonical, "claude-opus-4-7") ||
+  matchesModel(canonical, "claude-opus-4-8") ||
+  matchesModel(canonical, "claude-sonnet-4-6") ||
+  matchesModel(canonical, "claude-sonnet-5") ||
+  matchesModel(canonical, "claude-fable-5");
+
+// Legacy (4.5) generation: effort sets thinking { type: "enabled", budget_tokens }.
+const isLegacyThinkingModel = (canonical: string): boolean =>
+  matchesModel(canonical, "claude-opus-4-5") ||
+  matchesModel(canonical, "claude-sonnet-4-5") ||
+  matchesModel(canonical, "claude-haiku-4-5");
+
 const modelRejectsSamplingParams = (model: string): boolean => {
   const canonical = canonicalAnthropicModel(model);
   return MODELS_REJECTING_SAMPLING_PARAMS.some((name) =>
@@ -57,17 +80,46 @@ const modelRejectsSamplingParams = (model: string): boolean => {
   );
 };
 
+// True when the caller's `effort` will turn on thinking for this model. Anthropic
+// forbids sampling params while thinking is active (temperature / top_k must be
+// unset, top_p unset or >= 0.95), so the sampling transforms use this to drop the
+// incompatible params rather than forward them into a guaranteed 400 (issue #716).
+// `effort` is the only option that enables thinking (there is no `thinking`
+// passthrough on either config), so this is a complete check. It reads `effort`
+// from the (frozen) state, not `_output.thinking`, because the sampling transforms
+// run before the effort transform in the mapBody template order.
+const effortEnablesThinking = (model: string, effort: unknown): boolean => {
+  if (typeof effort !== "string" || !EFFORT_VALUES.includes(effort)) {
+    return false;
+  }
+  const canonical = canonicalAnthropicModel(model || "");
+  return isAdaptiveModel(canonical) || isLegacyThinkingModel(canonical);
+};
+
 // Claude 4.x rejects requests that set both temperature and top_p; keep temperature.
 const isClaude4x = (model: string) =>
   /^claude-(opus|sonnet|haiku)-4-/.test(canonicalAnthropicModel(model));
 
+// Used for temperature / top_k: drop when the model rejects sampling params
+// unconditionally, OR when effort enables thinking (temperature / top_k must be
+// unset while thinking is active).
 export const dropIfModelRejectsSamplingParams = (
   v: any,
   body: Record<string, any>
-) => (modelRejectsSamplingParams(body.model) ? undefined : v);
+) =>
+  modelRejectsSamplingParams(body.model) ||
+  effortEnablesThinking(body.model, body.effort)
+    ? undefined
+    : v;
 
 export const topPTransform = (v: any, body: Record<string, any>) => {
   if (modelRejectsSamplingParams(body.model)) return undefined;
+  // Thinking (enabled via effort) requires top_p unset or >= 0.95. Checked before
+  // the Claude 4.x temperature rule so an adaptive 4.x model uses the thinking
+  // constraint rather than the temperature one.
+  if (effortEnablesThinking(body.model, body.effort)) {
+    return typeof v === "number" && v >= THINKING_MIN_TOP_P ? v : undefined;
+  }
   if (isClaude4x(body.model) && body.temperature !== undefined) return undefined;
   return v;
 };
@@ -83,25 +135,13 @@ export const effortTransform = (
   _s: Record<string, any>,
   _output: Record<string, any>
 ) => {
-  if (
-    typeof v !== "string" ||
-    !["minimal", "low", "medium", "high"].includes(v)
-  ) {
+  if (typeof v !== "string" || !EFFORT_VALUES.includes(v)) {
     return undefined;
   }
 
   const model = canonicalAnthropicModel(_s.model || "");
 
-  const isAdaptive =
-    matchesModel(model, "claude-opus-5") ||
-    matchesModel(model, "claude-opus-4-6") ||
-    matchesModel(model, "claude-opus-4-7") ||
-    matchesModel(model, "claude-opus-4-8") ||
-    matchesModel(model, "claude-sonnet-4-6") ||
-    matchesModel(model, "claude-sonnet-5") ||
-    matchesModel(model, "claude-fable-5");
-
-  if (isAdaptive) {
+  if (isAdaptiveModel(model)) {
     // Opus 5 already runs adaptive thinking when `thinking` is omitted; sending
     // it explicitly is equivalent and keeps one code path for the whole adaptive
     // generation (4.6/4.7/4.8 need it stated to think).
@@ -150,12 +190,7 @@ export const effortTransform = (
     return mapped;
   }
 
-  const isLegacy =
-    matchesModel(model, "claude-opus-4-5") ||
-    matchesModel(model, "claude-sonnet-4-5") ||
-    matchesModel(model, "claude-haiku-4-5");
-
-  if (isLegacy) {
+  if (isLegacyThinkingModel(model)) {
     const budgetMap: Record<string, number> = {
       minimal: 1024,
       low: 4096,

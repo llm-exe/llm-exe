@@ -36,10 +36,28 @@ describe("anthropic effort (shared direct + bedrock)", () => {
       // only an anchored "[<geo>.]anthropic." prefix is stripped, never a
       // mid-string occurrence, so custom/proxy ids are not mangled
       ["my-anthropic.claude-proxy", "my-anthropic.claude-proxy"],
-      // opaque ARNs have no recognizable claude-... core -> returned unchanged
+      // inference-profile / foundation-model ARNs embed the model id and are
+      // extracted, then canonicalized (issue #719)
+      [
+        "arn:aws:bedrock:us-east-1:123:inference-profile/us.anthropic.claude-opus-4-8-v1:0",
+        "claude-opus-4-8-v1:0",
+      ],
+      [
+        "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "claude-sonnet-4-5-20250929-v1:0",
+      ],
+      [
+        "arn:aws-us-gov:bedrock:us-gov-west-1:123:inference-profile/us-gov.anthropic.claude-opus-4-8",
+        "claude-opus-4-8",
+      ],
+      // opaque ARN resource types carry no model id -> returned unchanged
       [
         "arn:aws:bedrock:us-east-1:1:provisioned-model/x",
         "arn:aws:bedrock:us-east-1:1:provisioned-model/x",
+      ],
+      [
+        "arn:aws:bedrock:us-east-1:123:application-inference-profile/abc123",
+        "arn:aws:bedrock:us-east-1:123:application-inference-profile/abc123",
       ],
     ])("normalizes %s -> %s", (input, expected) => {
       expect(canonicalAnthropicModel(input)).toBe(expected);

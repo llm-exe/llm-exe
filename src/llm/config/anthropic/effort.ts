@@ -38,18 +38,30 @@ const THINKING_MIN_TOP_P = 0.95;
 // The prefix is anchored at the start so a name that merely contains the
 // substring (e.g. a custom "my-anthropic.claude-proxy") is left untouched, and
 // the geo segment may contain hyphens ("us-gov.anthropic...") to cover GovCloud
-// cross-region profiles. A full ARN of any form returns unchanged and matches no
-// gate (effort/thinking is not applied, sampling params are not dropped): this
-// includes provisioned-/custom-model ARNs, which carry no model name, but also
-// inference-profile ARNs, which DO embed a "claude-..." mid-string that the
-// anchored pattern intentionally does not reach. Pass the bare profile/model id
-// ("us.anthropic.claude-opus-4-8") rather than its ARN to get effort handling.
-// Model IDs are expected in their standard lowercase form (all real Anthropic/
+// cross-region profiles.
+//
+// A full Bedrock ARN is also accepted for the two resource types that embed the
+// model id — inference-profile and foundation-model — by extracting the id after
+// the resource type, then applying the same anchored strip. Other ARN types
+// (provisioned-model, custom-model, application-inference-profile) carry an
+// opaque id, so they return unchanged and match no gate (effort/thinking is not
+// applied, sampling params are not dropped) — which is the safe fallthrough.
+// (NOTE: llm-exe cannot yet *dispatch* an ARN model id — the Bedrock endpoint
+// interpolates {{model}} without URL-encoding, so an ARN's slashes break the
+// request path; gating it here is correct but latent until that is fixed. See
+// issue #719 and the endpoint-encoding follow-up.)
+//
+// Model IDs are expected in their standard lowercase form (all real Anthropic /
 // Bedrock IDs are).
 export function canonicalAnthropicModel(model: string): string {
   if (!model) return "";
-  const match = /^(?:[a-z]+(?:-[a-z]+)*\.)?anthropic\.(claude-.+)$/.exec(model);
-  return match ? match[1] : model;
+  const arn =
+    /^arn:[^:]*:bedrock:[^:]*:[^:]*:(?:inference-profile|foundation-model)\/(.+)$/.exec(
+      model
+    );
+  const id = arn ? arn[1] : model;
+  const match = /^(?:[a-z]+(?:-[a-z]+)*\.)?anthropic\.(claude-.+)$/.exec(id);
+  return match ? match[1] : id;
 }
 
 // Family match on a canonicalized model name: exact, or a dated snapshot /

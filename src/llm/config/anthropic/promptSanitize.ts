@@ -91,6 +91,12 @@ export function anthropicPromptSanitize(
     );
   }
 
+  // nothing to sanitize — leave the output object untouched and let the
+  // provider surface any error about an empty request
+  if (_messages.length === 0) {
+    return [];
+  }
+
   const [first, ...messages] = [
     ..._messages.map((a) => ({ ...a }) as IChatMessage),
   ];

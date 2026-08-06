@@ -2,12 +2,12 @@ import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { replaceTemplateString } from "@/utils/modules/replaceTemplateString";
 import { anthropicPromptSanitize } from "../anthropic/promptSanitize";
 import { effortTransform, topPTransform } from "../anthropic/effort";
+import { anthropicFunctionCall, anthropicFunctions } from "../anthropic/mapOptions";
 import { isImageUrlContentBlock } from "../_utils/imageContent";
 import { LlmExeError } from "@/errors";
 import { Config } from "@/types";
 import { OutputAnthropicClaude3Chat } from "@/llm/output/claude";
 import { OutputMetaLlama3Chat } from "@/llm/output/llama";
-import { cleanJsonSchemaFor } from "@/llm/output/_utils/cleanJsonSchemaFor";
 // import { amazonNovaPromptSanitize } from "./prompt.nova";
 
 const ANTHROPIC_BEDROCK_VERSION = "bedrock-2023-05-31";
@@ -66,22 +66,8 @@ const amazonAnthropicChatV1: Config = {
     },
   },
   mapOptions: {
-    functionCall: (call, _options) => {
-      // Anthropic handles "none" by clearing functions array
-      if (call === "none") return { _clearFunctions: true };
-      if (call === "auto" || call === "any") {
-        return { tool_choice: { type: call } };
-      }
-      return { tool_choice: call };
-    },
-
-    functions: (functions) => ({
-      tools: functions.map((f) => ({
-        name: f.name,
-        description: f.description,
-        input_schema: cleanJsonSchemaFor(f.parameters, "anthropic.chat"),
-      })),
-    }),
+    functionCall: anthropicFunctionCall,
+    functions: anthropicFunctions,
   },
   transformResponse: OutputAnthropicClaude3Chat,
 };

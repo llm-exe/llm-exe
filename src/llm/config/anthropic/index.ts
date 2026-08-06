@@ -8,8 +8,8 @@ import {
   dropIfModelRejectsSamplingParams,
   topPTransform,
 } from "./effort";
+import { anthropicFunctionCall, anthropicFunctions } from "./mapOptions";
 import { OutputAnthropicClaude3Chat } from "@/llm/output/claude";
-import { cleanJsonSchemaFor } from "@/llm/output/_utils/cleanJsonSchemaFor";
 
 const ANTHROPIC_VERSION = "2023-06-01";
 
@@ -83,22 +83,8 @@ const anthropicChatV1: Config = {
     },
   },
   mapOptions: {
-    functionCall: (call, _options) => {
-      // Anthropic handles "none" by clearing functions array
-      if (call === "none") return { _clearFunctions: true };
-      if (call === "auto" || call === "any") {
-        return { tool_choice: { type: call } };
-      }
-      return { tool_choice: call };
-    },
-
-    functions: (functions) => ({
-      tools: functions.map((f) => ({
-        name: f.name,
-        description: f.description,
-        input_schema: cleanJsonSchemaFor(f.parameters, "anthropic.chat"),
-      })),
-    }),
+    functionCall: anthropicFunctionCall,
+    functions: anthropicFunctions,
   },
   transformResponse: OutputAnthropicClaude3Chat,
 };

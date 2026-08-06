@@ -755,10 +755,32 @@ describe("anthropic config", () => {
       });
     });
 
-    it("passes through specific function name unchanged", () => {
-      expect(functionCall("my_func" as any, {})).toEqual({
-        tool_choice: "my_func",
+    it("maps a named tool { name } to Anthropic's { type: 'tool', name } (issue #720)", () => {
+      expect(functionCall({ name: "my_func" } as any, {})).toEqual({
+        tool_choice: { type: "tool", name: "my_func" },
       });
+    });
+
+    it("throws when a forced tool_choice is combined with extended thinking (issue #720)", async () => {
+      // effort on a 4.5 model produces thinking:{type:"enabled"}, which Anthropic
+      // rejects together with a forced tool_choice. llm-exe fails fast.
+      const llm = useLlm("anthropic.claude-sonnet-4-5", {
+        effort: "high",
+        anthropicApiKey: "sk-ant-test",
+        numOfAttempts: 1,
+      });
+      await expect(
+        llm.call([{ role: "user", content: "hi" }], {
+          functions: [
+            {
+              name: "f",
+              description: "d",
+              parameters: { type: "object", properties: {} },
+            },
+          ],
+          functionCall: "any",
+        })
+      ).rejects.toThrow(/forced tool_choice/i);
     });
   });
 

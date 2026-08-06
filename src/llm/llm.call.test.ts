@@ -181,7 +181,8 @@ describe("useLlm_call", () => {
     });
     expect(replaceTemplateStringSimple).toHaveBeenCalledWith(
       mockConfig.endpoint,
-      mockState
+      mockState,
+      { encodeKeys: ["model"] }
     );
     expect(parseHeaders).toHaveBeenCalledWith(
       mockConfig,

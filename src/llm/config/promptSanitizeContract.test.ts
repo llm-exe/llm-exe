@@ -358,35 +358,27 @@ const ollamaExpectations: Record<string, Expectation> = {
   "remote https image content block": {
     throws: "Image URLs are not supported by ollama",
   },
-  // `ollamaPromptSanitize` returns early for any message whose content is not an
-  // array, so the llm-exe tool shape (`function_call`, `role: "function"`) goes
-  // out on the wire unconverted. Ollama's /api/chat actually expects
-  // `tool_calls: [{ function: { name, arguments } }]` and `role: "tool"`, so the
-  // two rows below record current behavior — they are not a provider capability
-  // and not a guarantee. Tracked in #706.
+  // ollama's /api/chat takes `tool_calls: [{ function: { name, arguments } }]`
+  // with `arguments` as an object (not a JSON string, unlike openai), and tool
+  // results as plain `role: "tool"` messages.
   "assistant tool call": {
     prompt: [
       { role: "user", content: "weather?" },
       {
         role: "assistant",
-        content: null,
-        function_call: {
-          id: "call_1",
-          name: "get_weather",
-          arguments: '{"city":"Denver"}',
-        },
+        content: "",
+        tool_calls: [
+          {
+            function: { name: "get_weather", arguments: { city: "Denver" } },
+          },
+        ],
       },
     ],
   },
   "tool result": {
     prompt: [
       { role: "user", content: "weather?" },
-      {
-        role: "function",
-        id: "call_1",
-        name: "get_weather",
-        content: "72 and sunny",
-      },
+      { role: "tool", content: "72 and sunny" },
     ],
   },
 };

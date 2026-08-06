@@ -1,5 +1,6 @@
 import { IChatMessages } from "@/types";
 import { LlmExeError } from "@/errors";
+import { maybeParseJSON } from "@/utils";
 import {
   isImageUrlContentBlock,
   parseImageUrl,
@@ -10,6 +11,11 @@ import {
  * `images` array of raw base64 (no data: prefix), so array content gets
  * split: text blocks join into the content string, image blocks move to
  * `images`.
+ *
+ * Tool traffic is converted too: llm-exe's internal `function_call` becomes
+ * ollama's `tool_calls: [{ function: { name, arguments } }]` — with
+ * `arguments` as an object, not a JSON string — and `role: "function"`
+ * becomes `role: "tool"`.
  */
 export function ollamaPromptSanitize(_messages: string | IChatMessages) {
   if (typeof _messages === "string") {
@@ -17,11 +23,38 @@ export function ollamaPromptSanitize(_messages: string | IChatMessages) {
   }
 
   return _messages.map((_message) => {
-    if (!Array.isArray(_message.content)) {
-      return _message;
+    const message: Record<string, any> = { ..._message };
+
+    if (message.role === "function") {
+      // ollama tool results are plain `role: "tool"` messages with the
+      // stringified result as content — no id/name on the wire
+      message.role = "tool";
+      delete message.id;
+      delete message.name;
     }
 
-    const message: Record<string, any> = { ..._message };
+    if (message.function_call) {
+      const toolsArr = Array.isArray(message.function_call)
+        ? message.function_call
+        : [message.function_call];
+      message.role = "assistant";
+      message.tool_calls = toolsArr.map((call: any) => ({
+        function: {
+          name: call.name,
+          arguments: maybeParseJSON(call.arguments),
+        },
+      }));
+      delete message.function_call;
+      if (message.content === null || typeof message.content === "undefined") {
+        // ollama types content as a string; a tool call carries no text
+        message.content = "";
+      }
+    }
+
+    if (!Array.isArray(message.content)) {
+      return message;
+    }
+
     const textParts: string[] = [];
     const images: string[] = [];
 

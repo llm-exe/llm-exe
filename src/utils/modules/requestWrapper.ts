@@ -9,14 +9,20 @@ import { backOff } from "exponential-backoff";
 import { asyncCallWithTimeout } from "@/utils/modules/asyncCallWithTimeout";
 import { emitDeprecationWarning } from "@/llm/_utils.deprecationWarning";
 import { isLlmExeError } from "@/errors";
+import type { ErrorCategory } from "@/errors";
 
 // const doNotRetryErrorMessages: string[] = [];
 
 // LlmExeError categories that are deterministic client-side failures — bad
 // config/options, an invalid prompt, or missing auth inputs. Retrying cannot fix
 // these, so short-circuit backOff and surface them on the first attempt instead
-// of burning numOfAttempts (and any delay) on a guaranteed re-failure.
-const NON_RETRYABLE_CATEGORIES = new Set(["configuration", "prompt", "auth"]);
+// of burning numOfAttempts (and any delay) on a guaranteed re-failure. Typed as
+// Set<ErrorCategory> so a mistyped category is a compile error, not a silent miss.
+const NON_RETRYABLE_CATEGORIES = new Set<ErrorCategory>([
+  "configuration",
+  "prompt",
+  "auth",
+]);
 
 export function apiRequestWrapper<T extends Record<string, any>, I>(
   config: Config<any>,

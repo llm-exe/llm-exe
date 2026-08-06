@@ -6,6 +6,7 @@ const ALL_CODES = [
   "configuration.missing_env",
   "configuration.missing_option",
   "configuration.invalid_headers",
+  "configuration.incompatible_options",
   "parser.invalid_type",
   "parser.invalid_input",
   "parser.parse_failed",

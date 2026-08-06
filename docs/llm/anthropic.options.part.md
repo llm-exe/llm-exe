@@ -18,5 +18,7 @@
 > **`effort`:** Accepts `minimal`/`low`/`medium`/`high` (silently ignored on models that do not support reasoning, e.g. Claude 3.x). For the adaptive generation (Opus 4.6 / 4.7 / 4.8 / 5, Sonnet 4.6 / 5, Fable 5) it sets `output_config.effort` and adaptive `thinking`; `high` escalates to `xhigh` on Opus 4.7 / 4.8, and in that escalated case, if you do not pass `maxTokens`, its default is raised from 4096 to 65536 so adaptive thinking is not truncated (an explicit `maxTokens` is always honored). For the 4.5 generation it sets extended-thinking `budget_tokens` and raises `max_tokens` above the budget.
 >
 > Because `effort` enables thinking, and Anthropic disallows sampling parameters while thinking is active, llm-exe drops `temperature` and `topK`, and drops `topP` unless it is `>= 0.95`, whenever `effort` enables thinking — so the request stays valid.
+>
+> A forced `tool_choice` (`functionCall: "any"` or a named tool) is incompatible with **extended** thinking (the 4.5 `enabled` path); llm-exe throws a clear error rather than send a request the API rejects. Adaptive thinking (4.6+/5) permits forced tool use, so it is allowed.
 
 Anthropic Docs: [link](https://docs.anthropic.com/en/api/messages)

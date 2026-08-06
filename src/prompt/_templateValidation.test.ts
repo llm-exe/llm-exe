@@ -222,12 +222,15 @@ describe("_templateValidation", () => {
     });
 
     it("keeps block params scoped to their own #each when two are siblings", () => {
-      // `user` is local to the first block only; the second block is bare and
-      // therefore swallowed, so neither alias leaks into the references.
+      // `user` is local to the first block only. The sibling declares its own
+      // param `row`, so `user` is out of scope there — `user.name` inside the
+      // second block is a real root reference and must surface. That is exactly
+      // what would break if a block param leaked across sibling blocks. `row`
+      // stays local; `users`/`rows` are the loop subjects.
       const refs = collectTemplateInputReferences(
-        "{{#each users as |user|}}{{user.name}}{{/each}}{{#each rows}}{{cell}}{{/each}}"
+        "{{#each users as |user|}}{{user.name}}{{/each}}{{#each rows as |row|}}{{user.name}}{{row}}{{/each}}"
       );
-      expect(paths(refs).sort()).toEqual(["rows", "users"]);
+      expect(paths(refs).sort()).toEqual(["rows", "user.name", "users"]);
     });
 
     it("walks a bare #each nested inside a block-param #each", () => {

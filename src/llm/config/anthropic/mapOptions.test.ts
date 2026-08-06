@@ -35,6 +35,14 @@ describe("anthropic mapOptions (shared direct + bedrock)", () => {
         anthropicFunctionCall({ type: "tool", name: "get_time" } as any)
       ).toEqual({ tool_choice: { type: "tool", name: "get_time" } });
     });
+
+    it("forwards an off-type shape unchanged as a defensive fallback", () => {
+      // GenericFunctionCall is "auto" | "none" | "any" | { name }; a bare string
+      // is off-type and passes through rather than being coerced or dropped.
+      expect(anthropicFunctionCall("my_func" as any)).toEqual({
+        tool_choice: "my_func",
+      });
+    });
   });
 
   describe("anthropicFunctionCall — thinking incompatibility (issue #720)", () => {

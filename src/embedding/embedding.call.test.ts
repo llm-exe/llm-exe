@@ -86,7 +86,7 @@ describe("createEmbedding_call", () => {
       ...mockState,
       input
     });
-    expect(replaceTemplateStringSimpleMock).toHaveBeenCalledWith(mockConfig.endpoint, mockState);
+    expect(replaceTemplateStringSimpleMock).toHaveBeenCalledWith(mockConfig.endpoint, mockState, { encodeKeys: ["model"] });
     expect(parseHeadersMock).toHaveBeenCalledWith(mockConfig, mockState, {
       url: mockConfig.endpoint,
       headers: expect.any(Object),
@@ -118,7 +118,7 @@ describe("createEmbedding_call", () => {
       ...mockState,
       input
     });
-    expect(replaceTemplateStringSimpleMock).toHaveBeenCalledWith(mockConfig.endpoint, mockState);
+    expect(replaceTemplateStringSimpleMock).toHaveBeenCalledWith(mockConfig.endpoint, mockState, { encodeKeys: ["model"] });
     expect(parseHeadersMock).toHaveBeenCalledWith(mockConfig, mockState, {
       url: mockConfig.endpoint,
       headers: expect.any(Object),
@@ -150,7 +150,7 @@ describe("createEmbedding_call", () => {
       ...mockState,
       input
     });
-    expect(replaceTemplateStringSimpleMock).toHaveBeenCalledWith(mockConfig.endpoint, mockState);
+    expect(replaceTemplateStringSimpleMock).toHaveBeenCalledWith(mockConfig.endpoint, mockState, { encodeKeys: ["model"] });
     expect(parseHeadersMock).toHaveBeenCalledWith(mockConfig, mockState, {
       url: mockConfig.endpoint,
       headers: expect.any(Object),
@@ -186,7 +186,7 @@ describe("createEmbedding_call", () => {
       ...mockState,
       input
     });
-    expect(replaceTemplateStringSimpleMock).toHaveBeenCalledWith(mockConfig.endpoint, mockState);
+    expect(replaceTemplateStringSimpleMock).toHaveBeenCalledWith(mockConfig.endpoint, mockState, { encodeKeys: ["model"] });
     expect(parseHeadersMock).toHaveBeenCalledWith(mockConfig, mockState, {
       url: mockConfig.endpoint,
       headers: expect.any(Object),
@@ -240,7 +240,7 @@ describe("createEmbedding_call", () => {
       ...mockState,
       input
     });
-    expect(replaceTemplateStringSimpleMock).toHaveBeenCalledWith(mockConfig.endpoint, mockState);
+    expect(replaceTemplateStringSimpleMock).toHaveBeenCalledWith(mockConfig.endpoint, mockState, { encodeKeys: ["model"] });
     expect(parseHeadersMock).toHaveBeenCalledWith(mockConfig, mockState, {
       url: mockConfig.endpoint,
       headers: expect.any(Object),
@@ -266,7 +266,7 @@ describe("createEmbedding_call", () => {
       ...mockState,
       input
     });
-    expect(replaceTemplateStringSimpleMock).toHaveBeenCalledWith(mockConfig.endpoint, mockState);
+    expect(replaceTemplateStringSimpleMock).toHaveBeenCalledWith(mockConfig.endpoint, mockState, { encodeKeys: ["model"] });
     expect(parseHeadersMock).toHaveBeenCalledWith(mockConfig, mockState, {
       url: mockConfig.endpoint,
       headers: expect.any(Object),

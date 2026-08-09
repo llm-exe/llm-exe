@@ -167,6 +167,7 @@ describe("configs", () => {
       options: {
         prompt: {},
         topP: {},
+        effort: {},
         maxTokens: {},
         awsRegion: {
           default: AWS_REGION_AT_IMPORT,
@@ -182,6 +183,7 @@ describe("configs", () => {
         },
         topP: {
           key: "top_p",
+          transform: expect.any(Function),
         },
         maxTokens: {
           key: "max_tokens",
@@ -190,6 +192,10 @@ describe("configs", () => {
         anthropic_version: {
           key: "anthropic_version",
           default: "bedrock-2023-05-31",
+        },
+        effort: {
+          key: "output_config.effort",
+          transform: expect.any(Function),
         },
       },
       mapOptions: {

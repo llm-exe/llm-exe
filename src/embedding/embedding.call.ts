@@ -37,7 +37,9 @@ export async function createEmbedding_call(
 
   const body = JSON.stringify(input);
 
-  const url = replaceTemplateStringSimple(config.endpoint, state);
+  const url = replaceTemplateStringSimple(config.endpoint, state, {
+    encodeKeys: ["model"],
+  });
 
   const headers = await parseHeaders(config, state, {
     url,

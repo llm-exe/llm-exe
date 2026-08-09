@@ -54,6 +54,11 @@ export type MissingConfigurationContext = BaseErrorContext & {
   envVar?: string;
 };
 
+export type IncompatibleOptionsContext = BaseErrorContext & {
+  option?: string;
+  conflictsWith?: string;
+};
+
 export type InvalidHeadersContext = BaseErrorContext & {
   provider?: string;
   key?: string;
@@ -198,6 +203,7 @@ export type ErrorContextByCode = {
   "configuration.missing_env": MissingConfigurationContext;
   "configuration.missing_option": MissingConfigurationContext;
   "configuration.invalid_headers": InvalidHeadersContext;
+  "configuration.incompatible_options": IncompatibleOptionsContext;
   "parser.invalid_type": ParserInvalidTypeContext;
   "parser.invalid_input": ParserParseFailedContext;
   "parser.parse_failed": ParserParseFailedContext;

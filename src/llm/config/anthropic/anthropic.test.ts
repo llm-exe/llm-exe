@@ -337,6 +337,34 @@ describe("anthropic config", () => {
       expect(body.max_tokens).toBe(4096);
     });
 
+    it("drops temperature/topP/topK when effort enables thinking on a non-reject adaptive model (issue #716)", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-4-6",
+        maxTokens: 4096,
+        effort: "high",
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+        prompt,
+      });
+      expect(body.thinking).toEqual({ type: "adaptive" });
+      expect(body.temperature).toBeUndefined();
+      expect(body.top_p).toBeUndefined();
+      expect(body.top_k).toBeUndefined();
+    });
+
+    it("keeps topP >= 0.95 when effort enables thinking (issue #716)", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-4-6",
+        maxTokens: 4096,
+        effort: "high",
+        topP: 0.97,
+        prompt,
+      });
+      expect(body.thinking).toEqual({ type: "adaptive" });
+      expect(body.top_p).toBe(0.97);
+    });
+
     it("should not add thinking fields for claude-3 models", () => {
       const body = mapBody(config.mapBody, {
         model: "claude-3-5-sonnet-latest",
@@ -727,10 +755,32 @@ describe("anthropic config", () => {
       });
     });
 
-    it("passes through specific function name unchanged", () => {
-      expect(functionCall("my_func" as any, {})).toEqual({
-        tool_choice: "my_func",
+    it("maps a named tool { name } to Anthropic's { type: 'tool', name } (issue #720)", () => {
+      expect(functionCall({ name: "my_func" } as any, {})).toEqual({
+        tool_choice: { type: "tool", name: "my_func" },
       });
+    });
+
+    it("throws when a forced tool_choice is combined with extended thinking (issue #720)", async () => {
+      // effort on a 4.5 model produces thinking:{type:"enabled"}, which Anthropic
+      // rejects together with a forced tool_choice. llm-exe fails fast.
+      const llm = useLlm("anthropic.claude-sonnet-4-5", {
+        effort: "high",
+        anthropicApiKey: "sk-ant-test",
+        numOfAttempts: 1,
+      });
+      await expect(
+        llm.call([{ role: "user", content: "hi" }], {
+          functions: [
+            {
+              name: "f",
+              description: "d",
+              parameters: { type: "object", properties: {} },
+            },
+          ],
+          functionCall: "any",
+        })
+      ).rejects.toThrow(/forced tool_choice/i);
     });
   });
 

@@ -1,12 +1,13 @@
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { replaceTemplateString } from "@/utils/modules/replaceTemplateString";
 import { anthropicPromptSanitize } from "../anthropic/promptSanitize";
+import { effortTransform, topPTransform } from "../anthropic/effort";
+import { anthropicFunctionCall, anthropicFunctions } from "../anthropic/mapOptions";
 import { isImageUrlContentBlock } from "../_utils/imageContent";
 import { LlmExeError } from "@/errors";
 import { Config } from "@/types";
 import { OutputAnthropicClaude3Chat } from "@/llm/output/claude";
 import { OutputMetaLlama3Chat } from "@/llm/output/llama";
-import { cleanJsonSchemaFor } from "@/llm/output/_utils/cleanJsonSchemaFor";
 // import { amazonNovaPromptSanitize } from "./prompt.nova";
 
 const ANTHROPIC_BEDROCK_VERSION = "bedrock-2023-05-31";
@@ -20,6 +21,7 @@ const amazonAnthropicChatV1: Config = {
   options: {
     prompt: {},
     topP: {},
+    effort: {},
     maxTokens: {},
     awsRegion: {
       default: getEnvironmentVariable("AWS_REGION"),
@@ -40,6 +42,11 @@ const amazonAnthropicChatV1: Config = {
     },
     topP: {
       key: "top_p",
+      // Bedrock's Anthropic 4.7+/5 models 400 on non-default top_p, so drop it
+      // for those (shared with the direct provider). The transform's additional
+      // "drop top_p when temperature is also set on 4.x" rule is inert here,
+      // since temperature is not a declared Bedrock option.
+      transform: topPTransform,
     },
     maxTokens: {
       key: "max_tokens",
@@ -49,24 +56,18 @@ const amazonAnthropicChatV1: Config = {
       key: "anthropic_version",
       default: ANTHROPIC_BEDROCK_VERSION,
     },
+    // effort maps to output_config.effort + thinking, shared with the direct
+    // Anthropic provider (Bedrock's invoke API accepts the same top-level shape).
+    // Placed after maxTokens so the #712 escalation floor sees the mapped
+    // max_tokens value when it runs. See ../anthropic/effort.
+    effort: {
+      key: "output_config.effort",
+      transform: effortTransform,
+    },
   },
   mapOptions: {
-    functionCall: (call, _options) => {
-      // Anthropic handles "none" by clearing functions array
-      if (call === "none") return { _clearFunctions: true };
-      if (call === "auto" || call === "any") {
-        return { tool_choice: { type: call } };
-      }
-      return { tool_choice: call };
-    },
-
-    functions: (functions) => ({
-      tools: functions.map((f) => ({
-        name: f.name,
-        description: f.description,
-        input_schema: cleanJsonSchemaFor(f.parameters, "anthropic.chat"),
-      })),
-    }),
+    functionCall: anthropicFunctionCall,
+    functions: anthropicFunctions,
   },
   transformResponse: OutputAnthropicClaude3Chat,
 };

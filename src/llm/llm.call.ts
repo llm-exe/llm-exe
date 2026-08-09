@@ -40,7 +40,11 @@ export async function useLlm_call(
 
   const body = JSON.stringify(applyOptions);
 
-  const url = replaceTemplateStringSimple(config.endpoint, state);
+  // Encode the model id in the endpoint path: a Bedrock ARN model id contains
+  // ":" and "/", which otherwise break the request path (see issue #722).
+  const url = replaceTemplateStringSimple(config.endpoint, state, {
+    encodeKeys: ["model"],
+  });
 
   const headers = await parseHeaders(config, state, {
     url,

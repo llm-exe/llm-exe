@@ -261,4 +261,59 @@ describe("anthropic effort (shared direct + bedrock)", () => {
       ).toBe(0.96);
     });
   });
+
+  // The options-based `useLlm("anthropic.chat.v1", {...})` entrypoint lets a
+  // caller omit `model` (the provider then falls back to its own default), so
+  // every gate has to tolerate an absent model rather than throw on it. These
+  // pin the fail-open behavior: no model means no model-specific rewriting.
+  describe("missing model on state/body", () => {
+    it("effortTransform drops the effort and sets no thinking / max_tokens floor", () => {
+      const out: Record<string, any> = { max_tokens: 10000 };
+      expect(
+        effortTransform("high", { [PROVIDED_OPTION_KEYS]: new Set(["effort"]) }, out)
+      ).toBeUndefined();
+      expect(out.thinking).toBeUndefined();
+      expect(out.max_tokens).toBe(10000);
+    });
+
+    it("effortTransform tolerates a null/empty model the same way", () => {
+      const out: Record<string, any> = {};
+      expect(effortTransform("medium", { model: null }, out)).toBeUndefined();
+      expect(effortTransform("medium", { model: "" }, out)).toBeUndefined();
+      expect(out.thinking).toBeUndefined();
+    });
+
+    it("keeps sampling params when there is no model to gate on", () => {
+      expect(dropIfModelRejectsSamplingParams(0.5, {})).toBe(0.5);
+      expect(dropIfModelRejectsSamplingParams(0.5, { effort: "high" })).toBe(0.5);
+      expect(topPTransform(0.5, {})).toBe(0.5);
+      expect(topPTransform(0.5, { effort: "high" })).toBe(0.5);
+    });
+  });
+
+  // `effort` arrives from user input and is only meaningful for the documented
+  // values; anything else must be dropped rather than forwarded to the provider.
+  describe("invalid effort values", () => {
+    it("effortTransform drops non-string and unknown values", () => {
+      const out: Record<string, any> = {};
+      for (const bad of [undefined, null, 1, {}, [], true, "", "extreme", "HIGH"]) {
+        expect(effortTransform(bad, { model: "claude-opus-5" }, out)).toBeUndefined();
+      }
+      expect(out.thinking).toBeUndefined();
+    });
+
+    it("an invalid effort does not count as thinking for the sampling gates", () => {
+      // A thinking-capable model, but the effort value is not one we honor, so
+      // thinking never turns on and temperature/top_k must survive.
+      expect(
+        dropIfModelRejectsSamplingParams(0.5, {
+          model: "claude-sonnet-4-6",
+          effort: "extreme",
+        })
+      ).toBe(0.5);
+      expect(
+        topPTransform(0.5, { model: "claude-sonnet-4-6", effort: 7 })
+      ).toBe(0.5);
+    });
+  });
 });

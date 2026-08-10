@@ -24,7 +24,7 @@ In addition to the [generic options](/llm/generic), the following options are av
 | Option       | Type   | Default   | Description                                                                 |
 | ------------ | ------ | --------- | --------------------------------------------------------------------------- |
 | model        | string | —         | The Bedrock model id. Must be specified. See AWS Bedrock Docs               |
-| maxTokens    | number | 10000     | Maps to `max_tokens`. See Anthropic Docs                                    |
+| maxTokens    | number | 10000     | Maps to `max_tokens`. Raised to 65536 when unset on the escalated effort path (Opus 4.7 / 4.8 high). See the effort note below. |
 | topP         | number | undefined | Maps to `top_p`. Dropped for reject models, or `< 0.95` under `effort`.     |
 | effort       | string | undefined | Maps to `output_config.effort` + `thinking`. See Anthropic provider.        |
 | awsRegion    | string | undefined | AWS Region. Can be set via `AWS_REGION` environment variable                |

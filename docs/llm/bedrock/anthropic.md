@@ -36,6 +36,8 @@ In addition to the [generic options](/llm/generic), the following options are av
 >
 > **`effort` and sampling params:** `effort` maps to `output_config.effort` and adaptive/extended `thinking`, identical to the direct provider, including the Opus 4.7 / 4.8 `high` -> `xhigh` escalation, which raises the default `max_tokens` to 65536 when you do not set it. `topP` is dropped for the models that 400 on sampling parameters (Opus 4.7, 4.8, and 5; Sonnet 5; Fable 5).
 >
+> **Timeout on the escalated path:** the raised 65536 ceiling can let an `xhigh` run exceed the default 30000ms `timeout` (llm-exe does not stream), and timeouts are retried (default `numOfAttempts` 2), costing a second billed attempt. Raise `timeout` when using `effort: "high"` on Opus 4.7 / 4.8.
+>
 > Because `effort` enables thinking, and Anthropic disallows sampling parameters while thinking is active, llm-exe drops `topP` below `0.95` whenever `effort` enables thinking (and drops `temperature` / `topK` on the direct provider, which maps them). Pass `topP >= 0.95` if you need it. This applies to the direct provider as well.
 >
 > **Forced `tool_choice`:** `functionCall: "any"` (or a named tool) is incompatible with extended thinking (the 4.5 `enabled` path) on both providers, and llm-exe throws a clear error for it. Note Bedrock additionally rejects a forced `tool_choice` with **adaptive** thinking — which the direct API accepts — so combining `effort` with `functionCall: "any"` on an adaptive model returns a 400 from Bedrock; use `functionCall: "auto"` there.

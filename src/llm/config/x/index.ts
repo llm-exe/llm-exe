@@ -2,12 +2,22 @@ import { withDefaultModel } from "@/llm/_utils.withDefaultModel";
 import { Config } from "@/types";
 import { createOpenAiCompatibleConfiguration } from "../openai/compatible";
 
+/**
+ * xAI models that accept `reasoning_effort`. Matched exactly rather than by
+ * suffix — `grok-4.20-0309-non-reasoning` also ends in `-reasoning`.
+ */
+const xaiReasoningModels = new Set([
+  "grok-4.3",
+  "grok-4.5",
+  "grok-4.20-0309-reasoning",
+]);
+
 const xaiChatV1: Config = createOpenAiCompatibleConfiguration({
   key: "xai.chat.v1",
   provider: "xai.chat",
   endpoint: `https://api.x.ai/v1/chat/completions`,
   apiKeyMapping: ["xAiApiKey", "XAI_API_KEY"],
-  isReasoningModel: (model) => model === "grok-4.3" || model === "grok-4.5",
+  isReasoningModel: (model) => xaiReasoningModels.has(model),
 });
 
 export const xai = {

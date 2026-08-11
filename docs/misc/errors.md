@@ -82,6 +82,26 @@ Known error categories include:
 - `auth`
 - `template`
 - `internal`
+- `unknown`
+
+## Retry Behavior
+
+The category is not only for branching in your own code — llm-exe uses it to
+decide whether a failed LLM or embedding call is worth retrying.
+
+Errors in these categories are **never retried**, no matter how high
+`numOfAttempts` is set. They are deterministic client-side failures — bad
+options, an invalid prompt, or missing credentials — so a second identical
+attempt would fail identically. They surface on the first attempt instead:
+
+- `configuration`
+- `prompt`
+- `auth`
+
+Everything else (rate limits, timeouts, provider outages, `unknown`) is retried
+up to `numOfAttempts` with the configured back-off. See
+[Generic LLM Options](/llm/generic) for `numOfAttempts`, `maxDelay`, and
+`jitter`.
 
 ## Provider Errors
 

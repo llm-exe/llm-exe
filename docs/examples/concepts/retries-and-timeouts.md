@@ -25,6 +25,15 @@ Retries handle the transient failures silently. For the failures that survive al
 
 The hook observes; the `try/catch` decides. `isLlmExeError` narrows the error so you can read `error.code` and `error.category` to distinguish a timeout from a parse failure from a provider error — see [Error Handling](/misc/errors) for the full list of codes.
 
+### Not everything gets retried
+
+Raising `numOfAttempts` only helps for failures that might succeed on a second
+try. llm-exe short-circuits the ones that can't: errors in the `configuration`,
+`prompt`, and `auth` categories — a bad option, an invalid prompt, a missing API
+key — throw on the first attempt instead of burning the remaining attempts on a
+request that will fail identically. Rate limits, timeouts, and provider outages
+are still retried normally. See [Retry Behavior](/misc/errors#retry-behavior).
+
 ### What to set the values to
 
 There is no universal right answer, but the trade-offs are consistent:

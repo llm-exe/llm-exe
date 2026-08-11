@@ -3,7 +3,7 @@
 | anthropicApiKey | string  | undefined         | API key for Anthropic. Optionally can be set using process.env.ANTHROPIC_API_KEY |
 | model           | string  | —                 | The model to use. Must be specified when using `anthropic.chat.v1`.              |
 | temperature     | number  | undefined         | Maps to temperature. See Anthropic Docs                                          |
-| maxTokens       | number  | 4096              | Maps to max_tokens. See Anthropic Docs                                           |
+| maxTokens       | number  | 4096              | Maps to max_tokens. Raised to 65536 when unset on the escalated effort path (Opus 4.7 / 4.8 high). See the effort note below. |
 | effort          | string  | undefined         | Maps to reasoning effort / thinking. See the effort note below.                  |
 | topP            | number  | undefined         | Maps to top_p. See Anthropic Docs                                                |
 | topK            | number  | undefined         | Maps to top_k. See Anthropic Docs                                                |

@@ -235,6 +235,14 @@ describe("anthropic effort (shared direct + bedrock)", () => {
       expect(
         topPTransform(0.9, { model: "claude-sonnet-4-6", effort: "nonsense" })
       ).toBe(0.9);
+      // Non-strings take the same path — a thinking-capable model, but the
+      // effort is not one we honor, so thinking never turns on.
+      expect(
+        dropIfModelRejectsSamplingParams(0.5, { model: "claude-sonnet-4-6", effort: 7 })
+      ).toBe(0.5);
+      expect(
+        topPTransform(0.9, { model: "claude-sonnet-4-6", effort: 7 })
+      ).toBe(0.9);
     });
 
     it("reject-list models still drop topP unconditionally, even topP >= 0.95", () => {
@@ -263,9 +271,10 @@ describe("anthropic effort (shared direct + bedrock)", () => {
   });
 
   // The options-based `useLlm("anthropic.chat.v1", {...})` entrypoint lets a
-  // caller omit `model` (the provider then falls back to its own default), so
-  // every gate has to tolerate an absent model rather than throw on it. These
-  // pin the fail-open behavior: no model means no model-specific rewriting.
+  // caller omit `model` — the raw config declares no model default, only the
+  // shorthand keys get one via `withDefaultModel` — so every gate has to
+  // tolerate an absent model rather than throw on it. These pin the fail-open
+  // behavior: no model means no model-specific rewriting.
   describe("missing model on state/body", () => {
     it("effortTransform drops the effort and sets no thinking / max_tokens floor", () => {
       const out: Record<string, any> = { max_tokens: 10000 };
@@ -293,6 +302,9 @@ describe("anthropic effort (shared direct + bedrock)", () => {
 
   // `effort` arrives from user input and is only meaningful for the documented
   // values; anything else must be dropped rather than forwarded to the provider.
+  // These paths are already covered by the suite — this pins the specific
+  // malformed inputs (non-strings, `""`, wrong case) as contract, since no
+  // existing case asserts them against `effortTransform`.
   describe("invalid effort values", () => {
     it("effortTransform drops non-string and unknown values", () => {
       const out: Record<string, any> = {};
@@ -300,20 +312,6 @@ describe("anthropic effort (shared direct + bedrock)", () => {
         expect(effortTransform(bad, { model: "claude-opus-5" }, out)).toBeUndefined();
       }
       expect(out.thinking).toBeUndefined();
-    });
-
-    it("an invalid effort does not count as thinking for the sampling gates", () => {
-      // A thinking-capable model, but the effort value is not one we honor, so
-      // thinking never turns on and temperature/top_k must survive.
-      expect(
-        dropIfModelRejectsSamplingParams(0.5, {
-          model: "claude-sonnet-4-6",
-          effort: "extreme",
-        })
-      ).toBe(0.5);
-      expect(
-        topPTransform(0.5, { model: "claude-sonnet-4-6", effort: 7 })
-      ).toBe(0.5);
     });
   });
 });

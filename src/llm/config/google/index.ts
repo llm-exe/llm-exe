@@ -123,8 +123,9 @@ export const google = {
     googleGeminiChatV1,
     "gemini-2.0-flash-lite"
   ),
-  "google.gemini-1.5-pro": withDefaultModel(
-    googleGeminiChatV1,
-    "gemini-1.5-pro"
-  ),
+  ...deprecateShorthand("google.gemini-1.5-pro", {
+    config: withDefaultModel(googleGeminiChatV1, "gemini-1.5-pro"),
+    message:
+      'Model "google.gemini-1.5-pro" is deprecated. gemini-1.5-pro has been retired by Google and requests to it will fail. Use "google.gemini-3.5-flash" or "google.gemini-3.1-flash-lite" instead.',
+  }),
 };

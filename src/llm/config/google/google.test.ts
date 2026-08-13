@@ -253,6 +253,34 @@ describe("google configuration", () => {
     });
   });
 
+  describe("deprecated shorthands still resolve", () => {
+    it.each([
+      ["google.gemini-2.5-flash", "gemini-2.5-flash"],
+      ["google.gemini-2.5-flash-lite", "gemini-2.5-flash-lite"],
+      ["google.gemini-2.5-pro", "gemini-2.5-pro"],
+      ["google.gemini-1.5-pro", "gemini-1.5-pro"],
+    ] as const)("%s should resolve to %s", (shorthand, expectedModel) => {
+      const cfg = google[shorthand] as Config;
+      expect(cfg).toBeDefined();
+      expect(cfg.options.model.default).toBe(expectedModel);
+      expect(cfg.mapBody.model).toEqual({
+        default: expectedModel,
+        key: "model",
+      });
+      expect(cfg.endpoint).toEqual(googleChatV1.endpoint);
+      expect(cfg.method).toEqual(googleChatV1.method);
+      expect(cfg.headers).toEqual(googleChatV1.headers);
+      expect(cfg.deprecated?.shorthand).toBe(shorthand);
+      expect(typeof cfg.deprecated?.message).toBe("string");
+    });
+
+    it("google.gemini-1.5-pro warns that the model is retired and names a replacement", () => {
+      const cfg = google["google.gemini-1.5-pro"] as Config;
+      expect(cfg.deprecated?.message).toContain("retired");
+      expect(cfg.deprecated?.message).toContain("google.gemini-3.5-flash");
+    });
+  });
+
   describe("image content through mapBody", () => {
     it("converts image_url blocks into inlineData parts in the request body", () => {
       const body = mapBody(googleChatV1.mapBody, {

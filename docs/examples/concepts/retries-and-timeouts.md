@@ -17,6 +17,17 @@ All three options are [generic options](/llm/generic) — they work the same for
 - `numOfAttempts` — total attempts before the executor throws
 - `maxDelay` — cap on the backoff wait between attempts
 
+#### What actually gets retried
+
+`numOfAttempts` applies to failures a second attempt could plausibly fix — provider
+rate limits and 5xx responses, network errors, and timeouts. Deterministic
+client-side failures are not retried: an `LlmExeError` in the `configuration`,
+`prompt`, or `auth` category is thrown on the first attempt, because the same bad
+option or invalid prompt will fail identically every time. That means a
+misconfigured call fails fast instead of waiting out the backoff before surfacing
+the same message. See [Error Handling](/misc/errors#retry-behavior) for the
+category list.
+
 #### Step 2 - Observe Failures and Handle the Final Error
 
 Retries handle the transient failures silently. For the failures that survive all attempts, attach an [`onError` hook](/executor/hooks) for telemetry, and catch the typed error at the call site to decide the fallback:

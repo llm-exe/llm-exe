@@ -83,6 +83,26 @@ Known error categories include:
 - `template`
 - `internal`
 
+## Retry Behavior
+
+`numOfAttempts` does not apply to every failure. Errors in the `configuration`,
+`prompt`, and `auth` categories are deterministic client-side failures — a bad
+option, an invalid prompt, or a missing signing input. Retrying cannot change the
+outcome, so they are thrown on the first attempt instead of burning attempts and
+backoff delay on a guaranteed re-failure.
+
+Everything else keeps the normal retry behavior, including provider errors such as
+`llm.provider_rate_limited` and `llm.provider_unavailable` (category `llm`, since
+the category is the prefix of the code), `request` errors, and any error that is
+not an `LlmExeError`.
+
+Note that `llm.provider_auth_failed` is category `llm`, not `auth` — a rejected
+credential from the provider is still retried, while `auth.aws_signing_input_missing`
+is not.
+
+See [Add Retries and Timeouts to LLM Calls](/examples/concepts/retries-and-timeouts)
+for configuring `timeout`, `numOfAttempts`, and `maxDelay`.
+
 ## Provider Errors
 
 HTTP failures from LLM providers use typed llm-exe errors:

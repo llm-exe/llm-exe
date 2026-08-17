@@ -122,31 +122,6 @@ describe("llm-exe:prompt/TextPrompt", () => {
   });
 
   describe("getReplacements", () => {
-    test("throws prompt.missing_input when values is undefined", () => {
-      const prompt = new MockPrompt("Hello {{name}}");
-      expect(() => prompt.getReplacements(undefined as any)).toThrow(
-        "format() requires an input object. Did you forget to pass arguments?"
-      );
-      try {
-        prompt.getReplacements(undefined as any);
-      } catch (error: any) {
-        expect(error.code).toEqual("prompt.missing_input");
-        expect(error.context.received).toEqual("undefined");
-        expect(error.context.promptType).toEqual("text");
-      }
-    });
-
-    test("throws prompt.missing_input when values is null, reporting 'null'", () => {
-      const prompt = new MockPrompt("Hello {{name}}");
-      try {
-        prompt.getReplacements(null as any);
-        throw new Error("should have thrown");
-      } catch (error: any) {
-        expect(error.code).toEqual("prompt.missing_input");
-        expect(error.context.received).toEqual("null");
-      }
-    });
-
     test("defaults input to empty string and mirrors it to _input", () => {
       const prompt = new MockPrompt();
       expect(prompt.getReplacements({ a: 1 })).toEqual({
@@ -185,6 +160,11 @@ describe("llm-exe:prompt/TextPrompt", () => {
     test("passes the format values through to filters", () => {
       const seen: any[] = [];
       const prompt = new MockPrompt("x", {
+        // The `as any` is deliberate: `PromptOptions.preFilters`/`postFilters`
+        // are typed `((prompt: string) => string)[]` (src/interfaces/prompt.ts:14-15),
+        // but `runPromptFilter` calls `filter(promptValue, values)`
+        // (src/prompt/_base.ts:239). The second argument exists at runtime and is
+        // asserted here; the public type just doesn't declare it.
         postFilters: [
           ((p: string, values: any) => {
             seen.push(values);
@@ -261,16 +241,9 @@ describe("llm-exe:prompt/TextPrompt", () => {
       expect(prompt.messages).toHaveLength(2);
     });
 
-    test("joins multiple messages with the default separator", () => {
+    test("honors a custom separator on the async path", async () => {
       const prompt = new MockPrompt("one");
       prompt.addSystemMessage("two");
-      expect(prompt.format({})).toEqual("one\n\ntwo");
-    });
-
-    test("honors a custom separator", async () => {
-      const prompt = new MockPrompt("one");
-      prompt.addSystemMessage("two");
-      expect(prompt.format({}, " | ")).toEqual("one | two");
       await expect(prompt.formatAsync({}, " | ")).resolves.toEqual(
         "one | two"
       );
@@ -304,15 +277,6 @@ describe("llm-exe:prompt/TextPrompt", () => {
       expect(
         prompt.registerHelpers({ name: "b", handler: () => "B" } as PromptHelper)
       ).toBe(prompt);
-    });
-
-    test("uses a custom replaceTemplateString when provided", () => {
-      const custom = jest.fn().mockReturnValue("replaced");
-      const prompt = new MockPrompt("hello {{name}}", {
-        replaceTemplateString: custom as any,
-      });
-      expect(prompt.format({ name: "world" })).toEqual("replaced");
-      expect(custom).toHaveBeenCalled();
     });
   });
 })

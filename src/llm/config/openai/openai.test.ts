@@ -221,6 +221,9 @@ describe("openai configuration", () => {
 
   describe("deprecated shorthands still resolve", () => {
     it.each([
+      ["openai.gpt-5-mini", "gpt-5-mini"],
+      ["openai.gpt-5-nano", "gpt-5-nano"],
+      ["openai.o3", "o3"],
       ["openai.o4-mini", "o4-mini"],
     ] as const)(
       "%s should resolve to %s",
@@ -230,6 +233,31 @@ describe("openai configuration", () => {
         expect(cfg.options.model.default).toBe(expectedModel);
       }
     );
+
+    it.each([
+      ["openai.gpt-5-mini", "openai.gpt-5.6-terra"],
+      ["openai.gpt-5-nano", "openai.gpt-5.6-luna"],
+      ["openai.o3", "openai.gpt-5.6"],
+    ] as const)(
+      "%s carries a deprecation notice pointing at %s",
+      (shorthand, replacement) => {
+        const cfg = openai[shorthand] as Config;
+        expect(cfg.deprecated).toBeDefined();
+        expect(cfg.deprecated!.shorthand).toBe(shorthand);
+        expect(cfg.deprecated!.message).toContain("2026-12-11");
+        expect(cfg.deprecated!.message).toContain(replacement);
+      }
+    );
+
+    it("does not deprecate the 5.6 replacements", () => {
+      for (const key of [
+        "openai.gpt-5.6",
+        "openai.gpt-5.6-terra",
+        "openai.gpt-5.6-luna",
+      ] as const) {
+        expect((openai[key] as Config).deprecated).toBeUndefined();
+      }
+    });
   });
 
   describe("all shorthands resolve to expected default model", () => {

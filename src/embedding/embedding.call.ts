@@ -11,6 +11,7 @@ import {
 import {
   GenericLLm,
   LlmProvider,
+  EmbeddingInput,
   EmbeddingProviderKey,
   LlmExecutorWithFunctionsOptions,
 } from "@/types";
@@ -22,7 +23,7 @@ export async function createEmbedding_call(
     provider: Extract<LlmProvider, "openai.embedding">;
     key: EmbeddingProviderKey;
   },
-  _input: string | string[],
+  _input: EmbeddingInput,
   _options?: LlmExecutorWithFunctionsOptions
 ) {
   const config = getEmbeddingConfig(state.key);
@@ -36,7 +37,9 @@ export async function createEmbedding_call(
 
   const body = JSON.stringify(input);
 
-  const url = replaceTemplateStringSimple(config.endpoint, state);
+  const url = replaceTemplateStringSimple(config.endpoint, state, {
+    encodeKeys: ["model"],
+  });
 
   const headers = await parseHeaders(config, state, {
     url,

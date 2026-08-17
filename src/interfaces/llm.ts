@@ -389,9 +389,34 @@ export interface BaseLlmOptions {
   headers?: Record<string, string>;
 }
 
+/**
+ * A single interleaved text + image request entry, as accepted by Cohere
+ * Embed v4 (Bedrock request body field `inputs`). The provider fuses every
+ * part of `content` into ONE vector, which is the whole point: a caption and
+ * its image become a single searchable embedding.
+ *
+ * `image_url.url` must be a complete data URI, e.g.
+ * "data:image/png;base64,iVBORw0KGgo...". A remote http(s) URL is NOT
+ * accepted by Bedrock; fetch the bytes and inline them.
+ */
+export interface EmbeddingContentItem {
+  content: Array<
+    | { type: "text"; text: string }
+    | { type: "image_url"; image_url: { url: string } }
+  >;
+}
+
+/**
+ * Accepted embedding input. A `string` or `string[]` is a plain text batch and
+ * is supported by every embedding provider. An `EmbeddingContentItem[]` is a
+ * multimodal batch and is supported ONLY by "amazon:cohere.embedding.v1";
+ * other providers throw `embedding.unsupported_input`.
+ */
+export type EmbeddingInput = string | string[] | EmbeddingContentItem[];
+
 export interface GenericEmbeddingOptions extends BaseLlmOptions {
   model?: string;
-  // input: string;
+  input?: EmbeddingInput;
   dimensions?: number;
 }
 
@@ -418,6 +443,13 @@ export interface CohereBedrockEmbeddingOptions
     | "classification"
     | "clustering";
   truncate?: "NONE" | "START" | "END" | "LEFT" | "RIGHT";
+  /**
+   * Escape hatch that writes Cohere Embed v4's `inputs` request field
+   * directly. Normally you do not set this: pass an EmbeddingContentItem[]
+   * as the call input instead, and the config routes it to `inputs` for you.
+   * A multimodal call input takes precedence over this value.
+   */
+  imageInputs?: EmbeddingContentItem[];
 }
 
 // Embed v3 returns `embeddings` as a plain array (response_type
@@ -648,6 +680,11 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<AnthropicRequest, "model">;
   };
 
+  // Anthropic - Claude Opus 5 models
+  "anthropic.claude-opus-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+
   // Anthropic - Claude 4.8 models
   "anthropic.claude-opus-4-8": {
     input: Omit<AnthropicRequest, "model">;
@@ -712,6 +749,12 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<GeminiRequest, "model">;
   };
   "google.gemini-3.5-flash": {
+    input: Omit<GeminiRequest, "model">;
+  };
+  "google.gemini-3.5-flash-lite": {
+    input: Omit<GeminiRequest, "model">;
+  };
+  "google.gemini-3.6-flash": {
     input: Omit<GeminiRequest, "model">;
   };
   // Google - Deprecated
@@ -818,7 +861,11 @@ export interface BaseLlCall {
 }
 
 export interface BaseEmbeddingCall {
-  getEmbedding: () => number[];
+  /**
+   * Returns the embedding at `index` from the batch, or the first embedding
+   * when `index` is omitted. Matches BaseEmbeddingOutput's implementation.
+   */
+  getEmbedding: (index?: number) => number[];
   getResult: () => EmbeddingOutputResult;
 }
 

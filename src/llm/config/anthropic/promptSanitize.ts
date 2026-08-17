@@ -6,14 +6,15 @@ import {
 
 // Models that 400 on a trailing assistant message (prefill): the 4.6+/5
 // generation. Issue #503 and Anthropic's migration guide name opus-4-6,
-// opus-4-7, and sonnet-4-6; opus-4-8, sonnet-5, and fable-5 belong to the same
-// generation and are grouped here for the same reason the sampling-param and
-// adaptive-thinking lists in `anthropic/index.ts` group this generation. The
-// 4.5 generation (opus/sonnet/haiku 4.5) still supports prefills and is
-// excluded. Kept as its own list because prefill support is a distinct model
-// capability from adaptive thinking / sampling-param handling, even though the
-// membership currently coincides.
+// opus-4-7, and sonnet-4-6; opus-5, opus-4-8, sonnet-5, and fable-5 belong to
+// the same generation and are grouped here for the same reason the
+// sampling-param and adaptive-thinking lists in `anthropic/index.ts` group this
+// generation. The 4.5 generation (opus/sonnet/haiku 4.5) still supports
+// prefills and is excluded. Kept as its own list because prefill support is a
+// distinct model capability from adaptive thinking / sampling-param handling,
+// even though the membership currently coincides.
 const PREFILL_UNSUPPORTED_MODELS = [
+  "claude-opus-5",
   "claude-opus-4-6",
   "claude-opus-4-7",
   "claude-opus-4-8",
@@ -88,6 +89,12 @@ export function anthropicPromptSanitize(
     return [{ role: "user", content: _messages } as IChatMessage].map(
       toAnthropicMessage
     );
+  }
+
+  // nothing to sanitize — leave the output object untouched and let the
+  // provider surface any error about an empty request
+  if (_messages.length === 0) {
+    return [];
   }
 
   const [first, ...messages] = [

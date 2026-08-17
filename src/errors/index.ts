@@ -48,6 +48,7 @@ export type {
   PromptMessagesContext,
   PromptMissingTemplateVariableContext,
   EmbeddingDimensionsContext,
+  EmbeddingInputContext,
   ExecutorErrorContext,
   ExecutorHookContext,
   CallableErrorContext,

@@ -21,6 +21,7 @@ llm-exe ships typed shorthands for the most common xAI models so you do not have
 | `xai.grok-4.3`             | `grok-4.3` (reasoning model)        |
 | `xai.grok-4.20`            | `grok-4.20-0309-non-reasoning`      |
 | `xai.grok-4.20-reasoning`  | `grok-4.20-0309-reasoning`          |
+| `xai.grok-4.5`             | `grok-4.5` (reasoning model)        |
 
 ## Basic Usage
 

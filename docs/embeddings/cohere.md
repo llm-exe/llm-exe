@@ -120,6 +120,6 @@ Things to know:
 
 ## Notes
 
-- Cohere on Bedrock does not return token usage in the response, so `getResult().usage.input_tokens` will be `0`.
+- Cohere on Bedrock does not include token usage in the response body. llm-exe reads it from Bedrock's `x-amzn-bedrock-input-token-count` / `x-amzn-bedrock-output-token-count` response headers, so `getResult().usage.input_tokens` is populated when those headers are present and falls back to `0` only when they are absent.
 - Cohere models on Bedrock are served from AWS Marketplace. The first invocation in your account must come from a user with `aws-marketplace:Subscribe` permissions, after which all users in the account can invoke the model.
 - `CohereBedrockEmbeddingOptions` also exposes an `imageInputs` option that writes Cohere's `inputs` field directly. It is an escape hatch — prefer passing content items as the call input, which takes precedence over the option.

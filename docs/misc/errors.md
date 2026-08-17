@@ -96,9 +96,15 @@ Everything else keeps the normal retry behavior, including provider errors such 
 the category is the prefix of the code), `request` errors, and any error that is
 not an `LlmExeError`.
 
-Note that `llm.provider_auth_failed` is category `llm`, not `auth` — a rejected
-credential from the provider is still retried, while `auth.aws_signing_input_missing`
-is not.
+Deterministic codes inside the otherwise-mixed `llm` and `embedding` categories
+are also not retried, via a code-level list beside the category short-circuit:
+`llm.provider_auth_failed`, `llm.provider_invalid_request`,
+`embedding.provider_auth_failed`, `embedding.provider_invalid_request`,
+`embedding.unsupported_input`, and `embedding.unsupported_dimensions`. A rejected
+credential or a request the provider rejects as invalid re-fails identically on
+retry, so it surfaces on the first attempt; the transient codes in those
+categories (`provider_rate_limited`, `provider_unavailable`, `provider_http_error`)
+still retry.
 
 See [Add Retries and Timeouts to LLM Calls](/examples/concepts/retries-and-timeouts)
 for configuring `timeout`, `numOfAttempts`, and `maxDelay`.

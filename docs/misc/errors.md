@@ -83,6 +83,32 @@ Known error categories include:
 - `template`
 - `internal`
 
+## Retry Behavior
+
+`numOfAttempts` does not apply to every failure. Errors in the `configuration`,
+`prompt`, and `auth` categories are deterministic client-side failures — a bad
+option, an invalid prompt, or a missing signing input. Retrying cannot change the
+outcome, so they are thrown on the first attempt instead of burning attempts and
+backoff delay on a guaranteed re-failure.
+
+Everything else keeps the normal retry behavior, including provider errors such as
+`llm.provider_rate_limited` and `llm.provider_unavailable` (category `llm`, since
+the category is the prefix of the code), `request` errors, and any error that is
+not an `LlmExeError`.
+
+Deterministic codes inside the otherwise-mixed `llm` and `embedding` categories
+are also not retried, via a code-level list beside the category short-circuit:
+`llm.provider_auth_failed`, `llm.provider_invalid_request`,
+`embedding.provider_auth_failed`, `embedding.provider_invalid_request`,
+`embedding.unsupported_input`, and `embedding.unsupported_dimensions`. A rejected
+credential or a request the provider rejects as invalid re-fails identically on
+retry, so it surfaces on the first attempt; the transient codes in those
+categories (`provider_rate_limited`, `provider_unavailable`, `provider_http_error`)
+still retry.
+
+See [Add Retries and Timeouts to LLM Calls](/examples/concepts/retries-and-timeouts)
+for configuring `timeout`, `numOfAttempts`, and `maxDelay`.
+
 ## Provider Errors
 
 HTTP failures from LLM providers use typed llm-exe errors:

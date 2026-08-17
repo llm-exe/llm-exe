@@ -181,7 +181,8 @@ describe("useLlm_call", () => {
     });
     expect(replaceTemplateStringSimple).toHaveBeenCalledWith(
       mockConfig.endpoint,
-      mockState
+      mockState,
+      { encodeKeys: ["model"] }
     );
     expect(parseHeaders).toHaveBeenCalledWith(
       mockConfig,
@@ -309,7 +310,8 @@ describe("useLlm_call", () => {
       method: mockConfig.method,
       body: JSON.stringify({
         prompt: mockMessages,
-        tool_choice: mock_options.functionCall,
+        // named tool choice is normalized to Anthropic's { type: "tool", name } (issue #720)
+        tool_choice: { type: "tool", name: "something" },
         tools: mock_options.functions.map((a) => ({
           name: a.name,
           description: a.description,

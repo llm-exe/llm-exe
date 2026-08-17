@@ -77,4 +77,49 @@ describe("replaceTemplateStringSimple", () => {
     const result = replaceTemplateStringSimple(template, context);
     expect(result).toBe("Hello, !");
   });
+
+  describe("encodeKeys (URL-encode selected placeholders) — issue #722", () => {
+    it("URL-encodes only the listed key (e.g. an ARN model id in a path)", () => {
+      const template =
+        "https://bedrock-runtime.{{awsRegion}}.amazonaws.com/model/{{model}}/invoke";
+      const context = {
+        awsRegion: "us-west-2",
+        model:
+          "arn:aws:bedrock:us-east-1:123:inference-profile/us.anthropic.claude-opus-4-8-v1:0",
+      };
+      const result = replaceTemplateStringSimple(template, context, {
+        encodeKeys: ["model"],
+      });
+      expect(result).toBe(
+        "https://bedrock-runtime.us-west-2.amazonaws.com/model/arn%3Aaws%3Abedrock%3Aus-east-1%3A123%3Ainference-profile%2Fus.anthropic.claude-opus-4-8-v1%3A0/invoke"
+      );
+      // awsRegion (not listed) is untouched
+      expect(result).toContain("bedrock-runtime.us-west-2.amazonaws.com");
+    });
+
+    it("is a no-op for a plain model id with no reserved characters", () => {
+      const result = replaceTemplateStringSimple(
+        "/model/{{model}}/invoke",
+        { model: "us.anthropic.claude-sonnet-4-6" },
+        { encodeKeys: ["model"] }
+      );
+      expect(result).toBe("/model/us.anthropic.claude-sonnet-4-6/invoke");
+    });
+
+    it("never encodes an unlisted full-URL placeholder like {{baseUrl}}", () => {
+      const result = replaceTemplateStringSimple(
+        "{{baseUrl}}/embeddings",
+        { baseUrl: "https://api.openai.com/v1" },
+        { encodeKeys: ["model"] }
+      );
+      expect(result).toBe("https://api.openai.com/v1/embeddings");
+    });
+
+    it("does not encode anything when encodeKeys is omitted (backward compatible)", () => {
+      const result = replaceTemplateStringSimple("/model/{{model}}/invoke", {
+        model: "a/b:c",
+      });
+      expect(result).toBe("/model/a/b:c/invoke");
+    });
+  });
 });

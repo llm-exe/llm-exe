@@ -18,7 +18,6 @@ When using Cohere embeddings, llm-exe will make POST requests to the AWS Bedrock
 | `awsRegion` | `string` | `AWS_REGION` env var | The AWS region for the Bedrock endpoint (required) |
 | `awsSecretKey` | `string` | — | AWS secret key (if not using default credentials) |
 | `awsAccessKey` | `string` | — | AWS access key (if not using default credentials) |
-| `imageInputs` | `EmbeddingContentItem[]` | — | Escape hatch that writes Embed v4's `inputs` field directly. Prefer passing content items as the call input — see [Multimodal Input](#multimodal-input-embed-v4) |
 
 ## Basic Usage
 
@@ -86,43 +85,41 @@ const embeddings = createEmbedding("amazon:cohere.embedding.v1", {
 
 ## Multimodal Input (Embed v4)
 
-Cohere Embed v4 can embed interleaved text and images into a **single** vector — a caption and its image become one searchable embedding. Pass an array of content items instead of an array of strings:
+Cohere Embed v4 can embed text and images together. Pass an array of `EmbeddingContentItem` objects instead of strings, and llm-exe routes them to Cohere's `inputs` field for you:
 
 ```ts
+import { createEmbedding } from "llm-exe";
+import type { EmbeddingContentItem } from "llm-exe";
+
 const embeddings = createEmbedding("amazon:cohere.embedding.v1", {
   model: "cohere.embed-v4:0",
   awsRegion: "us-west-2",
 });
 
-const embedding = await embeddings.call([
+const items: EmbeddingContentItem[] = [
   {
     content: [
-      { type: "text", text: "Quarterly revenue by segment" },
+      { type: "text", text: "A diagram of the retrieval pipeline" },
       { type: "image_url", image_url: { url: "data:image/png;base64,iVBORw0KGgo..." } },
     ],
   },
-]);
+];
 
-// One vector for the whole entry (text + image fused)
+const embedding = await embeddings.call(items);
 const vector = embedding.getEmbedding(0);
 ```
 
-Each entry is one `EmbeddingContentItem`:
+Each `EmbeddingContentItem` collapses into **one** vector. That is the point: a caption and its image become a single searchable embedding, rather than two vectors you have to reconcile later.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `content` | `Array<{ type: "text"; text: string } \| { type: "image_url"; image_url: { url: string } }>` | The interleaved parts fused into one vector. Order is preserved |
+Things to know:
 
-Rules to keep in mind:
-
-- `image_url.url` must be a complete base64 data URI (e.g. `data:image/png;base64,...`). Bedrock does **not** fetch remote `http(s)` URLs — read the bytes yourself and inline them.
-- A batch must be uniform. Mixing strings and content items in one `.call()` throws `embedding.unsupported_input`, because Cohere's request body carries text and multimodal batches in mutually exclusive fields and silently splitting the batch would misalign every downstream index. Send them as separate calls.
-- Multimodal input requires a multimodal model. Embed v3 models are text-only.
-- Only `amazon:cohere.embedding.v1` accepts content items. The OpenAI and Amazon Titan embedding providers throw `embedding.unsupported_input` rather than posting an object into a text field.
-
-The `imageInputs` option is an escape hatch that writes Cohere's `inputs` request field directly. You normally do not need it — passing content items as the call input routes them for you, and a multimodal call input always takes precedence over `imageInputs`.
+- `image_url.url` must be a complete data URI (e.g. `data:image/png;base64,...`). Bedrock does **not** fetch remote `http(s)` URLs — read the bytes yourself and inline them.
+- Use a multimodal model. Embed v3 has no image support, and Bedrock will reject the request.
+- A batch must be uniform. Mixing strings and content items in one call throws `embedding.unsupported_input`, because Cohere's `texts` and `inputs` fields are mutually exclusive and silently splitting the batch would misalign every downstream index. Embed text and multimodal entries in separate calls.
+- Only `amazon:cohere.embedding.v1` accepts multimodal input. Passing content items to `openai.embedding.v1` or `amazon.embedding.v1` throws `embedding.unsupported_input` up front instead of producing an opaque provider-side 400.
 
 ## Notes
 
 - Cohere on Bedrock does not return token usage in the response, so `getResult().usage.input_tokens` will be `0`.
 - Cohere models on Bedrock are served from AWS Marketplace. The first invocation in your account must come from a user with `aws-marketplace:Subscribe` permissions, after which all users in the account can invoke the model.
+- `CohereBedrockEmbeddingOptions` also exposes an `imageInputs` option that writes Cohere's `inputs` field directly. It is an escape hatch — prefer passing content items as the call input, which takes precedence over the option.

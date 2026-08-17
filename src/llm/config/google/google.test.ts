@@ -295,6 +295,35 @@ describe("google configuration", () => {
     });
   });
 
+  describe("retired shorthands", () => {
+    it.each([
+      [
+        "google.gemini-2.0-flash",
+        "gemini-2.0-flash",
+        "google.gemini-3.5-flash",
+      ],
+      [
+        "google.gemini-2.0-flash-lite",
+        "gemini-2.0-flash-lite",
+        "google.gemini-3.1-flash-lite",
+      ],
+      ["google.gemini-1.5-pro", "gemini-1.5-pro", "google.gemini-3.5-flash"],
+    ] as const)(
+      "%s should still resolve to %s but be marked deprecated",
+      (shorthand, expectedModel, migrateTo) => {
+        const config = google[shorthand] as Config;
+        expect(config).toBeDefined();
+        expect(config.options.model).toEqual({ default: expectedModel });
+        expect(config.mapBody.model).toEqual({
+          default: expectedModel,
+          key: "model",
+        });
+        expect(config.deprecated?.shorthand).toEqual(shorthand);
+        expect(config.deprecated?.message).toContain(migrateTo);
+      }
+    );
+  });
+
   describe("image content through mapBody", () => {
     it("converts image_url blocks into inlineData parts in the request body", () => {
       const body = mapBody(googleChatV1.mapBody, {

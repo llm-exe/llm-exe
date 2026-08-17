@@ -153,9 +153,30 @@ describe("anthropic config", () => {
         expect(output.max_tokens).toBe(4096);
       });
 
-      it("never lowers a caller's already-larger maxTokens when escalating", () => {
+      it("honors a caller-set maxTokens above the floor when escalating", () => {
         const output: Record<string, any> = { max_tokens: 100000 };
-        effortTransform("high", stateWith("claude-opus-4-7", ["effort", "maxTokens"]), output);
+        const result = effortTransform(
+          "high",
+          stateWith("claude-opus-4-8", ["effort", "maxTokens"]),
+          output
+        );
+        expect(result).toBe("xhigh");
+        expect(output.max_tokens).toBe(100000);
+      });
+
+      it("does not lower an already-larger max_tokens when escalating without caller maxTokens provenance", () => {
+        // callerSetMaxTokens is false (only "effort" is provided), but max_tokens
+        // is already above the floor — e.g. a future config default, or a direct
+        // mapBody call. The floor must raise, never lower. Pins the
+        // `currentMax < ESCALATED_EFFORT_MIN_MAX_TOKENS` guard, which the config
+        // path can't reach (its default is always below 65536).
+        const output: Record<string, any> = { max_tokens: 100000 };
+        const result = effortTransform(
+          "high",
+          stateWith("claude-opus-4-8", ["effort"]),
+          output
+        );
+        expect(result).toBe("xhigh");
         expect(output.max_tokens).toBe(100000);
       });
 
@@ -335,6 +356,34 @@ describe("anthropic config", () => {
       });
       expect(body.output_config).toEqual({ effort: "xhigh" });
       expect(body.max_tokens).toBe(4096);
+    });
+
+    it("drops temperature/topP/topK when effort enables thinking on a non-reject adaptive model (issue #716)", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-4-6",
+        maxTokens: 4096,
+        effort: "high",
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+        prompt,
+      });
+      expect(body.thinking).toEqual({ type: "adaptive" });
+      expect(body.temperature).toBeUndefined();
+      expect(body.top_p).toBeUndefined();
+      expect(body.top_k).toBeUndefined();
+    });
+
+    it("keeps topP >= 0.95 when effort enables thinking (issue #716)", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-4-6",
+        maxTokens: 4096,
+        effort: "high",
+        topP: 0.97,
+        prompt,
+      });
+      expect(body.thinking).toEqual({ type: "adaptive" });
+      expect(body.top_p).toBe(0.97);
     });
 
     it("should not add thinking fields for claude-3 models", () => {
@@ -727,10 +776,32 @@ describe("anthropic config", () => {
       });
     });
 
-    it("passes through specific function name unchanged", () => {
-      expect(functionCall("my_func" as any, {})).toEqual({
-        tool_choice: "my_func",
+    it("maps a named tool { name } to Anthropic's { type: 'tool', name } (issue #720)", () => {
+      expect(functionCall({ name: "my_func" } as any, {})).toEqual({
+        tool_choice: { type: "tool", name: "my_func" },
       });
+    });
+
+    it("throws when a forced tool_choice is combined with extended thinking (issue #720)", async () => {
+      // effort on a 4.5 model produces thinking:{type:"enabled"}, which Anthropic
+      // rejects together with a forced tool_choice. llm-exe fails fast.
+      const llm = useLlm("anthropic.claude-sonnet-4-5", {
+        effort: "high",
+        anthropicApiKey: "sk-ant-test",
+        numOfAttempts: 1,
+      });
+      await expect(
+        llm.call([{ role: "user", content: "hi" }], {
+          functions: [
+            {
+              name: "f",
+              description: "d",
+              parameters: { type: "object", properties: {} },
+            },
+          ],
+          functionCall: "any",
+        })
+      ).rejects.toThrow(/forced tool_choice/i);
     });
   });
 

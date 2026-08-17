@@ -55,9 +55,9 @@ The second argument to `execute()` controls tool calling for that call.
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `functions` | `Array<{ name, description, parameters? }>` | `undefined` | The tools the LLM is allowed to call. `parameters` is a JSON Schema object describing the tool's arguments. |
-| `functionCall` | `"auto" \| "none" \| "any" \| { name: string }` | `undefined` | How the LLM should choose. `"auto"` lets it decide, `"none"` forbids tool calls, `"any"` forces it to call some tool, and `{ name }` forces one specific tool. |
+| `functionCall` | `"auto" \| "none" \| "any" \| { name: string }` | `undefined` | How the LLM should choose. `"auto"` lets it decide, `"none"` forbids tool calls, and `"any"` forces it to call some tool — these three work on every provider. `{ name }` (force one specific tool) is currently mapped only for Anthropic (direct and Bedrock; note Bedrock rejects a forced tool_choice combined with adaptive thinking). On Google it falls back to `"auto"`, and on OpenAI-compatible endpoints it is passed through unmapped, which the provider rejects. |
 | `functionCallStrictInput` | `boolean` | `false` | Enables strict schema adherence on providers that support it (OpenAI-compatible endpoints). Ignored elsewhere. |
-| `jsonSchema` | `Record<string, any>` | `undefined` | Optional JSON Schema for structured output, passed through to the provider. |
+| `jsonSchema` | `Record<string, any>` | `undefined` | Optional JSON Schema for structured output. Mapped for OpenAI-compatible endpoints (OpenAI, xAI, Deepseek) only; silently ignored elsewhere. |
 
 ::: tip
 Tool definitions are normalized internally, so the same `functions` array works across OpenAI, Anthropic, Google, xAI, and other providers that support tool calling.
@@ -80,7 +80,7 @@ const response = await executor.execute({ input: "What's the weather in Denver?"
   functions,
 })
 
-if (Array.isArray(response)) {
+if (guards.hasFunctionCall(response)) {
   for (const item of response) {
     if (guards.isFunctionCall(item)) {
       // item.name      -> "getWeather"
@@ -90,7 +90,9 @@ if (Array.isArray(response)) {
     }
   }
 } else {
-  // plain text response, already run through your parser
+  // plain text response, already run through your parser. hasFunctionCall
+  // (not Array.isArray) is the discriminator: a parser like listToArray also
+  // returns an array on the text path, and it must land here, not above.
   console.log(response);
 }
 ```

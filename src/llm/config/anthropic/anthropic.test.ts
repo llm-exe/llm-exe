@@ -153,9 +153,30 @@ describe("anthropic config", () => {
         expect(output.max_tokens).toBe(4096);
       });
 
-      it("never lowers a caller's already-larger maxTokens when escalating", () => {
+      it("honors a caller-set maxTokens above the floor when escalating", () => {
         const output: Record<string, any> = { max_tokens: 100000 };
-        effortTransform("high", stateWith("claude-opus-4-7", ["effort", "maxTokens"]), output);
+        const result = effortTransform(
+          "high",
+          stateWith("claude-opus-4-8", ["effort", "maxTokens"]),
+          output
+        );
+        expect(result).toBe("xhigh");
+        expect(output.max_tokens).toBe(100000);
+      });
+
+      it("does not lower an already-larger max_tokens when escalating without caller maxTokens provenance", () => {
+        // callerSetMaxTokens is false (only "effort" is provided), but max_tokens
+        // is already above the floor — e.g. a future config default, or a direct
+        // mapBody call. The floor must raise, never lower. Pins the
+        // `currentMax < ESCALATED_EFFORT_MIN_MAX_TOKENS` guard, which the config
+        // path can't reach (its default is always below 65536).
+        const output: Record<string, any> = { max_tokens: 100000 };
+        const result = effortTransform(
+          "high",
+          stateWith("claude-opus-4-8", ["effort"]),
+          output
+        );
+        expect(result).toBe("xhigh");
         expect(output.max_tokens).toBe(100000);
       });
 

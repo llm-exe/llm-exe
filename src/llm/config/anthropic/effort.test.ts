@@ -235,6 +235,14 @@ describe("anthropic effort (shared direct + bedrock)", () => {
       expect(
         topPTransform(0.9, { model: "claude-sonnet-4-6", effort: "nonsense" })
       ).toBe(0.9);
+      // Non-strings take the same path — a thinking-capable model, but the
+      // effort is not one we honor, so thinking never turns on.
+      expect(
+        dropIfModelRejectsSamplingParams(0.5, { model: "claude-sonnet-4-6", effort: 7 })
+      ).toBe(0.5);
+      expect(
+        topPTransform(0.9, { model: "claude-sonnet-4-6", effort: 7 })
+      ).toBe(0.9);
     });
 
     it("reject-list models still drop topP unconditionally, even topP >= 0.95", () => {
@@ -259,6 +267,51 @@ describe("anthropic effort (shared direct + bedrock)", () => {
           effort: "high",
         })
       ).toBe(0.96);
+    });
+  });
+
+  // The options-based `useLlm("anthropic.chat.v1", {...})` entrypoint lets a
+  // caller omit `model` — the raw config declares no model default, only the
+  // shorthand keys get one via `withDefaultModel` — so every gate has to
+  // tolerate an absent model rather than throw on it. These pin the fail-open
+  // behavior: no model means no model-specific rewriting.
+  describe("missing model on state/body", () => {
+    it("effortTransform drops the effort and sets no thinking / max_tokens floor", () => {
+      const out: Record<string, any> = { max_tokens: 10000 };
+      expect(
+        effortTransform("high", { [PROVIDED_OPTION_KEYS]: new Set(["effort"]) }, out)
+      ).toBeUndefined();
+      expect(out.thinking).toBeUndefined();
+      expect(out.max_tokens).toBe(10000);
+    });
+
+    it("effortTransform tolerates a null/empty model the same way", () => {
+      const out: Record<string, any> = {};
+      expect(effortTransform("medium", { model: null }, out)).toBeUndefined();
+      expect(effortTransform("medium", { model: "" }, out)).toBeUndefined();
+      expect(out.thinking).toBeUndefined();
+    });
+
+    it("keeps sampling params when there is no model to gate on", () => {
+      expect(dropIfModelRejectsSamplingParams(0.5, {})).toBe(0.5);
+      expect(dropIfModelRejectsSamplingParams(0.5, { effort: "high" })).toBe(0.5);
+      expect(topPTransform(0.5, {})).toBe(0.5);
+      expect(topPTransform(0.5, { effort: "high" })).toBe(0.5);
+    });
+  });
+
+  // `effort` arrives from user input and is only meaningful for the documented
+  // values; anything else must be dropped rather than forwarded to the provider.
+  // These paths are already covered by the suite — this pins the specific
+  // malformed inputs (non-strings, `""`, wrong case) as contract, since no
+  // existing case asserts them against `effortTransform`.
+  describe("invalid effort values", () => {
+    it("effortTransform drops non-string and unknown values", () => {
+      const out: Record<string, any> = {};
+      for (const bad of [undefined, null, 1, {}, [], true, "", "extreme", "HIGH"]) {
+        expect(effortTransform(bad, { model: "claude-opus-5" }, out)).toBeUndefined();
+      }
+      expect(out.thinking).toBeUndefined();
     });
   });
 });

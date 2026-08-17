@@ -36,3 +36,7 @@ console.log(vector);
 // ...etc
 // ]
 ```
+
+## Notes
+
+- This provider targets Titan's text embedding request shape, which takes a single `inputText` string. Passing multimodal content items throws `embedding.unsupported_input`; use [Cohere via Bedrock](./cohere.md#multimodal-input-embed-v4) to embed images.

@@ -24,7 +24,7 @@ In addition to the [generic options](/llm/generic), the following options are av
 | Option       | Type   | Default   | Description                                                                 |
 | ------------ | ------ | --------- | --------------------------------------------------------------------------- |
 | model        | string | —         | The Bedrock model id. Must be specified. See AWS Bedrock Docs               |
-| maxTokens    | number | 10000     | Maps to `max_tokens`. See Anthropic Docs                                    |
+| maxTokens    | number | 10000     | Maps to `max_tokens`. Raised to 65536 when unset on the escalated effort path (Opus 4.7 / 4.8 high). See the effort note below. |
 | topP         | number | undefined | Maps to `top_p`. Dropped for reject models, or `< 0.95` under `effort`.     |
 | effort       | string | undefined | Maps to `output_config.effort` + `thinking`. See Anthropic provider.        |
 | awsRegion    | string | undefined | AWS Region. Can be set via `AWS_REGION` environment variable                |
@@ -35,6 +35,8 @@ In addition to the [generic options](/llm/generic), the following options are av
 > The Bedrock Anthropic provider maps a subset of the direct [Anthropic provider](/llm/anthropic) options. `temperature`, `topK`, `stopSequences`, `metadata`, and `serviceTier` are not mapped for the Bedrock variant at this time.
 >
 > **`effort` and sampling params:** `effort` maps to `output_config.effort` and adaptive/extended `thinking`, identical to the direct provider, including the Opus 4.7 / 4.8 `high` -> `xhigh` escalation, which raises the default `max_tokens` to 65536 when you do not set it. `topP` is dropped for the models that 400 on sampling parameters (Opus 4.7, 4.8, and 5; Sonnet 5; Fable 5).
+>
+> **Timeout on the escalated path:** the raised 65536 ceiling can let an `xhigh` run exceed the default 30000ms `timeout` (llm-exe does not stream), and timeouts are retried (default `numOfAttempts` 2), costing a second billed attempt. Raise `timeout` when using `effort: "high"` on Opus 4.7 / 4.8.
 >
 > Because `effort` enables thinking, and Anthropic disallows sampling parameters while thinking is active, llm-exe drops `topP` below `0.95` whenever `effort` enables thinking (and drops `temperature` / `topK` on the direct provider, which maps them). Pass `topP >= 0.95` if you need it. This applies to the direct provider as well.
 >

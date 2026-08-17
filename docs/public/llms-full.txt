@@ -444,16 +444,16 @@ When using Anthropic models, llm-exe will make POST requests to `https://api.ant
 
 ```ts
 const llm = useLlm("anthropic.chat.v1", {
-  model: "claude-sonnet-4-6", // specify a model
+  model: "claude-sonnet-5", // specify a model
 });
 ```
 
 ### Anthropic Chat By Model
 
 ```ts
-const llm = useLlm("anthropic.claude-sonnet-4-6", {
+const llm = useLlm("anthropic.claude-sonnet-5", {
   // other options,
-  // no model needed, using claude-sonnet-4-6
+  // no model needed, using claude-sonnet-5
 });
 ```
 
@@ -734,7 +734,7 @@ In addition to the generic options, the following options are xAI-specific and c
 | frequencyPenalty | number  | undefined   | Maps to `frequency_penalty`. See xAI Docs                     |
 | logitBias        | object  | undefined   | Maps to `logit_bias`. See xAI Docs                            |
 | useJson          | boolean | undefined   | When `true`, sets `response_format` to `json_object`           |
-| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Currently not supported by any available xAI model and will be silently ignored. |
+| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only sent for xAI reasoning models (`grok-4.3`, `grok-4.5`); on any other model, or for a value outside that list, it is silently dropped. |
 
 See [xAI API Reference](https://docs.x.ai/docs/overview) for details on these parameters.
 
@@ -2762,6 +2762,69 @@ const response = await executor.execute({
 })
 ```
 
+## Execute Options
+
+The second argument to `execute()` controls tool calling for that call.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `functions` | `Array<{ name, description, parameters? }>` | `undefined` | The tools the LLM is allowed to call. `parameters` is a JSON Schema object describing the tool's arguments. |
+| `functionCall` | `"auto" \| "none" \| "any" \| { name: string }` | `undefined` | How the LLM should choose. `"auto"` lets it decide, `"none"` forbids tool calls, and `"any"` forces it to call some tool — these three work on every provider. `{ name }` (force one specific tool) is currently mapped only for Anthropic (direct and Bedrock; note Bedrock rejects a forced tool_choice combined with adaptive thinking). On Google it falls back to `"auto"`, and on OpenAI-compatible endpoints it is passed through unmapped, which the provider rejects. |
+| `functionCallStrictInput` | `boolean` | `false` | Enables strict schema adherence on providers that support it (OpenAI-compatible endpoints). Ignored elsewhere. |
+| `jsonSchema` | `Record<string, any>` | `undefined` | Optional JSON Schema for structured output. Mapped for OpenAI-compatible endpoints (OpenAI, xAI, Deepseek) only; silently ignored elsewhere. |
+
+::: tip
+Tool definitions are normalized internally, so the same `functions` array works across OpenAI, Anthropic, Google, xAI, and other providers that support tool calling.
+:::
+
+## Handling the Response
+
+The tool-calling executor returns one of two things, depending on what the LLM did:
+
+- **The LLM called one or more tools** — you get the normalized content array, `OutputResultContent[]`. Each tool call is an object with `type: "function_use"`, plus `name`, `input`, and `functionId`.
+- **The LLM replied with text instead** — you get the output of the parser you passed in (a `string` by default, since the executor falls back to the string parser).
+
+Use the exported `guards.isFunctionCall` type guard to tell them apart without hand-writing checks:
+
+```ts
+import { guards } from "llm-exe";
+
+const response = await executor.execute({ input: "What's the weather in Denver?" }, {
+  functionCall: "auto",
+  functions,
+})
+
+if (guards.hasFunctionCall(response)) {
+  for (const item of response) {
+    if (guards.isFunctionCall(item)) {
+      // item.name      -> "getWeather"
+      // item.input     -> { latitude: 39.7392, longitude: -104.9903 }
+      // item.functionId -> provider-assigned call id, use it when replying
+      const result = await callYourTool(item.name, item.input);
+    }
+  }
+} else {
+  // plain text response, already run through your parser. hasFunctionCall
+  // (not Array.isArray) is the discriminator: a parser like listToArray also
+  // returns an array on the text path, and it must land here, not above.
+  console.log(response);
+}
+```
+
+::: warning
+A parser passed to `createLlmFunctionExecutor` only applies to the **text** path. When the LLM calls a tool, the raw normalized `function_use` content is returned so you can dispatch on it — the parser is not applied to tool arguments. Validate `item.input` yourself if the tool schema isn't enough.
+:::
+
+## Replying With Tool Results
+
+Tool calling is a loop: run the tool, add the result back to the conversation, and call the executor again. `functionId` is what ties a result back to the call that produced it — see [Dialogue](/state/dialogue) for storing the running history, and [`addFromHistory`](/prompt/chat) for replaying it into the next prompt.
+
+## See Also
+
+- [Executor overview](/executor/) — the standard LLM executor and how types flow through it
+- [Callable executors](/callable/) — expose other executors as tools the LLM can call
+- [Parsers](/parser/) — parsing the text path of the response
+
 ---
 
 
@@ -3061,7 +3124,19 @@ const vector = embedding.getEmbedding();
 | `provider` | `EmbeddingProviderKey` | The embedding provider key (see supported providers below) |
 | `options` | `object` | Provider-specific options including `model` |
 
-The returned object has a `.call(input)` method that returns a promise. The resolved result has a `.getEmbedding()` method that returns the embedding vector as `number[]`.
+The returned object has a `.call(input)` method that returns a promise. The resolved result has a `.getEmbedding()` method that returns the embedding vector as `number[]`. For a batch, pass an index — `.getEmbedding(1)` returns the vector for the second input.
+
+### Input
+
+`.call(input)` accepts an `EmbeddingInput`:
+
+| Input | Type | Description |
+|-------|------|-------------|
+| Single text | `string` | Embeds one string, returning one vector |
+| Text batch | `string[]` | Embeds each string in one request, returning one vector per entry. Not supported by Amazon Titan (`amazon.embedding.v1`), which takes a single string per call — see [Amazon](./amazon.md) |
+| Multimodal batch | `EmbeddingContentItem[]` | Interleaved text and image content. Supported **only** by `amazon:cohere.embedding.v1` — see [Cohere → Multimodal Input](./cohere.md#multimodal-input-embed-v4) |
+
+A single `string` works with every provider; `string[]` batching does not apply to Amazon Titan, which embeds one string per request. Passing content items to a text-only provider throws an `embedding.unsupported_input` error rather than sending an object into a field the provider expects to be a string.
 
 ## Supported Embedding Providers
 
@@ -3162,6 +3237,7 @@ Notes:
 
 - `{baseUrl}` is concatenated with `/embeddings`, so omit any trailing `/embeddings` from the URL.
 - If your compatible provider doesn't support `dimensions` or returns a fixed vector size, the default `dimensions: 1536` may need to be overridden or left to the provider — consult the provider's docs.
+- This provider is text-only. Passing multimodal content items throws `embedding.unsupported_input`; use [Cohere via Bedrock](./cohere.md#multimodal-input-embed-v4) to embed images.
 
 ---
 
@@ -3199,6 +3275,10 @@ console.log(vector);
 // ...etc
 // ]
 ```
+
+## Notes
+
+- This provider targets Titan's text embedding request shape, which takes a single `inputText` string. Passing multimodal content items throws `embedding.unsupported_input`; use [Cohere via Bedrock](./cohere.md#multimodal-input-embed-v4) to embed images.
 
 ---
 

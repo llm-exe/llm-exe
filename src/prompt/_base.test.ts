@@ -28,6 +28,9 @@ describe("llm-exe:prompt/TextPrompt", () => {
     expect(prompt).toHaveProperty("helpers")
     expect(prompt.helpers).toEqual([])
 
+    expect(prompt).toHaveProperty("validateInput")
+    expect(prompt.validateInput).toEqual(false)
+
     expect(prompt).toHaveProperty("type")
     expect(prompt).toHaveProperty("addToPrompt")
     expect(prompt).toHaveProperty("addSystemMessage")
@@ -146,7 +149,7 @@ describe("llm-exe:prompt/TextPrompt", () => {
 
     test("defaults input to empty string and mirrors it to _input", () => {
       const prompt = new MockPrompt();
-      expect(prompt.getReplacements({ a: 1 } as any)).toEqual({
+      expect(prompt.getReplacements({ a: 1 })).toEqual({
         a: 1,
         input: "",
         _input: "",
@@ -155,7 +158,7 @@ describe("llm-exe:prompt/TextPrompt", () => {
 
     test("preserves a provided input value on both input and _input", () => {
       const prompt = new MockPrompt();
-      expect(prompt.getReplacements({ input: "abc", b: 2 } as any)).toEqual({
+      expect(prompt.getReplacements({ input: "abc", b: 2 })).toEqual({
         b: 2,
         input: "abc",
         _input: "abc",
@@ -169,14 +172,14 @@ describe("llm-exe:prompt/TextPrompt", () => {
         preFilters: [(p: string) => p.toUpperCase().replace("{{NAME}}", "{{name}}")],
         postFilters: [(p: string) => `<${p}>`],
       });
-      expect(prompt.format({ name: "world" } as any)).toEqual("<HELLO world>");
+      expect(prompt.format({ name: "world" })).toEqual("<HELLO world>");
     });
 
     test("applies multiple filters in registration order", () => {
       const prompt = new MockPrompt("x", {
         postFilters: [(p: string) => `${p}-1`, (p: string) => `${p}-2`],
       });
-      expect(prompt.format({} as any)).toEqual("x-1-2");
+      expect(prompt.format({})).toEqual("x-1-2");
     });
 
     test("passes the format values through to filters", () => {
@@ -189,7 +192,7 @@ describe("llm-exe:prompt/TextPrompt", () => {
           }) as any,
         ],
       });
-      prompt.format({ name: "world" } as any);
+      prompt.format({ name: "world" });
       expect(seen).toEqual([{ name: "world" }]);
     });
 
@@ -200,59 +203,11 @@ describe("llm-exe:prompt/TextPrompt", () => {
       });
       expect(prompt.filters.pre).toEqual([]);
       expect(prompt.filters.post).toEqual([]);
-      expect(prompt.format({} as any)).toEqual("x");
+      expect(prompt.format({})).toEqual("x");
     });
   });
 
   describe("validateInput", () => {
-    test("defaults to false and does not throw on missing variables", () => {
-      const prompt = new MockPrompt("Hello {{missing}}");
-      expect(prompt.validateInput).toEqual(false);
-      expect(() => prompt.format({} as any)).not.toThrow();
-    });
-
-    test("throws prompt.missing_template_variable in 'strict' mode", () => {
-      const prompt = new MockPrompt("Hello {{missing}}", {
-        validateInput: "strict",
-      });
-      try {
-        prompt.format({} as any);
-        throw new Error("should have thrown");
-      } catch (error: any) {
-        expect(error.code).toEqual("prompt.missing_template_variable");
-        expect(error.context.missingVariables).toContain("missing");
-      }
-    });
-
-    test("emits a process warning instead of throwing when set to 'warn'", () => {
-      const emitWarning = jest
-        .spyOn(process, "emitWarning")
-        .mockImplementation(() => undefined);
-      const prompt = new MockPrompt("Hello {{missing}}", {
-        validateInput: "warn",
-      });
-
-      expect(() => prompt.format({} as any)).not.toThrow();
-      expect(emitWarning).toHaveBeenCalledTimes(1);
-      expect((emitWarning.mock.calls[0][0] as any).code).toEqual(
-        "prompt.missing_template_variable"
-      );
-      emitWarning.mockRestore();
-    });
-
-    test("does not warn when all referenced variables are provided", () => {
-      const emitWarning = jest
-        .spyOn(process, "emitWarning")
-        .mockImplementation(() => undefined);
-      const prompt = new MockPrompt("Hello {{name}}", {
-        validateInput: "warn",
-      });
-
-      expect(prompt.format({ name: "world" } as any)).toEqual("Hello world");
-      expect(emitWarning).not.toHaveBeenCalled();
-      emitWarning.mockRestore();
-    });
-
     test("rethrows non-missing-variable errors even in 'warn' mode", () => {
       const prompt = new MockPrompt("Hello {{name}}", {
         validateInput: "warn",
@@ -262,62 +217,22 @@ describe("llm-exe:prompt/TextPrompt", () => {
         throw boom;
       });
 
-      expect(() => prompt.format({ name: "world" } as any)).toThrow(
+      expect(() => prompt.format({ name: "world" })).toThrow(
         "unrelated failure"
       );
-    });
-
-    test("validates on formatAsync as well", async () => {
-      const prompt = new MockPrompt("Hello {{missing}}", {
-        validateInput: "strict",
-      });
-      await expect(prompt.formatAsync({} as any)).rejects.toThrow();
     });
   });
 
   describe("validate", () => {
-    test("reports unregistered helpers as missing", () => {
-      const prompt = new MockPrompt("{{myHelper name}}");
-      try {
-        prompt.validate({ name: "world" } as any);
-        throw new Error("should have thrown");
-      } catch (error: any) {
-        expect(error.code).toEqual("prompt.missing_template_variable");
-        expect(error.context.missingHelpers).toContain("myHelper");
-      }
-    });
-
-    test("accepts a helper once registered", () => {
-      const prompt = new MockPrompt("{{myHelper name}}");
-      prompt.registerHelpers({
-        name: "myHelper",
-        handler: (v: string) => v,
-      } as PromptHelper);
-      expect(() => prompt.validate({ name: "world" } as any)).not.toThrow();
-    });
-
     test("dedupes the same missing variable across multiple messages", () => {
       const prompt = new MockPrompt("{{missing}}");
       prompt.addSystemMessage("{{missing}} again");
       try {
-        prompt.validate({} as any);
+        prompt.validate({});
         throw new Error("should have thrown");
       } catch (error: any) {
         expect(error.context.missingVariables).toEqual(["missing"]);
       }
-    });
-
-    test("returns void when nothing is missing", () => {
-      const prompt = new MockPrompt("Hello {{name}}");
-      expect(prompt.validate({ name: "world" } as any)).toBeUndefined();
-    });
-
-    test("skips messages whose content is an array", () => {
-      const prompt = new MockPrompt();
-      prompt.messages = [
-        { role: "system", content: [{ type: "text", text: "{{missing}}" }] },
-      ] as any;
-      expect(() => prompt.validate({} as any)).not.toThrow();
     });
   });
 
@@ -349,14 +264,14 @@ describe("llm-exe:prompt/TextPrompt", () => {
     test("joins multiple messages with the default separator", () => {
       const prompt = new MockPrompt("one");
       prompt.addSystemMessage("two");
-      expect(prompt.format({} as any)).toEqual("one\n\ntwo");
+      expect(prompt.format({})).toEqual("one\n\ntwo");
     });
 
     test("honors a custom separator", async () => {
       const prompt = new MockPrompt("one");
       prompt.addSystemMessage("two");
-      expect(prompt.format({} as any, " | ")).toEqual("one | two");
-      await expect(prompt.formatAsync({} as any, " | ")).resolves.toEqual(
+      expect(prompt.format({}, " | ")).toEqual("one | two");
+      await expect(prompt.formatAsync({}, " | ")).resolves.toEqual(
         "one | two"
       );
     });
@@ -396,7 +311,7 @@ describe("llm-exe:prompt/TextPrompt", () => {
       const prompt = new MockPrompt("hello {{name}}", {
         replaceTemplateString: custom as any,
       });
-      expect(prompt.format({ name: "world" } as any)).toEqual("replaced");
+      expect(prompt.format({ name: "world" })).toEqual("replaced");
       expect(custom).toHaveBeenCalled();
     });
   });

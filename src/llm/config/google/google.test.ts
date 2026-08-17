@@ -235,6 +235,48 @@ describe("google configuration", () => {
     });
   });
 
+  describe("gemini-3.5-flash-lite", () => {
+    const googleGemini35FlashLite = google[
+      "google.gemini-3.5-flash-lite"
+    ] as Config;
+
+    it("should be based on googleChatV1 configuration", () => {
+      expect(googleGemini35FlashLite.endpoint).toEqual(googleChatV1.endpoint);
+      expect(googleGemini35FlashLite.method).toEqual(googleChatV1.method);
+      expect(googleGemini35FlashLite.headers).toEqual(googleChatV1.headers);
+    });
+
+    it("should override model in mapBody and options as gemini-3.5-flash-lite", () => {
+      expect(googleGemini35FlashLite.mapBody.model).toEqual({
+        default: "gemini-3.5-flash-lite",
+        key: "model",
+      });
+      expect(googleGemini35FlashLite.options.model).toEqual({
+        default: "gemini-3.5-flash-lite",
+      });
+    });
+  });
+
+  describe("gemini-3.6-flash", () => {
+    const googleGemini36Flash = google["google.gemini-3.6-flash"] as Config;
+
+    it("should be based on googleChatV1 configuration", () => {
+      expect(googleGemini36Flash.endpoint).toEqual(googleChatV1.endpoint);
+      expect(googleGemini36Flash.method).toEqual(googleChatV1.method);
+      expect(googleGemini36Flash.headers).toEqual(googleChatV1.headers);
+    });
+
+    it("should override model in mapBody and options as gemini-3.6-flash", () => {
+      expect(googleGemini36Flash.mapBody.model).toEqual({
+        default: "gemini-3.6-flash",
+        key: "model",
+      });
+      expect(googleGemini36Flash.options.model).toEqual({
+        default: "gemini-3.6-flash",
+      });
+    });
+  });
+
   describe("gemini-2.0-flash", () => {
     it("should be based on googleChatV1 configuration", () => {
       expect(googleGemini2Flash.endpoint).toEqual(googleChatV1.endpoint);
@@ -251,6 +293,35 @@ describe("google configuration", () => {
         default: "gemini-2.0-flash",
       });
     });
+  });
+
+  describe("retired shorthands", () => {
+    it.each([
+      [
+        "google.gemini-2.0-flash",
+        "gemini-2.0-flash",
+        "google.gemini-3.5-flash",
+      ],
+      [
+        "google.gemini-2.0-flash-lite",
+        "gemini-2.0-flash-lite",
+        "google.gemini-3.1-flash-lite",
+      ],
+      ["google.gemini-1.5-pro", "gemini-1.5-pro", "google.gemini-3.5-flash"],
+    ] as const)(
+      "%s should still resolve to %s but be marked deprecated",
+      (shorthand, expectedModel, migrateTo) => {
+        const config = google[shorthand] as Config;
+        expect(config).toBeDefined();
+        expect(config.options.model).toEqual({ default: expectedModel });
+        expect(config.mapBody.model).toEqual({
+          default: expectedModel,
+          key: "model",
+        });
+        expect(config.deprecated?.shorthand).toEqual(shorthand);
+        expect(config.deprecated?.message).toContain(migrateTo);
+      }
+    );
   });
 
   describe("image content through mapBody", () => {

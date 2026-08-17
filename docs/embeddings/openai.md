@@ -86,3 +86,4 @@ Notes:
 
 - `{baseUrl}` is concatenated with `/embeddings`, so omit any trailing `/embeddings` from the URL.
 - If your compatible provider doesn't support `dimensions` or returns a fixed vector size, the default `dimensions: 1536` may need to be overridden or left to the provider — consult the provider's docs.
+- This provider is text-only. Passing multimodal content items throws `embedding.unsupported_input`; use [Cohere via Bedrock](./cohere.md#multimodal-input-embed-v4) to embed images.

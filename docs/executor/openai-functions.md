@@ -47,3 +47,66 @@ const response = await executor.execute({
   functions: functions,
 })
 ```
+
+## Execute Options
+
+The second argument to `execute()` controls tool calling for that call.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `functions` | `Array<{ name, description, parameters? }>` | `undefined` | The tools the LLM is allowed to call. `parameters` is a JSON Schema object describing the tool's arguments. |
+| `functionCall` | `"auto" \| "none" \| "any" \| { name: string }` | `undefined` | How the LLM should choose. `"auto"` lets it decide, `"none"` forbids tool calls, and `"any"` forces it to call some tool — these three work on every provider. `{ name }` (force one specific tool) is currently mapped only for Anthropic (direct and Bedrock; note Bedrock rejects a forced tool_choice combined with adaptive thinking). On Google it falls back to `"auto"`, and on OpenAI-compatible endpoints it is passed through unmapped, which the provider rejects. |
+| `functionCallStrictInput` | `boolean` | `false` | Enables strict schema adherence on providers that support it (OpenAI-compatible endpoints). Ignored elsewhere. |
+| `jsonSchema` | `Record<string, any>` | `undefined` | Optional JSON Schema for structured output. Mapped for OpenAI-compatible endpoints (OpenAI, xAI, Deepseek) only; silently ignored elsewhere. |
+
+::: tip
+Tool definitions are normalized internally, so the same `functions` array works across OpenAI, Anthropic, Google, xAI, and other providers that support tool calling.
+:::
+
+## Handling the Response
+
+The tool-calling executor returns one of two things, depending on what the LLM did:
+
+- **The LLM called one or more tools** — you get the normalized content array, `OutputResultContent[]`. Each tool call is an object with `type: "function_use"`, plus `name`, `input`, and `functionId`.
+- **The LLM replied with text instead** — you get the output of the parser you passed in (a `string` by default, since the executor falls back to the string parser).
+
+Use the exported `guards.isFunctionCall` type guard to tell them apart without hand-writing checks:
+
+```ts
+import { guards } from "llm-exe";
+
+const response = await executor.execute({ input: "What's the weather in Denver?" }, {
+  functionCall: "auto",
+  functions,
+})
+
+if (guards.hasFunctionCall(response)) {
+  for (const item of response) {
+    if (guards.isFunctionCall(item)) {
+      // item.name      -> "getWeather"
+      // item.input     -> { latitude: 39.7392, longitude: -104.9903 }
+      // item.functionId -> provider-assigned call id, use it when replying
+      const result = await callYourTool(item.name, item.input);
+    }
+  }
+} else {
+  // plain text response, already run through your parser. hasFunctionCall
+  // (not Array.isArray) is the discriminator: a parser like listToArray also
+  // returns an array on the text path, and it must land here, not above.
+  console.log(response);
+}
+```
+
+::: warning
+A parser passed to `createLlmFunctionExecutor` only applies to the **text** path. When the LLM calls a tool, the raw normalized `function_use` content is returned so you can dispatch on it — the parser is not applied to tool arguments. Validate `item.input` yourself if the tool schema isn't enough.
+:::
+
+## Replying With Tool Results
+
+Tool calling is a loop: run the tool, add the result back to the conversation, and call the executor again. `functionId` is what ties a result back to the call that produced it — see [Dialogue](/state/dialogue) for storing the running history, and [`addFromHistory`](/prompt/chat) for replaying it into the next prompt.
+
+## See Also
+
+- [Executor overview](/executor/) — the standard LLM executor and how types flow through it
+- [Callable executors](/callable/) — expose other executors as tools the LLM can call
+- [Parsers](/parser/) — parsing the text path of the response

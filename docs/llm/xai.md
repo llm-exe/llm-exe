@@ -79,6 +79,6 @@ In addition to the generic options, the following options are xAI-specific and c
 | frequencyPenalty | number  | undefined   | Maps to `frequency_penalty`. See xAI Docs                     |
 | logitBias        | object  | undefined   | Maps to `logit_bias`. See xAI Docs                            |
 | useJson          | boolean | undefined   | When `true`, sets `response_format` to `json_object`           |
-| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Currently not supported by any available xAI model and will be silently ignored. |
+| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only sent for xAI reasoning models (`grok-4.3`, `grok-4.5`); on any other model, or for a value outside that list, it is silently dropped. |
 
 See [xAI API Reference](https://docs.x.ai/docs/overview) for details on these parameters.

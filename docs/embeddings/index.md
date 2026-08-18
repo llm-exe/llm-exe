@@ -38,7 +38,19 @@ const vector = embedding.getEmbedding();
 | `provider` | `EmbeddingProviderKey` | The embedding provider key (see supported providers below) |
 | `options` | `object` | Provider-specific options including `model` |
 
-The returned object has a `.call(input)` method that returns a promise. The resolved result has a `.getEmbedding()` method that returns the embedding vector as `number[]`.
+The returned object has a `.call(input)` method that returns a promise. The resolved result has a `.getEmbedding()` method that returns the embedding vector as `number[]`. For a batch, pass an index — `.getEmbedding(1)` returns the vector for the second input.
+
+### Input
+
+`.call(input)` accepts an `EmbeddingInput`:
+
+| Input | Type | Description |
+|-------|------|-------------|
+| Single text | `string` | Embeds one string, returning one vector |
+| Text batch | `string[]` | Embeds each string in one request, returning one vector per entry. Not supported by Amazon Titan (`amazon.embedding.v1`), which takes a single string per call — see [Amazon](./amazon.md) |
+| Multimodal batch | `EmbeddingContentItem[]` | Interleaved text and image content. Supported **only** by `amazon:cohere.embedding.v1` — see [Cohere → Multimodal Input](./cohere.md#multimodal-input-embed-v4) |
+
+A single `string` works with every provider; `string[]` batching does not apply to Amazon Titan, which embeds one string per request. Passing content items to a text-only provider throws an `embedding.unsupported_input` error rather than sending an object into a field the provider expects to be a string.
 
 ## Supported Embedding Providers
 

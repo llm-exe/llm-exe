@@ -98,6 +98,14 @@ export const google = {
     googleGeminiChatV1,
     "gemini-3.5-flash"
   ),
+  "google.gemini-3.5-flash-lite": withDefaultModel(
+    googleGeminiChatV1,
+    "gemini-3.5-flash-lite"
+  ),
+  "google.gemini-3.6-flash": withDefaultModel(
+    googleGeminiChatV1,
+    "gemini-3.6-flash"
+  ),
 
   // Deprecated
   ...deprecateShorthand("google.gemini-2.5-flash", {
@@ -115,16 +123,21 @@ export const google = {
     message:
       'Model "google.gemini-2.5-pro" is deprecated and will shut down on 2026-06-17.',
   }),
-  "google.gemini-2.0-flash": withDefaultModel(
-    googleGeminiChatV1,
-    "gemini-2.0-flash"
-  ),
-  "google.gemini-2.0-flash-lite": withDefaultModel(
-    googleGeminiChatV1,
-    "gemini-2.0-flash-lite"
-  ),
-  "google.gemini-1.5-pro": withDefaultModel(
-    googleGeminiChatV1,
-    "gemini-1.5-pro"
-  ),
+  // Shut down by Google — kept only so existing code warns instead of
+  // failing silently. Slated for removal in the next major release.
+  ...deprecateShorthand("google.gemini-2.0-flash", {
+    config: withDefaultModel(googleGeminiChatV1, "gemini-2.0-flash"),
+    message:
+      'Model "google.gemini-2.0-flash" was shut down by Google on 2026-06-01 and will fail at the API. Migrate to "google.gemini-3.5-flash".',
+  }),
+  ...deprecateShorthand("google.gemini-2.0-flash-lite", {
+    config: withDefaultModel(googleGeminiChatV1, "gemini-2.0-flash-lite"),
+    message:
+      'Model "google.gemini-2.0-flash-lite" was shut down by Google on 2026-06-01 and will fail at the API. Migrate to "google.gemini-3.1-flash-lite".',
+  }),
+  ...deprecateShorthand("google.gemini-1.5-pro", {
+    config: withDefaultModel(googleGeminiChatV1, "gemini-1.5-pro"),
+    message:
+      'Model "google.gemini-1.5-pro" was shut down by Google on 2025-09-29 and will fail at the API. Migrate to "google.gemini-3.5-flash".',
+  }),
 };

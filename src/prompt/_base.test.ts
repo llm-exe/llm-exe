@@ -28,6 +28,9 @@ describe("llm-exe:prompt/TextPrompt", () => {
     expect(prompt).toHaveProperty("helpers")
     expect(prompt.helpers).toEqual([])
 
+    expect(prompt).toHaveProperty("validateInput")
+    expect(prompt.validateInput).toEqual(false)
+
     expect(prompt).toHaveProperty("type")
     expect(prompt).toHaveProperty("addToPrompt")
     expect(prompt).toHaveProperty("addSystemMessage")
@@ -118,5 +121,162 @@ describe("llm-exe:prompt/TextPrompt", () => {
     expect(formatted).toEqual("");
   });
 
+  describe("getReplacements", () => {
+    test("defaults input to empty string and mirrors it to _input", () => {
+      const prompt = new MockPrompt();
+      expect(prompt.getReplacements({ a: 1 })).toEqual({
+        a: 1,
+        input: "",
+        _input: "",
+      });
+    });
 
+    test("preserves a provided input value on both input and _input", () => {
+      const prompt = new MockPrompt();
+      expect(prompt.getReplacements({ input: "abc", b: 2 })).toEqual({
+        b: 2,
+        input: "abc",
+        _input: "abc",
+      });
+    });
+  });
+
+  describe("filters", () => {
+    test("runs pre filters before replacement and post filters after", () => {
+      const prompt = new MockPrompt("hello {{name}}", {
+        preFilters: [(p: string) => p.toUpperCase().replace("{{NAME}}", "{{name}}")],
+        postFilters: [(p: string) => `<${p}>`],
+      });
+      expect(prompt.format({ name: "world" })).toEqual("<HELLO world>");
+    });
+
+    test("applies multiple filters in registration order", () => {
+      const prompt = new MockPrompt("x", {
+        postFilters: [(p: string) => `${p}-1`, (p: string) => `${p}-2`],
+      });
+      expect(prompt.format({})).toEqual("x-1-2");
+    });
+
+    test("passes the format values through to filters", () => {
+      const seen: any[] = [];
+      const prompt = new MockPrompt("x", {
+        // The `as any` is deliberate: `PromptOptions.preFilters`/`postFilters`
+        // are typed `((prompt: string) => string)[]` (src/interfaces/prompt.ts:14-15),
+        // but `runPromptFilter` calls `filter(promptValue, values)`
+        // (src/prompt/_base.ts:239). The second argument exists at runtime and is
+        // asserted here; the public type just doesn't declare it.
+        postFilters: [
+          ((p: string, values: any) => {
+            seen.push(values);
+            return p;
+          }) as any,
+        ],
+      });
+      prompt.format({ name: "world" });
+      expect(seen).toEqual([{ name: "world" }]);
+    });
+
+    test("ignores non-array preFilters/postFilters options", () => {
+      const prompt = new MockPrompt("x", {
+        preFilters: "nope" as any,
+        postFilters: "nope" as any,
+      });
+      expect(prompt.filters.pre).toEqual([]);
+      expect(prompt.filters.post).toEqual([]);
+      expect(prompt.format({})).toEqual("x");
+    });
+  });
+
+  describe("validateInput", () => {
+    test("rethrows non-missing-variable errors even in 'warn' mode", () => {
+      const prompt = new MockPrompt("Hello {{name}}", {
+        validateInput: "warn",
+      });
+      const boom = new Error("unrelated failure");
+      jest.spyOn(prompt, "validate").mockImplementation(() => {
+        throw boom;
+      });
+
+      expect(() => prompt.format({ name: "world" })).toThrow(
+        "unrelated failure"
+      );
+    });
+  });
+
+  describe("validate", () => {
+    test("dedupes the same missing variable across multiple messages", () => {
+      const prompt = new MockPrompt("{{missing}}");
+      prompt.addSystemMessage("{{missing}} again");
+      try {
+        prompt.validate({});
+        throw new Error("should have thrown");
+      } catch (error: any) {
+        expect(error.context.missingVariables).toEqual(["missing"]);
+      }
+    });
+  });
+
+  describe("message construction", () => {
+    test("ignores an empty initial prompt message", () => {
+      expect(new MockPrompt("").messages).toEqual([]);
+      expect(new MockPrompt(undefined).messages).toEqual([]);
+    });
+
+    test("addToPrompt routes unknown roles to system", () => {
+      const prompt = new MockPrompt();
+      prompt.addToPrompt("hello", "some-unknown-role");
+      expect(prompt.messages).toEqual([{ role: "system", content: "hello" }]);
+    });
+
+    test("addToPrompt ignores empty content", () => {
+      const prompt = new MockPrompt();
+      prompt.addToPrompt("");
+      expect(prompt.messages).toEqual([]);
+    });
+
+    test("addToPrompt and addSystemMessage are chainable", () => {
+      const prompt = new MockPrompt();
+      expect(prompt.addToPrompt("a")).toBe(prompt);
+      expect(prompt.addSystemMessage("b")).toBe(prompt);
+      expect(prompt.messages).toHaveLength(2);
+    });
+
+    test("honors a custom separator on the async path", async () => {
+      const prompt = new MockPrompt("one");
+      prompt.addSystemMessage("two");
+      await expect(prompt.formatAsync({}, " | ")).resolves.toEqual(
+        "one | two"
+      );
+    });
+  });
+
+  describe("registration", () => {
+    test("registerPartial accepts a single partial or an array", () => {
+      const one: PromptPartial = { name: "a", template: "A" };
+      const two: PromptPartial = { name: "b", template: "B" };
+      const prompt = new MockPrompt();
+      prompt.registerPartial(one);
+      prompt.registerPartial([two]);
+      expect(prompt.partials).toEqual([one, two]);
+    });
+
+    test("registerHelpers accepts a single helper or an array", () => {
+      const one = { name: "a", handler: () => "A" } as PromptHelper;
+      const two = { name: "b", handler: () => "B" } as PromptHelper;
+      const prompt = new MockPrompt();
+      prompt.registerHelpers(one);
+      prompt.registerHelpers([two]);
+      expect(prompt.helpers).toEqual([one, two]);
+    });
+
+    test("registration methods are chainable", () => {
+      const prompt = new MockPrompt();
+      expect(
+        prompt.registerPartial({ name: "a", template: "A" })
+      ).toBe(prompt);
+      expect(
+        prompt.registerHelpers({ name: "b", handler: () => "B" } as PromptHelper)
+      ).toBe(prompt);
+    });
+  });
 })

@@ -187,8 +187,12 @@ const analyst = createLlmExecutor(
     ),
     parser: createParser("json", {
       schema: {
-        insights: { type: "array", items: { type: "string" } },
-        score: { type: "number", min: 0, max: 100 },
+        type: "object",
+        properties: {
+          insights: { type: "array", items: { type: "string" } },
+          score: { type: "number", minimum: 0, maximum: 100 },
+        },
+        required: ["insights", "score"],
       },
     }),
   },

@@ -1,6 +1,6 @@
 ---
 title: "Use Anthropic Claude in TypeScript with llm-exe"
-description: "Connect Anthropic Claude models like claude-sonnet-4-6 to your TypeScript app with llm-exe. Covers setup, API key authentication, and Claude-specific options."
+description: "Connect Anthropic Claude models like claude-sonnet-5 to your TypeScript app with llm-exe. Covers setup, API key authentication, and Claude-specific options."
 ---
 
 # Anthropic
@@ -13,16 +13,16 @@ When using Anthropic models, llm-exe will make POST requests to `https://api.ant
 
 ```ts
 const llm = useLlm("anthropic.chat.v1", {
-  model: "claude-sonnet-4-6", // specify a model
+  model: "claude-sonnet-5", // specify a model
 });
 ```
 
 ### Anthropic Chat By Model
 
 ```ts
-const llm = useLlm("anthropic.claude-sonnet-4-6", {
+const llm = useLlm("anthropic.claude-sonnet-5", {
   // other options,
-  // no model needed, using claude-sonnet-4-6
+  // no model needed, using claude-sonnet-5
 });
 ```
 

@@ -33,7 +33,7 @@ permissions:
 
 jobs:
   # Runs in parallel with review. Result is consumed by the decide job.
-  # Mirrors tests.yml exactly (matrix, cache action, npm install, npm run test).
+  # Mirrors tests.yml exactly (matrix, cache action, npm install, npm run typecheck, npm run test).
   # Coverage upload is intentionally omitted — that is tests.yml's responsibility on main PRs.
   tests:
     if: github.base_ref == 'development' || (github.event_name == 'workflow_dispatch' && inputs.base_ref == 'development')
@@ -64,6 +64,11 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      # Mirrors the typecheck step in tests.yml — see the note there.
+      - name: Typecheck
+        if: ${{ matrix.node-version == '24.x' }}
+        run: npm run typecheck
 
       - name: Run tests
         run: npm run test

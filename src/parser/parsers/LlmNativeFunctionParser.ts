@@ -7,9 +7,15 @@ import { BaseParser } from "../_base";
 
 import { maybeParseJSON } from "@/utils";
 
-export interface LlmNativeFunctionParserOptions<T extends BaseParser<any, any>> {
+export interface LlmFunctionParserOptions<T extends BaseParser<any, any>> {
   parser: T;
 }
+
+/**
+ * @deprecated Use `LlmFunctionParserOptions` instead.
+ */
+export type LlmNativeFunctionParserOptions<T extends BaseParser<any, any>> =
+  LlmFunctionParserOptions<T>;
 
 export class LlmFunctionParser<T extends BaseParser<any, any>> extends BaseParser<
   ParserOutput<T> | OutputResultContent[],
@@ -17,7 +23,7 @@ export class LlmFunctionParser<T extends BaseParser<any, any>> extends BaseParse
 > {
   public parser: T;
 
-  constructor(options: LlmNativeFunctionParserOptions<T>) {
+  constructor(options: LlmFunctionParserOptions<T>) {
     // pass the `function_call` target through so the executor knows
     super("functionCall", "function_call");
     this.parser = options.parser;

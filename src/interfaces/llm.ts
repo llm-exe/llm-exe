@@ -799,6 +799,9 @@ export type AllUseLlmOptions = AllLlm & {
   "xai.grok-4.5": {
     input: Omit<XAiRequest, "model">;
   };
+  "xai.grok-4.6": {
+    input: Omit<XAiRequest, "model">;
+  };
 
   // Ollama
   "ollama.deepseek-r1": {

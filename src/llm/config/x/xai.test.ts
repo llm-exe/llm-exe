@@ -69,6 +69,21 @@ describe("openai configuration", () => {
     });
   });
 
+  describe("xai.grok-4.6", () => {
+    const config = xai["xai.grok-4.6"] as Config;
+
+    it("should have the correct default model", () => {
+      expect(config.options.model.default).toBe("grok-4.6");
+    });
+
+    it("should have the correct key, provider, endpoint, and method", () => {
+      expect(config.key).toBe("xai.chat.v1");
+      expect(config.provider).toBe("xai.chat");
+      expect(config.endpoint).toBe("https://api.x.ai/v1/chat/completions");
+      expect(config.method).toBe("POST");
+    });
+  });
+
   describe("all shorthands resolve to expected default model", () => {
     it.each([
       ["xai.grok-2", "grok-2-latest"],
@@ -81,6 +96,7 @@ describe("openai configuration", () => {
       ["xai.grok-4.20", "grok-4.20-0309-non-reasoning"],
       ["xai.grok-4.20-reasoning", "grok-4.20-0309-reasoning"],
       ["xai.grok-4.5", "grok-4.5"],
+      ["xai.grok-4.6", "grok-4.6"],
     ] as const)(
       "%s should resolve to %s and share base config",
       (shorthand, expectedModel) => {
@@ -151,5 +167,16 @@ describe("openai configuration", () => {
       expect(transform(123, { model: "grok-4.5" })).toBeUndefined();
     });
 
+    it("passes through valid effort values for grok-4.6", () => {
+      for (const value of ["minimal", "low", "medium", "high"]) {
+        expect(transform(value, { model: "grok-4.6" })).toBe(value);
+      }
+    });
+
+    it("drops invalid effort values for grok-4.6", () => {
+      expect(transform("none", { model: "grok-4.6" })).toBeUndefined();
+      expect(transform("xhigh", { model: "grok-4.6" })).toBeUndefined();
+      expect(transform(123, { model: "grok-4.6" })).toBeUndefined();
+    });
   });
 });

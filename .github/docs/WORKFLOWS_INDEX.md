@@ -99,7 +99,7 @@ flowchart LR
 
 | Workflow | Triggers | Purpose | Deep dive |
 |----------|----------|---------|-----------|
-| [tests.yml](../workflows/tests.yml) | PR on main + push to main + dispatch | Jest matrix on Node 18/20/22/24; coverage uploaded on Node 24 | [TESTS_DEEP_DIVE.md](TESTS_DEEP_DIVE.md) |
+| [tests.yml](../workflows/tests.yml) | PR on main + push to main + dispatch | Jest matrix on Node 18/20/22/24; typecheck and coverage on Node 24 | [TESTS_DEEP_DIVE.md](TESTS_DEEP_DIVE.md) |
 | [test-package.yml](../workflows/test-package.yml) | Dispatch only (gregreindel) | Runs examples/ against a packed tarball with real provider keys | [TEST_PACKAGE_DEEP_DIVE.md](TEST_PACKAGE_DEEP_DIVE.md) |
 | [pack-package.yml](../workflows/pack-package.yml) | PR closed to development + dispatch | Build + npm pack, uploads .tgz artifact (30-day retention) | [PACK_PACKAGE_DEEP_DIVE.md](PACK_PACKAGE_DEEP_DIVE.md) |
 | [cache-cleanup.yml](../workflows/cache-cleanup.yml) | PR closed + release published + dispatch | Deletes Actions caches scoped to the closed PR or release ref | [CACHE_CLEANUP_DEEP_DIVE.md](CACHE_CLEANUP_DEEP_DIVE.md) |
@@ -120,7 +120,7 @@ flowchart LR
 
     subgraph Small["7-10 diagrams"]
         S1["pack-package: 356 lines, 8"]:::sm
-        S2["tests: 383 lines, 9"]:::sm
+        S2["tests: 399 lines, 9"]:::sm
         S3["update-prs: 362 lines, 9"]:::sm
         S4["check-semver: 383 lines, 9"]:::sm
         S5["test-github-action: 238 lines, 7"]:::sm
@@ -128,7 +128,7 @@ flowchart LR
     end
 
     subgraph Medium["11-12 diagrams"]
-        M1["agent-review-pr: 626 lines, 12"]:::md
+        M1["agent-review-pr: 628 lines, 12"]:::md
         M2["cache-cleanup: 548 lines, 12"]:::md
         M3["create-draft-release: 496 lines, 11"]:::md
         M4["personas-run: 713 lines, 12"]:::md

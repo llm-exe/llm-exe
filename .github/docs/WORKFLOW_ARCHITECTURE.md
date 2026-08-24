@@ -698,7 +698,7 @@ Three jobs: `tests`, `review`, `decide`. Tests and review run in parallel; decid
 |-------|-------|
 | Triggers | `pull_request` `opened` and `synchronize` on `main` or `development`; `workflow_dispatch` with `pr_number`, `base_ref`, `head_ref` inputs (dispatched by `bot-respond.yml` for re-review) |
 | Job filters | `tests`: `base_ref == 'development'` OR dispatch with `inputs.base_ref == 'development'`. `review`: `(base_ref == 'development' && action == 'opened')` OR dispatch with `inputs.base_ref == 'development'`. `decide`: `always() && (base_ref == 'development'` OR dispatch equivalent`)`. |
-| Tests job | Node 18/20/22/24 matrix, mirrors `tests.yml`. Timeout 20m. Runs on opened, synchronize, and dispatch. On `workflow_dispatch`, an extra `gh pr checkout` step checks out the PR code. |
+| Tests job | Node 18/20/22/24 matrix, mirrors `tests.yml` (cache action, `npm install`, `npm run typecheck` on Node 24 only, `npm run test`; no coverage upload). Timeout 20m. Runs on opened, synchronize, and dispatch. On `workflow_dispatch`, an extra `gh pr checkout` step checks out the PR code. |
 | Review job | Auth via `llm-exe-review-bot[bot]` App token (`LLM_EXE_REVIEW_BOT_CLIENT_ID`/`LLM_EXE_REVIEW_BOT_PRIVATE_KEY`). `allowed_bots: "llm-exe-bot[bot]"`. Tools: `Bash,Read,Glob,Grep,WebFetch` (read-only). Model: `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6`. Verdict written to `/tmp/review-verdict.txt` and exposed as job output. Timeout 15m, 60 max-turns. |
 | Decide job | Reads review verdict and tests result. Approves only when `verdict == approve AND tests == success`. Mints its own review bot token for `--approve` and a regular bot App token (`APP_CLIENT_ID`/`APP_PRIVATE_KEY`) only for `gh pr ready`. Only promotes draft to ready for `agent/*` branches. Timeout 5m. |
 | Prompt substitutions | `$PR_NUMBER`, `$LOG_FILE`, `$PR_CONTEXT` (bot agent vs human contributor, computed from head_ref prefix). Substitution uses `perl -0pe` with env vars (not `sed`). |
@@ -752,7 +752,8 @@ Body must be HTML fragment (no `<html>` / `<body>` tags) and must be the only th
 | Push rationale | Coverage upload is gated to Node 24.x. Without a `push` event on `main`, every Coveralls record is tagged with the source PR head branch (development / feature branches), so the docs-site badge that filters with `?branch=main` renders "unknown". The `push` trigger on `main` (always reached via `auto-merge-main-pr.yml`) produces a Coveralls record tagged for `main`. |
 | Bypass | Job-level `if` skips when `pull_request.base.ref == 'development' && pull_request.head.ref == 'bump-version-branch'`. On `push` and `workflow_dispatch` `pull_request` is null, so the bypass is false and the matrix runs. |
 | Matrix | Node 18, 20, 22, 24 |
-| Steps | `actions/checkout@v6` -> `actions/setup-node@v6` with `cache: npm` -> reusable cache action -> `npm install` -> `npm run test` -> coverage upload on Node 24 only |
+| Steps | `actions/checkout@v6` -> `actions/setup-node@v6` with `cache: npm` -> reusable cache action -> `npm install` -> `npm run typecheck` on Node 24 only -> `npm run test` -> coverage upload on Node 24 only |
+| Typecheck rationale | ts-jest transpiles with `isolatedModules` and reports no type diagnostics, so the compile-time assertions in `*.test.ts` files pass regardless of whether they hold. The `npm run typecheck` step is what enforces them. Type errors are not node-version dependent, so the step is gated to `matrix.node-version == '24.x'`. |
 
 Note: this workflow does not use the App token. It only needs reads.
 

@@ -63,11 +63,19 @@ export class Dialogue extends BaseStateItem<IChatMessages> {
     return this;
   }
 
-  setToolMessage(content: string, name: string, id?: string) {
+  setToolMessage(
+    content: string | IChatMessageContentDetailed[],
+    name: string,
+    id?: string
+  ) {
     return this.setFunctionMessage(content, name, id);
   }
 
-  setFunctionMessage(content: string, name: string, id?: string) {
+  setFunctionMessage(
+    content: string | IChatMessageContentDetailed[],
+    name: string,
+    id?: string
+  ) {
     if (content) {
       this.value.push({
         role: "function",

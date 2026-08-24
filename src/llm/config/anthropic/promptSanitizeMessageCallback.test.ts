@@ -59,6 +59,84 @@ describe("anthropicPromptMessageCallback", () => {
       });
     });
 
+    it("passes content blocks through as a native tool_result array", () => {
+      const message: IChatMessage = {
+        role: "function",
+        id: "test-id-123",
+        name: "screenshot",
+        content: [
+          { type: "text", text: "Here is the screenshot" },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          },
+        ],
+      };
+
+      const result = anthropicPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "test-id-123",
+            content: [
+              { type: "text", text: "Here is the screenshot" },
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: "image/png",
+                  data: "iVBORw0KGgo=",
+                },
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    it("converts image url sources inside tool results when allowed", () => {
+      const message: IChatMessage = {
+        role: "function",
+        id: "test-id-124",
+        name: "screenshot",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "https://example.com/a.png" },
+          },
+        ],
+      };
+
+      const result = anthropicPromptMessageCallback(message);
+
+      expect(result.content[0].content).toEqual([
+        { type: "image", source: { type: "url", url: "https://example.com/a.png" } },
+      ]);
+    });
+
+    it("throws when a tool result image url is not allowed by the provider", () => {
+      const message: IChatMessage = {
+        role: "function",
+        id: "test-id-125",
+        name: "screenshot",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "https://example.com/a.png" },
+          },
+        ],
+      };
+
+      expect(() =>
+        anthropicPromptMessageCallback(message, {
+          allowImageUrlSources: false,
+        })
+      ).toThrow("Image URLs are not supported by this provider");
+    });
+
     it("removes id field when role is function", () => {
       const message: IChatMessage = {
         role: "function",

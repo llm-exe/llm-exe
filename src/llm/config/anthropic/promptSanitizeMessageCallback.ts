@@ -66,11 +66,16 @@ export function anthropicPromptMessageCallback(
 
   if (message.role === "function") {
     message.role = "user";
+    // Array content has already been converted to Anthropic block shapes
+    // above; pass it through as the tool_result content array so images stay
+    // native. Only string/object content gets stringified.
     message.content = [
       {
         type: "tool_result",
         tool_use_id: message.id,
-        content: maybeStringifyJSON(message.content),
+        content: Array.isArray(message.content)
+          ? message.content
+          : maybeStringifyJSON(message.content),
       },
     ];
 

@@ -77,7 +77,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
     name?: string
   ): ChatPrompt<I>;
   addToPrompt(
-    content: string,
+    content: string | IChatMessageContentDetailed[],
     role: Extract<IChatMessageRole, "function">,
     name: string
   ): ChatPrompt<I>;
@@ -87,7 +87,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
     name: string
   ): ChatPrompt<I>;
   addToPrompt(
-    content: string,
+    content: string | IChatMessageContentDetailed[],
     role: IChatMessageRole,
     name?: string,
     id?: string
@@ -95,13 +95,13 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
     if (content) {
       switch (role) {
         case "system":
-          this.addSystemMessage(content);
+          this.addSystemMessage(content as string);
           break;
         case "user":
           this.addUserMessage(content, name);
           break;
         case "assistant":
-          this.addAssistantMessage(content);
+          this.addAssistantMessage(content as string);
           break;
         case "function":
           assert(name, "Function message requires name");
@@ -109,7 +109,11 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
           break;
         case "function_call":
           assert(name, "Function message requires name");
-          this.addFunctionCallMessage({ name: name, arguments: content, id });
+          this.addFunctionCallMessage({
+            name: name,
+            arguments: content as string,
+            id,
+          });
           break;
       }
     }
@@ -156,7 +160,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
    * @return ChatPrompt so it can be chained.
    */
   addFunctionMessage(
-    content: string,
+    content: string | IChatMessageContentDetailed[],
     name: string,
     id?: string
   ): ChatPrompt<I> {
@@ -380,14 +384,25 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
           }
         }
       } else if (message.role === "function") {
-        messagesOut.push(
-          Object.assign({}, message, {
-            content: this.replaceTemplateString(message.content, replacements, {
+        // Mirrors the user-message branch below: template `text` blocks and
+        // pass everything else (images) through untouched.
+        const content = Array.isArray(message.content)
+          ? message.content.map((m) =>
+              m.text
+                ? {
+                    ...m,
+                    text: this.replaceTemplateString(m.text, replacements, {
+                      partials: this.partials,
+                      helpers: this.helpers,
+                    }),
+                  }
+                : m
+            )
+          : this.replaceTemplateString(message.content, replacements, {
               partials: this.partials,
               helpers: this.helpers,
-            }),
-          })
-        );
+            });
+        messagesOut.push(Object.assign({}, message, { content }));
       } else {
         if (safeToParseTemplate.includes(message.role)) {
           if (Array.isArray(message.content)) {
@@ -564,18 +579,38 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
           }
         }
       } else if (message.role === "function") {
-        messagesOut.push(
-          Object.assign({}, message, {
-            content: await this.replaceTemplateStringAsync(
-              message.content,
-              replacements,
-              {
-                partials: this.partials,
-                helpers: this.helpers,
-              }
-            ),
-          })
-        );
+        let content: string | IChatMessageContentDetailed[];
+        if (Array.isArray(message.content)) {
+          const blocks: IChatMessageContentDetailed[] = [];
+          for (const m of message.content) {
+            blocks.push(
+              m.text
+                ? {
+                    ...m,
+                    text: await this.replaceTemplateStringAsync(
+                      m.text,
+                      replacements,
+                      {
+                        partials: this.partials,
+                        helpers: this.helpers,
+                      }
+                    ),
+                  }
+                : m
+            );
+          }
+          content = blocks;
+        } else {
+          content = await this.replaceTemplateStringAsync(
+            message.content,
+            replacements,
+            {
+              partials: this.partials,
+              helpers: this.helpers,
+            }
+          );
+        }
+        messagesOut.push(Object.assign({}, message, { content }));
       } else {
         if (safeToParseTemplate.includes(message.role)) {
           if (Array.isArray(message.content)) {

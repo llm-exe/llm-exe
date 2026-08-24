@@ -384,8 +384,10 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
           }
         }
       } else if (message.role === "function") {
-        // Mirrors the user-message branch below: template `text` blocks and
-        // pass everything else (images) through untouched.
+        // Template `text` blocks and pass everything else (images) through
+        // untouched. Unlike the user-message branch below, prompt filters are
+        // not run here and blocks keep their original shape — function content
+        // has never been filtered, so this preserves that.
         const content = Array.isArray(message.content)
           ? message.content.map((m) =>
               m.text

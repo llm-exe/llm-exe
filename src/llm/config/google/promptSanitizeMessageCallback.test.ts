@@ -126,6 +126,63 @@ describe("googleGeminiPromptMessageCallback", () => {
       });
       expect(result).not.toHaveProperty("id");
     });
+
+    it("flattens a text-only block array into the response result", () => {
+      const message: IChatMessage = {
+        role: "function",
+        name: "testFunction",
+        content: [
+          { type: "text", text: "line one" },
+          { type: "text", text: "line two" },
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        parts: [
+          {
+            functionResponse: {
+              name: "testFunction",
+              response: {
+                result: "line one\nline two",
+              },
+            },
+          },
+        ],
+      });
+    });
+
+    it("throws when a tool result carries an image block", () => {
+      const message: IChatMessage = {
+        role: "function",
+        name: "testFunction",
+        content: [
+          { type: "text", text: "here it is" },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          },
+        ],
+      };
+
+      expect(() => googleGeminiPromptMessageCallback(message)).toThrow(
+        "Image content is not supported in tool results by Gemini"
+      );
+    });
+
+    it("throws on an unrecognized block inside a tool result", () => {
+      const message: IChatMessage = {
+        role: "function",
+        name: "testFunction",
+        content: [{ type: "audio" } as any],
+      };
+
+      expect(() => googleGeminiPromptMessageCallback(message)).toThrow(
+        "Unsupported content block in tool result"
+      );
+    });
   });
 
   describe("function_call handling", () => {

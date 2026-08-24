@@ -180,7 +180,11 @@ export class Dialogue extends BaseStateItem<IChatMessages> {
     return this.setSystemMessage(content);
   }
 
-  addToolMessage(content: string, name: string, id?: string) {
+  addToolMessage(
+    content: string | IChatMessageContentDetailed[],
+    name: string,
+    id?: string
+  ) {
     return this.setToolMessage(content, name, id);
   }
 
@@ -188,7 +192,11 @@ export class Dialogue extends BaseStateItem<IChatMessages> {
     return this.setToolCallMessage(input);
   }
 
-  addFunctionMessage(content: string, name: string, id?: string) {
+  addFunctionMessage(
+    content: string | IChatMessageContentDetailed[],
+    name: string,
+    id?: string
+  ) {
     return this.setFunctionMessage(content, name, id);
   }
 

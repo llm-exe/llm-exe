@@ -98,7 +98,7 @@ describe("end-to-end type inference", () => {
     assertType<Equal<N, number>>();
     assertType<Equal<B, boolean>>();
 
-    // If any of the three degraded to `any`/`unknown` they would compare equal.
+    // Distinct parsers must not resolve to the same type.
     assertType<Equal<Equal<S, N>, false>>();
 
     expect(typeof (await asString.execute({}))).toBe("string");

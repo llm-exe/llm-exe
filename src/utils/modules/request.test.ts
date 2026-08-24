@@ -706,4 +706,34 @@ describe("apiRequest", () => {
     });
   });
 
+  describe("error message fallbacks when the body is empty", () => {
+    function setupEmptyBodyResponse(status: number, statusText: string) {
+      fetchMock.mockResolvedValue({
+        ok: false,
+        status,
+        statusText,
+        text: jest.fn().mockResolvedValue(""),
+        json: jest.fn(),
+        headers: new Headers({ "content-type": "application/json" }),
+      } as unknown as Response);
+    }
+
+    it("falls back to statusText when the response body is empty", async () => {
+      setupEmptyBodyResponse(502, "Bad Gateway");
+
+      await expect(apiRequest(url)).rejects.toThrow(
+        "HTTP error. Status: 502. Error Message: Bad Gateway"
+      );
+    });
+
+    it("falls back to 'Unknown error.' when body and statusText are both empty", async () => {
+      // HTTP/2 responses carry no reason phrase, so statusText is "".
+      setupEmptyBodyResponse(500, "");
+
+      await expect(apiRequest(url)).rejects.toThrow(
+        "HTTP error. Status: 500. Error Message: Unknown error."
+      );
+    });
+  });
+
 });

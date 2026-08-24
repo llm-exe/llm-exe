@@ -438,4 +438,86 @@ describe("serializeLlmExeError", () => {
     // Array holes/undefined become null (arrays are not compacted like objects).
     expect(out.context.list).toEqual([1, null, null, "x"]);
   });
+
+  describe("fetch Response values", () => {
+    // A raw `fetch` Response is a common `cause` when a provider call fails.
+    // Serializing it must not attempt to read the (single-use, async) body —
+    // it is reduced to a flat status/statusText/url descriptor.
+    it("reduces a Response in context to a flat descriptor", () => {
+      const response = new Response("ignored body", {
+        status: 429,
+        statusText: "Too Many Requests",
+      });
+      Object.defineProperty(response, "url", {
+        value: "https://api.example.com/v1/messages",
+      });
+
+      const err = new LlmExeError("rate limited", {
+        code: "llm.provider_rate_limited",
+        context: { response } as any,
+      });
+
+      const out = serializeLlmExeError(err) as any;
+      expect(out.context.response).toEqual({
+        name: "Response",
+        status: 429,
+        statusText: "Too Many Requests",
+        url: "https://api.example.com/v1/messages",
+      });
+      // The body must never be drained during serialization.
+      expect(response.bodyUsed).toBe(false);
+    });
+
+    it("defaults missing statusText and url to empty strings", () => {
+      // A 204 has no statusText by default and an unfetched Response has no url.
+      const response = new Response(null, { status: 204 });
+
+      const err = new LlmExeError("empty response", {
+        code: "llm.invalid_response_shape",
+        context: { response } as any,
+      });
+
+      const out = serializeLlmExeError(err) as any;
+      expect(out.context.response).toEqual({
+        name: "Response",
+        status: 204,
+        statusText: "",
+        url: "",
+      });
+    });
+
+    it("reduces a Response passed as the cause", () => {
+      const response = new Response("nope", {
+        status: 503,
+        statusText: "Service Unavailable",
+      });
+
+      const err = new LlmExeError("upstream down", {
+        code: "llm.provider_unavailable",
+        cause: response,
+      });
+
+      const out = serializeLlmExeError(err) as any;
+      expect(out.cause).toEqual({
+        name: "Response",
+        status: 503,
+        statusText: "Service Unavailable",
+        url: "",
+      });
+      expect(response.bodyUsed).toBe(false);
+    });
+
+    it("reduces a bare Response passed directly to the serializer", () => {
+      const out = serializeLlmExeError(
+        new Response("x", { status: 400, statusText: "Bad Request" })
+      ) as any;
+
+      expect(out).toEqual({
+        name: "Response",
+        status: 400,
+        statusText: "Bad Request",
+        url: "",
+      });
+    });
+  });
 });

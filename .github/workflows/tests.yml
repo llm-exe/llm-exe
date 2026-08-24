@@ -39,6 +39,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # Type errors are not node-version dependent, so one version is enough.
+      # This is what enforces the compile-time assertions in *.test.ts files —
+      # ts-jest runs with isolatedModules and does not report type diagnostics.
+      - name: Typecheck
+        if: ${{ matrix.node-version == '24.x' }}
+        run: npm run typecheck
+
       - name: Test
         run: npm run test
 

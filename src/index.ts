@@ -25,6 +25,7 @@ export {
 export {
   BaseParser,
   CustomParser,
+  LlmFunctionParser,
   OpenAiFunctionParser,
   LlmNativeFunctionParser,
   createParser,
@@ -90,4 +91,6 @@ export type {
   NumberParserOptions,
   StringExtractMatch,
   StringExtractParserOptions,
+  LlmFunctionParserOptions,
+  LlmNativeFunctionParserOptions,
 } from "./parser";

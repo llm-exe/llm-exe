@@ -120,7 +120,7 @@ flowchart LR
 
     subgraph Small["7-10 diagrams"]
         S1["pack-package: 356 lines, 8"]:::sm
-        S2["tests: 383 lines, 9"]:::sm
+        S2["tests: 399 lines, 9"]:::sm
         S3["update-prs: 362 lines, 9"]:::sm
         S4["check-semver: 383 lines, 9"]:::sm
         S5["test-github-action: 238 lines, 7"]:::sm
@@ -128,7 +128,7 @@ flowchart LR
     end
 
     subgraph Medium["11-12 diagrams"]
-        M1["agent-review-pr: 626 lines, 12"]:::md
+        M1["agent-review-pr: 628 lines, 12"]:::md
         M2["cache-cleanup: 548 lines, 12"]:::md
         M3["create-draft-release: 496 lines, 11"]:::md
         M4["personas-run: 713 lines, 12"]:::md

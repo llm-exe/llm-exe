@@ -440,7 +440,7 @@ flowchart TB
     G -->|gh pr close N| OutC[("comment: reason, doesn't meet the bar")]:::close
 ```
 
-Source: [scripts/agents/prompts/reviewer.md](../../scripts/agents/prompts/reviewer.md) and [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 168-233 (decide job).
+Source: [scripts/agents/prompts/reviewer.md](../../scripts/agents/prompts/reviewer.md) and [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 168-232 (decide job).
 
 The decide job uses a split-token pattern: the dedicated `llm-exe-review-bot[bot]` App token for `--approve`, and the regular `llm-exe-bot[bot]` App token for `gh pr ready`. Draft-to-ready promotion only happens for `agent/*` branches.
 

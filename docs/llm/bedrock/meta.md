@@ -13,7 +13,7 @@ When using Meta models via AWS Bedrock, llm-exe will make POST requests to `http
 
 ```ts
 const llm = useLlm("amazon:meta.chat.v1", {
-    model: "llama3-8b-instruct-v1:0", // This is the model id from Bedrock
+    model: "meta.llama3-8b-instruct-v1:0", // This is the model id from Bedrock
 });
 ```
 

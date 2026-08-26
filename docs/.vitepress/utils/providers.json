@@ -296,6 +296,10 @@
       {
         "id": "grok-4.5",
         "shorthand": "xai.grok-4.5"
+      },
+      {
+        "id": "grok-4.6",
+        "shorthand": "xai.grok-4.6"
       }
     ]
   },

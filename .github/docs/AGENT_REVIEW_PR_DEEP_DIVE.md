@@ -152,7 +152,7 @@ flowchart TB
     decide_if -->|no| decide_skip[(skipped)]:::gate
 ```
 
-Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 3-26 (triggers) and lines 39, 74, 170 (job-level conditions).
+Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 3-26 (triggers) and lines 39, 79, 176 (job-level conditions).
 
 The `synchronize` event type lets the tests job re-run when new commits are pushed or the PR is rebased (e.g., by `update-prs-with-development`), while the review job is gated to `opened` only so the agent does not re-review on every rebase. The `workflow_dispatch` trigger is used by `bot-respond.yml` when a maintainer comments "@llm-exe-bot re-review"; it accepts `pr_number`, `base_ref`, and `head_ref` inputs and all three jobs treat it like an `opened` event.
 
@@ -181,8 +181,9 @@ flowchart TB
         t2["Setup Node (matrix version)"]:::step
         t3["Cache npm dependencies"]:::step
         t4["npm install"]:::step
+        t4a["npm run typecheck\n(Node 24.x only)"]:::step
         t5["npm run test"]:::step
-        t1 --> t1a --> t2 --> t3 --> t4 --> t5
+        t1 --> t1a --> t2 --> t3 --> t4 --> t4a --> t5
     end
 
     subgraph J2["Job: review (if: base_ref == development AND action == opened, OR dispatch)\nubuntu-latest, timeout 15m"]
@@ -212,7 +213,7 @@ flowchart TB
     end
 ```
 
-No concurrency group defined. Two PRs opened simultaneously fan out into two parallel runs. The tests job mirrors `tests.yml` (same matrix, cache action, install, test) and includes a conditional `gh pr checkout` step for `workflow_dispatch` events so tests run against the actual PR code. The review job runs only on `opened` events and `workflow_dispatch`, not on `synchronize` (rebase).
+No concurrency group defined. Two PRs opened simultaneously fan out into two parallel runs. The tests job mirrors `tests.yml` (same matrix, cache action, `npm install`, `npm run typecheck` gated to Node 24.x, `npm run test`) and includes a conditional `gh pr checkout` step for `workflow_dispatch` events so tests run against the actual PR code. Coverage upload is deliberately left out: that is `tests.yml`'s job on main PRs. The Typecheck step is what enforces the compile-time type assertions in `*.test.ts` files, since ts-jest transpiles with `isolatedModules` and reports no type diagnostics. The review job runs only on `opened` events and `workflow_dispatch`, not on `synchronize` (rebase).
 
 [Back to top](#navigate)
 
@@ -259,7 +260,7 @@ sequenceDiagram
     C->>L: stamp Finished UTC + Status completed or interrupted
 ```
 
-Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 73-162.
+Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 76-166 (review job).
 
 [Back to top](#navigate)
 
@@ -345,7 +346,7 @@ flowchart LR
 
 Notice what's missing: no `Write`, no `Edit` in the allowlist. The reviewer cannot modify source, tests, or docs. It can only emit GitHub side effects via the `gh` CLI through `Bash`, plus log file updates the action handles via its own GitHub identity.
 
-Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 133-136.
+Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 138-141.
 
 [Back to top](#navigate)
 
@@ -391,7 +392,7 @@ Tool allowlist passed to `claude-code-action@v1`:
 --model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 ```
 
-The `allowed_bots: "llm-exe-bot[bot]"` input is the load-bearing piece: by default the action refuses to run on PRs authored by bots. This explicit allowlist lets it review the very PRs `agent-run.yml` produces. Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) line 129.
+The `allowed_bots: "llm-exe-bot[bot]"` input is the load-bearing piece: by default the action refuses to run on PRs authored by bots. This explicit allowlist lets it review the very PRs `agent-run.yml` produces. Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) line 135.
 
 [Back to top](#navigate)
 
@@ -439,7 +440,7 @@ flowchart TB
     G -->|gh pr close N| OutC[("comment: reason, doesn't meet the bar")]:::close
 ```
 
-Source: [scripts/agents/prompts/reviewer.md](../../scripts/agents/prompts/reviewer.md) and [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 163-218 (decide job).
+Source: [scripts/agents/prompts/reviewer.md](../../scripts/agents/prompts/reviewer.md) and [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 168-232 (decide job).
 
 The decide job uses a split-token pattern: the dedicated `llm-exe-review-bot[bot]` App token for `--approve`, and the regular `llm-exe-bot[bot]` App token for `gh pr ready`. Draft-to-ready promotion only happens for `agent/*` branches.
 
@@ -574,7 +575,7 @@ flowchart TB
 
     F8["allowed_bots input missing"]:::fail
     F8 --> F8E["claude-code-action refuses to act\non bot-authored PR"]:::effect
-    F8X["keep allowed_bots: llm-exe-bot[bot]\nin yaml line 58"]:::fix
+    F8X["keep allowed_bots: llm-exe-bot[bot]\nin yaml line 135"]:::fix
     F8E --> F8X
 
     F9["Anthropic API outage"]:::fail
@@ -608,6 +609,7 @@ flowchart LR
     K10["Tool allowlist"]:::k --- V10["Bash, Read, Glob, Grep, WebFetch (read-only)"]:::v
     K11["allowed_bots"]:::k --- V11["llm-exe-bot[bot]"]:::v
     K12["Jobs"]:::k --- V12["tests (Node 18/20/22/24), review, decide"]:::v
+    K12b["Tests job steps"]:::k --- V12b["checkout, gh pr checkout (dispatch), setup-node, cache,\nnpm install, npm run typecheck (24.x only), npm run test"]:::v
     K13["Prompt file"]:::k --- V13["scripts/agents/prompts/reviewer.md"]:::v
     K14["Assembled prompt"]:::k --- V14["/tmp/review-prompt.txt"]:::v
     K15["Substitutions"]:::k --- V15["$PR_NUMBER, $LOG_FILE, $PR_CONTEXT"]:::v

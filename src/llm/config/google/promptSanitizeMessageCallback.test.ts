@@ -172,6 +172,26 @@ describe("googleGeminiPromptMessageCallback", () => {
       ]);
     });
 
+    it("passes a JSON array whose entries carry a discriminator `type` into the Struct verbatim", () => {
+      // Not content blocks (no text / image_url), so this stays arbitrary JSON
+      // and must not be flattened or thrown on.
+      const message: IChatMessage = {
+        role: "function",
+        name: "search",
+        content: [
+          { type: "flight", id: 1 },
+          { type: "hotel", id: 2 },
+        ] as any,
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result.parts[0].functionResponse.response.result).toEqual([
+        { type: "flight", id: 1 },
+        { type: "hotel", id: 2 },
+      ]);
+    });
+
     it("passes an empty array into the Struct verbatim", () => {
       const message: IChatMessage = {
         role: "function",
@@ -218,16 +238,21 @@ describe("googleGeminiPromptMessageCallback", () => {
       );
     });
 
-    it("throws on an unrecognized block inside a tool result", () => {
+    it("treats an unrecognized typed block as arbitrary JSON, not a content block", () => {
+      // {type:"audio"} is not a shape IChatMessageContentDetailed models, so it
+      // stays on the long-standing arbitrary-JSON path and lands in the Struct
+      // verbatim rather than throwing.
       const message: IChatMessage = {
         role: "function",
         name: "testFunction",
         content: [{ type: "audio" } as any],
       };
 
-      expect(() => googleGeminiPromptMessageCallback(message)).toThrow(
-        "Unsupported content block in tool result"
-      );
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result.parts[0].functionResponse.response.result).toEqual([
+        { type: "audio" },
+      ]);
     });
   });
 

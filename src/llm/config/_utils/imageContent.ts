@@ -42,9 +42,13 @@ export function isImageUrlContentBlock(
  * content blocks must not capture those arrays too, or a working call turns
  * into a provider 400 (Anthropic) or a thrown error (Gemini).
  *
- * `IChatMessageContentDetailed` requires `type: string`, so requiring every
- * entry to carry one matches the declared type exactly. Empty arrays keep the
- * arbitrary-JSON path, which is what they did before content blocks existed.
+ * Entries must be *recognized* blocks, not merely objects carrying a `type`.
+ * `type` is one of the most common discriminators in JSON tool output
+ * (`{type:"flight"}`, `{type:"hotel"}`), so keying on it alone would still
+ * divert ordinary payloads. Matching the two shapes
+ * `IChatMessageContentDetailed` actually models — a `text` block or an image
+ * block — keeps everything else on the arbitrary-JSON path. Empty arrays stay
+ * there too, which is what they did before content blocks existed.
  */
 export function isContentBlockArray(
   content: unknown,
@@ -56,7 +60,9 @@ export function isContentBlockArray(
       (block) =>
         typeof block === "object" &&
         block !== null &&
-        typeof (block as Record<string, any>).type === "string",
+        typeof (block as Record<string, any>).type === "string" &&
+        (typeof (block as Record<string, any>).text === "string" ||
+          isImageUrlContentBlock(block)),
     )
   );
 }

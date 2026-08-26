@@ -134,6 +134,26 @@ describe("anthropicPromptMessageCallback", () => {
       expect(result.content[0].content).toBe('[{"title":"a"},{"title":"b"}]');
     });
 
+    it("stringifies a JSON array whose entries carry a discriminator `type`", () => {
+      // `type` is a very common discriminator in real tool output. These are
+      // not content blocks (no text / image_url), so they must stay on the
+      // stringify path — passing them through as tool_result blocks is a 400
+      // from the API for an unknown block type.
+      const message: IChatMessage = {
+        role: "function",
+        id: "call-typed-json",
+        name: "search",
+        content: [
+          { type: "flight", id: 1 },
+          { type: "hotel", id: 2 },
+        ] as any,
+      };
+
+      expect(anthropicPromptMessageCallback(message).content[0].content).toBe(
+        '[{"type":"flight","id":1},{"type":"hotel","id":2}]'
+      );
+    });
+
     it("keeps an empty array on the stringify path", () => {
       const message: IChatMessage = {
         role: "function",

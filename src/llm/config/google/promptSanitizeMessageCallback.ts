@@ -80,19 +80,8 @@ function googleGeminiFunctionResponseResult(content: any) {
           }
         );
       }
-      if (typeof block?.text !== "string") {
-        throw new LlmExeError("Unsupported content block in tool result", {
-          code: "prompt.invalid_messages",
-          context: {
-            operation: "googleGeminiPromptMessageCallback",
-            provider: "google.chat",
-            received: block,
-            expected: "text content blocks",
-            resolution:
-              "Tool results sent to Gemini may only contain text content blocks.",
-          },
-        });
-      }
+      // isContentBlockArray admits only text or image blocks, and images throw
+      // above, so anything reaching here is a text block.
       return block.text;
     })
     .join("\n");

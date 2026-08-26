@@ -2,6 +2,7 @@ import { IChatMessage } from "@/types";
 import { LlmExeError } from "@/errors";
 import { maybeParseJSON } from "@/utils";
 import {
+  isContentBlockArray,
   isImageUrlContentBlock,
   parseImageUrl,
 } from "../_utils/imageContent";
@@ -46,6 +47,57 @@ function googleGeminiContentBlockToPart(block: any) {
   return block;
 }
 
+/**
+ * `functionResponse.response` is a Struct — it has no representation for an
+ * image part, and Gemini accepts a block array dropped in verbatim, so the
+ * base64 gets billed as text and the image is never seen. Text-only arrays
+ * flatten to a string (what the non-function branch does for every other
+ * role); image blocks throw rather than fail silently.
+ *
+ * Only content-block arrays are rewritten. An arbitrary JSON array is valid,
+ * idiomatic structured tool output for a Struct, so it keeps landing verbatim.
+ */
+function googleGeminiFunctionResponseResult(content: any) {
+  if (!isContentBlockArray(content)) {
+    return content;
+  }
+
+  return content
+    .map((block: any) => {
+      if (isImageUrlContentBlock(block)) {
+        throw new LlmExeError(
+          "Image content is not supported in tool results by Gemini",
+          {
+            code: "prompt.invalid_messages",
+            context: {
+              operation: "googleGeminiPromptMessageCallback",
+              provider: "google.chat",
+              received: "a tool result containing an image content block",
+              expected: "text-only tool result content",
+              resolution:
+                "functionResponse.response only carries structured text. Return text from the tool and send the image as a separate user message.",
+            },
+          }
+        );
+      }
+      if (typeof block?.text !== "string") {
+        throw new LlmExeError("Unsupported content block in tool result", {
+          code: "prompt.invalid_messages",
+          context: {
+            operation: "googleGeminiPromptMessageCallback",
+            provider: "google.chat",
+            received: block,
+            expected: "text content blocks",
+            resolution:
+              "Tool results sent to Gemini may only contain text content blocks.",
+          },
+        });
+      }
+      return block.text;
+    })
+    .join("\n");
+}
+
 export function googleGeminiPromptMessageCallback(_message: IChatMessage) {
   /// TODO: Type this properly, its a Gemini message
   let message: Record<string, any> = { ..._message };
@@ -81,7 +133,7 @@ export function googleGeminiPromptMessageCallback(_message: IChatMessage) {
       functionResponse: {
         name: message.name,
         response: {
-          result: message.content,
+          result: googleGeminiFunctionResponseResult(message.content),
         },
       },
     });

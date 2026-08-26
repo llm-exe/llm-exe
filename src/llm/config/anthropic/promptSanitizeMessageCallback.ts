@@ -2,6 +2,7 @@ import { IChatMessage } from "@/interfaces";
 import { LlmExeError } from "@/errors";
 import { maybeParseJSON, maybeStringifyJSON } from "@/utils";
 import {
+  isContentBlockArray,
   isImageUrlContentBlock,
   parseImageUrl,
 } from "../_utils/imageContent";
@@ -66,11 +67,17 @@ export function anthropicPromptMessageCallback(
 
   if (message.role === "function") {
     message.role = "user";
+    // A content-block array has already been converted to Anthropic block
+    // shapes above; pass it through as the tool_result content array so images
+    // stay native. Everything else — including an arbitrary JSON array, which
+    // is a long-standing tool-result path — still gets stringified.
     message.content = [
       {
         type: "tool_result",
         tool_use_id: message.id,
-        content: maybeStringifyJSON(message.content),
+        content: isContentBlockArray(message.content)
+          ? message.content
+          : maybeStringifyJSON(message.content),
       },
     ];
 

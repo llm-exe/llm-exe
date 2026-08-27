@@ -132,11 +132,25 @@ describe("openai configuration", () => {
         "grok-4-fast-non-reasoning",
         "grok-4-1-fast-non-reasoning",
         "grok-4.20-0309-non-reasoning",
-        "grok-4.20-0309-reasoning",
       ]) {
         expect(transform("low", { model })).toBeUndefined();
         expect(transform("high", { model })).toBeUndefined();
       }
+    });
+
+    it("passes through valid effort values for grok-4.20-0309-reasoning", () => {
+      for (const value of ["minimal", "low", "medium", "high"]) {
+        expect(transform(value, { model: "grok-4.20-0309-reasoning" })).toBe(
+          value
+        );
+      }
+    });
+
+    it("drops invalid effort values for grok-4.20-0309-reasoning", () => {
+      const model = "grok-4.20-0309-reasoning";
+      expect(transform("none", { model })).toBeUndefined();
+      expect(transform("xhigh", { model })).toBeUndefined();
+      expect(transform(123, { model })).toBeUndefined();
     });
 
     it("passes through valid effort values for grok-4.3", () => {

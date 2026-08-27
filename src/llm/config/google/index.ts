@@ -107,22 +107,24 @@ export const google = {
     "gemini-3.6-flash"
   ),
 
+  // Gemini 2.5 is superseded by the 3.x line but remains Stable at Google with
+  // no announced shutdown date. Do not deprecate these on the strength of the
+  // "earliest possible" dates in Google's deprecation table — those are not
+  // commitments, and warning on a live model teaches users to ignore warnings.
+  "google.gemini-2.5-flash": withDefaultModel(
+    googleGeminiChatV1,
+    "gemini-2.5-flash"
+  ),
+  "google.gemini-2.5-flash-lite": withDefaultModel(
+    googleGeminiChatV1,
+    "gemini-2.5-flash-lite"
+  ),
+  "google.gemini-2.5-pro": withDefaultModel(
+    googleGeminiChatV1,
+    "gemini-2.5-pro"
+  ),
+
   // Deprecated
-  ...deprecateShorthand("google.gemini-2.5-flash", {
-    config: withDefaultModel(googleGeminiChatV1, "gemini-2.5-flash"),
-    message:
-      'Model "google.gemini-2.5-flash" is deprecated and will shut down on 2026-06-17.',
-  }),
-  ...deprecateShorthand("google.gemini-2.5-flash-lite", {
-    config: withDefaultModel(googleGeminiChatV1, "gemini-2.5-flash-lite"),
-    message:
-      'Model "google.gemini-2.5-flash-lite" is deprecated and will shut down on 2026-07-22.',
-  }),
-  ...deprecateShorthand("google.gemini-2.5-pro", {
-    config: withDefaultModel(googleGeminiChatV1, "gemini-2.5-pro"),
-    message:
-      'Model "google.gemini-2.5-pro" is deprecated and will shut down on 2026-06-17.',
-  }),
   // Shut down by Google — kept only so existing code warns instead of
   // failing silently. Slated for removal in the next major release.
   ...deprecateShorthand("google.gemini-2.0-flash", {

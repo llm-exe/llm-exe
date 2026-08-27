@@ -295,6 +295,35 @@ describe("google configuration", () => {
     });
   });
 
+  describe("gemini-2.5 shorthands", () => {
+    it.each([
+      ["google.gemini-2.5-flash", "gemini-2.5-flash"],
+      ["google.gemini-2.5-flash-lite", "gemini-2.5-flash-lite"],
+      ["google.gemini-2.5-pro", "gemini-2.5-pro"],
+    ] as const)(
+      "%s should resolve to %s and carry no deprecation",
+      (shorthand, expectedModel) => {
+        const config = google[shorthand] as Config;
+        expect(config).toBeDefined();
+        expect(config.options.model).toEqual({ default: expectedModel });
+        expect(config.mapBody.model).toEqual({
+          default: expectedModel,
+          key: "model",
+        });
+        // 2.5 is Stable at Google with no announced shutdown date — warning on
+        // it told users a live model had already been retired. See issue #762.
+        expect(config.deprecated).toBeUndefined();
+      }
+    );
+
+    it("should be based on googleChatV1 configuration", () => {
+      const config = google["google.gemini-2.5-pro"] as Config;
+      expect(config.endpoint).toEqual(googleChatV1.endpoint);
+      expect(config.method).toEqual(googleChatV1.method);
+      expect(config.headers).toEqual(googleChatV1.headers);
+    });
+  });
+
   describe("retired shorthands", () => {
     it.each([
       [
@@ -322,6 +351,28 @@ describe("google configuration", () => {
         expect(config.deprecated?.message).toContain(migrateTo);
       }
     );
+  });
+
+  describe("deprecation messages", () => {
+    const deprecated = Object.values(google as Record<string, Config>).filter(
+      (config) => config.deprecated
+    );
+
+    it("only cites dates for shutdowns Google has already carried out", () => {
+      expect(deprecated.length).toBeGreaterThan(0);
+      for (const config of deprecated) {
+        const message = config.deprecated!.message;
+        // Google's deprecation table publishes "earliest possible" shutdown
+        // dates, not commitments. Never promise a future shutdown date on
+        // their behalf — a date in a message means it already happened.
+        expect(message).not.toMatch(/will shut down on/);
+        if (/\d{4}-\d{2}-\d{2}/.test(message)) {
+          expect(message).toMatch(
+            /was shut down by Google on \d{4}-\d{2}-\d{2}/
+          );
+        }
+      }
+    });
   });
 
   describe("image content through mapBody", () => {

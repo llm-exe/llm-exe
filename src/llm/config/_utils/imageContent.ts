@@ -1,5 +1,8 @@
 import { LlmExeError } from "@/errors";
-import { IChatMessageContentImageUrl } from "@/interfaces";
+import {
+  IChatMessageContentDetailed,
+  IChatMessageContentImageUrl,
+} from "@/interfaces";
 
 export type ParsedImageUrl =
   | { kind: "base64"; mediaType: string; data: string }
@@ -27,6 +30,40 @@ export function isImageUrlContentBlock(
     typeof imageUrl === "object" &&
     imageUrl !== null &&
     typeof imageUrl.url === "string"
+  );
+}
+
+/**
+ * Distinguishes a content-block array from an arbitrary JSON array.
+ *
+ * Tool results have always accepted arbitrary JSON — an array of plain objects
+ * is a deliberate, tested path (`maybeStringifyJSON` for Anthropic, a verbatim
+ * Struct value for Gemini). Widening `IChatFunctionMessage.content` to allow
+ * content blocks must not capture those arrays too, or a working call turns
+ * into a provider 400 (Anthropic) or a thrown error (Gemini).
+ *
+ * Entries must be *recognized* blocks, not merely objects carrying a `type`.
+ * `type` is one of the most common discriminators in JSON tool output
+ * (`{type:"flight"}`, `{type:"hotel"}`), so keying on it alone would still
+ * divert ordinary payloads. Matching the two shapes
+ * `IChatMessageContentDetailed` actually models — a `text` block or an image
+ * block — keeps everything else on the arbitrary-JSON path. Empty arrays stay
+ * there too, which is what they did before content blocks existed.
+ */
+export function isContentBlockArray(
+  content: unknown,
+): content is IChatMessageContentDetailed[] {
+  return (
+    Array.isArray(content) &&
+    content.length > 0 &&
+    content.every(
+      (block) =>
+        typeof block === "object" &&
+        block !== null &&
+        typeof (block as Record<string, any>).type === "string" &&
+        (typeof (block as Record<string, any>).text === "string" ||
+          isImageUrlContentBlock(block)),
+    )
   );
 }
 

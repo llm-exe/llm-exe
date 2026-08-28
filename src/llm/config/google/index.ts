@@ -106,6 +106,10 @@ export const google = {
     googleGeminiChatV1,
     "gemini-3.6-flash"
   ),
+  "google.gemini-3.7-flash": withDefaultModel(
+    googleGeminiChatV1,
+    "gemini-3.7-flash"
+  ),
 
   // Deprecated
   ...deprecateShorthand("google.gemini-2.5-flash", {

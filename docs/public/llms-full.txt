@@ -657,7 +657,7 @@ When using Meta models via AWS Bedrock, llm-exe will make POST requests to `http
 
 ```ts
 const llm = useLlm("amazon:meta.chat.v1", {
-    model: "llama3-8b-instruct-v1:0", // This is the model id from Bedrock
+    model: "meta.llama3-8b-instruct-v1:0", // This is the model id from Bedrock
 });
 ```
 
@@ -674,6 +674,23 @@ In addition to the generic options, the following options are available for Meta
 | awsRegion   | string | undefined | AWS Region. Can be set via `AWS_REGION` environment variable             |
 | awsSecretKey| string | undefined | AWS Secret Key. Can be set via `AWS_SECRET_ACCESS_KEY` environment variable |
 | awsAccessKey| string | undefined | AWS Access Key. Can be set via `AWS_ACCESS_KEY_ID` environment variable  |
+
+> **Model identifiers:** `model` accepts a foundation model id, a cross-region inference profile id, or a full ARN. llm-exe URL-encodes it into the invoke path, so identifiers containing `/` or `:` route correctly:
+>
+> ```ts
+> // 1. Foundation model id
+> useLlm("amazon:meta.chat.v1", { model: "meta.llama3-8b-instruct-v1:0" });
+>
+> // 2. Cross-region inference profile id
+> useLlm("amazon:meta.chat.v1", { model: "us.meta.llama3-8b-instruct-v1:0" });
+>
+> // 3. Full ARN
+> useLlm("amazon:meta.chat.v1", {
+>   model: "arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.meta.llama3-8b-instruct-v1:0",
+> });
+> ```
+>
+> Unlike the [Anthropic on Bedrock](/llm/bedrock/anthropic) config, no Meta option is gated on the model name, so every identifier form behaves identically here — there is no equivalent of the silent `effort` drop.
 ---
 
 
@@ -696,6 +713,7 @@ llm-exe ships typed shorthands for the most common xAI models so you do not have
 | `xai.grok-4.20`            | `grok-4.20-0309-non-reasoning`      |
 | `xai.grok-4.20-reasoning`  | `grok-4.20-0309-reasoning`          |
 | `xai.grok-4.5`             | `grok-4.5` (reasoning model)        |
+| `xai.grok-4.6`             | `grok-4.6` (reasoning model)        |
 
 ## Basic Usage
 
@@ -753,7 +771,18 @@ In addition to the generic options, the following options are xAI-specific and c
 | frequencyPenalty | number  | undefined   | Maps to `frequency_penalty`. See xAI Docs                     |
 | logitBias        | object  | undefined   | Maps to `logit_bias`. See xAI Docs                            |
 | useJson          | boolean | undefined   | When `true`, sets `response_format` to `json_object`           |
-| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only sent for xAI reasoning models (`grok-4.3`, `grok-4.5`); on any other model, or for a value outside that list, it is silently dropped. |
+| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only sent for xAI reasoning models (`grok-4.3`, `grok-4.5`, `grok-4.6`); on any other model, or for a value outside that list, it is silently dropped. |
+
+::: warning `effort` and `xai.grok-4.20-reasoning`
+Despite the shorthand name, `xai.grok-4.20-reasoning` (which resolves to
+`grok-4.20-0309-reasoning`) is **not** currently treated as a reasoning model by
+llm-exe, so `effort` is dropped rather than sent as `reasoning_effort`. There is
+no error or warning — the request simply goes out without the parameter.
+
+Tracked in [llm-exe#732](https://github.com/llm-exe/llm-exe/issues/732). If you
+need `reasoning_effort` on that model today, use `xai.grok-4.3`, `xai.grok-4.5`,
+or `xai.grok-4.6`.
+:::
 
 See [xAI API Reference](https://docs.x.ai/docs/overview) for details on these parameters.
 

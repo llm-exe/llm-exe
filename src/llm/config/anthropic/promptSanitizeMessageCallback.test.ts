@@ -59,6 +59,149 @@ describe("anthropicPromptMessageCallback", () => {
       });
     });
 
+    it("passes content blocks through as a native tool_result array", () => {
+      const message: IChatMessage = {
+        role: "function",
+        id: "test-id-123",
+        name: "screenshot",
+        content: [
+          { type: "text", text: "Here is the screenshot" },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          },
+        ],
+      };
+
+      const result = anthropicPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "test-id-123",
+            content: [
+              { type: "text", text: "Here is the screenshot" },
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: "image/png",
+                  data: "iVBORw0KGgo=",
+                },
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    it("converts image url sources inside tool results when allowed", () => {
+      const message: IChatMessage = {
+        role: "function",
+        id: "test-id-124",
+        name: "screenshot",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "https://example.com/a.png" },
+          },
+        ],
+      };
+
+      const result = anthropicPromptMessageCallback(message);
+
+      expect(result.content[0].content).toEqual([
+        { type: "image", source: { type: "url", url: "https://example.com/a.png" } },
+      ]);
+    });
+
+    it("still stringifies an arbitrary JSON array tool result (not a content-block array)", () => {
+      // Regression: an array of plain objects is a long-standing tool-result
+      // path (maybeStringifyJSON has explicit array coverage). Widening the
+      // type for content blocks must not divert it into tool_result.content,
+      // where blocks without a `type` are a 400 from the API.
+      const message: IChatMessage = {
+        role: "function",
+        id: "call-json-array",
+        name: "search",
+        content: [{ title: "a" }, { title: "b" }] as any,
+      };
+
+      const result = anthropicPromptMessageCallback(message);
+
+      expect(result.content[0].content).toBe('[{"title":"a"},{"title":"b"}]');
+    });
+
+    it("stringifies a JSON array whose entries carry a discriminator `type`", () => {
+      // `type` is a very common discriminator in real tool output. These are
+      // not content blocks (no text / image_url), so they must stay on the
+      // stringify path — passing them through as tool_result blocks is a 400
+      // from the API for an unknown block type.
+      const message: IChatMessage = {
+        role: "function",
+        id: "call-typed-json",
+        name: "search",
+        content: [
+          { type: "flight", id: 1 },
+          { type: "hotel", id: 2 },
+        ] as any,
+      };
+
+      expect(anthropicPromptMessageCallback(message).content[0].content).toBe(
+        '[{"type":"flight","id":1},{"type":"hotel","id":2}]'
+      );
+    });
+
+    it("keeps an empty array on the stringify path", () => {
+      const message: IChatMessage = {
+        role: "function",
+        id: "call-empty-array",
+        name: "search",
+        content: [] as any,
+      };
+
+      expect(anthropicPromptMessageCallback(message).content[0].content).toBe(
+        "[]"
+      );
+    });
+
+    it("stringifies a mixed array where only some entries are content blocks", () => {
+      // Not a content-block array: one entry has no `type`, so the whole thing
+      // is arbitrary JSON and must not be sent as tool_result blocks.
+      const message: IChatMessage = {
+        role: "function",
+        id: "call-mixed",
+        name: "search",
+        content: [{ type: "text", text: "a" }, { title: "b" }] as any,
+      };
+
+      expect(anthropicPromptMessageCallback(message).content[0].content).toBe(
+        '[{"type":"text","text":"a"},{"title":"b"}]'
+      );
+    });
+
+    it("throws when a tool result image url is not allowed by the provider", () => {
+      const message: IChatMessage = {
+        role: "function",
+        id: "test-id-125",
+        name: "screenshot",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "https://example.com/a.png" },
+          },
+        ],
+      };
+
+      expect(() =>
+        anthropicPromptMessageCallback(message, {
+          allowImageUrlSources: false,
+        })
+      ).toThrow("Image URLs are not supported by this provider");
+    });
+
     it("removes id field when role is function", () => {
       const message: IChatMessage = {
         role: "function",

@@ -2,6 +2,7 @@ import { IChatMessage } from "@/interfaces";
 import { LlmExeError } from "@/errors";
 import { maybeParseJSON, maybeStringifyJSON } from "@/utils";
 import {
+  isContentBlockArray,
   isImageUrlContentBlock,
   parseImageUrl,
 } from "../_utils/imageContent";
@@ -24,6 +25,12 @@ export function anthropicPromptMessageCallback(
 
   /// TODO: Type this properly, its an Anthropic message
   let message: Record<string, any> = { ..._message };
+
+  // Classify the caller's input before the conversion below rewrites image
+  // blocks into Anthropic's `{ type: "image", source }` shape — that shape is
+  // no longer recognizable as caller-supplied content, so the tool_result
+  // branch has to decide based on what actually came in.
+  const contentIsBlocks = isContentBlockArray(_message.content);
 
   if (Array.isArray(message.content)) {
     message.content = message.content.map((block: any) => {
@@ -66,11 +73,17 @@ export function anthropicPromptMessageCallback(
 
   if (message.role === "function") {
     message.role = "user";
+    // A content-block array has already been converted to Anthropic block
+    // shapes above; pass it through as the tool_result content array so images
+    // stay native. Everything else — including an arbitrary JSON array, which
+    // is a long-standing tool-result path — still gets stringified.
     message.content = [
       {
         type: "tool_result",
         tool_use_id: message.id,
-        content: maybeStringifyJSON(message.content),
+        content: contentIsBlocks
+          ? message.content
+          : maybeStringifyJSON(message.content),
       },
     ];
 

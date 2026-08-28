@@ -279,5 +279,74 @@ describe("bedrock configuration", () => {
       ).toThrow(/Image content is not supported/);
       expect(replaceTemplateStringMock).not.toHaveBeenCalled();
     });
+
+    // The message string is cosmetic; `code` is the public contract consumers
+    // branch on. Pin it (and the diagnostic context) so a refactor of the
+    // transform can't silently move users to a different error code.
+    it("rejects image content with the prompt.invalid_messages error contract", () => {
+      const messagesWithImage = [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: "https://example.com/cat.png" },
+            },
+          ],
+        },
+      ];
+
+      const fn = bedrock["amazon:meta.chat.v1"];
+      let caught: any;
+      try {
+        fn.mapBody.prompt.transform?.(messagesWithImage, {}, {});
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeDefined();
+      expect(caught.isLlmExeError).toBe(true);
+      expect(caught.code).toBe("prompt.invalid_messages");
+      expect(caught.category).toBe("prompt");
+      expect(caught.context).toMatchObject({
+        operation: "amazonMetaChatV1.prompt.transform",
+        provider: "amazon:meta.chat",
+      });
+    });
+
+    it("only rejects image content when a content block is actually an image", () => {
+      const textOnlyBlocks = [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "no images here" },
+            { type: "text", text: "still none" },
+          ],
+        },
+      ];
+      replaceTemplateStringMock.mockReturnValue("flattened");
+
+      const fn = bedrock["amazon:meta.chat.v1"];
+
+      expect(fn.mapBody.prompt.transform?.(textOnlyBlocks, {}, {})).toBe(
+        "flattened"
+      );
+      expect(replaceTemplateStringMock).toHaveBeenCalledWith(
+        "{{>DialogueHistory key='messages'}}",
+        { messages: textOnlyBlocks }
+      );
+    });
+
+    it("passes through messages whose content is a plain string", () => {
+      const stringContent = [{ role: "user", content: "just text" }];
+      replaceTemplateStringMock.mockReturnValue("flattened");
+
+      const fn = bedrock["amazon:meta.chat.v1"];
+
+      // `content` is not an array, so the image scan must not throw on it.
+      expect(fn.mapBody.prompt.transform?.(stringContent, {}, {})).toBe(
+        "flattened"
+      );
+    });
   });
 });

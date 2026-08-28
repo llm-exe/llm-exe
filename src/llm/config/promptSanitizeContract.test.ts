@@ -101,6 +101,21 @@ const FIXTURES: Fixture[] = [
       },
     ],
   },
+  {
+    name: "image tool result",
+    messages: () => [
+      { role: "user", content: "what does the camera see?" },
+      {
+        role: "function",
+        id: "call_1",
+        name: "get_snapshot",
+        content: [
+          { type: "text", text: "here is the snapshot" },
+          { type: "image_url", image_url: { url: PNG_DATA_URI } },
+        ],
+      },
+    ],
+  },
 ];
 
 /** what one fixture becomes for one provider */
@@ -183,6 +198,10 @@ const openaiExpectations: Record<string, Expectation> = {
         tool_call_id: "call_1",
       },
     ],
+  },
+  // Chat Completions `tool` messages are text-only
+  "image tool result": {
+    throws: "Image content is not supported in tool results by this provider",
   },
 };
 
@@ -267,6 +286,33 @@ function anthropicExpectations(options: {
         },
       ],
     },
+    // anthropic is the one provider that takes images natively inside a
+    // tool_result, so the blocks stay blocks
+    "image tool result": {
+      prompt: [
+        { role: "user", content: "what does the camera see?" },
+        {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "call_1",
+              content: [
+                { type: "text", text: "here is the snapshot" },
+                {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: "image/png",
+                    data: PNG_BASE64,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
   };
 }
 
@@ -329,6 +375,10 @@ const googleExpectations: Record<string, Expectation> = {
       },
     ],
   },
+  // functionResponse.response is a text-only Struct
+  "image tool result": {
+    throws: "Image content is not supported in tool results by Gemini",
+  },
 };
 
 const ollamaExpectations: Record<string, Expectation> = {
@@ -381,6 +431,21 @@ const ollamaExpectations: Record<string, Expectation> = {
       { role: "tool", content: "72 and sunny" },
     ],
   },
+  // `ollamaPromptSanitize` is role-agnostic, so a tool result with array
+  // content splits into text + `images` like any other message. Whether
+  // ollama honors `images` on a tool-role message is the open part of #706.
+  "image tool result": {
+    prompt: [
+      { role: "user", content: "what does the camera see?" },
+      {
+        role: "function",
+        id: "call_1",
+        name: "get_snapshot",
+        content: "here is the snapshot",
+        images: [PNG_BASE64],
+      },
+    ],
+  },
 };
 
 /**
@@ -401,6 +466,7 @@ const metaExpectations: Record<string, Expectation> = {
   },
   "assistant tool call": { prompt: "\nUser: weather?\nAssistant: \n" },
   "tool result": { prompt: "\nUser: weather?\n" },
+  "image tool result": { throws: "Image content is not supported" },
 };
 
 /** the mock provider has no prompt transform — messages pass through verbatim */

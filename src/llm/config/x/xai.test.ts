@@ -117,6 +117,35 @@ describe("openai configuration", () => {
     );
   });
 
+  describe("deprecated shorthands", () => {
+    const deprecated = [
+      "xai.grok-2",
+      "xai.grok-3",
+      "xai.grok-3-mini",
+      "xai.grok-4",
+      "xai.grok-4-fast",
+      "xai.grok-4-1-fast",
+    ] as const;
+
+    it.each(deprecated)("%s should be marked deprecated", (shorthand) => {
+      const cfg = xai[shorthand] as Config;
+      expect(cfg.deprecated).toBeDefined();
+      expect(cfg.deprecated?.shorthand).toBe(shorthand);
+      expect(cfg.deprecated?.message).toContain(shorthand);
+      expect(cfg.deprecated?.message).toContain("xai.grok-4.3");
+    });
+
+    it.each([
+      "xai.grok-4.3",
+      "xai.grok-4.20",
+      "xai.grok-4.20-reasoning",
+      "xai.grok-4.5",
+      "xai.grok-4.6",
+    ] as const)("%s should not be marked deprecated", (shorthand) => {
+      expect((xai[shorthand] as Config).deprecated).toBeUndefined();
+    });
+  });
+
   describe("effort transform", () => {
     const transform = xai["xai.chat.v1"].mapBody.effort.transform as (
       v: any,

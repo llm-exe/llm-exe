@@ -56,6 +56,6 @@ In addition to the [generic options](/llm/generic), the following options are Op
 | frequencyPenalty | number  | undefined   | Maps to `frequency_penalty`. See OpenAI Docs                   |
 | logitBias        | object  | undefined   | Maps to `logit_bias`. See OpenAI Docs                          |
 | useJson          | boolean | undefined   | When `true`, sets `response_format` to `json_object`           |
-| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only supported with reasoning models (e.g. gpt-5). |
+| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only sent for OpenAI reasoning models — any model whose name starts with `gpt-5`, `o3`, or `o4`; on any other model, or for a value outside that list, it is silently dropped. |
 
 See [OpenAI API Reference](https://platform.openai.com/docs/api-reference/chat) for details on these parameters.

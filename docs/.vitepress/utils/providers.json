@@ -9,6 +9,30 @@
         "shorthand": "openai.chat.v1"
       },
       {
+        "id": "gpt-5.6",
+        "shorthand": "openai.gpt-5.6"
+      },
+      {
+        "id": "gpt-5.6-terra",
+        "shorthand": "openai.gpt-5.6-terra"
+      },
+      {
+        "id": "gpt-5.6-luna",
+        "shorthand": "openai.gpt-5.6-luna"
+      },
+      {
+        "id": "gpt-5.5",
+        "shorthand": "openai.gpt-5.5"
+      },
+      {
+        "id": "gpt-5.4",
+        "shorthand": "openai.gpt-5.4"
+      },
+      {
+        "id": "gpt-5.4-mini",
+        "shorthand": "openai.gpt-5.4-mini"
+      },
+      {
         "id": "gpt-5.2",
         "shorthand": "openai.gpt-5.2"
       },
@@ -66,6 +90,22 @@
         "shorthand": "anthropic.chat.v1"
       },
       {
+        "id": "claude-fable-5",
+        "shorthand": "anthropic.claude-fable-5"
+      },
+      {
+        "id": "claude-opus-5",
+        "shorthand": "anthropic.claude-opus-5"
+      },
+      {
+        "id": "claude-opus-4-8",
+        "shorthand": "anthropic.claude-opus-4-8"
+      },
+      {
+        "id": "claude-sonnet-5",
+        "shorthand": "anthropic.claude-sonnet-5"
+      },
+      {
         "id": "claude-opus-4-7",
         "shorthand": "anthropic.claude-opus-4-7"
       },
@@ -90,24 +130,6 @@
         "shorthand": "anthropic.claude-opus-4-6",
         "deprecated": true,
         "message": "Shorthand \"anthropic.claude-opus-4-6\" is deprecated and may be removed in a future release."
-      },
-      {
-        "id": "claude-opus-4-1",
-        "shorthand": "anthropic.claude-opus-4-1",
-        "deprecated": true,
-        "message": "Shorthand \"anthropic.claude-opus-4-1\" is deprecated and may be removed in a future release."
-      },
-      {
-        "id": "claude-sonnet-4",
-        "shorthand": "anthropic.claude-sonnet-4",
-        "deprecated": true,
-        "message": "Shorthand \"anthropic.claude-sonnet-4\" is deprecated and may be removed in a future release."
-      },
-      {
-        "id": "claude-opus-4",
-        "shorthand": "anthropic.claude-opus-4",
-        "deprecated": true,
-        "message": "Shorthand \"anthropic.claude-opus-4\" is deprecated and may be removed in a future release."
       },
       {
         "id": "claude-3-7-sonnet",
@@ -166,6 +188,10 @@
       {
         "id": "gemini-3.1-flash-lite",
         "shorthand": "google.gemini-3.1-flash-lite"
+      },
+      {
+        "id": "gemini-3.5-flash",
+        "shorthand": "google.gemini-3.5-flash"
       },
       {
         "id": "gemini-2.0-flash",
@@ -258,6 +284,22 @@
       {
         "id": "grok-4.3",
         "shorthand": "xai.grok-4.3"
+      },
+      {
+        "id": "grok-4.20",
+        "shorthand": "xai.grok-4.20"
+      },
+      {
+        "id": "grok-4.20-reasoning",
+        "shorthand": "xai.grok-4.20-reasoning"
+      },
+      {
+        "id": "grok-4.5",
+        "shorthand": "xai.grok-4.5"
+      },
+      {
+        "id": "grok-4.6",
+        "shorthand": "xai.grok-4.6"
       }
     ]
   },
@@ -305,6 +347,18 @@
       {
         "id": "qwen3",
         "shorthand": "ollama.qwen3"
+      },
+      {
+        "id": "qwen3.5",
+        "shorthand": "ollama.qwen3.5"
+      },
+      {
+        "id": "gemma4",
+        "shorthand": "ollama.gemma4"
+      },
+      {
+        "id": "gpt-oss",
+        "shorthand": "ollama.gpt-oss"
       }
     ]
   }

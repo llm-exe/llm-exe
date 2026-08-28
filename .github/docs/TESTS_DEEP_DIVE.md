@@ -39,6 +39,7 @@ flowchart LR
     subgraph A["tests.yml"]
         BY["bypass check\nhead_ref == bump-version-branch?"]:::gate
         M["matrix: node 18/20/22/24\nfail-fast: false"]:::job
+        TC["typecheck\n(Node 24.x only)"]:::gate
     end
 
     subgraph C["Caches"]
@@ -68,6 +69,7 @@ flowchart LR
     M --> c1
     M --> c2
     M --> sc
+    M -->|node 24.x| TC
     M -->|node 24.x| cov
     cov --> rep
     sc --> am
@@ -139,10 +141,10 @@ flowchart TB
     fanout --> N22[CI / Tests<br/>node 22.x]:::job
     fanout --> N24[CI / Tests<br/>node 24.x]:::job
 
-    N18 --> S18[6 steps]:::step
-    N20 --> S20[6 steps]:::step
-    N22 --> S22[6 steps]:::step
-    N24 --> S24[7 steps<br/>+ Coverage]:::step
+    N18 --> S18[5 steps run<br/>Typecheck + Coverage skipped]:::step
+    N20 --> S20[5 steps run<br/>Typecheck + Coverage skipped]:::step
+    N22 --> S22[5 steps run<br/>Typecheck + Coverage skipped]:::step
+    N24 --> S24[7 steps run<br/>+ Typecheck + Coverage]:::step
 
     S18 --> done([4 independent status checks])
     S20 --> done
@@ -151,6 +153,8 @@ flowchart TB
 ```
 
 `fail-fast: false` means one Node version failing does not cancel the others. You always see the full picture across Node 18/20/22/24, which is what you want for a library that declares `engines.node >= 18`.
+
+Seven steps are defined, but two of them (`Typecheck` and `Coverage`) carry `if: ${{ matrix.node-version == '24.x' }}`, so the 18/20/22 legs execute five and the 24.x leg executes all seven.
 
 Concurrency group is `${{ github.workflow }}-${{ github.ref }}` with `cancel-in-progress: true`. Push a new commit to the same PR and the in-flight run dies so the new one can take over.
 
@@ -171,6 +175,7 @@ sequenceDiagram
     participant SN as actions/setup-node@v6
     participant CA as ./.github/actions/cache
     participant NPM as npm
+    participant TS as tsc (typecheck)
     participant J as Jest
     participant CV as coveralls
 
@@ -183,6 +188,9 @@ sequenceDiagram
     CA-->>R: node_modules restored if hit
     R->>NPM: npm install (not ci)
     NPM-->>R: node_modules ready
+    Note over R: only if matrix.node-version == 24.x
+    R->>TS: npm run typecheck (tsc --noEmit)
+    TS-->>R: type diagnostics, including *.test.ts assertions
     R->>J: npm run test (Jest with coverage, forceExit)
     J-->>R: pass / fail, coverage/ written
     Note over R: only if matrix.node-version == 24.x
@@ -191,9 +199,11 @@ sequenceDiagram
     R-->>E: status check returned to PR
 ```
 
-The Coverage step uses `if: ${{ matrix.node-version == '24.x' }}` so it runs exactly once per workflow run, on the newest Node. The other three legs skip it.
+The Typecheck and Coverage steps both use `if: ${{ matrix.node-version == '24.x' }}` so each runs exactly once per workflow run, on the newest Node. The other three legs skip them.
 
-Source: [.github/workflows/tests.yml](../workflows/tests.yml) lines 27-47.
+Typecheck is load-bearing, not decoration: ts-jest transpiles with `isolatedModules` and reports no type diagnostics, so the compile-time type-inference assertions in `*.test.ts` files (for example [src/executor/type-inference.test.ts](../../src/executor/type-inference.test.ts)) pass under Jest whether or not they actually hold. `npm run typecheck` (`tsc --noEmit`) is what enforces them. Type errors are not node-version dependent, so one leg is enough.
+
+Source: [.github/workflows/tests.yml](../workflows/tests.yml) lines 27-54.
 
 [Back to top](#navigate)
 
@@ -343,9 +353,14 @@ flowchart TB
     F7 --> F7E["--forceExit + --detectOpenHandles\nflags from package.json kick in"]:::effect
     F7X["look at known issue in CLAUDE.md\nasyncCallWithTimeout test"]:::fix
     F7E --> F7X
+
+    F8["Typecheck fails but Jest passes"]:::fail
+    F8 --> F8E["Node 24.x leg red, other three green\ntype assertion in a *.test.ts broke"]:::effect
+    F8X["run npm run typecheck locally\nJest alone cannot catch this"]:::fix
+    F8E --> F8X
 ```
 
-Source for test command: [package.json](../../package.json) line 39.
+Source for the test command: [package.json](../../package.json) line 38. Typecheck command: line 37 (`tsc --noEmit`).
 
 [Back to top](#navigate)
 
@@ -367,6 +382,7 @@ flowchart LR
     K7["Concurrency"]:::k --- V7["workflow + ref, cancel-in-progress: true"]:::v
     K8["Install"]:::k --- V8["npm install (not ci)"]:::v
     K9["Test"]:::k --- V9["npm run test (Jest, coverage, forceExit)"]:::v
+    K9b["Typecheck"]:::k --- V9b["npm run typecheck (tsc --noEmit), Node 24.x only"]:::v
     K10["Cache layer 1"]:::k --- V10["setup-node built-in (~/.npm by lockfile hash)"]:::v
     K11["Cache layer 2"]:::k --- V11["composite (node_modules by package.json hash)"]:::v
     K12["Coverage upload"]:::k --- V12["coverallsapp/github-action@v1, Node 24.x only"]:::v

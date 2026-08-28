@@ -680,6 +680,11 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<AnthropicRequest, "model">;
   };
 
+  // Anthropic - Claude Opus 5 models
+  "anthropic.claude-opus-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+
   // Anthropic - Claude 4.8 models
   "anthropic.claude-opus-4-8": {
     input: Omit<AnthropicRequest, "model">;
@@ -746,6 +751,15 @@ export type AllUseLlmOptions = AllLlm & {
   "google.gemini-3.5-flash": {
     input: Omit<GeminiRequest, "model">;
   };
+  "google.gemini-3.5-flash-lite": {
+    input: Omit<GeminiRequest, "model">;
+  };
+  "google.gemini-3.6-flash": {
+    input: Omit<GeminiRequest, "model">;
+  };
+  "google.gemini-3.7-flash": {
+    input: Omit<GeminiRequest, "model">;
+  };
   // Google - Deprecated
   "google.gemini-2.0-flash": {
     input: Omit<GeminiRequest, "model">;
@@ -786,6 +800,9 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<XAiRequest, "model">;
   };
   "xai.grok-4.5": {
+    input: Omit<XAiRequest, "model">;
+  };
+  "xai.grok-4.6": {
     input: Omit<XAiRequest, "model">;
   };
 

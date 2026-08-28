@@ -1,5 +1,7 @@
 import { anthropicPromptSanitize } from "@/llm/config/anthropic/promptSanitize";
 import { bedrock } from "@/llm/config/bedrock";
+import { mapBody } from "@/llm/_utils.mapBody";
+import { PROVIDED_OPTION_KEYS } from "@/llm/_utils.stateFromOptions";
 import { replaceTemplateString } from "@/utils/modules/replaceTemplateString";
 
 // Mock the external dependencies
@@ -56,6 +58,113 @@ describe("bedrock configuration", () => {
         provider: "amazon:anthropic.chat",
         allowImageUrlSources: false,
       });
+    });
+  });
+
+  // Bedrock reuses the direct provider's effort/thinking + sampling-param
+  // handling (../anthropic/effort). These assert the outgoing InvokeModel body
+  // via mapBody with real Bedrock invoke model IDs (the prompt sanitizer is
+  // mocked above, but the effort/topP transforms are the real shared ones).
+  describe("amazon:anthropic.chat.v1 effort / thinking / sampling params", () => {
+    const cfg = bedrock["amazon:anthropic.chat.v1"];
+    const bodyWith = (
+      model: string,
+      opts: Record<string, any>,
+      provided: string[]
+    ) =>
+      mapBody(cfg.mapBody, {
+        model,
+        ...opts,
+        [PROVIDED_OPTION_KEYS]: new Set(provided),
+      });
+
+    it("escalates effort high->xhigh + adaptive and applies the 65536 floor for opus-4-8 (no caller maxTokens)", () => {
+      const body = bodyWith(
+        "us.anthropic.claude-opus-4-8",
+        { effort: "high" },
+        ["effort"]
+      );
+      expect(body.output_config).toEqual({ effort: "xhigh" });
+      expect(body.thinking).toEqual({ type: "adaptive" });
+      expect(body.max_tokens).toBe(65536);
+    });
+
+    it("honors an explicit maxTokens for opus-4-8 when escalating", () => {
+      const body = bodyWith(
+        "us.anthropic.claude-opus-4-8",
+        { effort: "high", maxTokens: 8000 },
+        ["effort", "maxTokens"]
+      );
+      expect(body.output_config).toEqual({ effort: "xhigh" });
+      expect(body.max_tokens).toBe(8000);
+    });
+
+    it("maps effort to legacy budget thinking + raises max_tokens for a legacy Bedrock model (sonnet-4-5)", () => {
+      const body = bodyWith(
+        "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        { effort: "medium" },
+        ["effort"]
+      );
+      // Legacy models take enabled thinking with a budget, not output_config;
+      // max_tokens is raised above the budget (Anthropic requires max_tokens >
+      // budget_tokens), overriding the 10000 Bedrock default here (10000 <= 10240).
+      expect(body).not.toHaveProperty("output_config");
+      expect(body.thinking).toEqual({ type: "enabled", budget_tokens: 10240 });
+      expect(body.max_tokens).toBeGreaterThan(10240);
+    });
+
+    it("keeps effort high (no escalation) + adaptive for opus-5, leaving the Bedrock default max_tokens", () => {
+      const body = bodyWith(
+        "global.anthropic.claude-opus-5",
+        { effort: "high" },
+        ["effort"]
+      );
+      expect(body.output_config).toEqual({ effort: "high" });
+      expect(body.thinking).toEqual({ type: "adaptive" });
+      expect(body.max_tokens).toBe(10000);
+    });
+
+    it("drops top_p for a 4.7+/5 model (Bedrock 400s on sampling params there)", () => {
+      const body = bodyWith(
+        "us.anthropic.claude-opus-4-8",
+        { effort: "high", topP: 0.9 },
+        ["effort", "topP"]
+      );
+      expect(body.top_p).toBeUndefined();
+    });
+
+    it("keeps top_p for a non-reject model", () => {
+      const body = bodyWith(
+        "us.anthropic.claude-sonnet-4-6",
+        { topP: 0.9 },
+        ["topP"]
+      );
+      expect(body.top_p).toBe(0.9);
+    });
+
+    it("drops top_p on a non-reject model when effort enables thinking (issue #716)", () => {
+      const body = bodyWith(
+        "us.anthropic.claude-sonnet-4-6",
+        { effort: "high", topP: 0.9 },
+        ["effort", "topP"]
+      );
+      expect(body.thinking).toEqual({ type: "adaptive" });
+      expect(body.top_p).toBeUndefined();
+    });
+
+    it("keeps top_p >= 0.95 on a non-reject model when effort enables thinking (issue #716)", () => {
+      const body = bodyWith(
+        "us.anthropic.claude-sonnet-4-6",
+        { effort: "high", topP: 0.97 },
+        ["effort", "topP"]
+      );
+      expect(body.top_p).toBe(0.97);
+    });
+
+    it("adds no effort/thinking fields when effort is not provided", () => {
+      const body = bodyWith("us.anthropic.claude-opus-4-8", {}, []);
+      expect(body).not.toHaveProperty("output_config");
+      expect(body).not.toHaveProperty("thinking");
     });
   });
 
@@ -169,6 +278,75 @@ describe("bedrock configuration", () => {
           : undefined
       ).toThrow(/Image content is not supported/);
       expect(replaceTemplateStringMock).not.toHaveBeenCalled();
+    });
+
+    // The message string is cosmetic; `code` is the public contract consumers
+    // branch on. Pin it (and the diagnostic context) so a refactor of the
+    // transform can't silently move users to a different error code.
+    it("rejects image content with the prompt.invalid_messages error contract", () => {
+      const messagesWithImage = [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: "https://example.com/cat.png" },
+            },
+          ],
+        },
+      ];
+
+      const fn = bedrock["amazon:meta.chat.v1"];
+      let caught: any;
+      try {
+        fn.mapBody.prompt.transform?.(messagesWithImage, {}, {});
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeDefined();
+      expect(caught.isLlmExeError).toBe(true);
+      expect(caught.code).toBe("prompt.invalid_messages");
+      expect(caught.category).toBe("prompt");
+      expect(caught.context).toMatchObject({
+        operation: "amazonMetaChatV1.prompt.transform",
+        provider: "amazon:meta.chat",
+      });
+    });
+
+    it("only rejects image content when a content block is actually an image", () => {
+      const textOnlyBlocks = [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "no images here" },
+            { type: "text", text: "still none" },
+          ],
+        },
+      ];
+      replaceTemplateStringMock.mockReturnValue("flattened");
+
+      const fn = bedrock["amazon:meta.chat.v1"];
+
+      expect(fn.mapBody.prompt.transform?.(textOnlyBlocks, {}, {})).toBe(
+        "flattened"
+      );
+      expect(replaceTemplateStringMock).toHaveBeenCalledWith(
+        "{{>DialogueHistory key='messages'}}",
+        { messages: textOnlyBlocks }
+      );
+    });
+
+    it("passes through messages whose content is a plain string", () => {
+      const stringContent = [{ role: "user", content: "just text" }];
+      replaceTemplateStringMock.mockReturnValue("flattened");
+
+      const fn = bedrock["amazon:meta.chat.v1"];
+
+      // `content` is not an array, so the image scan must not throw on it.
+      expect(fn.mapBody.prompt.transform?.(stringContent, {}, {})).toBe(
+        "flattened"
+      );
     });
   });
 });

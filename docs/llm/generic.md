@@ -15,13 +15,13 @@ For a worked example of `timeout`, `numOfAttempts`, and `maxDelay` in a producti
 | ------------- | ---------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
 | timeout       | number           | 30000     | Max execution time of API call to the LLM, in milliseconds.                                                |
 | maxDelay      | number           | 5000      | Used for retry back-off. Max time to wait between attempts when timeout has been reached, in milliseconds. |
-| numOfAttempts | number           | 2         | Used for retry. How many attempts should be made before throwing error                                     |
+| numOfAttempts | number           | 2         | Used for retry. How many attempts should be made before throwing error. Deterministic `configuration`, `prompt`, and `auth` errors are not retried — see [Retry Behavior](/misc/errors#retry-behavior). |
 | jitter        | "none" \| "full" | none      | Used for retry back-off.                                                                                   |
 | temperature   | number           | undefined | Maps to provider-specific temperature parameter.                                                           |
 | maxTokens     | number           | undefined | Maps to provider-specific max tokens parameter.                                                            |
 | topP          | number           | undefined | Maps to provider-specific top_p parameter.                                                                 |
 | stopSequences | string[]         | undefined | Maps to provider-specific stop sequences parameter.                                                        |
-| effort        | string           | undefined | Maps to reasoning effort. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only supported by providers/models that support reasoning effort (e.g. OpenAI gpt-5, Google Gemini 2.5). |
+| effort        | string           | undefined | Maps to reasoning effort. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only sent for models that support reasoning effort; it is silently dropped elsewhere, and what it maps to differs per provider — see [OpenAI](/llm/openai#openai-specific-options), [Anthropic](/llm/anthropic#anthropic-specific-options), [Gemini](/llm/gemini#gemini-specific-options), [xAI](/llm/xai#xai-specific-options), and [Anthropic on Bedrock](/llm/bedrock/anthropic#bedrock-anthropic-options) (where the raised `max_tokens` ceiling can outrun the default `timeout`). |
 | stream        | boolean \| null  | null      | Note: Not supported yet.                                                                                   |
 
 > [!NOTE]

@@ -300,19 +300,42 @@ describe("google configuration", () => {
       ["google.gemini-2.5-flash", "gemini-2.5-flash"],
       ["google.gemini-2.5-flash-lite", "gemini-2.5-flash-lite"],
       ["google.gemini-2.5-pro", "gemini-2.5-pro"],
+    ] as const)("%s should resolve to %s", (shorthand, expectedModel) => {
+      const config = google[shorthand] as Config;
+      expect(config).toBeDefined();
+      expect(config.options.model).toEqual({ default: expectedModel });
+      expect(config.mapBody.model).toEqual({
+        default: expectedModel,
+        key: "model",
+      });
+    });
+
+    it("does not warn on gemini-2.5-flash, which is still served", () => {
+      // Verified live 2026-08-27: 200 OK. The "earliest possible" date in
+      // Google's deprecation table was not a commitment, and warning on a live
+      // model teaches users to ignore warnings. See issue #762.
+      expect(
+        (google["google.gemini-2.5-flash"] as Config).deprecated
+      ).toBeUndefined();
+    });
+
+    it.each([
+      ["google.gemini-2.5-flash-lite", "google.gemini-3.5-flash-lite"],
+      ["google.gemini-2.5-pro", "google.gemini-3.5-flash"],
     ] as const)(
-      "%s should resolve to %s and carry no deprecation",
-      (shorthand, expectedModel) => {
-        const config = google[shorthand] as Config;
-        expect(config).toBeDefined();
-        expect(config.options.model).toEqual({ default: expectedModel });
-        expect(config.mapBody.model).toEqual({
-          default: expectedModel,
-          key: "model",
-        });
-        // 2.5 is Stable at Google with no announced shutdown date — warning on
-        // it told users a live model had already been retired. See issue #762.
-        expect(config.deprecated).toBeUndefined();
+      "%s still warns, because it is no longer available to new users",
+      (shorthand, migrateTo) => {
+        // Verified live 2026-08-27: both return 404 "no longer available to
+        // new users". Only the fabricated shutdown dates were wrong; the
+        // warning itself is load-bearing, so it stays. See issue #762.
+        const deprecated = (google[shorthand] as Config).deprecated;
+        expect(deprecated).toBeDefined();
+        expect(deprecated!.shorthand).toBe(shorthand);
+        expect(deprecated!.message).toContain("no longer available to new users");
+        expect(deprecated!.message).toContain(migrateTo);
+        // the fabricated dates must not come back
+        expect(deprecated!.message).not.toContain("2026-06-17");
+        expect(deprecated!.message).not.toContain("2026-07-22");
       }
     );
 

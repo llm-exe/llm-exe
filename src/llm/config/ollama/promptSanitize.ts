@@ -27,6 +27,22 @@ export function ollamaPromptSanitize(_messages: string | IChatMessages) {
 
     for (const block of message.content) {
       if (isImageUrlContentBlock(block)) {
+        if (message.role === "function") {
+          throw new LlmExeError(
+            "Images in tool results are not supported by ollama",
+            {
+              code: "prompt.invalid_messages",
+              context: {
+                operation: "ollamaPromptSanitize",
+                provider: "ollama.chat",
+                received: "an image_url content block on a function message",
+                expected: "text content blocks",
+                resolution:
+                  "Ollama only honours the per-message images array on user messages, so an image on a tool result is dropped. Return text from the tool and send the image as a separate user message.",
+              },
+            }
+          );
+        }
         const parsed = parseImageUrl(block.image_url.url, {
           operation: "ollamaPromptSanitize",
           provider: "ollama.chat",

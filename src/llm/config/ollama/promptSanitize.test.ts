@@ -115,4 +115,82 @@ describe("ollamaPromptSanitize", () => {
       /Unsupported content block for ollama/
     );
   });
+
+  it("throws for an image block on a function message", () => {
+    const messages = [
+      {
+        role: "function",
+        name: "screenshot",
+        content: [
+          { type: "text", text: "here is the page" },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          },
+        ],
+      },
+    ] as unknown as IChatMessages;
+
+    expect(() => ollamaPromptSanitize(messages)).toThrow(
+      /Images in tool results are not supported by ollama/
+    );
+
+    try {
+      ollamaPromptSanitize(messages);
+    } catch (error: any) {
+      expect(error.code).toEqual("prompt.invalid_messages");
+      expect(error.context.provider).toEqual("ollama.chat");
+      expect(error.context.resolution).toEqual(expect.any(String));
+    }
+  });
+
+  it("still joins text-only content blocks on a function message", () => {
+    const messages = [
+      {
+        role: "function",
+        name: "lookup",
+        content: [
+          { type: "text", text: "line one" },
+          { type: "text", text: "line two" },
+        ],
+      },
+    ] as unknown as IChatMessages;
+
+    const result = ollamaPromptSanitize(messages);
+
+    expect(result[0]).toEqual({
+      role: "function",
+      name: "lookup",
+      content: "line one\nline two",
+    });
+    expect(result[0]).not.toHaveProperty("images");
+  });
+
+  it("still allows images on user messages adjacent to a function message", () => {
+    const messages = [
+      { role: "function", name: "lookup", content: "plain text result" },
+      {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,aaa=" },
+          },
+        ],
+      },
+    ] as unknown as IChatMessages;
+
+    const result = ollamaPromptSanitize(messages);
+
+    expect(result[0]).toEqual({
+      role: "function",
+      name: "lookup",
+      content: "plain text result",
+    });
+    expect(result[1]).toEqual({
+      role: "user",
+      content: "",
+      images: ["aaa="],
+    });
+  });
 });

@@ -315,6 +315,58 @@ describe("google configuration", () => {
     });
   });
 
+  describe("gemini-2.5 shorthands", () => {
+    it.each([
+      ["google.gemini-2.5-flash", "gemini-2.5-flash"],
+      ["google.gemini-2.5-flash-lite", "gemini-2.5-flash-lite"],
+      ["google.gemini-2.5-pro", "gemini-2.5-pro"],
+    ] as const)("%s should resolve to %s", (shorthand, expectedModel) => {
+      const config = google[shorthand] as Config;
+      expect(config).toBeDefined();
+      expect(config.options.model).toEqual({ default: expectedModel });
+      expect(config.mapBody.model).toEqual({
+        default: expectedModel,
+        key: "model",
+      });
+    });
+
+    it("does not warn on gemini-2.5-flash, which is still served", () => {
+      // Verified live 2026-08-27: 200 OK. The "earliest possible" date in
+      // Google's deprecation table was not a commitment, and warning on a live
+      // model teaches users to ignore warnings. See issue #762.
+      expect(
+        (google["google.gemini-2.5-flash"] as Config).deprecated
+      ).toBeUndefined();
+    });
+
+    it.each([
+      ["google.gemini-2.5-flash-lite", "google.gemini-3.5-flash-lite"],
+      ["google.gemini-2.5-pro", "google.gemini-3.5-flash"],
+    ] as const)(
+      "%s still warns, because it is no longer available to new users",
+      (shorthand, migrateTo) => {
+        // Verified live 2026-08-27: both return 404 "no longer available to
+        // new users". Only the fabricated shutdown dates were wrong; the
+        // warning itself is load-bearing, so it stays. See issue #762.
+        const deprecated = (google[shorthand] as Config).deprecated;
+        expect(deprecated).toBeDefined();
+        expect(deprecated!.shorthand).toBe(shorthand);
+        expect(deprecated!.message).toContain("no longer available to new users");
+        expect(deprecated!.message).toContain(migrateTo);
+        // the fabricated dates must not come back
+        expect(deprecated!.message).not.toContain("2026-06-17");
+        expect(deprecated!.message).not.toContain("2026-07-22");
+      }
+    );
+
+    it("should be based on googleChatV1 configuration", () => {
+      const config = google["google.gemini-2.5-pro"] as Config;
+      expect(config.endpoint).toEqual(googleChatV1.endpoint);
+      expect(config.method).toEqual(googleChatV1.method);
+      expect(config.headers).toEqual(googleChatV1.headers);
+    });
+  });
+
   describe("retired shorthands", () => {
     it.each([
       [
@@ -342,6 +394,28 @@ describe("google configuration", () => {
         expect(config.deprecated?.message).toContain(migrateTo);
       }
     );
+  });
+
+  describe("deprecation messages", () => {
+    const deprecated = Object.values(google as Record<string, Config>).filter(
+      (config) => config.deprecated
+    );
+
+    it("only cites dates for shutdowns Google has already carried out", () => {
+      expect(deprecated.length).toBeGreaterThan(0);
+      for (const config of deprecated) {
+        const message = config.deprecated!.message;
+        // Google's deprecation table publishes "earliest possible" shutdown
+        // dates, not commitments. Never promise a future shutdown date on
+        // their behalf — a date in a message means it already happened.
+        expect(message).not.toMatch(/will shut down on/);
+        if (/\d{4}-\d{2}-\d{2}/.test(message)) {
+          expect(message).toMatch(
+            /was shut down by Google on \d{4}-\d{2}-\d{2}/
+          );
+        }
+      }
+    });
   });
 
   describe("image content through mapBody", () => {

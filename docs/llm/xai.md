@@ -12,17 +12,26 @@ llm-exe ships typed shorthands for the most common xAI models so you do not have
 | Shorthand                  | Default model                       |
 | -------------------------- | ----------------------------------- |
 | `xai.chat.v1`              | _none — set `model`_                |
-| `xai.grok-2`               | `grok-2-latest`                     |
-| `xai.grok-3`               | `grok-3`                            |
-| `xai.grok-3-mini`          | `grok-3-mini`                       |
-| `xai.grok-4`               | `grok-4`                            |
-| `xai.grok-4-fast`          | `grok-4-fast-non-reasoning`         |
-| `xai.grok-4-1-fast`        | `grok-4-1-fast-non-reasoning`       |
 | `xai.grok-4.3`             | `grok-4.3` (reasoning model)        |
 | `xai.grok-4.20`            | `grok-4.20-0309-non-reasoning`      |
 | `xai.grok-4.20-reasoning`  | `grok-4.20-0309-reasoning`          |
 | `xai.grok-4.5`             | `grok-4.5` (reasoning model)        |
 | `xai.grok-4.6`             | `grok-4.6` (reasoning model)        |
+
+### Deprecated shorthands
+
+These shorthands still resolve, but emit a [deprecation warning](/llm/deprecations) when used. Migrate to `xai.grok-4.3` (or another active shorthand above).
+
+| Shorthand           | Default model                 | Status                                                                     |
+| ------------------- | ----------------------------- | -------------------------------------------------------------------------- |
+| `xai.grok-3`        | `grok-3`                      | Retired by xAI on 2026-05-15 — xAI redirects the request to `grok-4.3`.     |
+| `xai.grok-4-fast`   | `grok-4-fast-non-reasoning`   | Retired by xAI on 2026-05-15 — xAI redirects the request to `grok-4.3`.     |
+| `xai.grok-4-1-fast` | `grok-4-1-fast-non-reasoning` | Retired by xAI on 2026-05-15 — xAI redirects the request to `grok-4.3`.     |
+| `xai.grok-2`        | `grok-2-latest`               | No longer served by xAI — requests using it will fail at the API.           |
+| `xai.grok-3-mini`   | `grok-3-mini`                 | Delisted by xAI — no longer a current model.                                |
+| `xai.grok-4`        | `grok-4`                      | Delisted by xAI — no longer a current model.                                |
+
+The delisted shorthands (`xai.grok-2`, `xai.grok-3-mini`, `xai.grok-4`) are kept only so existing code warns instead of failing silently, and are slated for removal in the next major release.
 
 ## Basic Usage
 
@@ -30,23 +39,23 @@ llm-exe ships typed shorthands for the most common xAI models so you do not have
 
 ```ts
 const llm = useLlm("xai.chat.v1", {
-  model: "grok-4", // specify a model
+  model: "grok-4.3", // specify a model
 });
 ```
 
 ### x.ai Chat By Model
 
 ```ts
-const llm = useLlm("xai.grok-4", {
+const llm = useLlm("xai.grok-4.3", {
   // other options,
-  // no model needed, using grok-4
+  // no model needed, using grok-4.3
 });
 ```
 
 ```ts
-const llm = useLlm("xai.grok-3-mini", {
+const llm = useLlm("xai.grok-4.20", {
   // other options,
-  // no model needed, using grok-3-mini
+  // no model needed, using grok-4.20-0309-non-reasoning
 });
 ```
 

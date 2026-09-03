@@ -41,7 +41,7 @@ const googleGeminiChatV1: Config = {
       key: "generationConfig.stopSequences",
     },
     effort: {
-      key: "config.thinkingConfig.thinkingBudget",
+      key: "generationConfig.thinkingConfig.thinkingBudget",
       transform: (v, _s) => {
         if (
           // only supported reasoning models

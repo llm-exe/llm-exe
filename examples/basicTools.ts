@@ -34,7 +34,7 @@ const tools = [
 ];
 
 export async function llmUsingToolsSimple(message: string, history: any[]) {
-  const llm = useLlm("xai.grok-3");
+  const llm = useLlm("xai.grok-4.3");
   const prompt = createChatPrompt(
     "You are a helpful assistant who ONLY uses tools. Do not talk, just use tools."
   );

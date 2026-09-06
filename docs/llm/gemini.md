@@ -1,6 +1,6 @@
 ---
 title: "Use Google Gemini Models in TypeScript with llm-exe"
-description: "Call Google Gemini models like gemini-2.5-flash from TypeScript with llm-exe. Covers setup, API key authentication, and Gemini-specific options like effort."
+description: "Call Google Gemini models like gemini-3.5-flash from TypeScript with llm-exe. Covers setup, API key authentication, and Gemini-specific options like effort."
 ---
 
 # Google Gemini
@@ -13,16 +13,16 @@ When using Google Gemini models, llm-exe will make POST requests to `https://gen
 
 ```ts
 const llm = useLlm("google.chat.v1", {
-  model: "gemini-2.5-flash", // specify a model
+  model: "gemini-3.5-flash", // specify a model
 });
 ```
 
 ### Gemini Chat By Model
 
 ```ts
-const llm = useLlm("google.gemini-2.5-flash", {
+const llm = useLlm("google.gemini-3.5-flash", {
   // other options,
-  // no model needed, using gemini-2.5-flash
+  // no model needed, using gemini-3.5-flash
 });
 ```
 
@@ -51,9 +51,24 @@ In addition to the generic options, the following options are Gemini-specific an
 | ------------ | ------ | ---------------- | -------------------------------------------------------------------- |
 | model        | string | —                | The model to use. Must be specified when using `google.chat.v1`. See Google Gemini Docs |
 | geminiApiKey | string | undefined        | API key for Google. See [authentication](/llm/gemini#authentication) |
-| effort       | string | undefined        | Maps to `thinkingConfig.thinkingBudget`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only supported with reasoning models (e.g. gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite). |
+| effort       | string | undefined        | Maps to `thinkingConfig.thinkingBudget` (`minimal`/`low` → 1024, `medium` → 8192, `high` → 24576). Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only sent for `gemini-2.5-pro`, `gemini-2.5-flash`, and `gemini-2.5-flash-lite`; on any other model, or for a value outside that list, it is silently dropped. |
+
+::: warning `effort` and the Gemini 3.x models
+The models `effort` currently supports (`gemini-2.5-pro`, `gemini-2.5-flash`,
+`gemini-2.5-flash-lite`) are all reachable only through
+[deprecated shorthands](./deprecations.md). On the current `google.gemini-3.*`
+shorthands, `effort` is dropped rather than sent as
+`thinkingConfig.thinkingBudget` — there is no error or warning, the request
+simply goes out without the parameter.
+
+Tracked in [llm-exe#781](https://github.com/llm-exe/llm-exe/issues/781).
+:::
 
 > [!NOTE]
-> The Gemini provider currently maps `model`, `geminiApiKey`, and `effort`. Generic options like `temperature`, `maxTokens`, and `topP` are not mapped to the Gemini API at this time.
+> The Gemini provider maps `model`, `geminiApiKey`, `effort`, and the generic
+> `temperature`, `topP`, `maxTokens`, and `stopSequences` options (to
+> `generationConfig.temperature`, `generationConfig.topP`,
+> `generationConfig.maxOutputTokens`, and `generationConfig.stopSequences`).
+> Other generic options are not sent to the Gemini API at this time.
 
 See [Google Gemini API Reference](https://ai.google.dev/gemini-api/docs) for details.

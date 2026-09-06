@@ -133,10 +133,36 @@ describe("google configuration", () => {
       ).toBe(8192);
     });
 
-    it("should return undefined for gemini-2.5-light (not a valid model ID)", () => {
-      expect(
-        effortTransform("medium", { model: "gemini-2.5-light" })
-      ).toBeUndefined();
+    it.each([
+      "gemini-3.1-flash-lite",
+      "gemini-3.5-flash",
+      "gemini-3.5-flash-lite",
+      "gemini-3.6-flash",
+      "gemini-3.7-flash",
+    ])("should apply the thinking budget on %s", (model) => {
+      expect(effortTransform("medium", { model })).toBe(8192);
+      expect(effortTransform("high", { model })).toBe(24576);
+      expect(effortTransform("low", { model })).toBe(1024);
+    });
+
+    it("should apply the thinking budget on unreleased 2.5+ variants", () => {
+      expect(effortTransform("medium", { model: "gemini-2.5-light" })).toBe(
+        8192
+      );
+      expect(effortTransform("medium", { model: "gemini-4.0-pro" })).toBe(8192);
+    });
+
+    it.each(["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-pro"])(
+      "should return undefined for pre-2.5 model %s",
+      (model) => {
+        expect(effortTransform("high", { model })).toBeUndefined();
+      }
+    );
+
+    it("should return undefined for a non-gemini or missing model", () => {
+      expect(effortTransform("high", { model: "gpt-4o" })).toBeUndefined();
+      expect(effortTransform("high", { model: "gemini-pro" })).toBeUndefined();
+      expect(effortTransform("high", {})).toBeUndefined();
     });
   });
 

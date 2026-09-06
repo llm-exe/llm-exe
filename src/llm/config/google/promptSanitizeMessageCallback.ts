@@ -48,43 +48,60 @@ function googleGeminiContentBlockToPart(block: any) {
 }
 
 /**
- * `functionResponse.response` is a Struct — it has no representation for an
- * image part, and Gemini accepts a block array dropped in verbatim, so the
- * base64 gets billed as text and the image is never seen. Text-only arrays
- * flatten to a string (what the non-function branch does for every other
- * role); image blocks throw rather than fail silently.
+ * `functionResponse.response` is a Struct, so it can only carry text. Media
+ * rides alongside it in `functionResponse.parts` — an ordered
+ * `FunctionResponsePart[]` whose only member is `inlineData`
+ * (`{ mimeType, data }`). Text blocks flatten into `response.result` (what the
+ * non-function branch does for every other role); image blocks become inline
+ * parts.
  *
  * Only content-block arrays are rewritten. An arbitrary JSON array is valid,
- * idiomatic structured tool output for a Struct, so it keeps landing verbatim.
+ * idiomatic structured tool output for a Struct, so it keeps landing verbatim
+ * in `response.result`.
  */
-function googleGeminiFunctionResponseResult(content: any) {
+function googleGeminiFunctionResponse(name: string, content: any) {
   if (!isContentBlockArray(content)) {
-    return content;
+    return { name, response: { result: content } };
   }
 
-  return content
-    .map((block: any) => {
-      if (isImageUrlContentBlock(block)) {
+  const text: string[] = [];
+  const parts: { inlineData: { mimeType: string; data: string } }[] = [];
+
+  for (const block of content as any[]) {
+    if (isImageUrlContentBlock(block)) {
+      const parsed = parseImageUrl(block.image_url.url, {
+        operation: "googleGeminiPromptMessageCallback",
+        provider: "google.chat",
+      });
+      // FunctionResponsePart has no fileData member — inline bytes only.
+      if (parsed.kind !== "base64") {
         throw new LlmExeError(
-          "Image content is not supported in tool results by Gemini",
+          "Gemini tool results can only carry inline image data",
           {
             code: "prompt.invalid_messages",
             context: {
               operation: "googleGeminiPromptMessageCallback",
               provider: "google.chat",
-              received: "a tool result containing an image content block",
-              expected: "text-only tool result content",
+              received: parsed.url,
+              expected: "a base64 data: URI",
               resolution:
-                "functionResponse.response only carries structured text. Return text from the tool and send the image as a separate user message.",
+                "functionResponse.parts only accepts inlineData. Pass the image as a data: URI (data:image/png;base64,...), or send it as a separate user message where file URIs are supported.",
             },
           }
         );
       }
-      // isContentBlockArray admits only text or image blocks, and images throw
-      // above, so anything reaching here is a text block.
-      return block.text;
-    })
-    .join("\n");
+      parts.push({
+        inlineData: { mimeType: parsed.mediaType, data: parsed.data },
+      });
+      continue;
+    }
+    // isContentBlockArray admits only text or image blocks, and images are
+    // handled above, so anything reaching here is a text block.
+    text.push(block.text);
+  }
+
+  const response = { name, response: { result: text.join("\n") } };
+  return parts.length ? { ...response, parts } : response;
 }
 
 export function googleGeminiPromptMessageCallback(_message: IChatMessage) {
@@ -119,12 +136,10 @@ export function googleGeminiPromptMessageCallback(_message: IChatMessage) {
   if (message.role === "function") {
     role = "user";
     parts.push({
-      functionResponse: {
-        name: message.name,
-        response: {
-          result: googleGeminiFunctionResponseResult(message.content),
-        },
-      },
+      functionResponse: googleGeminiFunctionResponse(
+        message.name,
+        message.content
+      ),
     });
 
     delete message.id;

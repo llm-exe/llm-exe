@@ -140,6 +140,52 @@ describe("google configuration", () => {
     });
   });
 
+  describe("google.chat.v1 effort body mapping", () => {
+    it("maps effort into generationConfig.thinkingConfig.thinkingBudget", () => {
+      expect(googleChatV1.mapBody.effort.key).toBe(
+        "generationConfig.thinkingConfig.thinkingBudget"
+      );
+    });
+
+    it("nests thinkingBudget under generationConfig, not a top-level config", () => {
+      const body = mapBody(googleChatV1.mapBody, {
+        model: "gemini-2.5-pro",
+        prompt: "hi",
+        effort: "medium",
+      });
+      expect(body).toMatchObject({
+        generationConfig: { thinkingConfig: { thinkingBudget: 8192 } },
+      });
+      expect(body).not.toHaveProperty("config");
+    });
+
+    it("keeps thinkingConfig alongside other generationConfig params", () => {
+      const body = mapBody(googleChatV1.mapBody, {
+        model: "gemini-2.5-flash",
+        prompt: "hi",
+        effort: "high",
+        temperature: 0.5,
+        maxTokens: 128,
+      });
+      expect(body.generationConfig).toMatchObject({
+        temperature: 0.5,
+        maxOutputTokens: 128,
+        thinkingConfig: { thinkingBudget: 24576 },
+      });
+    });
+
+    it("omits thinkingConfig entirely when effort is not supported", () => {
+      const body = mapBody(googleChatV1.mapBody, {
+        model: "gemini-2.0-flash",
+        prompt: "hi",
+        effort: "high",
+        temperature: 0.5,
+      });
+      expect(body.generationConfig).not.toHaveProperty("thinkingConfig");
+      expect(body).not.toHaveProperty("config");
+    });
+  });
+
   describe("google.chat.v1 mapOptions", () => {
     it("should transform functionCall 'any' correctly", () => {
       const result = googleChatV1.mapOptions!.functionCall!("any", {});

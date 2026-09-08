@@ -1,3 +1,5 @@
+import { LlmExeError } from "@/errors";
+
 export const asyncCallWithTimeout = async <T = any>(
   asyncPromise: Promise<T>,
   timeLimit = 10000
@@ -7,7 +9,10 @@ export const asyncCallWithTimeout = async <T = any>(
   const timeoutPromise = new Promise((_resolve, reject) => {
     timeoutHandle = setTimeout(() => {
       return reject(
-        new Error(`LLM call timed out after ${timeLimit}ms`)
+        new LlmExeError(`LLM call timed out after ${timeLimit}ms`, {
+          code: "request.timeout",
+          context: { operation: "asyncCallWithTimeout", timeout: timeLimit },
+        })
       );
     }, timeLimit);
   });

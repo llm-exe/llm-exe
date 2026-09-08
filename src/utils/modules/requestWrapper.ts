@@ -33,6 +33,8 @@ const NON_RETRYABLE_CATEGORIES = new Set<ErrorCategory>([
 // throw at createEmbedding() construction, before the wrapper exists, so they
 // never reach this predicate.)
 const NON_RETRYABLE_CODES = new Set<ErrorCodes>([
+  // A client timeout does not stop provider generation; retrying can bill twice.
+  "request.timeout",
   "llm.provider_auth_failed",
   "llm.provider_invalid_request",
   "embedding.provider_auth_failed",

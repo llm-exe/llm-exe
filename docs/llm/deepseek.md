@@ -79,6 +79,34 @@ In addition to the generic options, the following options are Deepseek-specific 
 | frequencyPenalty | number  | undefined     | Maps to `frequency_penalty`. See Deepseek Docs                 |
 | logitBias        | object  | undefined     | Maps to `logit_bias`. See Deepseek Docs                        |
 | useJson          | boolean | undefined     | When `true`, sets `response_format` to `json_object`           |
-| effort           | string  | undefined     | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Currently not supported by Deepseek models and will be silently ignored. |
+| effort           | string  | undefined     | Maps to `reasoning_effort`. Valid values for DeepSeek V4: `"low"`, `"high"`, `"max"`. Ignored for older models. |
 
 See [Deepseek API Reference](https://api-docs.deepseek.com/) for details on these parameters.
+
+## Thinking and provider-specific body fields
+
+Disable thinking with `extraBody`:
+
+```ts
+const llm = useLlm("deepseek.v4-flash", {
+  extraBody: { thinking: { type: "disabled" } },
+});
+```
+
+To control thinking effort instead, set `effort: "low"`, `"high"`, or `"max"`.
+See [DeepSeek thinking mode](https://api-docs.deepseek.com/guides/thinking_mode/).
+
+`extraBody` accepts raw request fields and is shallow-merged after normal options
+and executor schema/tool mappings. Its fields take precedence; nested objects are
+replaced in full. See [generic options](/llm/generic).
+
+## Schema-typed JSON
+
+A JSON parser with a schema requests `response_format: { type: "json_object" }`
+on DeepSeek's chat completions endpoint, which does not support `json_schema`.
+The parser retains TypeScript inference and validates the response locally by
+default. Include instructions for the expected JSON shape in your prompt;
+JSON mode does not enforce that shape on the server.
+
+Client-side timeouts are not retried. A timeout does not cancel provider generation,
+so the original request may still be billed. Increase `timeout` for long generations.

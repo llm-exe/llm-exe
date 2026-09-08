@@ -57,7 +57,7 @@ The second argument to `execute()` controls tool calling for that call.
 | `functions` | `Array<{ name, description, parameters? }>` | `undefined` | The tools the LLM is allowed to call. `parameters` is a JSON Schema object describing the tool's arguments. |
 | `functionCall` | `"auto" \| "none" \| "any" \| { name: string }` | `undefined` | How the LLM should choose. `"auto"` lets it decide, `"none"` forbids tool calls, and `"any"` forces it to call some tool — these three work on every provider. `{ name }` (force one specific tool) is currently mapped only for Anthropic (direct and Bedrock; note Bedrock rejects a forced tool_choice combined with adaptive thinking). On Google it falls back to `"auto"`, and on OpenAI-compatible endpoints it is passed through unmapped, which the provider rejects. |
 | `functionCallStrictInput` | `boolean` | `false` | Enables strict schema adherence on providers that support it (OpenAI-compatible endpoints). Ignored elsewhere. |
-| `jsonSchema` | `Record<string, any>` | `undefined` | Optional JSON Schema for structured output. Mapped for OpenAI-compatible endpoints (OpenAI, xAI, Deepseek) only; silently ignored elsewhere. |
+| `jsonSchema` | `Record<string, any>` | `undefined` | Optional JSON Schema for structured output. Mapped to schema output for OpenAI and xAI; requests JSON mode on DeepSeek. Silently ignored elsewhere. |
 
 ::: tip
 Tool definitions are normalized internally, so the same `functions` array works across OpenAI, Anthropic, Google, xAI, and other providers that support tool calling.

@@ -463,3 +463,13 @@ const mockLlm = useLlmConfiguration({
 3. **Headers must be valid JSON**: The `headers` property expects a JSON string, not an object.
 
 4. **Template variables**: Both `endpoint` and `headers` support `{{variable}}` placeholders that will be replaced with values from the options.
+Custom configurations are used throughout execution: their endpoint, headers,
+body mappings, executor-option mappings, and response transformer are preserved,
+even when the key matches a built-in configuration. Custom keys do not need registry
+entries. Custom options must be declared in `config.options` to reach mappings.
+
+For raw provider body fields, use the generic `extraBody` option. It is applied
+last, with shallow replacement semantics, and does not need a `mapBody` entry.
+The compatible helper also accepts `reasoningEfforts: readonly string[]` to set
+the allowed effort values alongside `isReasoningModel`; the default remains
+`minimal`, `low`, `medium`, `high`.

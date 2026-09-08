@@ -500,6 +500,8 @@ export interface AmazonTitanEmbeddingApiResponseOutput {
 }
 
 export interface GenericLLm extends BaseLlmOptions {
+  /** Raw provider body fields, shallow-merged last; explicit fields override mappings. */
+  extraBody?: Record<string, unknown>;
   model?: string;
   system?: string;
   prompt?: string | { role: string; content: string }[];
@@ -554,7 +556,8 @@ export interface GeminiRequest extends GenericLLm {
   geminiApiKey?: string;
 }
 
-export interface DeepseekRequest extends GenericLLm {
+export interface DeepseekRequest extends Omit<GenericLLm, "effort"> {
+  effort?: GenericLLm["effort"] | "max";
   model: string;
   responseFormat?: Record<string, any>;
   deepseekApiKey?: string;

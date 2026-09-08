@@ -12,10 +12,12 @@ export function createOpenAiCompatibleConfiguration<
   endpoint: string;
   apiKeyMapping: [string, string];
   isReasoningModel?: (model: string) => boolean;
+  reasoningEfforts?: readonly string[];
   transformResponse?: any;
 }) {
   const [apiKeyPropertyKey, apiKeyPropertyValue] = overrides.apiKeyMapping;
   const isReasoningModel = overrides.isReasoningModel ?? (() => false);
+  const reasoningEfforts = overrides.reasoningEfforts ?? ["minimal", "low", "medium", "high"];
 
   const config: Config = {
     key: overrides.key as K,
@@ -74,7 +76,7 @@ export function createOpenAiCompatibleConfiguration<
             typeof _s.model === "string" &&
             isReasoningModel(_s.model) &&
             typeof v === "string" &&
-            ["minimal", "low", "medium", "high"].includes(v)
+            reasoningEfforts.includes(v)
           ) {
             return v;
           }

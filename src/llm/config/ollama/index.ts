@@ -54,6 +54,12 @@ export const ollama = {
   "ollama.qwen2.5": withDefaultModel(ollamaChatV1, "qwen2.5"),
   "ollama.qwen3": withDefaultModel(ollamaChatV1, "qwen3"),
   "ollama.qwen3.5": withDefaultModel(ollamaChatV1, "qwen3.5"),
+  "ollama.qwen3.8-flash-next": withDefaultModel(
+    ollamaChatV1,
+    "qwen3.8-flash-next"
+  ),
   "ollama.gemma4": withDefaultModel(ollamaChatV1, "gemma4"),
   "ollama.gpt-oss": withDefaultModel(ollamaChatV1, "gpt-oss"),
+  "ollama.glm-5.3": withDefaultModel(ollamaChatV1, "glm-5.3"),
+  "ollama.glm-5.3-flash": withDefaultModel(ollamaChatV1, "glm-5.3-flash"),
 };

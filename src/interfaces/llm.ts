@@ -837,10 +837,19 @@ export type AllUseLlmOptions = AllLlm & {
   "ollama.qwen3.5": {
     input: GenericLLm;
   };
+  "ollama.qwen3.8-flash-next": {
+    input: GenericLLm;
+  };
   "ollama.gemma4": {
     input: GenericLLm;
   };
   "ollama.gpt-oss": {
+    input: GenericLLm;
+  };
+  "ollama.glm-5.3": {
+    input: GenericLLm;
+  };
+  "ollama.glm-5.3-flash": {
     input: GenericLLm;
   };
 

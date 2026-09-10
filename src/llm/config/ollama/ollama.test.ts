@@ -86,8 +86,11 @@ describe("ollama configuration", () => {
       ["ollama.qwen2.5", "qwen2.5"],
       ["ollama.qwen3", "qwen3"],
       ["ollama.qwen3.5", "qwen3.5"],
+      ["ollama.qwen3.8-flash-next", "qwen3.8-flash-next"],
       ["ollama.gemma4", "gemma4"],
       ["ollama.gpt-oss", "gpt-oss"],
+      ["ollama.glm-5.3", "glm-5.3"],
+      ["ollama.glm-5.3-flash", "glm-5.3-flash"],
     ] as const)(
       "%s should resolve to %s",
       (shorthand, expectedModel) => {

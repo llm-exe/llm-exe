@@ -26,7 +26,7 @@ const PROMPT = `As a senior Typescript developer, you write unit tests with 100%
 
 // #region function
 export async function generateTests(sourceCode: string, exampleTests?: string) {
-  const llm = useLlm("anthropic.claude-3-7-sonnet");
+  const llm = useLlm("anthropic.claude-sonnet-4-6");
   const prompt = createChatPrompt<{ code: string; exampleTests?: string }>(
     PROMPT
   );

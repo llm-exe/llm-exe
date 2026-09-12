@@ -32,7 +32,7 @@ const executor = createLlmExecutor({ llm, prompt, parser });
 ```typescript
 // Design for easy provider switching
 const llm = useLlm("openai.gpt-4o-mini");
-// const llm = useLlm("anthropic.claude-3-5-sonnet");
+// const llm = useLlm("anthropic.claude-sonnet-4-6");
 // Code should work identically with any provider
 ```
 

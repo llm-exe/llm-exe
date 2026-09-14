@@ -339,4 +339,78 @@ describe("anthropicPromptSanitize", () => {
       expect(outputObj).toEqual({});
     });
   });
+
+  // The sanitizer runs once per HTTP attempt, and llm-exe retries failed calls
+  // with the same prompt object. If sanitizing mutates the caller's messages,
+  // the second attempt sends a different (corrupted) body than the first —
+  // a bug that only shows up on retry, which is exactly when it hurts most.
+  describe("caller input is not mutated", () => {
+    it("should not mutate the caller's messages when merging array content", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "Question" },
+        {
+          role: "assistant",
+          content: [{ type: "text", text: "one" }],
+        } as any,
+        {
+          role: "assistant",
+          content: [{ type: "text", text: "two" }],
+        } as any,
+      ];
+      const snapshot = JSON.parse(JSON.stringify(messages));
+
+      const result = anthropicPromptSanitize(messages, {}, {});
+
+      // the merge happened...
+      expect(result).toHaveLength(2);
+      expect(result[1].content).toHaveLength(2);
+      // ...but the caller's array was left exactly as it was passed in
+      expect(messages).toEqual(snapshot);
+      expect((messages[1] as any).content).toHaveLength(1);
+      expect((messages[2] as any).content).toHaveLength(1);
+    });
+
+    it("should not mutate the caller's messages when hoisting a system message", () => {
+      const messages: IChatMessages = [
+        { role: "system", content: "You are helpful." },
+        { role: "user", content: "Question" },
+        { role: "system", content: "Mid-conversation system note" },
+      ];
+      const snapshot = JSON.parse(JSON.stringify(messages));
+      const outputObj: Record<string, any> = {};
+
+      const result = anthropicPromptSanitize(messages, {}, outputObj);
+
+      expect(outputObj.system).toBe("You are helpful.");
+      // the trailing system message is rewritten to user in the output...
+      expect(result[result.length - 1].role).toBe("user");
+      // ...but the caller still sees its original roles
+      expect(messages).toEqual(snapshot);
+      expect(messages[0].role).toBe("system");
+      expect(messages[2].role).toBe("system");
+    });
+
+    it("should produce identical output when called twice on the same messages", () => {
+      const messages: IChatMessages = [
+        { role: "system", content: "You are helpful." },
+        { role: "user", content: "Question" },
+        {
+          role: "assistant",
+          content: [{ type: "text", text: "one" }],
+        } as any,
+        {
+          role: "assistant",
+          content: [{ type: "text", text: "two" }],
+        } as any,
+      ];
+
+      const firstOut: Record<string, any> = {};
+      const first = anthropicPromptSanitize(messages, {}, firstOut);
+      const secondOut: Record<string, any> = {};
+      const second = anthropicPromptSanitize(messages, {}, secondOut);
+
+      expect(second).toEqual(first);
+      expect(secondOut).toEqual(firstOut);
+    });
+  });
 });

@@ -103,6 +103,73 @@ describe("ollamaPromptSanitize", () => {
     );
   });
 
+  it("converts an assistant function_call into ollama tool_calls", () => {
+    const messages: IChatMessages = [
+      { role: "user", content: "weather?" },
+      {
+        role: "assistant",
+        content: null,
+        function_call: {
+          id: "call_1",
+          name: "get_weather",
+          arguments: '{"city":"Denver"}',
+        },
+      } as any,
+    ];
+
+    const result = ollamaPromptSanitize(messages);
+
+    expect(result[1]).toEqual({
+      role: "assistant",
+      content: "",
+      tool_calls: [
+        {
+          function: { name: "get_weather", arguments: { city: "Denver" } },
+        },
+      ],
+    });
+    expect(result[1]).not.toHaveProperty("function_call");
+  });
+
+  it("converts parallel function_call arrays into multiple tool_calls", () => {
+    const messages: IChatMessages = [
+      {
+        role: "assistant",
+        content: null,
+        function_call: [
+          { id: "call_1", name: "get_weather", arguments: '{"city":"Denver"}' },
+          { id: "call_2", name: "get_time", arguments: { tz: "MST" } },
+        ],
+      } as any,
+    ];
+
+    expect(ollamaPromptSanitize(messages)[0]).toEqual({
+      role: "assistant",
+      content: "",
+      tool_calls: [
+        { function: { name: "get_weather", arguments: { city: "Denver" } } },
+        { function: { name: "get_time", arguments: { tz: "MST" } } },
+      ],
+    });
+  });
+
+  it("converts a function result message into a tool message", () => {
+    const messages: IChatMessages = [
+      {
+        role: "function",
+        id: "call_1",
+        name: "get_weather",
+        content: "72 and sunny",
+      } as any,
+    ];
+
+    const result = ollamaPromptSanitize(messages);
+
+    expect(result[0]).toEqual({ role: "tool", content: "72 and sunny" });
+    expect(result[0]).not.toHaveProperty("id");
+    expect(result[0]).not.toHaveProperty("name");
+  });
+
   it("throws for unrecognized content blocks", () => {
     const messages: IChatMessages = [
       {

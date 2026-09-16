@@ -215,6 +215,37 @@ describe("createOpenAiCompatibleConfiguration", () => {
   });
 
   describe("mapOptions", () => {
+    it("replaces only the overridden mappings when mapOptions is provided", () => {
+      const jsonSchema = jest.fn(() => ({
+        response_format: { type: "json_object" },
+      }));
+      const config = createOpenAiCompatibleConfiguration({
+        key: "custom.chat.v1",
+        provider: "custom.chat",
+        endpoint: "https://api.custom.com/v1/chat/completions",
+        apiKeyMapping: ["customApiKey", "CUSTOM_API_KEY"],
+        mapOptions: { jsonSchema },
+      });
+
+      expect(config.mapOptions?.jsonSchema?.({}, {})).toEqual({
+        response_format: { type: "json_object" },
+      });
+      expect(jsonSchema).toHaveBeenCalledTimes(1);
+      expect(config.mapOptions?.functionCall?.("any")).toEqual({
+        tool_choice: "required",
+      });
+      expect(
+        config.mapOptions?.functions?.([{ name: "lookup", description: "d" }], {})
+      ).toEqual({
+        tools: [
+          expect.objectContaining({
+            type: "function",
+            function: expect.objectContaining({ name: "lookup" }),
+          }),
+        ],
+      });
+    });
+
     it("should map functionCall options correctly", () => {
       const config = createOpenAiCompatibleConfiguration({
         key: "custom.chat.v1",

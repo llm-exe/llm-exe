@@ -13,6 +13,7 @@ export function createOpenAiCompatibleConfiguration<
   apiKeyMapping: [string, string];
   isReasoningModel?: (model: string) => boolean;
   reasoningEfforts?: readonly string[];
+  mapOptions?: Config["mapOptions"];
   transformResponse?: any;
 }) {
   const [apiKeyPropertyKey, apiKeyPropertyValue] = overrides.apiKeyMapping;
@@ -115,6 +116,7 @@ export function createOpenAiCompatibleConfiguration<
           },
         })),
       }),
+      ...overrides.mapOptions,
     },
     transformResponse: overrides.transformResponse ?? OutputOpenAIChat,
   };

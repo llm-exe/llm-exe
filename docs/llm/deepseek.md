@@ -107,6 +107,3 @@ on DeepSeek's chat completions endpoint, which does not support `json_schema`.
 The parser retains TypeScript inference and validates the response locally by
 default. Include instructions for the expected JSON shape in your prompt;
 JSON mode does not enforce that shape on the server.
-
-Client-side timeouts are not retried. A timeout does not cancel provider generation,
-so the original request may still be billed. Increase `timeout` for long generations.

@@ -557,7 +557,7 @@ export interface GeminiRequest extends GenericLLm {
 }
 
 export interface DeepseekRequest extends Omit<GenericLLm, "effort"> {
-  effort?: GenericLLm["effort"] | "max";
+  effort?: "low" | "high" | "max";
   model: string;
   responseFormat?: Record<string, any>;
   deepseekApiKey?: string;

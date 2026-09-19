@@ -239,6 +239,7 @@ export type ErrorContextByCode = {
   "auth.aws_signing_input_missing": AwsAuthContext;
   "request.invalid_url": RequestErrorContext;
   "request.http_error": RequestErrorContext;
+  "request.timeout": BaseErrorContext & { timeout: number };
   "internal.invariant_failed": InternalErrorContext;
   "unknown.unclassified": Record<string, unknown>;
 };

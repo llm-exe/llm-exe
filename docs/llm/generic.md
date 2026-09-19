@@ -5,7 +5,7 @@ description: "Configure generic LLM options in TypeScript with llm-exe: timeout,
 
 # Generic Options
 
-llm-exe attempts to normalize the inputs for various llm vendors, providing a single interface that can be used to interact with different models. While this is not always possible, since certain vendors may implement features that others don't support, either way only the allowed options make it to the respective api calls.
+llm-exe attempts to normalize the inputs for various llm vendors, providing a single interface that can be used to interact with different models. While this is not always possible, since certain vendors may implement features that others don't support, declared options are mapped to each provider. Use `extraBody` to pass additional raw request fields.
 
 ## Options
 
@@ -15,13 +15,14 @@ For a worked example of `timeout`, `numOfAttempts`, and `maxDelay` in a producti
 | ------------- | ---------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
 | timeout       | number           | 30000     | Max execution time of API call to the LLM, in milliseconds.                                                |
 | maxDelay      | number           | 5000      | Used for retry back-off. Max time to wait between attempts when timeout has been reached, in milliseconds. |
-| numOfAttempts | number           | 2         | Used for retry. How many attempts should be made before throwing error. Deterministic `configuration`, `prompt`, and `auth` errors are not retried — see [Retry Behavior](/misc/errors#retry-behavior). |
+| numOfAttempts | number           | 2         | Used for retry. How many attempts should be made before throwing error. Client-side timeouts and deterministic `configuration`, `prompt`, and `auth` errors are not retried — see [Retry Behavior](/misc/errors#retry-behavior). |
 | jitter        | "none" \| "full" | none      | Used for retry back-off.                                                                                   |
 | temperature   | number           | undefined | Maps to provider-specific temperature parameter.                                                           |
 | maxTokens     | number           | undefined | Maps to provider-specific max tokens parameter.                                                            |
 | topP          | number           | undefined | Maps to provider-specific top_p parameter.                                                                 |
 | stopSequences | string[]         | undefined | Maps to provider-specific stop sequences parameter.                                                        |
-| effort        | string           | undefined | Maps to reasoning effort. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only sent for models that support reasoning effort; it is silently dropped elsewhere, and what it maps to differs per provider — see [OpenAI](/llm/openai#openai-specific-options), [Anthropic](/llm/anthropic#anthropic-specific-options), [Gemini](/llm/gemini#gemini-specific-options), [xAI](/llm/xai#xai-specific-options), and [Anthropic on Bedrock](/llm/bedrock/anthropic#bedrock-anthropic-options) (where the raised `max_tokens` ceiling can outrun the default `timeout`). |
+| effort        | string           | undefined | Maps to reasoning effort. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`; DeepSeek V4 accepts `"low"`, `"high"`, `"max"`. Only sent for models that support reasoning effort; it is silently dropped elsewhere, and what it maps to differs per provider — see [OpenAI](/llm/openai#openai-specific-options), [Anthropic](/llm/anthropic#anthropic-specific-options), [Gemini](/llm/gemini#gemini-specific-options), [xAI](/llm/xai#xai-specific-options), and [Anthropic on Bedrock](/llm/bedrock/anthropic#bedrock-anthropic-options) (where the raised `max_tokens` ceiling can outrun the default `timeout`). |
+| extraBody     | Record<string, unknown> | undefined | Raw LLM request body fields, shallow-merged after provider and executor mappings, before serialization/signing. Explicit fields win; nested objects replace mapped objects in full. |
 | stream        | boolean \| null  | null      | Note: Not supported yet.                                                                                   |
 
 > [!NOTE]

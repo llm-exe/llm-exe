@@ -79,7 +79,7 @@ In addition to the generic options, the following options are Deepseek-specific 
 | frequencyPenalty | number  | undefined     | Maps to `frequency_penalty`. See Deepseek Docs                 |
 | logitBias        | object  | undefined     | Maps to `logit_bias`. See Deepseek Docs                        |
 | useJson          | boolean | undefined     | When `true`, sets `response_format` to `json_object`           |
-| effort           | string  | undefined     | Maps to `reasoning_effort`. Valid values for DeepSeek V4: `"low"`, `"high"`, `"max"`. Ignored for older models. |
+| effort           | string  | undefined     | Maps to `reasoning_effort`. Valid values: `"low"`, `"high"`, `"max"`. Sent for `deepseek-flash`, `deepseek-v4-pro`, and legacy `deepseek-v4-*` ids; ignored for `deepseek-chat`. |
 
 See [Deepseek API Reference](https://api-docs.deepseek.com/) for details on these parameters.
 

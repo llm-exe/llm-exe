@@ -7,7 +7,7 @@ const deepseekChatV1: Config = createOpenAiCompatibleConfiguration({
   provider: "deepseek.chat",
   endpoint: `https://api.deepseek.com/v1/chat/completions`,
   apiKeyMapping: ["deepseekApiKey", "DEEPSEEK_API_KEY"],
-  isReasoningModel: (model) => model.startsWith("deepseek-v4"),
+  isReasoningModel: (model) => /^deepseek-(flash|v4)/.test(model),
   reasoningEfforts: ["low", "high", "max"],
   mapOptions: {
     // Chat completions supports JSON mode, but not server-enforced JSON Schema.

@@ -1,6 +1,6 @@
 ---
 title: "Use xAI Grok Models in TypeScript with llm-exe"
-description: "Call xAI Grok models like grok-4 and grok-3-mini from TypeScript with llm-exe. Covers typed model shorthands, API key setup, and xAI-specific options."
+description: "Call xAI Grok models like grok-4.3 and grok-4.6 from TypeScript with llm-exe. Covers typed model shorthands, API key setup, and xAI-specific options."
 ---
 
 # xAI
@@ -9,20 +9,34 @@ When using xAI models, llm-exe will make POST requests to `https://api.x.ai/v1/c
 
 llm-exe ships typed shorthands for the most common xAI models so you do not have to remember the exact model strings:
 
-| Shorthand                  | Default model                       |
-| -------------------------- | ----------------------------------- |
-| `xai.chat.v1`              | _none — set `model`_                |
-| `xai.grok-2`               | `grok-2-latest`                     |
-| `xai.grok-3`               | `grok-3`                            |
-| `xai.grok-3-mini`          | `grok-3-mini`                       |
-| `xai.grok-4`               | `grok-4`                            |
-| `xai.grok-4-fast`          | `grok-4-fast-non-reasoning`         |
-| `xai.grok-4-1-fast`        | `grok-4-1-fast-non-reasoning`       |
-| `xai.grok-4.3`             | `grok-4.3` (reasoning model)        |
-| `xai.grok-4.20`            | `grok-4.20-0309-non-reasoning`      |
-| `xai.grok-4.20-reasoning`  | `grok-4.20-0309-reasoning`          |
-| `xai.grok-4.5`             | `grok-4.5` (reasoning model)        |
-| `xai.grok-4.6`             | `grok-4.6` (reasoning model)        |
+| Shorthand                 | Default model                  |
+| ------------------------- | ------------------------------ |
+| `xai.chat.v1`             | _none — set `model`_           |
+| `xai.grok-4.3`            | `grok-4.3` (reasoning model)   |
+| `xai.grok-4.20`           | `grok-4.20-0309-non-reasoning` |
+| `xai.grok-4.20-reasoning` | `grok-4.20-0309-reasoning`     |
+| `xai.grok-4.5`            | `grok-4.5` (reasoning model)   |
+| `xai.grok-4.6`            | `grok-4.6` (reasoning model)   |
+
+### Deprecated shorthands
+
+These shorthands still resolve, but they log a deprecation warning when used. Migrate to `xai.grok-4.3` (or a newer shorthand above).
+
+| Shorthand           | Default model                 | Status                                                                              |
+| ------------------- | ----------------------------- | ----------------------------------------------------------------------------------- |
+| `xai.grok-3`        | `grok-3`                      | Retired by xAI on 2026-05-15 — xAI redirects the request to `grok-4.3`.              |
+| `xai.grok-4-fast`   | `grok-4-fast-non-reasoning`   | Retired by xAI on 2026-05-15 — xAI redirects the request to `grok-4.3`.              |
+| `xai.grok-4-1-fast` | `grok-4-1-fast-non-reasoning` | Retired by xAI on 2026-05-15 — xAI redirects the request to `grok-4.3`.              |
+| `xai.grok-2`        | `grok-2-latest`               | No longer served by xAI — requests using this shorthand fail at the API.             |
+| `xai.grok-3-mini`   | `grok-3-mini`                 | Delisted by xAI, no published redirect. Slated for removal in the next major release. |
+| `xai.grok-4`        | `grok-4`                      | Delisted by xAI, no published redirect. Slated for removal in the next major release. |
+
+::: tip Redirected models are non-reasoning
+The three shorthands that xAI redirects to `grok-4.3` land on the
+non-reasoning variant with `"none"` effort — they do not behave like the
+`xai.grok-4.3` shorthand, which targets the reasoning model. Switch the
+shorthand explicitly if you want reasoning behavior.
+:::
 
 ## Basic Usage
 
@@ -30,23 +44,23 @@ llm-exe ships typed shorthands for the most common xAI models so you do not have
 
 ```ts
 const llm = useLlm("xai.chat.v1", {
-  model: "grok-4", // specify a model
+  model: "grok-4.3", // specify a model
 });
 ```
 
 ### x.ai Chat By Model
 
 ```ts
-const llm = useLlm("xai.grok-4", {
+const llm = useLlm("xai.grok-4.3", {
   // other options,
-  // no model needed, using grok-4
+  // no model needed, using grok-4.3
 });
 ```
 
 ```ts
-const llm = useLlm("xai.grok-3-mini", {
+const llm = useLlm("xai.grok-4.6", {
   // other options,
-  // no model needed, using grok-3-mini
+  // no model needed, using grok-4.6
 });
 ```
 

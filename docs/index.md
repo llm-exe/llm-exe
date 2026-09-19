@@ -293,7 +293,7 @@ const result = await tools.callFunction(plan.action, plan.input);
 const llm = useLlm("openai.gpt-4o");
 // const llm = useLlm("anthropic.claude-sonnet-4-6");
 // const llm = useLlm("google.gemini-2.0-flash");
-// const llm = useLlm("xai.grok-2");
+// const llm = useLlm("xai.grok-4.3");
 // const llm = useLlm("ollama.llama3.3");
 
 // Everything else stays exactly the same ✨

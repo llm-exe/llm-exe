@@ -104,6 +104,14 @@ it.each(["low", "high", "max"] as const)(
   },
 );
 
+it("sends effort for the current DeepSeek flash model id", async () => {
+  await useLlm("deepseek.chat", {
+    model: "deepseek-flash",
+    effort: "high",
+  }).call("Hi");
+  expect(requestBody().reasoning_effort).toBe("high");
+});
+
 it("does not send effort for legacy DeepSeek models", async () => {
   await useLlm("deepseek.chat", {
     model: "deepseek-chat",

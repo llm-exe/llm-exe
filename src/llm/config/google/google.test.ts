@@ -82,10 +82,13 @@ describe("google configuration", () => {
   });
 
   describe("google.chat.v1 effort transform", () => {
-    const effortTransform = googleChatV1.mapBody.effort.transform as (
+    const transform = googleChatV1.mapBody.effort.transform as (
       v: any,
-      s: any
+      s: any,
+      o: any
     ) => any;
+    const effortTransform = (v: any, s: any, o: any = {}) =>
+      transform(v, s, o);
 
     it("should return 1024 for 'low' on a supported model", () => {
       expect(effortTransform("low", { model: "gemini-2.5-pro" })).toBe(1024);
@@ -133,10 +136,32 @@ describe("google configuration", () => {
       ).toBe(8192);
     });
 
-    it("should return undefined for gemini-2.5-light (not a valid model ID)", () => {
+    it("should support dated gemini-2.5 snapshots", () => {
       expect(
-        effortTransform("medium", { model: "gemini-2.5-light" })
+        effortTransform("medium", { model: "gemini-2.5-flash-preview-05-20" })
+      ).toBe(8192);
+    });
+
+    it("should map effort to thinkingLevel on gemini-3.x models", () => {
+      const output: Record<string, any> = {};
+      expect(
+        effortTransform("high", { model: "gemini-3.5-flash" }, output)
       ).toBeUndefined();
+      expect(output).toEqual({
+        "generationConfig.thinkingConfig.thinkingLevel": "high",
+      });
+    });
+
+    it("should map effort under generationConfig in the request body", () => {
+      const body = mapBody(googleChatV1.mapBody, {
+        model: "gemini-3.5-flash",
+        effort: "low",
+        prompt: [{ role: "user", content: "hello" }],
+      });
+      expect(body.generationConfig.thinkingConfig).toEqual({
+        thinkingLevel: "low",
+      });
+      expect(body.config).toBeUndefined();
     });
   });
 

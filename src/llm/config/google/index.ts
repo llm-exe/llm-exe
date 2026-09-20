@@ -3,6 +3,7 @@ import { deprecateShorthand } from "@/llm/_utils.deprecationWarning";
 import { Config } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { googleGeminiPromptSanitize } from "./promptSanitize";
+import { effortTransform } from "./effort";
 import { OutputGoogleGeminiChat } from "@/llm/output/google.gemini";
 import { cleanJsonSchemaFor } from "@/llm/output/_utils/cleanJsonSchemaFor";
 
@@ -41,26 +42,8 @@ const googleGeminiChatV1: Config = {
       key: "generationConfig.stopSequences",
     },
     effort: {
-      key: "config.thinkingConfig.thinkingBudget",
-      transform: (v, _s) => {
-        if (
-          // only supported reasoning models
-          ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"].includes(
-            _s.model
-          ) &&
-          typeof v === "string" &&
-          ["minimal", "low", "medium", "high"].includes(v)
-        ) {
-          if (v === "low" || v === "minimal") {
-            return 1024;
-          } else if (v === "medium") {
-            return 8192;
-          } else if (v === "high") {
-            return 24576;
-          }
-        }
-        return undefined;
-      },
+      key: "generationConfig.thinkingConfig.thinkingBudget",
+      transform: effortTransform,
     },
   },
   mapOptions: {

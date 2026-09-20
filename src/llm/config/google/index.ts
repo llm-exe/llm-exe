@@ -6,6 +6,21 @@ import { googleGeminiPromptSanitize } from "./promptSanitize";
 import { OutputGoogleGeminiChat } from "@/llm/output/google.gemini";
 import { cleanJsonSchemaFor } from "@/llm/output/_utils/cleanJsonSchemaFor";
 
+/**
+ * Gemini exposes `thinkingConfig.thinkingBudget` on every thinking-capable
+ * model from 2.5 onward. Matching on the version rather than a literal list of
+ * model ids keeps `effort` working as new models ship — pre-2.5 models (1.5,
+ * 2.0) have no thinking budget, so they still drop the option.
+ */
+function supportsThinkingBudget(model: unknown) {
+  if (typeof model !== "string") return false;
+  const version = /^gemini-(\d+)\.(\d+)(?:-|$)/.exec(model);
+  if (!version) return false;
+  const major = Number(version[1]);
+  const minor = Number(version[2]);
+  return major > 2 || (major === 2 && minor >= 5);
+}
+
 const googleGeminiChatV1: Config = {
   key: "google.chat.v1",
   provider: "google.chat",
@@ -44,10 +59,7 @@ const googleGeminiChatV1: Config = {
       key: "config.thinkingConfig.thinkingBudget",
       transform: (v, _s) => {
         if (
-          // only supported reasoning models
-          ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"].includes(
-            _s.model
-          ) &&
+          supportsThinkingBudget(_s.model) &&
           typeof v === "string" &&
           ["minimal", "low", "medium", "high"].includes(v)
         ) {

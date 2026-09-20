@@ -1,6 +1,7 @@
+import { getChatCompletionUsage } from "./_utils/getChatCompletionUsage";
 import {
   Config,
-  OpenAiResponse,
+  DeepSeekResponse,
   OutputOpenAIChatChoice,
   OutputResultContent,
 } from "@/types";
@@ -35,7 +36,7 @@ function formatResult(result: OutputOpenAIChatChoice): OutputResultContent[] {
 }
 
 export function OutputDeepSeekChat(
-  result: OpenAiResponse,
+  result: DeepSeekResponse,
   _config?: Config<any>
 ) {
   const id = result.id;
@@ -49,11 +50,7 @@ export function OutputDeepSeekChat(
   const content = formatResult(_content);
   const options = formatOptions(_options, formatResult);
 
-  const usage = {
-    output_tokens: result?.usage?.completion_tokens,
-    input_tokens: result?.usage?.prompt_tokens,
-    total_tokens: result?.usage?.total_tokens,
-  };
+  const usage = getChatCompletionUsage(result?.usage);
 
   return {
     id,

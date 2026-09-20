@@ -189,11 +189,11 @@ describe("_utils.deprecationWarning", () => {
   });
 
   describe("integration with real registry", () => {
-    it("the three Gemini 2.5 shorthands each carry their own deprecated payload", () => {
+    it("the retired Gemini shorthands each carry their own deprecated payload", () => {
       const shorthands = [
-        "google.gemini-2.5-pro",
-        "google.gemini-2.5-flash",
-        "google.gemini-2.5-flash-lite",
+        "google.gemini-2.0-flash",
+        "google.gemini-2.0-flash-lite",
+        "google.gemini-1.5-pro",
       ] as const;
       for (const shorthand of shorthands) {
         const entry = (configs as any)[shorthand] as Config<any>;
@@ -207,17 +207,45 @@ describe("_utils.deprecationWarning", () => {
       expect(entry.deprecated).toBeUndefined();
     });
 
+    it("gemini-2.5-flash is not deprecated and emits no warning", () => {
+      // Verified live 2026-08-27: still served (200). Its shutdown date came
+      // from Google's "earliest possible" table, which is not a commitment,
+      // so warning on it was false. See issue #762.
+      const entry = (configs as any)["google.gemini-2.5-flash"] as Config<any>;
+      expect(entry).toBeDefined();
+      expect(entry.deprecated).toBeUndefined();
+      emitDeprecationWarning(entry);
+      expect(warningSpy).not.toHaveBeenCalled();
+    });
+
+    it("gemini-2.5-flash-lite and -pro still warn, without the fabricated dates", () => {
+      // Verified live 2026-08-27: both return 404 "no longer available to new
+      // users", so the warning is correct — only the invented shutdown dates
+      // were not. See issue #762.
+      for (const shorthand of [
+        "google.gemini-2.5-flash-lite",
+        "google.gemini-2.5-pro",
+      ] as const) {
+        const entry = (configs as any)[shorthand] as Config<any>;
+        expect(entry).toBeDefined();
+        expect(entry.deprecated).toBeDefined();
+        expect(entry.deprecated!.message).not.toMatch(/2026-06-17|2026-07-22/);
+        emitDeprecationWarning(entry);
+      }
+      expect(warningSpy).toHaveBeenCalledTimes(2);
+    });
+
     it("emits a distinct warning for each registry shorthand", () => {
-      const pro = (configs as any)["google.gemini-2.5-pro"] as Config<any>;
-      const flash = (configs as any)["google.gemini-2.5-flash"] as Config<any>;
-      emitDeprecationWarning(pro);
+      const flash = (configs as any)["google.gemini-2.0-flash"] as Config<any>;
+      const pro = (configs as any)["google.gemini-1.5-pro"] as Config<any>;
       emitDeprecationWarning(flash);
+      emitDeprecationWarning(pro);
       expect(warningSpy).toHaveBeenCalledTimes(2);
       const shorthands = warningSpy.mock.calls.map(
         (c) => JSON.parse(c[1].detail).shorthand
       );
-      expect(shorthands).toContain("google.gemini-2.5-pro");
-      expect(shorthands).toContain("google.gemini-2.5-flash");
+      expect(shorthands).toContain("google.gemini-2.0-flash");
+      expect(shorthands).toContain("google.gemini-1.5-pro");
     });
   });
 });

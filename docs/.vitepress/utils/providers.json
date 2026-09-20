@@ -207,21 +207,19 @@
       },
       {
         "id": "gemini-2.5-flash",
-        "shorthand": "google.gemini-2.5-flash",
-        "deprecated": true,
-        "message": "Model \"google.gemini-2.5-flash\" is deprecated and will shut down on 2026-06-17."
+        "shorthand": "google.gemini-2.5-flash"
       },
       {
         "id": "gemini-2.5-flash-lite",
         "shorthand": "google.gemini-2.5-flash-lite",
         "deprecated": true,
-        "message": "Model \"google.gemini-2.5-flash-lite\" is deprecated and will shut down on 2026-07-22."
+        "message": "Model \"google.gemini-2.5-flash-lite\" is no longer available to new users and returns 404 for projects without prior access. Migrate to \"google.gemini-3.5-flash-lite\"."
       },
       {
         "id": "gemini-2.5-pro",
         "shorthand": "google.gemini-2.5-pro",
         "deprecated": true,
-        "message": "Model \"google.gemini-2.5-pro\" is deprecated and will shut down on 2026-06-17."
+        "message": "Model \"google.gemini-2.5-pro\" is no longer available to new users and returns 404 for projects without prior access. Google recommends the 3.x pro line; the nearest supported shorthand is \"google.gemini-3.5-flash\"."
       }
     ]
   },

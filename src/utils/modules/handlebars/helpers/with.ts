@@ -1,8 +1,7 @@
 export function withFn(
     this: any,
-    options: any,
-    context: any
+    context: any,
+    options: any
   ) {
     return options.fn(context);
   }
-  

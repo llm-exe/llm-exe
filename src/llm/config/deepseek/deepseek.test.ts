@@ -49,12 +49,22 @@ describe("deepseek configuration", () => {
       expect(deepseekChat.headers).toEqual(deepseekChatV1.headers);
     });
 
-    it("should override model in mapBody and options as deepseek-chat", () => {
+    it("should repoint the default model to deepseek-v4-flash", () => {
       expect(deepseekChat.mapBody.model).toEqual({
-        default: "deepseek-chat",
+        default: "deepseek-v4-flash",
         key: "model",
       });
-      expect(deepseekChat.options.model).toEqual({ default: "deepseek-chat" });
+      expect(deepseekChat.options.model).toEqual({
+        default: "deepseek-v4-flash",
+      });
+    });
+
+    it("should carry a deprecation payload pointing at deepseek.v4-flash", () => {
+      expect(deepseekChat.deprecated).toBeDefined();
+      expect(deepseekChat.deprecated!.shorthand).toBe("deepseek.chat");
+      expect(deepseekChat.deprecated!.message).toContain("deepseek.chat");
+      expect(deepseekChat.deprecated!.message).toContain("2026-07-24");
+      expect(deepseekChat.deprecated!.message).toContain("deepseek.v4-flash");
     });
   });
 
@@ -75,6 +85,10 @@ describe("deepseek configuration", () => {
       expect(deepseekV4Flash.options.model).toEqual({
         default: "deepseek-v4-flash",
       });
+    });
+
+    it("should not be marked deprecated", () => {
+      expect(deepseekV4Flash.deprecated).toBeUndefined();
     });
   });
 

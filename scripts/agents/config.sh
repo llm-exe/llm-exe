@@ -73,12 +73,39 @@ EOF
   echo "$log_file"
 }
 
+# The placeholder clock_in writes into every section of a fresh log
+LOG_PLACEHOLDER="_Pending — agent will fill this in._"
+
+# Helper: did the agent actually write anything into its log?
+# Returns 0 if at least one section was filled in, 1 if every section is still
+# the clock_in placeholder (or the file is missing entirely).
+log_has_content() {
+  local log_file="$1"
+  [[ -f "$log_file" ]] || return 1
+  local remaining
+  remaining="$(grep -c -F "$LOG_PLACEHOLDER" "$log_file" || true)"
+  [[ "$remaining" -lt 3 ]]
+}
+
 # Helper: clock out — stamp finish time and update status
+# Status reflects what actually happened:
+#   interrupted — the agent exited nonzero
+#   no-output   — the agent exited clean but left every section untouched
+#   completed   — the agent exited clean and wrote something
+# Returns nonzero for interrupted/no-output so callers can react.
 clock_out() {
   local log_file="$1"
   local exit_code="${2:-0}"
   local status="completed"
-  [[ "$exit_code" -ne 0 ]] && status="interrupted"
+  local result=0
+
+  if [[ "$exit_code" -ne 0 ]]; then
+    status="interrupted"
+    result=1
+  elif ! log_has_content "$log_file"; then
+    status="no-output"
+    result=2
+  fi
 
   if [[ -f "$log_file" ]]; then
     local tmp="${log_file}.tmp"
@@ -86,6 +113,8 @@ clock_out() {
       | sed "s|^\- \*\*Status\*\*: running|- **Status**: $status|" > "$tmp"
     mv "$tmp" "$log_file"
   fi
+
+  return "$result"
 }
 
 # Helper: get recent log files for an agent (last N, default 3)

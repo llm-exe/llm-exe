@@ -100,6 +100,101 @@ describe("llm-exe:executor metadata in hooks", () => {
       expect(capturedMeta.input).toEqual({});
       expect(capturedMeta.output).toBeUndefined();
     });
+
+    it("retains handlerOutput when the handler resolved and parsing failed", async () => {
+      let capturedMeta: any = null;
+
+      const prompt = createChatPrompt("Test error");
+      const parser = createCustomParser("fail", () => {
+        throw new Error("parser exploded");
+      });
+      const executor = createLlmExecutor(
+        { llm, prompt, parser },
+        {
+          hooks: {
+            onError(meta) {
+              capturedMeta = meta;
+            },
+          },
+        }
+      );
+
+      await expect(executor.execute({})).rejects.toThrow("parser exploded");
+
+      // The provider returned a billable response before parsing threw, so
+      // usage is still recoverable from the raw handler output.
+      expect(capturedMeta.handlerOutput).toBeDefined();
+      expect(capturedMeta.handlerOutput.getResult().usage).toEqual(
+        expect.objectContaining({ total_tokens: expect.any(Number) })
+      );
+      expect(capturedMeta.output).toBeUndefined();
+    });
+
+    it("omits handlerOutput in onError and onComplete when the handler itself failed", async () => {
+      let errorMeta: any = null;
+      let completeMeta: any = null;
+
+      const prompt = createChatPrompt("Test error");
+      const executor = createLlmExecutor(
+        { llm, prompt },
+        {
+          hooks: {
+            onError(meta) {
+              errorMeta = meta;
+            },
+            onComplete(meta) {
+              completeMeta = meta;
+            },
+          },
+        }
+      );
+
+      jest
+        .spyOn(llm, "call")
+        .mockRejectedValueOnce(new Error("provider unreachable"));
+
+      await expect(executor.execute({})).rejects.toThrow(
+        "provider unreachable"
+      );
+
+      expect(errorMeta.handlerOutput).toBeUndefined();
+      expect(completeMeta.handlerOutput).toBeUndefined();
+    });
+  });
+
+  describe("handlerOutput availability in onComplete", () => {
+    it("is present in onComplete on both the success and parse-failure paths", async () => {
+      const capture: Record<string, any> = {};
+
+      const prompt = createChatPrompt("Accounting test");
+      const makeExecutor = (parser?: any) =>
+        createLlmExecutor(
+          { llm, prompt, ...(parser ? { parser } : {}) },
+          {
+            hooks: {
+              onComplete(meta) {
+                capture[parser ? "failed" : "succeeded"] = meta;
+              },
+            },
+          }
+        );
+
+      await makeExecutor().execute({});
+
+      const failing = makeExecutor(
+        createCustomParser("fail", () => {
+          throw new Error("parser exploded");
+        })
+      );
+      await expect(failing.execute({})).rejects.toThrow("parser exploded");
+
+      // onComplete can serve as a single accounting point: usage is readable
+      // whether or not parsing succeeded, without double-counting.
+      expect(capture.succeeded.handlerOutput.getResult().usage).toBeDefined();
+      expect(capture.failed.handlerOutput.getResult().usage).toBeDefined();
+      expect(capture.succeeded.output).toBeDefined();
+      expect(capture.failed.output).toBeUndefined();
+    });
   });
 
   describe("onComplete metadata", () => {

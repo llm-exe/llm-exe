@@ -105,10 +105,13 @@ run_task_agent() {
   local exit_code=0
   run_claude "$prompt" || exit_code=$?
 
-  clock_out "$log_file" "$exit_code"
+  local log_status=0
+  clock_out "$log_file" "$exit_code" || log_status=$?
 
-  if [[ "$exit_code" -eq 0 ]]; then
+  if [[ "$log_status" -eq 0 ]]; then
     ok "$agent agent complete. Check for PR on branch: $branch"
+  elif [[ "$log_status" -eq 2 ]]; then
+    warn "$agent agent exited clean but wrote no findings — log is still all placeholders. Log: $log_file"
   else
     warn "$agent agent interrupted (exit $exit_code). Log: $log_file"
   fi
@@ -148,10 +151,13 @@ run_persona() {
   local exit_code=0
   run_claude "$prompt" || exit_code=$?
 
-  clock_out "$log_file" "$exit_code"
+  local log_status=0
+  clock_out "$log_file" "$exit_code" || log_status=$?
 
-  if [[ "$exit_code" -eq 0 ]]; then
+  if [[ "$log_status" -eq 0 ]]; then
     ok "Persona $persona complete. Findings in: $log_file"
+  elif [[ "$log_status" -eq 2 ]]; then
+    warn "Persona $persona exited clean but reported no findings — log is still all placeholders. Log: $log_file"
   else
     warn "Persona $persona interrupted (exit $exit_code). Log: $log_file"
   fi
@@ -180,10 +186,13 @@ run_curator() {
   local exit_code=0
   run_claude "$prompt" || exit_code=$?
 
-  clock_out "$log_file" "$exit_code"
+  local log_status=0
+  clock_out "$log_file" "$exit_code" || log_status=$?
 
-  if [[ "$exit_code" -eq 0 ]]; then
+  if [[ "$log_status" -eq 0 ]]; then
     ok "Curator complete. Review: $log_file"
+  elif [[ "$log_status" -eq 2 ]]; then
+    warn "Curator exited clean but wrote nothing — log is still all placeholders. Log: $log_file"
   else
     warn "Curator interrupted (exit $exit_code). Log: $log_file"
   fi
@@ -209,10 +218,13 @@ run_reviewer() {
   local exit_code=0
   run_claude "$prompt" || exit_code=$?
 
-  clock_out "$log_file" "$exit_code"
+  local log_status=0
+  clock_out "$log_file" "$exit_code" || log_status=$?
 
-  if [[ "$exit_code" -eq 0 ]]; then
+  if [[ "$log_status" -eq 0 ]]; then
     ok "Review of PR #$pr_number complete. Log: $log_file"
+  elif [[ "$log_status" -eq 2 ]]; then
+    warn "Review of PR #$pr_number exited clean but wrote nothing — log is still all placeholders. Log: $log_file"
   else
     warn "Review interrupted (exit $exit_code). Log: $log_file"
   fi

@@ -17,6 +17,7 @@ import { BaseState } from "@/state";
 import { BaseExecutor } from "./_base";
 import { isPromise } from "@/utils/modules/isPromise";
 import { LlmExeError } from "@/errors";
+import { attachResponseContext } from "./_responseContext";
 
 /**
  * Core Executor With LLM
@@ -150,12 +151,18 @@ export class LlmExecutor<
     // Pass the full ExecutionContext to the parser when available; otherwise
     // fall back to the execution metadata for back-compat.
     const parserArg = _context ?? _metadata;
-    if (this.parser.target === "function_call") {
-      const outToStr = out.getResult();
-      return parse(outToStr, parserArg);
-    } else {
-      const outToStr = out.getResultText();
-      return parse(outToStr, parserArg);
+    try {
+      if (this.parser.target === "function_call") {
+        const outToStr = out.getResult();
+        return parse(outToStr, parserArg);
+      } else {
+        const outToStr = out.getResultText();
+        return parse(outToStr, parserArg);
+      }
+    } catch (error) {
+      // We have a completed response here, so parser failures can carry the
+      // usage and stop reason the standalone parser never sees.
+      throw attachResponseContext(error, out);
     }
   }
 

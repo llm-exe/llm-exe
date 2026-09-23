@@ -67,7 +67,7 @@ type Hook = (
 | `executionMetadata.input`          | all hooks                 | The input passed to `.execute()`                 |
 | `executionMetadata.output`         | `onSuccess`, `onComplete` | The parsed output returned by the executor       |
 | `executionMetadata.handlerInput`   | all hooks                 | The transformed input passed to the internal handler |
-| `executionMetadata.handlerOutput`  | `onSuccess`, `onComplete` | The raw handler output before parsing            |
+| `executionMetadata.handlerOutput`  | `onSuccess`, `onError`, `onComplete` | The raw handler output before parsing (see [Recovering Usage After a Parser Failure](#recovering-usage-after-a-parser-failure)) |
 | `executionMetadata.error`          | `onError`, `onComplete`   | The thrown `Error` instance                      |
 | `executionMetadata.errorMessage`   | `onError`, `onComplete`   | Shortcut for `error.message`                     |
 | `executionMetadata.errorCategory`  | `onError`, `onComplete`   | Structured category for `LlmExeError` failures  |
@@ -83,6 +83,46 @@ type Hook = (
 | `executorMetadata.executions`      | all hooks                 | Number of times this executor has run            |
 
 Hooks should be synchronous and lightweight. Errors thrown inside a hook are caught and collected by llm-exe. They do not affect the executor result.
+
+The "Available on" column describes which hooks *can* see a field, not a guarantee that it is populated. Availability tracks how far the execution actually got: each field is recorded as its step completes, so a failure part-way through leaves the later fields absent — including in `onComplete`, which always runs regardless of where the execution stopped. Treat `handlerOutput` and `output` as optional in error-path hooks.
+
+### Recovering Usage After a Parser Failure
+
+`handlerOutput` is recorded as soon as the handler resolves, *before* the parser runs. When the provider returns a perfectly good — and billable — response and parsing then throws, the raw response is still attached to the metadata passed to `onError` and `onComplete`. This means a parser failure never has to mean lost usage accounting.
+
+On an LLM executor, `handlerOutput` is typed as the normalized `BaseLlCall`, so `getResult().usage` resolves to `OutputUsage` with no casting:
+
+```typescript:no-line-numbers
+import type { OutputUsage } from "llm-exe";
+
+executor.on("onError", (exec) => {
+  const usage: OutputUsage | undefined = exec.handlerOutput?.getResult().usage;
+
+  if (usage) {
+    // The call was billed even though we could not parse it.
+    metrics.recordTokens({ ...usage, outcome: "parse-failed" });
+  }
+});
+```
+
+The optional chaining is load-bearing. `handlerOutput` is absent whenever the execution failed *before* the handler resolved — a prompt that fails to format, or a provider call that throws or times out. In those cases there is no response and nothing was billed, so there is nothing to record.
+
+Because `onComplete` runs on both paths, it is usually the better place to account for usage — one hook, one write, no double counting:
+
+```typescript:no-line-numbers
+executor.on("onComplete", (exec) => {
+  const usage = exec.handlerOutput?.getResult().usage;
+
+  if (usage) {
+    metrics.recordTokens({
+      ...usage,
+      outcome: exec.error ? "parse-failed" : "ok",
+    });
+  }
+});
+```
+
+Avoid recording the same response from `onSuccess` *and* `onComplete`, or from `onError` *and* `onComplete` — both hooks see the same `handlerOutput` for a single execution, so writing from both counts those tokens twice. Pick one hook per metric.
 
 ### Hook Errors
 

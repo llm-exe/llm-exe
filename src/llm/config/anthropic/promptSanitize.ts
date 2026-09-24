@@ -6,7 +6,8 @@ import {
 
 // Models that 400 on a trailing assistant message (prefill): the 4.6+/5
 // generation. Issue #503 and Anthropic's migration guide name opus-4-6,
-// opus-4-7, and sonnet-4-6; opus-5, opus-4-8, sonnet-5, and fable-5 belong to
+// opus-4-7, and sonnet-4-6; opus-5, opus-4-8, sonnet-5, and fable-5 (which by
+// the `${prefix}-` boundary below also covers fable-5-1) belong to
 // the same generation and are grouped here for the same reason the
 // sampling-param and adaptive-thinking lists in `anthropic/index.ts` group this
 // generation. The 4.5 generation (opus/sonnet/haiku 4.5) still supports

@@ -11,6 +11,13 @@ import { PROVIDED_OPTION_KEYS } from "@/llm/_utils.stateFromOptions";
 export const ESCALATED_EFFORT_MIN_MAX_TOKENS = 65536;
 
 // Models that 400 if temperature / top_p / top_k are set to non-default values.
+// Note this list is matched with `matchesModel`, so "claude-fable-5" also covers
+// "claude-fable-5-1". That is load-bearing for Fable 5.1 specifically: its
+// adaptive thinking is always on (unlike Opus 5 / Sonnet 5, where thinking
+// follows `effort`), so the sampling params must be dropped regardless of
+// whether the caller set `effort` — which is exactly what an entry here does,
+// since `modelRejectsSamplingParams` is checked before `effortEnablesThinking`
+// in both sampling transforms below.
 const MODELS_REJECTING_SAMPLING_PARAMS = [
   "claude-opus-5",
   "claude-opus-4-7",
@@ -80,6 +87,10 @@ const isAdaptiveModel = (canonical: string): boolean =>
   matchesModel(canonical, "claude-opus-4-8") ||
   matchesModel(canonical, "claude-sonnet-4-6") ||
   matchesModel(canonical, "claude-sonnet-5") ||
+  // Covers "claude-fable-5-1" via the dated/version-suffix boundary in
+  // `matchesModel`. Fable 5.1 thinks adaptively no matter what, so the effort
+  // value only picks the effort level; "high" is not escalated to "xhigh"
+  // (that escalation is Opus 4.7/4.8 only).
   matchesModel(canonical, "claude-fable-5");
 
 // Legacy (4.5) generation: effort sets thinking { type: "enabled", budget_tokens }.

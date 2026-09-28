@@ -704,6 +704,9 @@ export type AllUseLlmOptions = AllLlm & {
   };
 
   // Anthropic - Claude Fable 5 models
+  "anthropic.claude-fable-5-1": {
+    input: Omit<AnthropicRequest, "model">;
+  };
   "anthropic.claude-fable-5": {
     input: Omit<AnthropicRequest, "model">;
   };

@@ -66,8 +66,8 @@ type Hook = (
 | ---------------------------------- | ------------------------- | ------------------------------------------------ |
 | `executionMetadata.input`          | all hooks                 | The input passed to `.execute()`                 |
 | `executionMetadata.output`         | `onSuccess`, `onComplete` | The parsed output returned by the executor       |
-| `executionMetadata.handlerInput`   | all hooks                 | The transformed input passed to the internal handler |
-| `executionMetadata.handlerOutput`  | `onSuccess`, `onComplete` | The raw handler output before parsing            |
+| `executionMetadata.handlerInput`   | all hooks, once the input transform succeeded | The transformed input passed to the internal handler |
+| `executionMetadata.handlerOutput`  | all hooks, once the handler resolved | The raw handler output before parsing — for LLM executors, the normalized result object |
 | `executionMetadata.error`          | `onError`, `onComplete`   | The thrown `Error` instance                      |
 | `executionMetadata.errorMessage`   | `onError`, `onComplete`   | Shortcut for `error.message`                     |
 | `executionMetadata.errorCategory`  | `onError`, `onComplete`   | Structured category for `LlmExeError` failures  |
@@ -83,6 +83,50 @@ type Hook = (
 | `executorMetadata.executions`      | all hooks                 | Number of times this executor has run            |
 
 Hooks should be synchronous and lightweight. Errors thrown inside a hook are caught and collected by llm-exe. They do not affect the executor result.
+
+### What's Available When
+
+Execution metadata is filled in as the execution progresses, so which fields are populated in `onError` and `onComplete` depends on how far the execution got before it threw. Nothing is cleared on failure — whatever was recorded before the throw is still there.
+
+| Execution got as far as…            | `handlerInput` | `handlerOutput` | `output` |
+| ----------------------------------- | -------------- | --------------- | -------- |
+| Input transform / prompt formatting threw | absent    | absent          | absent   |
+| Provider call threw (timeout, API error) | present   | absent          | absent   |
+| Provider responded, parser threw    | present        | **present**     | absent   |
+| Success                             | present        | present         | present  |
+
+The row that matters most in practice: **when the provider returns successfully and parsing fails afterwards, `handlerOutput` is available in `onError` and `onComplete`.** That response was billed, so its usage is still recoverable — you do not lose token accounting to a parse error.
+
+Because `handlerOutput` can be absent, it is optional on the metadata type. Guard it rather than asserting.
+
+#### Recording usage even when parsing fails
+
+For LLM executors, `handlerOutput` is the normalized result object, so `getResult().usage` gives you typed token counts regardless of which provider ran the call:
+
+```typescript:no-line-numbers
+const summarize = createLlmExecutor(
+  { llm, prompt, parser: createParser("json") },
+  {
+    hooks: {
+      onComplete: (exec) => {
+        const usage = exec.handlerOutput?.getResult().usage;
+        if (!usage) return; // provider never responded — nothing was billed
+
+        metrics.recordTokens({
+          input: usage.input_tokens,
+          output: usage.output_tokens,
+          cacheRead: usage.cache_read_input_tokens ?? 0,
+          outcome: exec.error ? "parse-failed" : "ok",
+        });
+      },
+    },
+  }
+);
+```
+
+Hooks registered through the `hooks` option are fully typed — `exec.handlerOutput` infers as the LLM result object and `usage` as `OutputUsage`, with no casting — see [Token usage and prompt caching](/llm/#token-usage-and-prompt-caching) for how the counts are normalized across providers. Hooks attached later with `.on()` receive the same object, but the callback parameter is not inferred, so annotate it if you want the types.
+
+Use `onComplete` as the single accounting point rather than recording usage in `onSuccess` and again in `onError`. `onComplete` runs after both, so one hook covers successful and failed parses without double-counting the same response.
 
 ### Hook Errors
 

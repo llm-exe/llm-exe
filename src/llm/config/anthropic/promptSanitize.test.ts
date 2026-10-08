@@ -148,6 +148,7 @@ describe("anthropicPromptSanitize", () => {
       "claude-opus-5",
       "claude-opus-4-8",
       "claude-sonnet-5",
+      "claude-haiku-5-5",
       "claude-fable-5",
     ])(
       "should warn on newer 4.6+/5-generation model %s",

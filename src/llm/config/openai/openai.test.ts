@@ -1,5 +1,5 @@
 import { openai } from "@/llm/config/openai";
-import { Config } from "@/types";
+import { Config, UseLlmKey } from "@/types";
 
 describe("openai configuration", () => {
   const openAiChatV1 = openai["openai.chat.v1"] as Config;
@@ -219,6 +219,60 @@ describe("openai configuration", () => {
     });
   });
 
+  describe("openai.gpt-6", () => {
+    const openAiGpt6 = openai["openai.gpt-6"] as Config;
+    const openAiGpt6Astra = openai["openai.gpt-6-astra"] as Config;
+
+    it("should be based on openAiChatV1 configuration", () => {
+      expect(openAiGpt6Astra.endpoint).toEqual(openAiChatV1.endpoint);
+      expect(openAiGpt6Astra.method).toEqual(openAiChatV1.method);
+      expect(openAiGpt6Astra.headers).toEqual(openAiChatV1.headers);
+    });
+
+    it("should override model in mapBody and options as gpt-6-astra", () => {
+      expect(openAiGpt6Astra.mapBody.model).toEqual({
+        default: "gpt-6-astra",
+        key: "model",
+      });
+      expect(openAiGpt6Astra.options.model).toEqual({
+        default: "gpt-6-astra",
+      });
+    });
+
+    it("bare openai.gpt-6 alias resolves to the same model as astra", () => {
+      expect(openAiGpt6.options.model.default).toBe(
+        openAiGpt6Astra.options.model.default
+      );
+    });
+
+    it("is registered as a typed shorthand, not just a config entry", () => {
+      // Compile-time: fails typecheck if the shorthand is missing from
+      // AllUseLlmOptions, which would drop users to the options-based form.
+      const keys: UseLlmKey[] = ["openai.gpt-6", "openai.gpt-6-astra"];
+      for (const key of keys) {
+        expect(openai[key as keyof typeof openai]).toBeDefined();
+      }
+    });
+
+    it("is not deprecated", () => {
+      expect(openAiGpt6.deprecated).toBeUndefined();
+      expect(openAiGpt6Astra.deprecated).toBeUndefined();
+    });
+
+    it("is treated as a reasoning model, so effort maps to reasoning_effort", () => {
+      const effortTransform = openAiChatV1.mapBody.effort.transform as (
+        v: any,
+        s: any
+      ) => any;
+      for (const effort of ["minimal", "low", "medium", "high"] as const) {
+        expect(effortTransform(effort, { model: "gpt-6-astra" })).toBe(effort);
+      }
+      expect(
+        effortTransform("nonsense", { model: "gpt-6-astra" })
+      ).toBeUndefined();
+    });
+  });
+
   describe("deprecated shorthands still resolve", () => {
     it.each([
       ["openai.gpt-4.1-nano", "gpt-4.1-nano"],
@@ -293,6 +347,8 @@ describe("openai configuration", () => {
 
   describe("all shorthands resolve to expected default model", () => {
     it.each([
+      ["openai.gpt-6", "gpt-6-astra"],
+      ["openai.gpt-6-astra", "gpt-6-astra"],
       ["openai.gpt-5.6", "gpt-5.6-sol"],
       ["openai.gpt-5.6-terra", "gpt-5.6-terra"],
       ["openai.gpt-5.6-luna", "gpt-5.6-luna"],
@@ -335,6 +391,8 @@ describe("openai configuration", () => {
         s: any
       ) => any;
       const reasoningShorthands = [
+        "openai.gpt-6",
+        "openai.gpt-6-astra",
         "openai.gpt-5.6",
         "openai.gpt-5.6-terra",
         "openai.gpt-5.6-luna",

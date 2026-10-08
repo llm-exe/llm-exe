@@ -1,3 +1,5 @@
+import type { OutputUsage } from "@/interfaces";
+
 export type JsonSafe =
   | string
   | number
@@ -71,25 +73,38 @@ export type ParserInvalidTypeContext = BaseErrorContext & {
   availableParsers?: string[];
 };
 
-export type ParserSchemaValidationContext = BaseErrorContext & {
-  parser?: string;
-  schemaErrors?: unknown;
-  outputExcerpt?: string;
+// Context from a completed LLM response, attached at the executor boundary
+// when parsing fails. Absent for standalone parser use, or when the executor
+// never got a completed response. Nothing here is inferred: `usage` is the
+// normalized usage the provider reported (cache counts included) and
+// `stopReason` is the provider's own value, which is diagnostic context and
+// not proof that truncation caused the failure.
+export type ResponseErrorContext = {
+  usage?: OutputUsage;
+  stopReason?: string;
 };
+
+export type ParserSchemaValidationContext = BaseErrorContext &
+  ResponseErrorContext & {
+    parser?: string;
+    schemaErrors?: unknown;
+    outputExcerpt?: string;
+  };
 
 // Shared context for parser.invalid_input and parser.parse_failed.
 // `reason` is a diagnostic sub-cause (empty_input, invalid_json,
 // no_code_block, etc.). Users branch on `code`; logs/debug inspect `reason`.
-export type ParserParseFailedContext = BaseErrorContext & {
-  parser?: string;
-  reason?: string;
-  inputExcerpt?: string;
-  inputExcerptTruncated?: boolean;
-  inputLength?: number;
-  matchCount?: number;
-  match?: string;
-  outputExcerpt?: string;
-};
+export type ParserParseFailedContext = BaseErrorContext &
+  ResponseErrorContext & {
+    parser?: string;
+    reason?: string;
+    inputExcerpt?: string;
+    inputExcerptTruncated?: boolean;
+    inputLength?: number;
+    matchCount?: number;
+    match?: string;
+    outputExcerpt?: string;
+  };
 
 export type PromptInputContext = BaseErrorContext & {
   promptType?: string;

@@ -4,7 +4,20 @@ You have high standards but you're fair. You kill noise and promote signal.
 
 ## What to do
 
-1. Read all persona logs in `scripts/agents/logs/personas/` (each subdirectory is a persona, each .md file is a run).
+1. Work out which persona logs are **new to you**, and read only those.
+
+   Persona logs live in `scripts/agents/logs/personas/` (each subdirectory is a persona, each .md file is a run, named by UTC timestamp). Every log is curated **exactly once, ever**.
+
+   a. Find the high-water mark — the newest log timestamp any previous curator run already curated:
+      ```
+      grep -rh '^High-water mark: ' scripts/agents/logs/curator/ | sed 's/^High-water mark: //' | sort | tail -1
+      ```
+
+   b. A log is in scope only if its timestamp is **strictly greater** than that mark. If the grep returns nothing (first run ever), everything is in scope.
+
+   c. Skip any log whose Summary is `_Pending — agent will fill this in._` or otherwise empty. An empty stub is not a finding — it means the persona runner failed. Count these and report the count in your run log; a run of empty stubs is a broken pipeline and the maintainer needs to see it, not have it quietly swallowed.
+
+   d. **If no logs are in scope, you are done.** Write a run log saying "no new persona logs since `<mark>`", carry the mark forward unchanged, and exit. Do not re-read older logs. Do not re-derive findings from them. A no-op run is a correct and expected outcome — re-sweeping curated logs produces nothing but duplicate issues and comment spam.
 
 2. Read CLAUDE.md to understand what's already known/tracked.
 
@@ -37,6 +50,8 @@ You have high standards but you're fair. You kill noise and promote signal.
 
    d. **When in doubt, comment, don't create.** A duplicate issue is worse than a slightly-off comment.
 
+      But a comment is not free either. Before commenting, check that the finding comes from a log that is genuinely new to you (step 1). If you are looking at a finding you only have because you re-read an already-curated log, the correct action is **SKIP** — not a comment. "Persona X hit this again" adds nothing when it is the same persona, the same run, and the same log you curated last time; it just buries the real discussion. Comment only when a **new** log produces a repeat sighting, and only when you have new context to add: a new reproduction, a new affected version, a new caller hitting it. If you have nothing to add beyond "still true", say nothing.
+
    e. Log your search queries, the matches you found, and your decision (NEW issue / commented on #N) in your run log. This is auditable — if a duplicate slips through, we will check your log to see what you searched.
 
 6. For promoted findings that pass dedup, file clean GitHub issues:
@@ -60,7 +75,14 @@ Review what's there, make your calls, file the issues, and wrap up. Don't go inv
 
 A log file has been created at `$LOG_FILE`. Before you finish, update it:
 
-1. Replace the **Summary** section with how many findings you reviewed, how many promoted, how many skipped.
+1. Replace the **Summary** section with which logs were in scope, how many findings you reviewed, how many promoted, how many skipped, and how many empty stub logs you hit.
 2. Replace the **Files Changed** section with the GitHub issues you created (with numbers and titles).
 3. Replace the **Next Steps** section with patterns you noticed across personas — recurring themes or areas that need focused attention.
 4. If you were unable to complete everything, note what's left under Next Steps so the next run can pick up.
+5. **Record the high-water mark.** This is what stops the next run from re-curating what you just did — step 1a reads it back with a literal `grep`, so the format matters. On its own line, at the top level of the log (not nested under a heading), write:
+
+   ```
+   High-water mark: <timestamp of the newest log you curated>
+   ```
+
+   Use the log's own filename timestamp verbatim (e.g. `2026-03-05T10-13-00`), not the current time. If no logs were in scope, carry forward the mark you read in step 1a unchanged — never omit the line, or the next run will fall back to curating everything from the beginning.

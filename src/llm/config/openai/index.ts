@@ -15,6 +15,20 @@ const openAiChatV1: Config = createOpenAiCompatibleConfiguration({
     model.startsWith("gpt-6") ||
     model.startsWith("o3") ||
     model.startsWith("o4"),
+  // "none" is the only effort under which gpt-5.1+ accept temperature / top_p.
+  // The original gpt-5 / gpt-5-mini / gpt-5-nano reject "none" itself (their
+  // floor is "minimal"); those shorthands are deprecated and shut down
+  // 2026-12-11, so the caller owns that combination.
+  reasoningEfforts: ["none", "minimal", "low", "medium", "high"],
+  // gpt-5 / o-series 400 on the legacy `max_tokens`
+  // ("Use 'max_completion_tokens' instead").
+  reasoningMaxTokensKey: "max_completion_tokens",
+  // gpt-5.x 400 on any non-default temperature / top_p while reasoning is
+  // active; gpt-5.5 and gpt-5.6 reject them even with reasoning_effort unset.
+  // Only an explicit "none" is accepted across the family (verified against
+  // the live API 2026-10-08), so that is the only effort under which they are
+  // forwarded.
+  reasoningSamplingAllowedEfforts: ["none"],
 });
 
 const openAiChatMockV1: Config = {

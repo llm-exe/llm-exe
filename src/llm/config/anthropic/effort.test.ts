@@ -140,6 +140,86 @@ describe("anthropic effort (shared direct + bedrock)", () => {
     });
   });
 
+  // Haiku 5.5 is the first Haiku on the adaptive generation. Before it was in
+  // the model tables, effort fell through to nothing and temperature/top_k/top_p
+  // were forwarded verbatim, which Haiku 5.5 rejects with a 400.
+  describe("claude-haiku-5-5 (adaptive generation, strict sampling)", () => {
+    const stateWith = (model: string, provided: string[] = []) => ({
+      model,
+      [PROVIDED_OPTION_KEYS]: new Set(provided),
+    });
+
+    it.each([
+      "claude-haiku-5-5",
+      "anthropic.claude-haiku-5-5",
+      "us.anthropic.claude-haiku-5-5",
+      "global.anthropic.claude-haiku-5-5-v1:0",
+    ])("%s maps effort to adaptive thinking with no xhigh escalation or floor", (model) => {
+      const expectations: Array<[string, string]> = [
+        ["minimal", "low"],
+        ["low", "low"],
+        ["medium", "medium"],
+        ["high", "high"],
+      ];
+      for (const [effort, expected] of expectations) {
+        const out: Record<string, any> = { max_tokens: 4096 };
+        expect(effortTransform(effort, stateWith(model, ["effort"]), out)).toBe(
+          expected
+        );
+        expect(out.thinking).toEqual({ type: "adaptive" });
+        expect(out.max_tokens).toBe(4096);
+      }
+    });
+
+    it("never maps to legacy budget_tokens thinking (does not match haiku-4-5)", () => {
+      const out: Record<string, any> = { max_tokens: 1024 };
+      effortTransform("high", stateWith("claude-haiku-5-5", ["effort"]), out);
+      expect(out.thinking).toEqual({ type: "adaptive" });
+      expect(out.max_tokens).toBe(1024);
+    });
+
+    it("still maps haiku-4-5 to legacy budget thinking (no regression on the 4.5 Haiku)", () => {
+      const out: Record<string, any> = { max_tokens: 1024 };
+      expect(
+        effortTransform("low", stateWith("claude-haiku-4-5", ["effort"]), out)
+      ).toBeUndefined();
+      expect(out.thinking).toEqual({ type: "enabled", budget_tokens: 4096 });
+    });
+
+    it.each([
+      "claude-haiku-5-5",
+      "us.anthropic.claude-haiku-5-5",
+      "anthropic.claude-haiku-5-5-20261001-v1:0",
+    ])("%s drops temperature / top_k unconditionally, including falsy 0 and no effort", (model) => {
+      expect(dropIfModelRejectsSamplingParams(0, { model })).toBeUndefined();
+      expect(dropIfModelRejectsSamplingParams(1, { model })).toBeUndefined();
+      expect(dropIfModelRejectsSamplingParams(40, { model })).toBeUndefined();
+      expect(
+        dropIfModelRejectsSamplingParams(0.5, { model, effort: "high" })
+      ).toBeUndefined();
+    });
+
+    it("drops top_p at every value, including 0.99 and 1 (both 400 alongside temperature)", () => {
+      for (const topP of [0.5, 0.95, 0.99, 1]) {
+        expect(topPTransform(topP, { model: "claude-haiku-5-5" })).toBeUndefined();
+        expect(
+          topPTransform(topP, { model: "claude-haiku-5-5", effort: "high" })
+        ).toBeUndefined();
+      }
+    });
+
+    it("does not over-match an adjacent name (claude-haiku-5-50 is unknown)", () => {
+      const out: Record<string, any> = {};
+      expect(
+        effortTransform("high", stateWith("claude-haiku-5-50", ["effort"]), out)
+      ).toBeUndefined();
+      expect(out.thinking).toBeUndefined();
+      expect(
+        dropIfModelRejectsSamplingParams(0.5, { model: "claude-haiku-5-50" })
+      ).toBe(0.5);
+    });
+  });
+
   describe("sampling-param rejection with Bedrock model IDs", () => {
     it("drops top_p / top_k for a Bedrock reject-list model", () => {
       expect(

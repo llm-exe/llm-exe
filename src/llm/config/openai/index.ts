@@ -12,6 +12,7 @@ const openAiChatV1: Config = createOpenAiCompatibleConfiguration({
   apiKeyMapping: ["openAiApiKey", "OPENAI_API_KEY"],
   isReasoningModel: (model) =>
     model.startsWith("gpt-5") ||
+    model.startsWith("gpt-6") ||
     model.startsWith("o3") ||
     model.startsWith("o4"),
 });
@@ -51,6 +52,11 @@ const openAiChatMockV1: Config = {
 export const openai = {
   "openai.chat.v1": openAiChatV1,
   "openai.chat-mock.v1": openAiChatMockV1,
+  // GPT-6 family. The bare "openai.gpt-6" alias points at astra, matching the
+  // convention set by "openai.gpt-5.6" -> gpt-5.6-sol, so sibling variants can
+  // be added later without moving the bare shorthand.
+  "openai.gpt-6": withDefaultModel(openAiChatV1, "gpt-6-astra"),
+  "openai.gpt-6-astra": withDefaultModel(openAiChatV1, "gpt-6-astra"),
   // GPT-5 family
   "openai.gpt-5.6": withDefaultModel(openAiChatV1, "gpt-5.6-sol"),
   "openai.gpt-5.6-terra": withDefaultModel(openAiChatV1, "gpt-5.6-terra"),

@@ -3,6 +3,7 @@ import {
   ExecutorMetadata,
   HookErrorRecord,
   ListenerFunction,
+  ExecutorHookFunction,
   CoreExecutorHookInput,
   ExecutorExecutionMetadata,
   CoreExecutorExecuteOptions,
@@ -313,7 +314,7 @@ export abstract class BaseExecutor<
     return this;
   }
 
-  removeHook(eventName: keyof H, fn: ListenerFunction) {
+  removeHook(eventName: keyof H, fn: ExecutorHookFunction<I, O, R, HI>) {
     if (typeof fn !== "function") return this;
     const lis = this.hooks[eventName];
     if (!lis) return this;
@@ -326,17 +327,27 @@ export abstract class BaseExecutor<
     return this;
   }
 
-  on(eventName: keyof H, fn: ListenerFunction) {
+  /**
+   * Register a hook. Typed against the executor's own generics so the
+   * callback's execution metadata infers exactly as it does when passed
+   * through the `hooks` option — `input`, `output`, `handlerInput`, and
+   * `handlerOutput` are all inferred rather than `any`.
+   */
+  on(eventName: keyof H, fn: ExecutorHookFunction<I, O, R, HI>) {
     return this.setHooks({
       [eventName]: fn,
     } as CoreExecutorHookInput<I, O, R, HI, H>);
   }
 
-  off(eventName: keyof H, fn: ListenerFunction) {
+  off(eventName: keyof H, fn: ExecutorHookFunction<I, O, R, HI>) {
     return this.removeHook(eventName, fn);
   }
 
-  once(eventName: keyof H, fn: ListenerFunction) {
+  /**
+   * Register a hook that runs once, then removes itself. Same typing as
+   * {@link BaseExecutor.on}.
+   */
+  once(eventName: keyof H, fn: ExecutorHookFunction<I, O, R, HI>) {
     if (typeof fn !== "function") return this;
 
     // Enforce hook limit to prevent unbounded memory growth
@@ -364,7 +375,7 @@ export abstract class BaseExecutor<
     // Wrapper that removes itself after first execution. try/finally so a
     // throwing fn still self-removes — otherwise runHook() catches the throw,
     // off() never runs, and the wrapper stays registered forever.
-    const onceWrapper: ListenerFunction = (...args: any[]) => {
+    const onceWrapper: ExecutorHookFunction<I, O, R, HI> = (...args) => {
       try {
         fn(...args);
       } finally {

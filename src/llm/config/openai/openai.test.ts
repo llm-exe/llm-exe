@@ -1,4 +1,6 @@
 import { openai } from "@/llm/config/openai";
+import { mapBody } from "@/llm/_utils.mapBody";
+import { useLlm } from "@/llm";
 import { Config, UseLlmKey } from "@/types";
 
 describe("openai configuration", () => {
@@ -72,6 +74,218 @@ describe("openai configuration", () => {
 
     it("should return undefined for unsupported effort level", () => {
       expect(effortTransform("max", { model: "gpt-5.2" })).toBe(undefined);
+      expect(effortTransform("xhigh", { model: "gpt-5.2" })).toBe(undefined);
+    });
+
+    it("should forward 'none' for gpt-5.x (the only effort that permits sampling params)", () => {
+      expect(effortTransform("none", { model: "gpt-5.2" })).toBe("none");
+      expect(effortTransform("none", { model: "gpt-5.6-sol" })).toBe("none");
+      expect(effortTransform("none", { model: "gpt-4o" })).toBeUndefined();
+    });
+  });
+
+  // Verified against the live API on 2026-10-08 (gpt-5.2, gpt-5.6-sol) and a
+  // 2026-10-06 family-wide probe: every gpt-5.x / o-series model 400s on
+  // `max_tokens` ("Use 'max_completion_tokens' instead"); gpt-5.5 / 5.6 400 on
+  // any non-default temperature / top_p unless reasoning_effort is "none";
+  // gpt-5.1 through 5.4 400 on them whenever an effort other than "none" is
+  // sent. Non-reasoning models (gpt-4o, gpt-4.1) accept all of them.
+  describe("gpt-5.x request body (reasoning-model rules)", () => {
+    const buildBody = (state: Record<string, any>) =>
+      mapBody(openAiChatV1.mapBody, {
+        prompt: [{ role: "user", content: "hi" }],
+        ...state,
+      });
+
+    const reasoningModels = [
+      "gpt-5",
+      "gpt-5-mini",
+      "gpt-5-nano",
+      "gpt-5.2",
+      "gpt-5.4",
+      "gpt-5.4-mini",
+      "gpt-5.5",
+      "gpt-5.6-sol",
+      "gpt-5.6-terra",
+      "gpt-5.6-luna",
+      "gpt-6-astra",
+      "o3",
+      "o4-mini",
+    ];
+
+    it.each(reasoningModels)(
+      "%s: maxTokens is sent as max_completion_tokens, never max_tokens",
+      (model) => {
+        const body = buildBody({ model, maxTokens: 256 });
+        expect(body.max_completion_tokens).toBe(256);
+        expect(body.max_tokens).toBeUndefined();
+        expect("max_tokens" in body).toBe(false);
+      }
+    );
+
+    it.each(reasoningModels)(
+      "%s: temperature 0 and top_p are dropped with no effort set",
+      (model) => {
+        const body = buildBody({ model, temperature: 0, topP: 0.9 });
+        expect(body.temperature).toBeUndefined();
+        expect(body.top_p).toBeUndefined();
+        expect("temperature" in body).toBe(false);
+        expect("top_p" in body).toBe(false);
+      }
+    );
+
+    it.each(["minimal", "low", "medium", "high"])(
+      "gpt-5.6-sol: temperature and top_p are dropped at effort %s",
+      (effort) => {
+        const body = buildBody({
+          model: "gpt-5.6-sol",
+          temperature: 0.2,
+          topP: 0.9,
+          effort,
+        });
+        expect(body.temperature).toBeUndefined();
+        expect(body.top_p).toBeUndefined();
+        expect(body.reasoning_effort).toBe(effort);
+      }
+    );
+
+    it("gpt-5.6-sol: temperature and top_p are forwarded at effort none", () => {
+      const body = buildBody({
+        model: "gpt-5.6-sol",
+        temperature: 0,
+        topP: 0.9,
+        effort: "none",
+      });
+      expect(body.temperature).toBe(0);
+      expect(body.top_p).toBe(0.9);
+      expect(body.reasoning_effort).toBe("none");
+    });
+
+    it("the exact pre-fix failing shape: gpt-5.x with temperature 0 and maxTokens", () => {
+      const body = buildBody({
+        model: "gpt-5.2",
+        temperature: 0,
+        maxTokens: 512,
+      });
+      expect(body).toEqual({
+        model: "gpt-5.2",
+        messages: [{ role: "user", content: "hi" }],
+        max_completion_tokens: 512,
+        // The useJson transform always emits a response_format (pre-existing).
+        response_format: { type: "text" },
+      });
+    });
+
+    it.each(["gpt-4o", "gpt-4o-mini", "gpt-4.1"])(
+      "%s (non-reasoning): max_tokens, temperature, and top_p are forwarded unchanged",
+      (model) => {
+        const body = buildBody({
+          model,
+          temperature: 0,
+          topP: 0.9,
+          maxTokens: 256,
+          effort: "high",
+        });
+        expect(body.max_tokens).toBe(256);
+        expect(body.max_completion_tokens).toBeUndefined();
+        expect(body.temperature).toBe(0);
+        expect(body.top_p).toBe(0.9);
+        expect(body.reasoning_effort).toBeUndefined();
+      }
+    );
+  });
+
+  describe("gpt-5.x rules reach the outgoing request via useLlm", () => {
+    const originalFetch = globalThis.fetch;
+    let outgoingBody: Record<string, any> = {};
+
+    beforeEach(() => {
+      outgoingBody = {};
+      globalThis.fetch = (async (_url: any, init: any) => {
+        outgoingBody = JSON.parse(init?.body);
+        return new Response(
+          JSON.stringify({
+            id: "chatcmpl-test",
+            object: "chat.completion",
+            created: 0,
+            model: "gpt-test",
+            choices: [
+              {
+                index: 0,
+                message: { role: "assistant", content: "ok" },
+                finish_reason: "stop",
+              },
+            ],
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }) as typeof fetch;
+    });
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    const messages = [{ role: "user" as const, content: "hi" }];
+
+    it("options path: gpt-5.6-sol with temperature 0 and maxTokens sends a clean body", async () => {
+      const llm = useLlm("openai.chat.v1", {
+        model: "gpt-5.6-sol",
+        temperature: 0,
+        topP: 0.9,
+        maxTokens: 256,
+        openAiApiKey: "sk-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.model).toBe("gpt-5.6-sol");
+      expect(outgoingBody.max_completion_tokens).toBe(256);
+      expect(outgoingBody.max_tokens).toBeUndefined();
+      expect(outgoingBody.temperature).toBeUndefined();
+      expect(outgoingBody.top_p).toBeUndefined();
+      expect(outgoingBody.reasoning_effort).toBeUndefined();
+    });
+
+    it("shorthand path: openai.gpt-5.2 with effort low keeps effort and drops sampling", async () => {
+      const llm = useLlm("openai.gpt-5.2", {
+        temperature: 0.2,
+        maxTokens: 128,
+        effort: "low",
+        openAiApiKey: "sk-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.model).toBe("gpt-5.2");
+      expect(outgoingBody.reasoning_effort).toBe("low");
+      expect(outgoingBody.max_completion_tokens).toBe(128);
+      expect(outgoingBody.max_tokens).toBeUndefined();
+      expect(outgoingBody.temperature).toBeUndefined();
+    });
+
+    it("shorthand path: openai.gpt-5.2 with effort none keeps temperature", async () => {
+      const llm = useLlm("openai.gpt-5.2", {
+        temperature: 0,
+        effort: "none",
+        openAiApiKey: "sk-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.reasoning_effort).toBe("none");
+      expect(outgoingBody.temperature).toBe(0);
+    });
+
+    it("non-reasoning shorthand: openai.gpt-4o still sends max_tokens and temperature", async () => {
+      const llm = useLlm("openai.gpt-4o", {
+        temperature: 0,
+        maxTokens: 256,
+        openAiApiKey: "sk-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.max_tokens).toBe(256);
+      expect(outgoingBody.max_completion_tokens).toBeUndefined();
+      expect(outgoingBody.temperature).toBe(0);
     });
   });
 

@@ -284,6 +284,9 @@ const llm = useLlmConfiguration(config);
 - **apiKeyMapping** ([string, string]): Tuple of `[optionName, envVarName]`
   - First element: the option name users will use (e.g., `apiKey`)
   - Second element: environment variable to read from (or empty string if no default)
+- **isReasoningModel** (optional): `(model: string) => boolean`; `effort` is sent as `reasoning_effort` only for models it accepts (defaults to none)
+- **reasoningEfforts** (optional): `readonly string[]` of accepted `effort` values (defaults to `minimal`, `low`, `medium`, `high`)
+- **mapOptions** (optional): Executor-option mappings (`jsonSchema`, `functions`, `functionCall`) that replace the OpenAI defaults of the same name; unspecified mappings keep the defaults
 - **transformResponse** (optional): Custom response transformer (defaults to OpenAI format)
 
 #### What's Included
@@ -463,3 +466,13 @@ const mockLlm = useLlmConfiguration({
 3. **Headers must be valid JSON**: The `headers` property expects a JSON string, not an object.
 
 4. **Template variables**: Both `endpoint` and `headers` support `{{variable}}` placeholders that will be replaced with values from the options.
+
+## Custom Configuration Behavior
+
+Custom configurations are used throughout execution: their endpoint, headers,
+body mappings, executor-option mappings, and response transformer are preserved,
+even when the key matches a built-in configuration. Custom keys do not need registry
+entries. Custom options must be declared in `config.options` to reach mappings.
+
+For raw provider body fields, use the generic `extraBody` option. It is applied
+last, with shallow replacement semantics, and does not need a `mapBody` entry.

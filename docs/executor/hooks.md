@@ -62,27 +62,90 @@ type Hook = (
 
 `executionMetadata` contains information about this specific execution (input, output, timings, and — for `onError` — the thrown error). `executorMetadata` contains information about the executor instance itself (id, type, name, total executions).
 
-| Field                              | Available on              | Description                                      |
-| ---------------------------------- | ------------------------- | ------------------------------------------------ |
-| `executionMetadata.input`          | all hooks                 | The input passed to `.execute()`                 |
-| `executionMetadata.output`         | `onSuccess`, `onComplete` | The parsed output returned by the executor       |
-| `executionMetadata.handlerInput`   | all hooks                 | The transformed input passed to the internal handler |
-| `executionMetadata.handlerOutput`  | `onSuccess`, `onComplete` | The raw handler output before parsing            |
-| `executionMetadata.error`          | `onError`, `onComplete`   | The thrown `Error` instance                      |
-| `executionMetadata.errorMessage`   | `onError`, `onComplete`   | Shortcut for `error.message`                     |
-| `executionMetadata.errorCategory`  | `onError`, `onComplete`   | Structured category for `LlmExeError` failures  |
-| `executionMetadata.errorCode`      | `onError`, `onComplete`   | Structured code for `LlmExeError` failures      |
-| `executionMetadata.errorContext`   | `onError`, `onComplete`   | Structured context for `LlmExeError` failures   |
-| `executionMetadata.hookErrors`     | later hooks               | Failures captured from earlier hook callbacks   |
-| `executionMetadata.start`          | all hooks                 | Execution start time (ms since epoch)            |
-| `executionMetadata.end`            | `onComplete`              | Execution end time (ms since epoch)              |
-| `executorMetadata.id`              | all hooks                 | Stable id of the executor                        |
-| `executorMetadata.name`            | all hooks                 | Name of the executor, if set                     |
-| `executorMetadata.type`            | all hooks                 | Type of executor (e.g. `"llm-executor"`)         |
-| `executorMetadata.created`         | all hooks                 | Timestamp when the executor was created (ms since epoch) |
-| `executorMetadata.executions`      | all hooks                 | Number of times this executor has run            |
+| Field                              | Available on                         | Description                                      |
+| ---------------------------------- | ------------------------------------ | ------------------------------------------------ |
+| `executionMetadata.input`          | all hooks                            | The input passed to `.execute()`                 |
+| `executionMetadata.output`         | `onSuccess`, `onComplete`            | The parsed output returned by the executor       |
+| `executionMetadata.handlerInput`   | all hooks                            | The transformed input passed to the internal handler |
+| `executionMetadata.handlerOutput`  | `onSuccess`, `onError`, `onComplete` | The raw handler output before parsing — see [Reading usage after a parser failure](#reading-usage-after-a-parser-failure) |
+| `executionMetadata.error`          | `onError`, `onComplete`              | The thrown `Error` instance                      |
+| `executionMetadata.errorMessage`   | `onError`, `onComplete`              | Shortcut for `error.message`                     |
+| `executionMetadata.errorCategory`  | `onError`, `onComplete`              | Structured category for `LlmExeError` failures  |
+| `executionMetadata.errorCode`      | `onError`, `onComplete`              | Structured code for `LlmExeError` failures      |
+| `executionMetadata.errorContext`   | `onError`, `onComplete`              | Structured context for `LlmExeError` failures   |
+| `executionMetadata.hookErrors`     | later hooks                          | Failures captured from earlier hook callbacks   |
+| `executionMetadata.start`          | all hooks                            | Execution start time (ms since epoch)            |
+| `executionMetadata.end`            | `onComplete`                         | Execution end time (ms since epoch)              |
+| `executorMetadata.id`              | all hooks                            | Stable id of the executor                        |
+| `executorMetadata.name`            | all hooks                            | Name of the executor, if set                     |
+| `executorMetadata.type`            | all hooks                            | Type of executor (e.g. `"llm-executor"`)         |
+| `executorMetadata.created`         | all hooks                            | Timestamp when the executor was created (ms since epoch) |
+| `executorMetadata.executions`      | all hooks                            | Number of times this executor has run            |
 
 Hooks should be synchronous and lightweight. Errors thrown inside a hook are caught and collected by llm-exe. They do not affect the executor result.
+
+### Reading usage after a parser failure
+
+`handlerOutput` is recorded as soon as the handler resolves, *before* the parser
+runs. A parser failure therefore does not hide the response that the provider
+already billed you for — `onError` and `onComplete` still see it.
+
+This matters for cost accounting. If the model returns a billable response and
+your JSON parser then rejects it, the tokens were still spent, and
+`handlerOutput` is where you recover them:
+
+```typescript:no-line-numbers
+executor.on("onError", (exec) => {
+  // The provider call succeeded; only parsing failed.
+  const usage = exec.handlerOutput?.getResult().usage;
+  if (usage) {
+    metrics.recordTokens({
+      input: usage.input_tokens,
+      output: usage.output_tokens,
+      total: usage.total_tokens,
+      outcome: "parse-failed",
+    });
+  }
+});
+```
+
+Availability tracks how far the execution actually got, so `handlerOutput` is
+optional rather than guaranteed:
+
+| Execution reached                        | `handlerOutput` |
+| ---------------------------------------- | --------------- |
+| Prompt formatting threw                  | absent          |
+| Provider call threw (network, auth, 429) | absent          |
+| Provider responded, parser threw         | **present**     |
+| Provider responded, parser succeeded      | **present**     |
+
+Because a prompt or transport failure leaves it unset, it can be absent in
+`onComplete` too. Always guard with `?.` rather than assuming it is there.
+
+#### Prefer `onComplete` as a single accounting point
+
+`onComplete` runs on both the success and failure paths, which makes it the
+natural place to record usage exactly once:
+
+```typescript:no-line-numbers
+executor.on("onComplete", (exec, meta) => {
+  const usage = exec.handlerOutput?.getResult().usage;
+  if (!usage) return; // never reached the provider — nothing was billed
+
+  metrics.recordTokens({
+    executor: meta.name,
+    total: usage.total_tokens,
+    outcome: exec.error ? "failed" : "ok",
+  });
+});
+```
+
+Do not also record usage in `onSuccess` or `onError` if you are recording it in
+`onComplete`. All three fire for the same execution, so emitting from more than
+one hook double-counts the same response.
+
+Cache counts (`cache_read_input_tokens`, `cache_creation_input_tokens`) are
+included in `input_tokens` and are reported only by providers that return them.
 
 ### Hook Errors
 

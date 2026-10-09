@@ -2,6 +2,7 @@ import {
   Claude3Response,
   Config,
   OutputResultContent,
+  OutputUsage,
   OutputResultsFunction,
   OutputResultsText,
 } from "@/types";
@@ -42,14 +43,25 @@ export function OutputAnthropicClaude3Chat(
   // Body usage is authoritative; Bedrock invoke responses also carry counts
   // in headers, which cover any body shape that omits usage.
   const headerUsage = getBedrockTokenCounts(headers);
+  const cacheRead = result?.usage?.cache_read_input_tokens;
+  const cacheWrite = result?.usage?.cache_creation_input_tokens;
+  // Only the body input count is documented as excluding cache tokens. Do not
+  // add body cache counts to a header fallback with unspecified cache semantics.
   const input_tokens =
-    result?.usage?.input_tokens ?? headerUsage?.input_tokens ?? 0;
+    result?.usage?.input_tokens != null
+      ? result.usage.input_tokens + (cacheRead ?? 0) + (cacheWrite ?? 0)
+      : (headerUsage?.input_tokens ?? 0);
   const output_tokens =
     result?.usage?.output_tokens ?? headerUsage?.output_tokens ?? 0;
-  const usage = {
+  const usage: OutputUsage = {
     input_tokens,
     output_tokens,
     total_tokens: input_tokens + output_tokens,
+    ...(cacheRead != null ? { cache_read_input_tokens: cacheRead } : {}),
+    ...(cacheWrite != null ? { cache_creation_input_tokens: cacheWrite } : {}),
+    ...(result?.usage?.cache_creation != null
+      ? { cache_creation: { ...result.usage.cache_creation } }
+      : {}),
   };
 
   return {

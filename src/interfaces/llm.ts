@@ -63,9 +63,10 @@ export interface OpenAiResponse {
     completion_tokens: number;
     total_tokens: number;
 
-    prompt_tokens_details: {
-      cached_tokens: number;
-      audio_tokens: number;
+    prompt_tokens_details?: {
+      cached_tokens?: number | null;
+      cache_write_tokens?: number | null;
+      audio_tokens?: number;
     };
     completion_tokens_details: {
       reasoning_tokens: number;
@@ -123,8 +124,12 @@ export interface Claude3Response {
   usage: {
     input_tokens: number;
     output_tokens: number;
-    cache_creation_input_tokens: number;
-    cache_read_input_tokens: number;
+    cache_creation_input_tokens?: number | null;
+    cache_read_input_tokens?: number | null;
+    cache_creation?: {
+      ephemeral_5m_input_tokens: number;
+      ephemeral_1h_input_tokens: number;
+    } | null;
     service_tier: "standard";
   };
 }
@@ -138,14 +143,14 @@ export interface XAiResponse {
   created: number;
   model: string;
   usage: {
-    prompt_tokens: 28;
-    completion_tokens: 5;
-    total_tokens: 33;
-    prompt_tokens_details: {
-      text_tokens: 28;
-      audio_tokens: 0;
-      image_tokens: 0;
-      cached_tokens: 0;
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    prompt_tokens_details?: {
+      text_tokens?: number;
+      audio_tokens?: number;
+      image_tokens?: number;
+      cached_tokens?: number | null;
     };
   };
   choices: OutputOpenAIChatChoice[];
@@ -292,6 +297,7 @@ export interface GoogleGeminiResponse {
   model?: string;
   usageMetadata: {
     promptTokenCount: number;
+    cachedContentTokenCount?: number;
     candidatesTokenCount: number;
     totalTokenCount: number;
     promptTokensDetails?: {
@@ -349,6 +355,29 @@ export interface OutputResultsFunction extends OutputResultsBase {
 
 export type OutputResultContent = OutputResultsText | OutputResultsFunction;
 
+/** Normalized LLM usage. Cache counts are included in input_tokens. */
+export interface OutputUsage {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  /** Input tokens read from cache; absent when the provider does not report it. */
+  cache_read_input_tokens?: number;
+  /** Input tokens written to cache; not inferred from cache misses. */
+  cache_creation_input_tokens?: number;
+  /** Anthropic cache writes by TTL; a breakdown of cache_creation_input_tokens. */
+  cache_creation?: {
+    ephemeral_5m_input_tokens: number;
+    ephemeral_1h_input_tokens: number;
+  };
+}
+
+export interface DeepSeekResponse extends OpenAiResponse {
+  usage: OpenAiResponse["usage"] & {
+    prompt_cache_hit_tokens?: number | null;
+    prompt_cache_miss_tokens?: number;
+  };
+}
+
 export interface OutputResult {
   id: string;
   name?: string;
@@ -356,11 +385,7 @@ export interface OutputResult {
   stopReason: string;
   content: OutputResultContent[];
   options?: OutputResultContent[][];
-  usage: {
-    input_tokens: number;
-    output_tokens: number;
-    total_tokens: number;
-  };
+  usage: OutputUsage;
   // TODO: add metadata
 }
 
@@ -500,6 +525,8 @@ export interface AmazonTitanEmbeddingApiResponseOutput {
 }
 
 export interface GenericLLm extends BaseLlmOptions {
+  /** Raw provider body fields, shallow-merged last; explicit fields override mappings. */
+  extraBody?: Record<string, unknown>;
   model?: string;
   system?: string;
   prompt?: string | { role: string; content: string }[];
@@ -513,7 +540,13 @@ export interface GenericLLm extends BaseLlmOptions {
   effort?: "minimal" | "low" | "medium" | "high";
 }
 
-export interface OpenAiRequest extends GenericLLm {
+export interface OpenAiRequest extends Omit<GenericLLm, "effort"> {
+  /**
+   * Maps to `reasoning_effort` on gpt-5 / o-series models. `"none"` is the
+   * only value under which gpt-5.1+ accept `temperature` / `topP`; the
+   * original gpt-5 / gpt-5-mini / gpt-5-nano reject `"none"`.
+   */
+  effort?: "none" | "minimal" | "low" | "medium" | "high";
   model: string;
   frequencyPenalty?: number;
   logitBias?: Record<string, any> | null;
@@ -554,7 +587,8 @@ export interface GeminiRequest extends GenericLLm {
   geminiApiKey?: string;
 }
 
-export interface DeepseekRequest extends GenericLLm {
+export interface DeepseekRequest extends Omit<GenericLLm, "effort"> {
+  effort?: "low" | "high" | "max";
   model: string;
   responseFormat?: Record<string, any>;
   deepseekApiKey?: string;
@@ -618,6 +652,13 @@ export type AllLlm = {
 };
 
 export type AllUseLlmOptions = AllLlm & {
+  // OpenAI - GPT-6 family
+  "openai.gpt-6": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-6-astra": {
+    input: Omit<OpenAiRequest, "model">;
+  };
   // OpenAI - GPT-5 family
   "openai.gpt-5.6": {
     input: Omit<OpenAiRequest, "model">;

@@ -5,15 +5,20 @@ import { AllUseLlmOptions, BaseLlm, Config } from "@/types";
 
 export function useLlm<T extends keyof typeof configs>(
   provider: T,
-  options: AllUseLlmOptions[T]["input"] = {}
+  options: AllUseLlmOptions[T]["input"] = {},
 ): BaseLlm {
   const config = getLlmConfig(provider);
-  return apiRequestWrapper(config, options, useLlm_call);
+  return useLlmConfiguration<T>(config)(options);
 }
 
 export function useLlmConfiguration<T extends keyof typeof configs>(
-  config: Config<any>
+  config: Config<any>,
 ) {
-  return (options: AllUseLlmOptions[T]["input"] = {}) =>
-    apiRequestWrapper(config, options, useLlm_call);
+  return <Options extends AllUseLlmOptions[T]["input"]>(options?: Options) =>
+    apiRequestWrapper(
+      config,
+      options ?? {},
+      (state, messages: Parameters<typeof useLlm_call>[1], callOptions) =>
+        useLlm_call(state, messages, callOptions, config),
+    );
 }

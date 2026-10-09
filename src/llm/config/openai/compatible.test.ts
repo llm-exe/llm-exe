@@ -1,4 +1,5 @@
 import { createOpenAiCompatibleConfiguration } from "./compatible";
+import { mapBody } from "@/llm/_utils.mapBody";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 
 jest.mock("@/utils/modules/getEnvironmentVariable");
@@ -214,7 +215,203 @@ describe("createOpenAiCompatibleConfiguration", () => {
     });
   });
 
+  // Reasoning-model request rules are opt-in per provider: OpenAI's gpt-5 /
+  // o-series reject `max_tokens` and non-default sampling params, but xAI and
+  // Deepseek reasoning models still accept them, so the factory default must
+  // leave every body unchanged.
+  describe("reasoning-model request rules", () => {
+    const baseOverrides = {
+      key: "custom.chat.v1",
+      provider: "custom.chat",
+      endpoint: "https://api.custom.com/v1/chat",
+      apiKeyMapping: ["customApiKey", "CUSTOM_API_KEY"] as [string, string],
+      isReasoningModel: (m: string) => m.startsWith("reasoner"),
+    };
+
+    const build = (config: ReturnType<typeof createOpenAiCompatibleConfiguration>, state: Record<string, any>) =>
+      mapBody(config.mapBody, { prompt: [{ role: "user", content: "hi" }], ...state });
+
+    describe("defaults (no rule overrides)", () => {
+      const config = createOpenAiCompatibleConfiguration(baseOverrides);
+
+      it("forwards temperature, top_p, and max_tokens unchanged for reasoning models", () => {
+        const body = build(config, {
+          model: "reasoner-1",
+          temperature: 0,
+          topP: 0.9,
+          maxTokens: 256,
+          effort: "high",
+        });
+        expect(body.temperature).toBe(0);
+        expect(body.top_p).toBe(0.9);
+        expect(body.max_tokens).toBe(256);
+        expect(body.max_completion_tokens).toBeUndefined();
+        expect(body.reasoning_effort).toBe("high");
+      });
+
+      it("forwards them unchanged for non-reasoning models", () => {
+        const body = build(config, {
+          model: "chat-1",
+          temperature: 0,
+          topP: 0.9,
+          maxTokens: 256,
+        });
+        expect(body.temperature).toBe(0);
+        expect(body.top_p).toBe(0.9);
+        expect(body.max_tokens).toBe(256);
+      });
+    });
+
+    describe("reasoningMaxTokensKey", () => {
+      const config = createOpenAiCompatibleConfiguration({
+        ...baseOverrides,
+        reasoningMaxTokensKey: "max_completion_tokens",
+      });
+
+      it("redirects maxTokens to the reasoning key for reasoning models", () => {
+        const body = build(config, { model: "reasoner-1", maxTokens: 256 });
+        expect(body.max_completion_tokens).toBe(256);
+        expect(body.max_tokens).toBeUndefined();
+      });
+
+      it("keeps max_tokens for non-reasoning models", () => {
+        const body = build(config, { model: "chat-1", maxTokens: 256 });
+        expect(body.max_tokens).toBe(256);
+        expect(body.max_completion_tokens).toBeUndefined();
+      });
+
+      it("sends neither key when maxTokens is unset", () => {
+        const body = build(config, { model: "reasoner-1" });
+        expect(body.max_tokens).toBeUndefined();
+        expect(body.max_completion_tokens).toBeUndefined();
+        expect("max_completion_tokens" in body).toBe(false);
+      });
+
+      it("leaves sampling params alone (rules are independent)", () => {
+        const body = build(config, {
+          model: "reasoner-1",
+          temperature: 0,
+          topP: 0.9,
+        });
+        expect(body.temperature).toBe(0);
+        expect(body.top_p).toBe(0.9);
+      });
+    });
+
+    describe("reasoningSamplingAllowedEfforts", () => {
+      const config = createOpenAiCompatibleConfiguration({
+        ...baseOverrides,
+        reasoningEfforts: ["none", "low", "high"],
+        reasoningSamplingAllowedEfforts: ["none"],
+      });
+
+      it("drops temperature and top_p for reasoning models when effort is unset", () => {
+        const body = build(config, {
+          model: "reasoner-1",
+          temperature: 0,
+          topP: 0.9,
+        });
+        expect(body.temperature).toBeUndefined();
+        expect(body.top_p).toBeUndefined();
+        expect("temperature" in body).toBe(false);
+      });
+
+      it("drops them when effort is set to a value outside the allowed list", () => {
+        for (const effort of ["low", "high"]) {
+          const body = build(config, {
+            model: "reasoner-1",
+            temperature: 0.2,
+            topP: 0.9,
+            effort,
+          });
+          expect(body.temperature).toBeUndefined();
+          expect(body.top_p).toBeUndefined();
+          expect(body.reasoning_effort).toBe(effort);
+        }
+      });
+
+      it("keeps them when effort is in the allowed list", () => {
+        const body = build(config, {
+          model: "reasoner-1",
+          temperature: 0,
+          topP: 0.9,
+          effort: "none",
+        });
+        expect(body.temperature).toBe(0);
+        expect(body.top_p).toBe(0.9);
+        expect(body.reasoning_effort).toBe("none");
+      });
+
+      it("does not treat an invalid effort as allowed, even if it is in the allowed list", () => {
+        const permissive = createOpenAiCompatibleConfiguration({
+          ...baseOverrides,
+          reasoningEfforts: ["low", "high"],
+          reasoningSamplingAllowedEfforts: ["none"],
+        });
+        // "none" is not a valid effort for this provider, so it is neither
+        // sent as reasoning_effort nor allowed to unlock sampling params.
+        const body = build(permissive, {
+          model: "reasoner-1",
+          temperature: 0,
+          effort: "none",
+        });
+        expect(body.reasoning_effort).toBeUndefined();
+        expect(body.temperature).toBeUndefined();
+      });
+
+      it("keeps sampling params for non-reasoning models regardless of effort", () => {
+        const body = build(config, {
+          model: "chat-1",
+          temperature: 0,
+          topP: 0.9,
+          effort: "high",
+        });
+        expect(body.temperature).toBe(0);
+        expect(body.top_p).toBe(0.9);
+        expect(body.reasoning_effort).toBeUndefined();
+      });
+
+      it("tolerates a missing model (fail-open, nothing to gate on)", () => {
+        const body = build(config, { temperature: 0.3, topP: 0.8, maxTokens: 10 });
+        expect(body.temperature).toBe(0.3);
+        expect(body.top_p).toBe(0.8);
+        expect(body.max_tokens).toBe(10);
+      });
+    });
+  });
+
   describe("mapOptions", () => {
+    it("replaces only the overridden mappings when mapOptions is provided", () => {
+      const jsonSchema = jest.fn(() => ({
+        response_format: { type: "json_object" },
+      }));
+      const config = createOpenAiCompatibleConfiguration({
+        key: "custom.chat.v1",
+        provider: "custom.chat",
+        endpoint: "https://api.custom.com/v1/chat/completions",
+        apiKeyMapping: ["customApiKey", "CUSTOM_API_KEY"],
+        mapOptions: { jsonSchema },
+      });
+
+      expect(config.mapOptions?.jsonSchema?.({}, {})).toEqual({
+        response_format: { type: "json_object" },
+      });
+      expect(jsonSchema).toHaveBeenCalledTimes(1);
+      expect(config.mapOptions?.functionCall?.("any")).toEqual({
+        tool_choice: "required",
+      });
+      expect(
+        config.mapOptions?.functions?.([{ name: "lookup", description: "d" }], {})
+      ).toEqual({
+        tools: [
+          expect.objectContaining({
+            type: "function",
+            function: expect.objectContaining({ name: "lookup" }),
+          }),
+        ],
+      });
+    });
+
     it("should map functionCall options correctly", () => {
       const config = createOpenAiCompatibleConfiguration({
         key: "custom.chat.v1",

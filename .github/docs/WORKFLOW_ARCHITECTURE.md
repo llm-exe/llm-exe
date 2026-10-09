@@ -1167,7 +1167,7 @@ Stagger crons so no two agents fight for the same backlog gate window. The curre
 
 | Day (UTC) | 06:00 | 08:00 | 09:00 | 10:00 | 11:00 |
 |-----------|-------|-------|-------|-------|-------|
-| Sunday | personas + curator | | | | |
+| Sunday | personas + curator | vitals | | | |
 | Monday | | coder, vitals | tester | | scout, digest |
 | Tuesday | | vitals | | docs | |
 | Wednesday | | vitals | | | |

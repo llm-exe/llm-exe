@@ -375,9 +375,26 @@ const googleExpectations: Record<string, Expectation> = {
       },
     ],
   },
-  // functionResponse.response is a text-only Struct
+  // functionResponse.response is a text-only Struct, so the image rides
+  // alongside it as an inlineData FunctionResponsePart
   "image tool result": {
-    throws: "Image content is not supported in tool results by Gemini",
+    prompt: [
+      {
+        role: "user",
+        parts: [
+          { text: "what does the camera see?" },
+          {
+            functionResponse: {
+              name: "get_snapshot",
+              response: { result: "here is the snapshot" },
+              parts: [
+                { inlineData: { mimeType: "image/png", data: PNG_BASE64 } },
+              ],
+            },
+          },
+        ],
+      },
+    ],
   },
 };
 

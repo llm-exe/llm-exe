@@ -56,6 +56,15 @@ In addition to the [generic options](/llm/generic), the following options are Op
 | frequencyPenalty | number  | undefined   | Maps to `frequency_penalty`. See OpenAI Docs                   |
 | logitBias        | object  | undefined   | Maps to `logit_bias`. See OpenAI Docs                          |
 | useJson          | boolean | undefined   | When `true`, sets `response_format` to `json_object`           |
-| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only sent for OpenAI reasoning models — any model whose name starts with `gpt-5`, `o3`, or `o4`; on any other model, or for a value outside that list, it is silently dropped. |
+| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"none"`, `"minimal"`, `"low"`, `"medium"`, `"high"`. Only sent for OpenAI reasoning models — any model whose name starts with `gpt-5`, `gpt-6`, `o3`, or `o4`; on any other model, or for a value outside that list, it is silently dropped. `"none"` is accepted only by gpt-5.1 through gpt-5.6; it is rejected with a 400 by the original `gpt-5`, `gpt-5-mini`, and `gpt-5-nano` (floor `"minimal"`), and by `gpt-6`, `o3`, and `o4-mini` (floor `"low"`). |
 
 See [OpenAI API Reference](https://platform.openai.com/docs/api-reference/chat) for details on these parameters.
+
+::: warning Reasoning models (`gpt-5*`, `gpt-6*`, `o3*`, `o4*`) rewrite `maxTokens`, `temperature`, and `topP`
+OpenAI's reasoning models reject the legacy Chat Completions parameters, so llm-exe adjusts the request for any model whose name starts with `gpt-5`, `gpt-6`, `o3`, or `o4`:
+
+- **`maxTokens` is sent as `max_completion_tokens`** instead of `max_tokens`. Reasoning models return a 400 on `max_tokens` (`Use 'max_completion_tokens' instead`). Non-reasoning models (`gpt-4o`, `gpt-4.1`, ...) still receive `max_tokens`.
+- **`temperature` and `topP` are dropped unless `effort` is `"none"`.** Reasoning models only accept the default sampling values while reasoning is active; gpt-5.5, gpt-5.6, gpt-6, and the o-series reject them even when `reasoning_effort` is omitted. Pass `effort: "none"` on gpt-5.1 through gpt-5.6 to keep them. There is no way to keep them on `gpt-6`, `o3`, or `o4-mini`: those models reject non-default sampling values and also reject `"none"`, so llm-exe always drops them there.
+
+Both rules are specific to the OpenAI provider. The xAI and DeepSeek providers, which share the same mapper, forward these parameters unchanged.
+:::

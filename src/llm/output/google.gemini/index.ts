@@ -1,4 +1,4 @@
-import { Config, GoogleGeminiResponse } from "@/types";
+import { Config, GoogleGeminiResponse, OutputUsage } from "@/types";
 import { formatOptions } from "../_util";
 import { formatResult } from "./formatResult";
 
@@ -16,10 +16,12 @@ export function OutputGoogleGeminiChat(
   const content = formatResult(_content, id);
   const options = formatOptions(_options, formatResult);
 
-  const usage = {
+  const cacheRead = result?.usageMetadata?.cachedContentTokenCount;
+  const usage: OutputUsage = {
     output_tokens: result?.usageMetadata?.candidatesTokenCount,
     input_tokens: result?.usageMetadata?.promptTokenCount,
     total_tokens: result?.usageMetadata?.totalTokenCount,
+    ...(cacheRead != null ? { cache_read_input_tokens: cacheRead } : {}),
   };
 
   return {

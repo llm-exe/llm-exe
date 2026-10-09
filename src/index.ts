@@ -65,6 +65,7 @@ export type {
 export type {
   LlmProvider,
   BaseLlm,
+  OutputUsage,
   OpenAIModelName,
   IChatMessages,
   ExecutorContext,

@@ -42,6 +42,7 @@ const ALL_CODES = [
   "auth.aws_signing_input_missing",
   "request.invalid_url",
   "request.http_error",
+  "request.timeout",
   "internal.invariant_failed",
   "unknown.unclassified",
 ] as const satisfies readonly ErrorCodes[];

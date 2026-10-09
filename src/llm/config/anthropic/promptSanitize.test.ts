@@ -216,6 +216,46 @@ describe("anthropicPromptSanitize", () => {
       anthropicPromptSanitize(messages, {}, {});
       expect(warnSpy).not.toHaveBeenCalled();
     });
+
+    it("should not warn when a model id merely shares a prefix with an unsupported one", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      // "claude-opus-50" must not be read as "claude-opus-5" plus a suffix —
+      // only an exact id or a `${prefix}-` dated snapshot should match.
+      anthropicPromptSanitize(messages, { model: "claude-opus-50" }, {});
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("should warn exactly once when consecutive assistant messages merge into one", () => {
+      const messages = [
+        { role: "user" as const, content: "Do something" },
+        {
+          role: "assistant" as const,
+          content: "response",
+          function_call: { id: "call-1", name: "fn1", arguments: "{}" },
+        },
+        {
+          role: "assistant" as const,
+          content: "response2",
+          function_call: { id: "call-2", name: "fn2", arguments: "{}" },
+        },
+      ] as any;
+
+      const result = anthropicPromptSanitize(
+        messages,
+        { model: "claude-opus-5" },
+        {}
+      );
+
+      // The warning is checked after mergeConsecutiveSameRole runs, so the two
+      // assistant messages are a single trailing assistant message by then —
+      // one warning, not two.
+      expect(result).toHaveLength(2);
+      expect(result[1].role).toBe("assistant");
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("mergeConsecutiveSameRole", () => {

@@ -130,6 +130,59 @@ recent_logs() {
   fi
 }
 
+# Helper: stage a persona findings log as <dest_dir>/<persona>/<file>.md, the
+# layout the curator prompt describes. The persona defaults to the log's parent
+# directory name. CI stages each persona's log before uploading it, so the
+# curator sees the same layout whether one artifact downloads or several, and
+# maintain.sh stages the logs it hands to a local curator.
+stage_persona_log() {
+  local dest_dir="$1"
+  local log_file="$2"
+  local persona="${3:-}"
+  [[ -n "$persona" ]] || persona="$(basename "$(dirname "$log_file")")"
+  local target
+  target="$dest_dir/$persona/$(basename "$log_file")"
+
+  if [[ ! -f "$log_file" ]]; then
+    err "Persona log not found: $log_file"
+    return 1
+  fi
+  if [[ -e "$target" ]]; then
+    err "Two persona logs would both be staged as $target"
+    return 1
+  fi
+  mkdir -p "$dest_dir/$persona"
+  cp "$log_file" "$target"
+}
+
+# Helper: how many persona logs are staged under a directory (0 if it is missing)
+count_persona_logs() {
+  local persona_logs_dir="$1"
+  if [[ ! -d "$persona_logs_dir" ]]; then
+    echo 0
+    return 0
+  fi
+  find "$persona_logs_dir" -name '*.md' -type f | wc -l | tr -d ' '
+}
+
+# Helper: render the curator prompt for one batch of staged persona logs.
+# CI and maintain.sh both call this, so they can't fill in different
+# placeholders. ($PERSONA_LOGS can't match inside $PERSONA_LOG_COUNT: they
+# differ at the character after LOG.)
+render_curator_prompt() {
+  local branch="$1"
+  local log_file="$2"
+  local persona_logs_dir="$3"
+  local log_count
+  log_count="$(count_persona_logs "$persona_logs_dir")"
+  sed \
+    -e "s|\$BRANCH|$branch|g" \
+    -e "s|\$LOG_FILE|$log_file|g" \
+    -e "s|\$PERSONA_LOGS|$persona_logs_dir|g" \
+    -e "s|\$PERSONA_LOG_COUNT|$log_count|g" \
+    "$REPO_ROOT/scripts/agents/prompts/curator.md"
+}
+
 # Helper: run claude interactively (local) or non-interactively (CI)
 run_claude() {
   local prompt="$1"

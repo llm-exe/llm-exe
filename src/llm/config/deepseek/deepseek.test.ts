@@ -49,13 +49,15 @@ describe("deepseek configuration", () => {
       expect(deepseekChat.headers).toEqual(deepseekChatV1.headers);
     });
 
-    it("should repoint the default model to deepseek-v4-flash", () => {
+    it("should keep its original default model, deepseek-chat", () => {
+      // Deprecated shorthands keep the model id the caller asked for and warn;
+      // they are never silently repointed to a different model.
       expect(deepseekChat.mapBody.model).toEqual({
-        default: "deepseek-v4-flash",
+        default: "deepseek-chat",
         key: "model",
       });
       expect(deepseekChat.options.model).toEqual({
-        default: "deepseek-v4-flash",
+        default: "deepseek-chat",
       });
     });
 
@@ -63,8 +65,15 @@ describe("deepseek configuration", () => {
       expect(deepseekChat.deprecated).toBeDefined();
       expect(deepseekChat.deprecated!.shorthand).toBe("deepseek.chat");
       expect(deepseekChat.deprecated!.message).toContain("deepseek.chat");
-      expect(deepseekChat.deprecated!.message).toContain("2026-07-24");
       expect(deepseekChat.deprecated!.message).toContain("deepseek.v4-flash");
+      // Verified live 2026-10-12: deepseek-chat still returns 200 (served as
+      // deepseek-flash), so the announced 2026-07-24 shutdown did not happen.
+      // The message must not state it as having occurred.
+      expect(deepseekChat.deprecated!.message).not.toContain("2026-07-24");
+      expect(deepseekChat.deprecated!.message).not.toMatch(/retired|will fail|no longer resolves/i);
+      // deepseek-v4-flash defaults to thinking mode (verified live), so it is
+      // not a drop-in replacement; the migration hint must say so.
+      expect(deepseekChat.deprecated!.message).toMatch(/thinking mode/);
     });
   });
 

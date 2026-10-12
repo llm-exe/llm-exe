@@ -220,7 +220,7 @@ describe("googleGeminiPromptMessageCallback", () => {
       ]);
     });
 
-    it("throws when a tool result carries an image block", () => {
+    it("emits an image block as an inlineData functionResponse part", () => {
       const message: IChatMessage = {
         role: "function",
         name: "testFunction",
@@ -233,8 +233,85 @@ describe("googleGeminiPromptMessageCallback", () => {
         ],
       };
 
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        parts: [
+          {
+            functionResponse: {
+              name: "testFunction",
+              response: { result: "here it is" },
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: "image/png",
+                    data: "iVBORw0KGgo=",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      });
+    });
+
+    it("emits one inlineData part per image, in order", () => {
+      const message: IChatMessage = {
+        role: "function",
+        name: "testFunction",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,AAAA" },
+          },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/jpeg;base64,BBBB" },
+          },
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result.parts[0].functionResponse.parts).toEqual([
+        { inlineData: { mimeType: "image/png", data: "AAAA" } },
+        { inlineData: { mimeType: "image/jpeg", data: "BBBB" } },
+      ]);
+      // `response` is required, so it still ships — empty when there is no text
+      expect(result.parts[0].functionResponse.response).toEqual({ result: "" });
+    });
+
+    it("omits `parts` when the tool result has no image blocks", () => {
+      const message: IChatMessage = {
+        role: "function",
+        name: "testFunction",
+        content: [{ type: "text", text: "just text" }],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result.parts[0].functionResponse).not.toHaveProperty("parts");
+    });
+
+    it("throws when a tool result image is not inline base64", () => {
+      // FunctionResponsePart has no fileData member, so a Files API / gs:// URI
+      // that is valid on a user message cannot ride along on a tool result.
+      const message: IChatMessage = {
+        role: "function",
+        name: "testFunction",
+        content: [
+          {
+            type: "image_url",
+            image_url: {
+              url: "https://generativelanguage.googleapis.com/v1beta/files/abc",
+            },
+          },
+        ],
+      };
+
       expect(() => googleGeminiPromptMessageCallback(message)).toThrow(
-        "Image content is not supported in tool results by Gemini"
+        "Gemini tool results can only carry inline image data"
       );
     });
 

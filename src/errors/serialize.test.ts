@@ -519,5 +519,69 @@ describe("serializeLlmExeError", () => {
         url: "",
       });
     });
+
+    // Not every Response reaching us is a spec-perfect one from this realm's
+    // `fetch`: polyfilled / cross-realm / test-double Responses can be missing
+    // `statusText` or `url` entirely rather than having them set to "". The
+    // descriptor must still be a flat all-strings shape so consumers that
+    // JSON.stringify a serialized error never see `undefined` where they were
+    // promised a string.
+    function responseWithAbsentFields(status: number): Response {
+      const response = new Response(null, { status });
+      // Shadow the prototype getters with own `undefined` properties; `status`
+      // is left alone so the instance stays a real, branded Response.
+      Object.defineProperty(response, "statusText", {
+        value: undefined,
+        configurable: true,
+      });
+      Object.defineProperty(response, "url", {
+        value: undefined,
+        configurable: true,
+      });
+      return response;
+    }
+
+    it("coerces absent statusText and url to empty strings at the top level", () => {
+      const out = serializeLlmExeError(responseWithAbsentFields(502)) as any;
+
+      expect(out).toEqual({
+        name: "Response",
+        status: 502,
+        statusText: "",
+        url: "",
+      });
+      // Explicitly not `undefined` — the fields must survive a JSON round-trip.
+      expect(JSON.parse(JSON.stringify(out))).toEqual(out);
+    });
+
+    it("coerces absent statusText and url to empty strings when nested in context", () => {
+      const err = new LlmExeError("bad gateway", {
+        code: "llm.provider_unavailable",
+        context: { response: responseWithAbsentFields(502) } as any,
+      });
+
+      const out = serializeLlmExeError(err) as any;
+      expect(out.context.response).toEqual({
+        name: "Response",
+        status: 502,
+        statusText: "",
+        url: "",
+      });
+    });
+
+    it("coerces absent statusText and url to empty strings when passed as the cause", () => {
+      const err = new LlmExeError("bad gateway", {
+        code: "llm.provider_unavailable",
+        cause: responseWithAbsentFields(502),
+      });
+
+      const out = serializeLlmExeError(err) as any;
+      expect(out.cause).toEqual({
+        name: "Response",
+        status: 502,
+        statusText: "",
+        url: "",
+      });
+    });
   });
 });

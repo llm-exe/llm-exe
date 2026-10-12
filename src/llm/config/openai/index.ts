@@ -12,8 +12,23 @@ const openAiChatV1: Config = createOpenAiCompatibleConfiguration({
   apiKeyMapping: ["openAiApiKey", "OPENAI_API_KEY"],
   isReasoningModel: (model) =>
     model.startsWith("gpt-5") ||
+    model.startsWith("gpt-6") ||
     model.startsWith("o3") ||
     model.startsWith("o4"),
+  // "none" is the only effort under which gpt-5.1+ accept temperature / top_p.
+  // The original gpt-5 / gpt-5-mini / gpt-5-nano reject "none" itself (their
+  // floor is "minimal"); those shorthands are deprecated and shut down
+  // 2026-12-11, so the caller owns that combination.
+  reasoningEfforts: ["none", "minimal", "low", "medium", "high"],
+  // gpt-5 / o-series 400 on the legacy `max_tokens`
+  // ("Use 'max_completion_tokens' instead").
+  reasoningMaxTokensKey: "max_completion_tokens",
+  // gpt-5.x 400 on any non-default temperature / top_p while reasoning is
+  // active; gpt-5.5 and gpt-5.6 reject them even with reasoning_effort unset.
+  // Only an explicit "none" is accepted across the family (verified against
+  // the live API 2026-10-08), so that is the only effort under which they are
+  // forwarded.
+  reasoningSamplingAllowedEfforts: ["none"],
 });
 
 const openAiChatMockV1: Config = {
@@ -51,6 +66,11 @@ const openAiChatMockV1: Config = {
 export const openai = {
   "openai.chat.v1": openAiChatV1,
   "openai.chat-mock.v1": openAiChatMockV1,
+  // GPT-6 family. The bare "openai.gpt-6" alias points at astra, matching the
+  // convention set by "openai.gpt-5.6" -> gpt-5.6-sol, so sibling variants can
+  // be added later without moving the bare shorthand.
+  "openai.gpt-6": withDefaultModel(openAiChatV1, "gpt-6-astra"),
+  "openai.gpt-6-astra": withDefaultModel(openAiChatV1, "gpt-6-astra"),
   // GPT-5 family
   "openai.gpt-5.6": withDefaultModel(openAiChatV1, "gpt-5.6-sol"),
   "openai.gpt-5.6-terra": withDefaultModel(openAiChatV1, "gpt-5.6-terra"),

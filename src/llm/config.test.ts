@@ -48,12 +48,15 @@ describe("configs", () => {
         },
         temperature: {
           key: "temperature",
+          transform: expect.any(Function),
         },
         topP: {
           key: "top_p",
+          transform: expect.any(Function),
         },
         maxTokens: {
           key: "max_tokens",
+          transform: expect.any(Function),
         },
         stopSequences: {
           key: "stop",

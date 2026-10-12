@@ -93,7 +93,7 @@ backoff delay on a guaranteed re-failure.
 
 Everything else keeps the normal retry behavior, including provider errors such as
 `llm.provider_rate_limited` and `llm.provider_unavailable` (category `llm`, since
-the category is the prefix of the code), `request` errors, and any error that is
+the category is the prefix of the code), `request` errors other than `request.timeout`, and any error that is
 not an `LlmExeError`.
 
 Deterministic codes inside the otherwise-mixed `llm` and `embedding` categories
@@ -108,6 +108,10 @@ still retry.
 
 See [Add Retries and Timeouts to LLM Calls](/examples/concepts/retries-and-timeouts)
 for configuring `timeout`, `numOfAttempts`, and `maxDelay`.
+
+Client-side timeouts throw `request.timeout` with `context.timeout` in milliseconds
+and are not retried, including for embeddings. The underlying request may still
+be running and billed by the provider; timing out does not cancel generation.
 
 ## Provider Errors
 

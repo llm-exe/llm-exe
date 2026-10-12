@@ -13,7 +13,7 @@
 | serviceTier     | string  | undefined         | Maps to service_tier. See Anthropic Docs                                         |
 
 > [!NOTE]
-> **Sampling parameter restrictions:** `claude-opus-4-7`, `claude-opus-4-8`, `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-5-5`, and `claude-fable-5` reject requests that include `temperature`, `topP`, or `topK` — llm-exe silently drops these for those models. For other Claude 4.x models, `topP` is silently dropped when `temperature` is also set, because the Anthropic API does not allow both simultaneously.
+> **Sampling parameter restrictions:** `claude-opus-4-7`, `claude-opus-4-8`, `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-5-5`, `claude-fable-5`, and `claude-fable-5-1` reject requests that include `temperature`, `topP`, or `topK` — llm-exe silently drops these for those models. For other Claude 4.x models, `topP` is silently dropped when `temperature` is also set, because the Anthropic API does not allow both simultaneously.
 >
 > **`effort`:** Accepts `minimal`/`low`/`medium`/`high` (silently ignored on models that do not support reasoning, e.g. Claude 3.x). For the adaptive generation (Opus 4.6 / 4.7 / 4.8 / 5, Sonnet 4.6 / 5, Haiku 5.5, Fable 5) it sets `output_config.effort` and adaptive `thinking`; `high` escalates to `xhigh` on Opus 4.7 / 4.8, and in that escalated case, if you do not pass `maxTokens`, its default is raised from 4096 to 65536 so adaptive thinking is not truncated (an explicit `maxTokens` is always honored). For the 4.5 generation it sets extended-thinking `budget_tokens` and raises `max_tokens` above the budget.
 >

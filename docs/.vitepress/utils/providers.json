@@ -90,6 +90,10 @@
         "shorthand": "anthropic.chat.v1"
       },
       {
+        "id": "claude-fable-5-1",
+        "shorthand": "anthropic.claude-fable-5-1"
+      },
+      {
         "id": "claude-fable-5",
         "shorthand": "anthropic.claude-fable-5"
       },

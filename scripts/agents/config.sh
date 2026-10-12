@@ -73,12 +73,42 @@ EOF
   echo "$log_file"
 }
 
+# The placeholder clock_in writes into every section of a fresh log
+LOG_PLACEHOLDER="_Pending — agent will fill this in._"
+
+# Helper: did the agent actually write anything into its log?
+# Returns 0 if at least one section was filled in, 1 if every section is still
+# the clock_in placeholder (or the file is missing entirely).
+log_has_content() {
+  local log_file="$1"
+  [[ -f "$log_file" ]] || return 1
+  local remaining
+  remaining="$(grep -c -F "$LOG_PLACEHOLDER" "$log_file" || true)"
+  [[ "$remaining" -lt 3 ]]
+}
+
 # Helper: clock out — stamp finish time and update status
+# Status reflects what actually happened:
+#   interrupted: the agent exited nonzero
+#   no-output:   the agent exited clean but left every section untouched
+#   completed:   the agent exited clean and wrote something
+# Always returns 0. clock_out is the last command of the "Clock out" step in six
+# workflows, which GitHub runs under `bash -e`, so a nonzero return would fail
+# the job with a bare exit code. In CI a no-output run is surfaced as a
+# ::warning:: annotation instead; local callers check log_has_content.
 clock_out() {
   local log_file="$1"
   local exit_code="${2:-0}"
   local status="completed"
-  [[ "$exit_code" -ne 0 ]] && status="interrupted"
+
+  if [[ "$exit_code" -ne 0 ]]; then
+    status="interrupted"
+  elif [[ -f "$log_file" ]] && ! log_has_content "$log_file"; then
+    status="no-output"
+    if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+      echo "::warning title=Agent wrote no output::$(basename "$log_file"): the agent exited clean but every log section is still the placeholder."
+    fi
+  fi
 
   if [[ -f "$log_file" ]]; then
     local tmp="${log_file}.tmp"
@@ -86,6 +116,8 @@ clock_out() {
       | sed "s|^\- \*\*Status\*\*: running|- **Status**: $status|" > "$tmp"
     mv "$tmp" "$log_file"
   fi
+
+  return 0
 }
 
 # Helper: get recent log files for an agent (last N, default 3)

@@ -107,10 +107,12 @@ run_task_agent() {
 
   clock_out "$log_file" "$exit_code"
 
-  if [[ "$exit_code" -eq 0 ]]; then
-    ok "$agent agent complete. Check for PR on branch: $branch"
-  else
+  if [[ "$exit_code" -ne 0 ]]; then
     warn "$agent agent interrupted (exit $exit_code). Log: $log_file"
+  elif ! log_has_content "$log_file"; then
+    warn "$agent agent exited clean but wrote no findings; the log is still all placeholders. Log: $log_file"
+  else
+    ok "$agent agent complete. Check for PR on branch: $branch"
   fi
 }
 
@@ -150,10 +152,12 @@ run_persona() {
 
   clock_out "$log_file" "$exit_code"
 
-  if [[ "$exit_code" -eq 0 ]]; then
-    ok "Persona $persona complete. Findings in: $log_file"
-  else
+  if [[ "$exit_code" -ne 0 ]]; then
     warn "Persona $persona interrupted (exit $exit_code). Log: $log_file"
+  elif ! log_has_content "$log_file"; then
+    warn "Persona $persona exited clean but reported no findings; the log is still all placeholders. Log: $log_file"
+  else
+    ok "Persona $persona complete. Findings in: $log_file"
   fi
 }
 
@@ -182,10 +186,12 @@ run_curator() {
 
   clock_out "$log_file" "$exit_code"
 
-  if [[ "$exit_code" -eq 0 ]]; then
-    ok "Curator complete. Review: $log_file"
-  else
+  if [[ "$exit_code" -ne 0 ]]; then
     warn "Curator interrupted (exit $exit_code). Log: $log_file"
+  elif ! log_has_content "$log_file"; then
+    warn "Curator exited clean but wrote nothing; the log is still all placeholders. Log: $log_file"
+  else
+    ok "Curator complete. Review: $log_file"
   fi
 }
 
@@ -211,10 +217,12 @@ run_reviewer() {
 
   clock_out "$log_file" "$exit_code"
 
-  if [[ "$exit_code" -eq 0 ]]; then
-    ok "Review of PR #$pr_number complete. Log: $log_file"
-  else
+  if [[ "$exit_code" -ne 0 ]]; then
     warn "Review interrupted (exit $exit_code). Log: $log_file"
+  elif ! log_has_content "$log_file"; then
+    warn "Review of PR #$pr_number exited clean but wrote nothing; the log is still all placeholders. Log: $log_file"
+  else
+    ok "Review of PR #$pr_number complete. Log: $log_file"
   fi
 }
 

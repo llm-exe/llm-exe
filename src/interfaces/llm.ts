@@ -717,6 +717,9 @@ export type AllUseLlmOptions = AllLlm & {
   };
 
   // Anthropic - Claude Fable 5 models
+  "anthropic.claude-fable-5-1": {
+    input: Omit<AnthropicRequest, "model">;
+  };
   "anthropic.claude-fable-5": {
     input: Omit<AnthropicRequest, "model">;
   };
@@ -882,6 +885,12 @@ export type AllUseLlmOptions = AllLlm & {
     input: GenericLLm;
   };
   "ollama.gpt-oss": {
+    input: GenericLLm;
+  };
+  "ollama.glm-5.3": {
+    input: GenericLLm;
+  };
+  "ollama.glm-5.3-flash": {
     input: GenericLLm;
   };
 

@@ -80,7 +80,7 @@ flowchart LR
 
     subgraph D["Downstream workflows"]
         cdr["coder-run.yml\nfinds bug/enhancement/agent-ok\nissues filed by curator"]:::job
-        dig["agent-digest.yml\nreads committed logs Monday,\nso it sees nothing from this workflow"]:::job
+        dig["agent-digest.yml\nMonday: lists the week's issues;\nreads committed logs, so no log from this run"]:::job
     end
 
     c1 --> G
@@ -114,6 +114,7 @@ flowchart LR
     K --> iss
     K --> cmt
     iss --> cdr
+    iss --> dig
 ```
 
 [Back to top](#navigate)
@@ -564,6 +565,7 @@ flowchart LR
 
     O3 --> C1["coder-run.yml find-issues\npicks unclaimed bug / enhancement / agent-ok"]:::cons
     O3 --> C2["maintainer triage\nlabels, milestones"]:::human
+    O3 --> C5["agent-digest.yml\nMonday summary lists the issues filed"]:::cons
 
     O1 --> C4["this run's curator only\n(artifact scoped to github.run_id)"]:::cons
 

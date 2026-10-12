@@ -318,7 +318,7 @@ describe("createEmbedding_call", () => {
           expect(ctx.provider).toBe("openai.embedding");
           expect(ctx.status).toBe(status);
           expect(ctx.providerError).toEqual({ message: "provider says no" });
-          expect((e as unknown as { cause?: unknown }).cause).toBeDefined();
+          expect((e as InstanceType<typeof LlmExeError>).cause).toBeDefined();
         }
       }
     );
@@ -357,7 +357,7 @@ describe("createEmbedding_call", () => {
         // ctx defaulted to {} then enriched with operation/provider/model
         expect(ctx.operation).toBe("createEmbedding_call");
         expect(ctx.provider).toBe("openai.embedding");
-        expect((e as unknown as { cause?: unknown }).cause).toBe(err);
+        expect(wrapped.cause).toBe(err);
       }
     });
 

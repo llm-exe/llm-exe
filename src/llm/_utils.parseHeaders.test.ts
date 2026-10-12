@@ -176,8 +176,8 @@ describe("parseHeaders", () => {
       expect(ctx.key).toBe("openai.chat-mock.v1");
       expect(ctx.headerTemplate).toBe(config.headers);
       expect(ctx.replacedHeadersExcerpt).toBe("not valid json");
-      expect((e as unknown as { cause?: unknown }).cause).toBeDefined();
-      expect((e as unknown as { cause?: Error }).cause).toBeInstanceOf(Error);
+      expect((e as LlmExeError).cause).toBeDefined();
+      expect((e as LlmExeError).cause).toBeInstanceOf(Error);
     }
   });
 

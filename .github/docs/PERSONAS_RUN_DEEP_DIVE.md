@@ -591,15 +591,19 @@ stateDiagram-v2
     CuratorCommenting --> CuratorLogged
     CuratorSkipping --> CuratorLogged
     CuratorLogged --> ClockOut: status mapped to exit code
-    ClockOut --> Completed: exit 0
+    ClockOut --> Completed: exit 0 and log_has_content
+    ClockOut --> NoOutput: exit 0 but every section still the placeholder
     ClockOut --> Interrupted: any non-zero
     Skipped --> [*]
     CuratorSkipped --> [*]
     Completed --> [*]
+    NoOutput --> [*]
     Interrupted --> [*]
 ```
 
 `if: always()` on every clock-out step means even interrupted personas and an interrupted curator stamp a finish time. No log file is ever left in `running`.
+
+A clean exit is not the same as a useful run. `clock_out` calls `log_has_content` and stamps `no-output` when a persona or the curator exited 0 but left all three log sections as the `_Pending ..._` placeholder that `clock_in` wrote. In CI that surfaces as a `::warning title=Agent wrote no output::` annotation; `clock_out` still returns 0 so the job stays green, because it is the last command of a `bash -e` step. The local `run_persona` and `run_curator` runners in [scripts/maintain.sh](../../scripts/maintain.sh) re-check `log_has_content` after `clock_out` and print a `warn` line for the same case. This is the check that would have caught the four 2026-03-05 persona stubs, which looked identical to clean runs.
 
 [Back to top](#navigate)
 

@@ -365,7 +365,7 @@ The minimal tree, annotated with why each path exists. A replica must reproduce 
 │   ├── generate-llms-txt.sh              docs helper (out of scope for automation)
 │   └── agents/
 │       ├── README.md                     maintainer-facing summary of agent system
-│       ├── config.sh                     bash library sourced by every agent workflow; defines DEFAULT_BRANCH, DATE_STAMP, AGENT_TIMEOUT, color helpers, create_agent_branch, clock_in, clock_out, recent_logs, run_claude, check_prerequisites
+│       ├── config.sh                     bash library sourced by every agent workflow; defines DEFAULT_BRANCH, DATE_STAMP, AGENT_TIMEOUT, LOG_PLACEHOLDER, color helpers, create_agent_branch, clock_in, log_has_content, clock_out, recent_logs, run_claude, check_prerequisites
 │       ├── prompts/
 │       │   ├── docs.md                   docs agent prompt template (uses $BRANCH and $LOG_FILE substitutions)
 │       │   ├── tester.md                 tester prompt
@@ -451,7 +451,7 @@ sequenceDiagram
     CCA->>Logs: write Summary, Files Changed, Next Steps into log file
     Note over Runner: timeout-minutes: 30 (15 for reviewer)
     Runner->>Cfg: clock_out with job.status mapped to exit code
-    Cfg->>Logs: stamp Finished UTC and Status completed|interrupted
+    Cfg->>Logs: stamp Finished UTC and Status completed, no-output, or interrupted
 ```
 
 ### 7.2. Prompt assembly
@@ -533,13 +533,26 @@ _Pending - agent will fill this in._
 _Pending - agent will fill this in._
 ```
 
-`clock_out <log_file> <exit_code>` rewrites the `Finished` line and flips `Status: running` to `completed` (exit 0) or `interrupted` (non-zero). The clock-out step uses `if: always()` so an agent crash still stamps a finish time.
+Every section of that skeleton starts as the same `_Pending ..._` placeholder line, and `log_has_content <log_file>` is what tells a real run from a dead one: it returns 0 when fewer than three copies of the placeholder remain (so the agent filled at least one section in), and 1 when all three are still there or the file is missing.
+
+`clock_out <log_file> <exit_code>` rewrites the `Finished` line and flips `Status: running` to one of three values:
+
+| Condition | Status stamped |
+|-----------|----------------|
+| `exit_code` non-zero | `interrupted` |
+| exit 0, but `log_has_content` is false | `no-output` |
+| exit 0 and at least one section written | `completed` |
+
+A missing log file is never called `no-output`: if the prompt step failed before `clock_in` ran there is nothing to stamp, and `clock_out` leaves it alone.
+
+`clock_out` always returns 0. It is the last command of the "Clock out" step in six workflows and GitHub runs those steps under `bash -e`, so a non-zero return would fail the job with a bare exit code and nothing else. Instead, a `no-output` run in CI (`GITHUB_ACTIONS=true`) emits a `::warning title=Agent wrote no output::` annotation on the run. Local callers in [scripts/maintain.sh](../../scripts/maintain.sh) call `log_has_content` themselves after `clock_out` and `warn` on the same case, so a no-output run is visible in both places. The clock-out step uses `if: always()` so an agent crash still stamps a finish time.
 
 ### 7.7. Exit code semantics
 
 | Exit code | Source | Meaning | Effect |
 |-----------|--------|---------|--------|
-| 0 | Job succeeded | Agent completed within budget. | Status `completed` in the log. |
+| 0, log written | Job succeeded | Agent completed within budget. | Status `completed` in the log. |
+| 0, log all placeholders | Job succeeded but the agent did nothing | Agent started, wrote no findings, exited clean. | Status `no-output` in the log, plus a `::warning::` annotation in CI and a `warn` line locally. The job itself stays green. |
 | any non-zero | Anthropic action failure, timeout, or hook error | Agent was interrupted. | Status `interrupted` in the log; the next run reads this log under Prior Runs and decides whether to resume. |
 
 ---
@@ -1233,7 +1246,7 @@ gate:
 
 Order of manual verifications, from cheapest to most invasive:
 
-1. Run `./scripts/maintain.sh docs` locally. Confirm a branch and log file are created.
+1. Run `./scripts/maintain.sh docs` locally. Confirm a branch and log file are created, and that the log ends in `Status: completed` rather than `no-output` (a `no-output` stamp plus a `warn` line means the agent started and wrote nothing).
 2. From the Actions tab, dispatch `agent-run.yml` with `agent: docs` and short `instructions`. Confirm a PR is opened by the bot.
 3. Confirm `agent-review-pr.yml` fires automatically on that PR.
 4. Merge the PR. Confirm `draft-main-pr.yml` updates the development to main draft.

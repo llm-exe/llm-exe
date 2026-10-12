@@ -164,15 +164,23 @@ jobs:
 
       # The findings log lives in the runner's checkout and is never committed, so
       # without this upload it dies with the job and the curator can only see the
-      # logs committed back in March. Uploaded after clock_out so Finished/Status
-      # are populated. Consumed by run-curator below — keep the name in sync with
+      # logs committed back in March. Staged after clock_out so Finished/Status
+      # are populated, as <persona>/<file>.md so the persona name travels inside
+      # the artifact. Consumed by run-curator below: keep the name in sync with
       # its download pattern.
+      - name: Stage persona findings log
+        if: always() && steps.prompt.outputs.log_file != ''
+        run: |
+          source ./scripts/agents/config.sh
+          stage_persona_log /tmp/persona-log-upload "${{ steps.prompt.outputs.log_file }}" "${{ matrix.persona }}" \
+            || echo "::warning title=Persona log not staged::the curator will not see ${{ matrix.persona }}'s findings from this run."
+
       - name: Upload persona findings log
         if: always() && steps.prompt.outputs.log_file != ''
         uses: actions/upload-artifact@v7
         with:
           name: persona-log-${{ matrix.persona }}-${{ github.run_id }}
-          path: ${{ steps.prompt.outputs.log_file }}
+          path: /tmp/persona-log-upload
           if-no-files-found: warn
           retention-days: 7
 
@@ -210,17 +218,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Curate only the logs produced by this workflow run. Each artifact lands in
-      # its own persona-named subdirectory (no merge-multiple), so persona identity
-      # survives the handoff and a log can only ever be curated by the run that
-      # wrote it. No artifacts is a valid outcome — the prompt handles the no-op.
+      # Curate only the logs produced by this workflow run, so a log can only ever
+      # be curated by the run that wrote it. Each artifact holds
+      # <persona>/<file>.md, and merge-multiple puts them all straight under
+      # /tmp/persona-logs. Without it, download-artifact adds a per-artifact
+      # directory only when two or more match, so the layout would change with
+      # the persona count. No artifacts is a valid outcome: the prompt handles
+      # the no-op.
       - name: Download persona findings logs
-        id: logs
         continue-on-error: true
         uses: actions/download-artifact@v7
         with:
           pattern: persona-log-*-${{ github.run_id }}
           path: /tmp/persona-logs
+          merge-multiple: true
 
       - name: Build prompt
         id: prompt
@@ -232,19 +243,13 @@ jobs:
           echo "log_file=$log_file" >> "$GITHUB_OUTPUT"
 
           persona_logs="/tmp/persona-logs"
-          mkdir -p "$persona_logs"
-          log_count=$(find "$persona_logs" -name '*.md' -type f | wc -l | tr -d ' ')
+          log_count=$(count_persona_logs "$persona_logs")
           echo "::notice::Persona findings logs available to curator: $log_count"
           if [ "$log_count" -eq 0 ]; then
-            echo "::warning::No persona findings logs from this run — curator will no-op."
+            echo "::warning::No persona findings logs from this run, so the curator will no-op."
           fi
 
-          prompt=$(sed \
-            -e "s|\$BRANCH|$branch|g" \
-            -e "s|\$LOG_FILE|$log_file|g" \
-            -e "s|\$PERSONA_LOGS|$persona_logs|g" \
-            -e "s|\$PERSONA_LOG_COUNT|$log_count|g" \
-            "./scripts/agents/prompts/curator.md")
+          prompt=$(render_curator_prompt "$branch" "$log_file" "$persona_logs")
 
           deadline="$(date -u -d "+600 seconds" +%H:%M)"
           prompt="${prompt}

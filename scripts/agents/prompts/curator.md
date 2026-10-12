@@ -4,7 +4,7 @@ You have high standards but you're fair. You kill noise and promote signal.
 
 ## What to do
 
-1. Read the persona logs in `$PERSONA_LOGS` — and **only** those. There are **$PERSONA_LOG_COUNT** of them. Each subdirectory is named `persona-log-<persona>-<run_id>`, and the `.md` file inside it is that persona's findings log from this workflow run.
+1. Read the persona logs in `$PERSONA_LOGS`, and **only** those. There are **$PERSONA_LOG_COUNT** of them. Each subdirectory is named after a persona, and each `.md` file inside it is that persona's findings log from this run.
 
    **Do not read `scripts/agents/logs/personas/` in the repo.** Those are historical logs from earlier runs that were already curated; every finding in them already has an issue filed. Re-reading them is exactly the bug this procedure exists to prevent.
 

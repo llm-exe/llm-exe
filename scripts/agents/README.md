@@ -34,8 +34,8 @@ Each agent gets a 10-minute time budget with a hard timeout.
 ./scripts/maintain.sh docs-sync          # sync workflow deep dives against current source
 ./scripts/maintain.sh beginner       # single persona
 ./scripts/maintain.sh personas       # all personas
-./scripts/maintain.sh curator
-./scripts/maintain.sh all            # personas + curator
+./scripts/maintain.sh curator scripts/agents/logs/personas/beginner/<timestamp>.md   # curates only the logs given
+./scripts/maintain.sh all            # personas + curator (curates the logs this run wrote)
 ./scripts/maintain.sh review 42      # review PR #42
 
 # From GitHub Actions (non-interactive)

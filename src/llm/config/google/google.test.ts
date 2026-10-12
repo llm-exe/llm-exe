@@ -133,10 +133,82 @@ describe("google configuration", () => {
       ).toBe(8192);
     });
 
-    it("should return undefined for gemini-2.5-light (not a valid model ID)", () => {
-      expect(
-        effortTransform("medium", { model: "gemini-2.5-light" })
-      ).toBeUndefined();
+    it.each([
+      "gemini-3.1-flash-lite",
+      "gemini-3.5-flash",
+      "gemini-3.5-flash-lite",
+      "gemini-3.6-flash",
+      "gemini-3.7-flash",
+    ])("should apply the thinking budget on %s", (model) => {
+      expect(effortTransform("medium", { model })).toBe(8192);
+      expect(effortTransform("high", { model })).toBe(24576);
+      expect(effortTransform("low", { model })).toBe(1024);
+    });
+
+    it("should apply the thinking budget on unreleased 2.5+ variants", () => {
+      expect(effortTransform("medium", { model: "gemini-2.5-light" })).toBe(
+        8192
+      );
+      expect(effortTransform("medium", { model: "gemini-4.0-pro" })).toBe(8192);
+    });
+
+    it.each(["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-pro"])(
+      "should return undefined for pre-2.5 model %s",
+      (model) => {
+        expect(effortTransform("high", { model })).toBeUndefined();
+      }
+    );
+
+    it("should return undefined for a non-gemini or missing model", () => {
+      expect(effortTransform("high", { model: "gpt-4o" })).toBeUndefined();
+      expect(effortTransform("high", { model: "gemini-pro" })).toBeUndefined();
+      expect(effortTransform("high", {})).toBeUndefined();
+    });
+  });
+
+  describe("google.chat.v1 effort body mapping", () => {
+    it("maps effort into generationConfig.thinkingConfig.thinkingBudget", () => {
+      expect(googleChatV1.mapBody.effort.key).toBe(
+        "generationConfig.thinkingConfig.thinkingBudget"
+      );
+    });
+
+    it("nests thinkingBudget under generationConfig, not a top-level config", () => {
+      const body = mapBody(googleChatV1.mapBody, {
+        model: "gemini-2.5-pro",
+        prompt: "hi",
+        effort: "medium",
+      });
+      expect(body).toMatchObject({
+        generationConfig: { thinkingConfig: { thinkingBudget: 8192 } },
+      });
+      expect(body).not.toHaveProperty("config");
+    });
+
+    it("keeps thinkingConfig alongside other generationConfig params", () => {
+      const body = mapBody(googleChatV1.mapBody, {
+        model: "gemini-2.5-flash",
+        prompt: "hi",
+        effort: "high",
+        temperature: 0.5,
+        maxTokens: 128,
+      });
+      expect(body.generationConfig).toMatchObject({
+        temperature: 0.5,
+        maxOutputTokens: 128,
+        thinkingConfig: { thinkingBudget: 24576 },
+      });
+    });
+
+    it("omits thinkingConfig entirely when effort is not supported", () => {
+      const body = mapBody(googleChatV1.mapBody, {
+        model: "gemini-2.0-flash",
+        prompt: "hi",
+        effort: "high",
+        temperature: 0.5,
+      });
+      expect(body.generationConfig).not.toHaveProperty("thinkingConfig");
+      expect(body).not.toHaveProperty("config");
     });
   });
 
@@ -315,6 +387,41 @@ describe("google configuration", () => {
     });
   });
 
+  describe("gemini-2.5 shorthands", () => {
+    it.each([
+      ["google.gemini-2.5-flash", "gemini-2.5-flash"],
+      ["google.gemini-2.5-flash-lite", "gemini-2.5-flash-lite"],
+      ["google.gemini-2.5-pro", "gemini-2.5-pro"],
+    ] as const)("%s should resolve to %s", (shorthand, expectedModel) => {
+      const config = google[shorthand] as Config;
+      expect(config).toBeDefined();
+      expect(config.options.model).toEqual({ default: expectedModel });
+      expect(config.mapBody.model).toEqual({
+        default: expectedModel,
+        key: "model",
+      });
+    });
+
+    it.each([
+      "google.gemini-2.5-flash",
+      "google.gemini-2.5-flash-lite",
+      "google.gemini-2.5-pro",
+    ] as const)("%s carries no deprecation warning", (shorthand) => {
+      // Google limits the 2.5 line to projects with prior usage, but says the
+      // models "are not deprecated" and lists no shutdown date (checked
+      // 2026-10-12). Warning on a model Google still serves is the false claim
+      // issue #762 was filed for.
+      expect((google[shorthand] as Config).deprecated).toBeUndefined();
+    });
+
+    it("should be based on googleChatV1 configuration", () => {
+      const config = google["google.gemini-2.5-pro"] as Config;
+      expect(config.endpoint).toEqual(googleChatV1.endpoint);
+      expect(config.method).toEqual(googleChatV1.method);
+      expect(config.headers).toEqual(googleChatV1.headers);
+    });
+  });
+
   describe("retired shorthands", () => {
     it.each([
       [
@@ -342,6 +449,28 @@ describe("google configuration", () => {
         expect(config.deprecated?.message).toContain(migrateTo);
       }
     );
+  });
+
+  describe("deprecation messages", () => {
+    const deprecated = Object.values(google as Record<string, Config>).filter(
+      (config) => config.deprecated
+    );
+
+    it("only cites dates for shutdowns Google has already carried out", () => {
+      expect(deprecated.length).toBeGreaterThan(0);
+      for (const config of deprecated) {
+        const message = config.deprecated!.message;
+        // Google's deprecation table publishes "earliest possible" shutdown
+        // dates, not commitments. Never promise a future shutdown date on
+        // their behalf — a date in a message means it already happened.
+        expect(message).not.toMatch(/will shut down on/);
+        if (/\d{4}-\d{2}-\d{2}/.test(message)) {
+          expect(message).toMatch(
+            /was shut down by Google on \d{4}-\d{2}-\d{2}/
+          );
+        }
+      }
+    });
   });
 
   describe("image content through mapBody", () => {

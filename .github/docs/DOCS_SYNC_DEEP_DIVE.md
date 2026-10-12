@@ -579,7 +579,7 @@ flowchart LR
     K1["File"]:::k --- V1[".github/workflows/docs-sync.yml"]:::v
     K2["Triggers"]:::k --- V2["workflow_dispatch only (push detection in separate trigger workflow)"]:::v
     K3["Inputs"]:::k --- V3["target (comma-separated paths), full_refresh (boolean)"]:::v
-    K4["Path filter"]:::k --- V4["workflows, actions, maintain.sh, config.sh, prompts, package.json"]:::v
+    K4["Path filter"]:::k --- V4["workflows, actions, vitals, maintain.sh, config.sh, prompts, package.json"]:::v
     K5["Permissions"]:::k --- V5["contents/PR/issues: write"]:::v
     K6["Timeout"]:::k --- V6["30 minutes"]:::v
     K7["Concurrency"]:::k --- V7["docs-sync, no cancel"]:::v

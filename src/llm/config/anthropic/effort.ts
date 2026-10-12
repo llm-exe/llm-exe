@@ -11,11 +11,23 @@ import { PROVIDED_OPTION_KEYS } from "@/llm/_utils.stateFromOptions";
 export const ESCALATED_EFFORT_MIN_MAX_TOKENS = 65536;
 
 // Models that 400 if temperature / top_p / top_k are set to non-default values.
+// Haiku 5.5 is stricter than the rest of this list: temperature must be exactly
+// 1 and top_p exactly 0.99 if present, any top_k is rejected, and sending both
+// temperature and top_p is rejected, so dropping all three is the only safe
+// mapping.
+//
+// This list is matched with `matchesModel`, so "claude-fable-5" also covers
+// "claude-fable-5-1". That is load-bearing for Fable 5.1: it thinks
+// adaptively whether or not the caller sets `effort`, so the sampling params
+// must be dropped regardless of `effort`, which is exactly what an entry here
+// does, since `modelRejectsSamplingParams` is checked before
+// `effortEnablesThinking` in both sampling transforms below.
 const MODELS_REJECTING_SAMPLING_PARAMS = [
   "claude-opus-5",
   "claude-opus-4-7",
   "claude-opus-4-8",
   "claude-sonnet-5",
+  "claude-haiku-5-5",
   "claude-fable-5",
 ];
 
@@ -80,6 +92,11 @@ const isAdaptiveModel = (canonical: string): boolean =>
   matchesModel(canonical, "claude-opus-4-8") ||
   matchesModel(canonical, "claude-sonnet-4-6") ||
   matchesModel(canonical, "claude-sonnet-5") ||
+  matchesModel(canonical, "claude-haiku-5-5") ||
+  // Covers "claude-fable-5-1" via the dated/version-suffix boundary in
+  // `matchesModel`. Fable 5.1 thinks adaptively no matter what, so the effort
+  // value only picks the effort level; "high" is not escalated to "xhigh"
+  // (that escalation is Opus 4.7/4.8 only).
   matchesModel(canonical, "claude-fable-5");
 
 // Legacy (4.5) generation: effort sets thinking { type: "enabled", budget_tokens }.

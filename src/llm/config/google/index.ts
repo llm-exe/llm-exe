@@ -6,6 +6,21 @@ import { googleGeminiPromptSanitize } from "./promptSanitize";
 import { OutputGoogleGeminiChat } from "@/llm/output/google.gemini";
 import { cleanJsonSchemaFor } from "@/llm/output/_utils/cleanJsonSchemaFor";
 
+/**
+ * Gemini exposes `thinkingConfig.thinkingBudget` on every thinking-capable
+ * model from 2.5 onward. Matching on the version rather than a literal list of
+ * model ids keeps `effort` working as new models ship — pre-2.5 models (1.5,
+ * 2.0) have no thinking budget, so they still drop the option.
+ */
+function supportsThinkingBudget(model: unknown) {
+  if (typeof model !== "string") return false;
+  const version = /^gemini-(\d+)\.(\d+)(?:-|$)/.exec(model);
+  if (!version) return false;
+  const major = Number(version[1]);
+  const minor = Number(version[2]);
+  return major > 2 || (major === 2 && minor >= 5);
+}
+
 const googleGeminiChatV1: Config = {
   key: "google.chat.v1",
   provider: "google.chat",
@@ -41,13 +56,10 @@ const googleGeminiChatV1: Config = {
       key: "generationConfig.stopSequences",
     },
     effort: {
-      key: "config.thinkingConfig.thinkingBudget",
+      key: "generationConfig.thinkingConfig.thinkingBudget",
       transform: (v, _s) => {
         if (
-          // only supported reasoning models
-          ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"].includes(
-            _s.model
-          ) &&
+          supportsThinkingBudget(_s.model) &&
           typeof v === "string" &&
           ["minimal", "low", "medium", "high"].includes(v)
         ) {
@@ -111,22 +123,26 @@ export const google = {
     "gemini-3.7-flash"
   ),
 
+  // Google limits the 2.5 line to projects that have used it before (a new
+  // project gets a 404), but its deprecations page says these models "are not
+  // deprecated and will continue to be served until further notice" and lists
+  // no shutdown date (checked 2026-10-12). So none of them warn: the access
+  // limit applies to all three alike, and the "earliest possible" dates in
+  // that table are not commitments. See issue #762.
+  "google.gemini-2.5-flash": withDefaultModel(
+    googleGeminiChatV1,
+    "gemini-2.5-flash"
+  ),
+  "google.gemini-2.5-flash-lite": withDefaultModel(
+    googleGeminiChatV1,
+    "gemini-2.5-flash-lite"
+  ),
+  "google.gemini-2.5-pro": withDefaultModel(
+    googleGeminiChatV1,
+    "gemini-2.5-pro"
+  ),
+
   // Deprecated
-  ...deprecateShorthand("google.gemini-2.5-flash", {
-    config: withDefaultModel(googleGeminiChatV1, "gemini-2.5-flash"),
-    message:
-      'Model "google.gemini-2.5-flash" is deprecated and will shut down on 2026-06-17.',
-  }),
-  ...deprecateShorthand("google.gemini-2.5-flash-lite", {
-    config: withDefaultModel(googleGeminiChatV1, "gemini-2.5-flash-lite"),
-    message:
-      'Model "google.gemini-2.5-flash-lite" is deprecated and will shut down on 2026-07-22.',
-  }),
-  ...deprecateShorthand("google.gemini-2.5-pro", {
-    config: withDefaultModel(googleGeminiChatV1, "gemini-2.5-pro"),
-    message:
-      'Model "google.gemini-2.5-pro" is deprecated and will shut down on 2026-06-17.',
-  }),
   // Shut down by Google — kept only so existing code warns instead of
   // failing silently. Slated for removal in the next major release.
   ...deprecateShorthand("google.gemini-2.0-flash", {

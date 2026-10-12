@@ -17,12 +17,11 @@ export const ESCALATED_EFFORT_MIN_MAX_TOKENS = 65536;
 // mapping.
 //
 // This list is matched with `matchesModel`, so "claude-fable-5" also covers
-// "claude-fable-5-1". That is load-bearing for Fable 5.1 specifically: its
-// adaptive thinking is always on (unlike Opus 5 / Sonnet 5, where thinking
-// follows `effort`), so the sampling params must be dropped regardless of
-// whether the caller set `effort`, which is exactly what an entry here does,
-// since `modelRejectsSamplingParams` is checked before `effortEnablesThinking`
-// in both sampling transforms below.
+// "claude-fable-5-1". That is load-bearing for Fable 5.1: it thinks
+// adaptively whether or not the caller sets `effort`, so the sampling params
+// must be dropped regardless of `effort`, which is exactly what an entry here
+// does, since `modelRejectsSamplingParams` is checked before
+// `effortEnablesThinking` in both sampling transforms below.
 const MODELS_REJECTING_SAMPLING_PARAMS = [
   "claude-opus-5",
   "claude-opus-4-7",

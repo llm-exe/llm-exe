@@ -359,6 +359,14 @@
       {
         "id": "gpt-oss",
         "shorthand": "ollama.gpt-oss"
+      },
+      {
+        "id": "glm-5.3",
+        "shorthand": "ollama.glm-5.3"
+      },
+      {
+        "id": "glm-5.3-flash",
+        "shorthand": "ollama.glm-5.3-flash"
       }
     ]
   }

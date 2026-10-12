@@ -103,6 +103,114 @@ describe("ollamaPromptSanitize", () => {
     );
   });
 
+  it("converts an assistant function_call into ollama tool_calls", () => {
+    const messages: IChatMessages = [
+      { role: "user", content: "weather?" },
+      {
+        role: "assistant",
+        content: null,
+        function_call: {
+          id: "call_1",
+          name: "get_weather",
+          arguments: '{"city":"Denver"}',
+        },
+      } as any,
+    ];
+
+    const result = ollamaPromptSanitize(messages);
+
+    expect(result[1]).toEqual({
+      role: "assistant",
+      content: "",
+      tool_calls: [
+        {
+          function: { name: "get_weather", arguments: { city: "Denver" } },
+        },
+      ],
+    });
+    expect(result[1]).not.toHaveProperty("function_call");
+  });
+
+  it("converts parallel function_call arrays into multiple tool_calls", () => {
+    const messages: IChatMessages = [
+      {
+        role: "assistant",
+        content: null,
+        function_call: [
+          { id: "call_1", name: "get_weather", arguments: '{"city":"Denver"}' },
+          { id: "call_2", name: "get_time", arguments: { tz: "MST" } },
+        ],
+      } as any,
+    ];
+
+    expect(ollamaPromptSanitize(messages)[0]).toEqual({
+      role: "assistant",
+      content: "",
+      tool_calls: [
+        { function: { name: "get_weather", arguments: { city: "Denver" } } },
+        { function: { name: "get_time", arguments: { tz: "MST" } } },
+      ],
+    });
+  });
+
+  it("converts a function result message into a tool message", () => {
+    const messages: IChatMessages = [
+      {
+        role: "function",
+        id: "call_1",
+        name: "get_weather",
+        content: "72 and sunny",
+      } as any,
+    ];
+
+    const result = ollamaPromptSanitize(messages);
+
+    expect(result[0]).toEqual({
+      role: "tool",
+      content: "72 and sunny",
+      tool_name: "get_weather",
+    });
+    expect(result[0]).not.toHaveProperty("id");
+    expect(result[0]).not.toHaveProperty("name");
+  });
+
+  it("omits tool_name when the function message has no name", () => {
+    const messages: IChatMessages = [
+      { role: "function", id: "call_1", content: "72 and sunny" } as any,
+    ];
+
+    expect(ollamaPromptSanitize(messages)[0]).toEqual({
+      role: "tool",
+      content: "72 and sunny",
+    });
+  });
+
+  it("keeps images on a tool result as the tool message's images", () => {
+    // ollama passes `images` on a tool message to the model: a vision model
+    // read the image color correctly from one (verified live, ollama 0.34.2)
+    const messages: IChatMessages = [
+      {
+        role: "function",
+        id: "call_1",
+        name: "get_snapshot",
+        content: [
+          { type: "text", text: "here is the snapshot" },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          },
+        ],
+      } as any,
+    ];
+
+    expect(ollamaPromptSanitize(messages)[0]).toEqual({
+      role: "tool",
+      tool_name: "get_snapshot",
+      content: "here is the snapshot",
+      images: ["iVBORw0KGgo="],
+    });
+  });
+
   it("throws for unrecognized content blocks", () => {
     const messages: IChatMessages = [
       {

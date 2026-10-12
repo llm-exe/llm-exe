@@ -387,6 +387,41 @@ describe("google configuration", () => {
     });
   });
 
+  describe("gemini-2.5 shorthands", () => {
+    it.each([
+      ["google.gemini-2.5-flash", "gemini-2.5-flash"],
+      ["google.gemini-2.5-flash-lite", "gemini-2.5-flash-lite"],
+      ["google.gemini-2.5-pro", "gemini-2.5-pro"],
+    ] as const)("%s should resolve to %s", (shorthand, expectedModel) => {
+      const config = google[shorthand] as Config;
+      expect(config).toBeDefined();
+      expect(config.options.model).toEqual({ default: expectedModel });
+      expect(config.mapBody.model).toEqual({
+        default: expectedModel,
+        key: "model",
+      });
+    });
+
+    it.each([
+      "google.gemini-2.5-flash",
+      "google.gemini-2.5-flash-lite",
+      "google.gemini-2.5-pro",
+    ] as const)("%s carries no deprecation warning", (shorthand) => {
+      // Google limits the 2.5 line to projects with prior usage, but says the
+      // models "are not deprecated" and lists no shutdown date (checked
+      // 2026-10-12). Warning on a model Google still serves is the false claim
+      // issue #762 was filed for.
+      expect((google[shorthand] as Config).deprecated).toBeUndefined();
+    });
+
+    it("should be based on googleChatV1 configuration", () => {
+      const config = google["google.gemini-2.5-pro"] as Config;
+      expect(config.endpoint).toEqual(googleChatV1.endpoint);
+      expect(config.method).toEqual(googleChatV1.method);
+      expect(config.headers).toEqual(googleChatV1.headers);
+    });
+  });
+
   describe("retired shorthands", () => {
     it.each([
       [
@@ -414,6 +449,28 @@ describe("google configuration", () => {
         expect(config.deprecated?.message).toContain(migrateTo);
       }
     );
+  });
+
+  describe("deprecation messages", () => {
+    const deprecated = Object.values(google as Record<string, Config>).filter(
+      (config) => config.deprecated
+    );
+
+    it("only cites dates for shutdowns Google has already carried out", () => {
+      expect(deprecated.length).toBeGreaterThan(0);
+      for (const config of deprecated) {
+        const message = config.deprecated!.message;
+        // Google's deprecation table publishes "earliest possible" shutdown
+        // dates, not commitments. Never promise a future shutdown date on
+        // their behalf — a date in a message means it already happened.
+        expect(message).not.toMatch(/will shut down on/);
+        if (/\d{4}-\d{2}-\d{2}/.test(message)) {
+          expect(message).toMatch(
+            /was shut down by Google on \d{4}-\d{2}-\d{2}/
+          );
+        }
+      }
+    });
   });
 
   describe("image content through mapBody", () => {

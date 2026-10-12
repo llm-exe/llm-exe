@@ -150,6 +150,7 @@ describe("anthropicPromptSanitize", () => {
       "claude-sonnet-5",
       "claude-haiku-5-5",
       "claude-fable-5",
+      "claude-fable-5-1",
     ])(
       "should warn on newer 4.6+/5-generation model %s",
       (model) => {

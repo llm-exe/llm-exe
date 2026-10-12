@@ -28,8 +28,9 @@ export function ollamaPromptSanitize(_messages: string | IChatMessages) {
     const message: Record<string, any> = { ..._message };
 
     if (message.role === "function") {
-      // ollama has no tool call ids, so `id` is dropped; the tool is named by
-      // `tool_name`, the field its /api/chat docs use for tool history
+      // the tool is named by `tool_name`, the field ollama's /api/chat docs use
+      // for tool history; `id` is dropped because ollama's `tool_call_id` is
+      // optional and its tool-history example does not send one
       message.role = "tool";
       if (typeof message.name === "string" && message.name) {
         message.tool_name = message.name;

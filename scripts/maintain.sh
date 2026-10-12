@@ -105,15 +105,14 @@ run_task_agent() {
   local exit_code=0
   run_claude "$prompt" || exit_code=$?
 
-  local log_status=0
-  clock_out "$log_file" "$exit_code" || log_status=$?
+  clock_out "$log_file" "$exit_code"
 
-  if [[ "$log_status" -eq 0 ]]; then
-    ok "$agent agent complete. Check for PR on branch: $branch"
-  elif [[ "$log_status" -eq 2 ]]; then
-    warn "$agent agent exited clean but wrote no findings — log is still all placeholders. Log: $log_file"
-  else
+  if [[ "$exit_code" -ne 0 ]]; then
     warn "$agent agent interrupted (exit $exit_code). Log: $log_file"
+  elif ! log_has_content "$log_file"; then
+    warn "$agent agent exited clean but wrote no findings; the log is still all placeholders. Log: $log_file"
+  else
+    ok "$agent agent complete. Check for PR on branch: $branch"
   fi
 }
 
@@ -151,15 +150,14 @@ run_persona() {
   local exit_code=0
   run_claude "$prompt" || exit_code=$?
 
-  local log_status=0
-  clock_out "$log_file" "$exit_code" || log_status=$?
+  clock_out "$log_file" "$exit_code"
 
-  if [[ "$log_status" -eq 0 ]]; then
-    ok "Persona $persona complete. Findings in: $log_file"
-  elif [[ "$log_status" -eq 2 ]]; then
-    warn "Persona $persona exited clean but reported no findings — log is still all placeholders. Log: $log_file"
-  else
+  if [[ "$exit_code" -ne 0 ]]; then
     warn "Persona $persona interrupted (exit $exit_code). Log: $log_file"
+  elif ! log_has_content "$log_file"; then
+    warn "Persona $persona exited clean but reported no findings; the log is still all placeholders. Log: $log_file"
+  else
+    ok "Persona $persona complete. Findings in: $log_file"
   fi
 }
 
@@ -186,15 +184,14 @@ run_curator() {
   local exit_code=0
   run_claude "$prompt" || exit_code=$?
 
-  local log_status=0
-  clock_out "$log_file" "$exit_code" || log_status=$?
+  clock_out "$log_file" "$exit_code"
 
-  if [[ "$log_status" -eq 0 ]]; then
-    ok "Curator complete. Review: $log_file"
-  elif [[ "$log_status" -eq 2 ]]; then
-    warn "Curator exited clean but wrote nothing — log is still all placeholders. Log: $log_file"
-  else
+  if [[ "$exit_code" -ne 0 ]]; then
     warn "Curator interrupted (exit $exit_code). Log: $log_file"
+  elif ! log_has_content "$log_file"; then
+    warn "Curator exited clean but wrote nothing; the log is still all placeholders. Log: $log_file"
+  else
+    ok "Curator complete. Review: $log_file"
   fi
 }
 
@@ -218,15 +215,14 @@ run_reviewer() {
   local exit_code=0
   run_claude "$prompt" || exit_code=$?
 
-  local log_status=0
-  clock_out "$log_file" "$exit_code" || log_status=$?
+  clock_out "$log_file" "$exit_code"
 
-  if [[ "$log_status" -eq 0 ]]; then
-    ok "Review of PR #$pr_number complete. Log: $log_file"
-  elif [[ "$log_status" -eq 2 ]]; then
-    warn "Review of PR #$pr_number exited clean but wrote nothing — log is still all placeholders. Log: $log_file"
-  else
+  if [[ "$exit_code" -ne 0 ]]; then
     warn "Review interrupted (exit $exit_code). Log: $log_file"
+  elif ! log_has_content "$log_file"; then
+    warn "Review of PR #$pr_number exited clean but wrote nothing; the log is still all placeholders. Log: $log_file"
+  else
+    ok "Review of PR #$pr_number complete. Log: $log_file"
   fi
 }
 

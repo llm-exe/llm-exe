@@ -207,32 +207,21 @@ describe("_utils.deprecationWarning", () => {
       expect(entry.deprecated).toBeUndefined();
     });
 
-    it("gemini-2.5-flash is not deprecated and emits no warning", () => {
-      // Verified live 2026-08-27: still served (200). Its shutdown date came
-      // from Google's "earliest possible" table, which is not a commitment,
-      // so warning on it was false. See issue #762.
-      const entry = (configs as any)["google.gemini-2.5-flash"] as Config<any>;
-      expect(entry).toBeDefined();
-      expect(entry.deprecated).toBeUndefined();
-      emitDeprecationWarning(entry);
-      expect(warningSpy).not.toHaveBeenCalled();
-    });
-
-    it("gemini-2.5-flash-lite and -pro still warn, without the fabricated dates", () => {
-      // Verified live 2026-08-27: both return 404 "no longer available to new
-      // users", so the warning is correct — only the invented shutdown dates
-      // were not. See issue #762.
+    it("the gemini-2.5 shorthands are not deprecated and emit no warning", () => {
+      // Google says the 2.5 models "are not deprecated" and lists no shutdown
+      // date (checked 2026-10-12). Limiting access to projects with prior
+      // usage is not a deprecation. See issue #762.
       for (const shorthand of [
+        "google.gemini-2.5-flash",
         "google.gemini-2.5-flash-lite",
         "google.gemini-2.5-pro",
       ] as const) {
         const entry = (configs as any)[shorthand] as Config<any>;
         expect(entry).toBeDefined();
-        expect(entry.deprecated).toBeDefined();
-        expect(entry.deprecated!.message).not.toMatch(/2026-06-17|2026-07-22/);
+        expect(entry.deprecated).toBeUndefined();
         emitDeprecationWarning(entry);
       }
-      expect(warningSpy).toHaveBeenCalledTimes(2);
+      expect(warningSpy).not.toHaveBeenCalled();
     });
 
     it("emits a distinct warning for each registry shorthand", () => {

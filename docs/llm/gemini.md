@@ -17,6 +17,13 @@ llm-exe ships typed shorthands for the most common Gemini models so you do not h
 | `google.gemini-3.5-flash-lite` | `gemini-3.5-flash-lite`  |
 | `google.gemini-3.6-flash`      | `gemini-3.6-flash`       |
 | `google.gemini-3.7-flash`      | `gemini-3.7-flash`       |
+| `google.gemini-2.5-flash`      | `gemini-2.5-flash`       |
+| `google.gemini-2.5-flash-lite` | `gemini-2.5-flash-lite`  |
+| `google.gemini-2.5-pro`        | `gemini-2.5-pro`         |
+
+::: warning Gemini 2.5 access
+Google limits the 2.5 models to projects that have used them before, so a new project gets a 404 from `google.gemini-2.5-flash`, `google.gemini-2.5-flash-lite`, and `google.gemini-2.5-pro`. Google says these models are not deprecated and will keep being served, so llm-exe doesn't warn on them. For a new project, use a 3.x shorthand.
+:::
 
 ### Deprecated shorthands
 
@@ -25,9 +32,6 @@ when used. Migrate to an active shorthand above.
 
 | Shorthand                      | Default model           | Status                                                     |
 | ------------------------------ | ----------------------- | ---------------------------------------------------------- |
-| `google.gemini-2.5-pro`        | `gemini-2.5-pro`        | Deprecated by Google — shuts down 2026-06-17                |
-| `google.gemini-2.5-flash`      | `gemini-2.5-flash`      | Deprecated by Google — shuts down 2026-06-17                |
-| `google.gemini-2.5-flash-lite` | `gemini-2.5-flash-lite` | Deprecated by Google — shuts down 2026-07-22                |
 | `google.gemini-2.0-flash`      | `gemini-2.0-flash`      | Shut down on 2026-06-01 — requests will fail at the API      |
 | `google.gemini-2.0-flash-lite` | `gemini-2.0-flash-lite` | Shut down on 2026-06-01 — requests will fail at the API      |
 | `google.gemini-1.5-pro`        | `gemini-1.5-pro`        | Shut down on 2025-09-29 — requests will fail at the API      |

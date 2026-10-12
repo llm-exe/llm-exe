@@ -123,33 +123,28 @@ export const google = {
     "gemini-3.7-flash"
   ),
 
-  // gemini-2.5-flash is superseded by the 3.x line but is still served, so it
-  // carries no warning. The "earliest possible" dates in Google's deprecation
-  // table are not commitments, and warning on a live model teaches users to
-  // ignore warnings. Verified live 2026-08-27: 200 OK.
+  // Google limits the 2.5 line to projects that have used it before (a new
+  // project gets a 404), but its deprecations page says these models "are not
+  // deprecated and will continue to be served until further notice" and lists
+  // no shutdown date (checked 2026-10-12). So none of them warn: the access
+  // limit applies to all three alike, and the "earliest possible" dates in
+  // that table are not commitments. See issue #762.
   "google.gemini-2.5-flash": withDefaultModel(
     googleGeminiChatV1,
     "gemini-2.5-flash"
+  ),
+  "google.gemini-2.5-flash-lite": withDefaultModel(
+    googleGeminiChatV1,
+    "gemini-2.5-flash-lite"
+  ),
+  "google.gemini-2.5-pro": withDefaultModel(
+    googleGeminiChatV1,
+    "gemini-2.5-pro"
   ),
 
   // Deprecated
   // Shut down by Google — kept only so existing code warns instead of
   // failing silently. Slated for removal in the next major release.
-  //
-  // gemini-2.5-flash-lite and gemini-2.5-pro stay deprecated: verified live
-  // 2026-08-27, both return 404 "no longer available to new users". Only the
-  // fabricated shutdown dates are removed; the warning itself is load-bearing,
-  // and the migration targets below are the ones Google's own 404 body names.
-  ...deprecateShorthand("google.gemini-2.5-flash-lite", {
-    config: withDefaultModel(googleGeminiChatV1, "gemini-2.5-flash-lite"),
-    message:
-      'Model "google.gemini-2.5-flash-lite" is no longer available to new users and returns 404 for projects without prior access. Migrate to "google.gemini-3.5-flash-lite".',
-  }),
-  ...deprecateShorthand("google.gemini-2.5-pro", {
-    config: withDefaultModel(googleGeminiChatV1, "gemini-2.5-pro"),
-    message:
-      'Model "google.gemini-2.5-pro" is no longer available to new users and returns 404 for projects without prior access. Google recommends the 3.x pro line; the nearest supported shorthand is "google.gemini-3.5-flash".',
-  }),
   ...deprecateShorthand("google.gemini-2.0-flash", {
     config: withDefaultModel(googleGeminiChatV1, "gemini-2.0-flash"),
     message:

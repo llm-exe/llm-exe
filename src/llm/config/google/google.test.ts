@@ -402,34 +402,17 @@ describe("google configuration", () => {
       });
     });
 
-    it("does not warn on gemini-2.5-flash, which is still served", () => {
-      // Verified live 2026-08-27: 200 OK. The "earliest possible" date in
-      // Google's deprecation table was not a commitment, and warning on a live
-      // model teaches users to ignore warnings. See issue #762.
-      expect(
-        (google["google.gemini-2.5-flash"] as Config).deprecated
-      ).toBeUndefined();
-    });
-
     it.each([
-      ["google.gemini-2.5-flash-lite", "google.gemini-3.5-flash-lite"],
-      ["google.gemini-2.5-pro", "google.gemini-3.5-flash"],
-    ] as const)(
-      "%s still warns, because it is no longer available to new users",
-      (shorthand, migrateTo) => {
-        // Verified live 2026-08-27: both return 404 "no longer available to
-        // new users". Only the fabricated shutdown dates were wrong; the
-        // warning itself is load-bearing, so it stays. See issue #762.
-        const deprecated = (google[shorthand] as Config).deprecated;
-        expect(deprecated).toBeDefined();
-        expect(deprecated!.shorthand).toBe(shorthand);
-        expect(deprecated!.message).toContain("no longer available to new users");
-        expect(deprecated!.message).toContain(migrateTo);
-        // the fabricated dates must not come back
-        expect(deprecated!.message).not.toContain("2026-06-17");
-        expect(deprecated!.message).not.toContain("2026-07-22");
-      }
-    );
+      "google.gemini-2.5-flash",
+      "google.gemini-2.5-flash-lite",
+      "google.gemini-2.5-pro",
+    ] as const)("%s carries no deprecation warning", (shorthand) => {
+      // Google limits the 2.5 line to projects with prior usage, but says the
+      // models "are not deprecated" and lists no shutdown date (checked
+      // 2026-10-12). Warning on a model Google still serves is the false claim
+      // issue #762 was filed for.
+      expect((google[shorthand] as Config).deprecated).toBeUndefined();
+    });
 
     it("should be based on googleChatV1 configuration", () => {
       const config = google["google.gemini-2.5-pro"] as Config;

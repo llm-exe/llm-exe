@@ -233,16 +233,18 @@
         "shorthand": "deepseek.chat.v1"
       },
       {
-        "id": "chat",
-        "shorthand": "deepseek.chat"
-      },
-      {
         "id": "v4-flash",
         "shorthand": "deepseek.v4-flash"
       },
       {
         "id": "v4-pro",
         "shorthand": "deepseek.v4-pro"
+      },
+      {
+        "id": "chat",
+        "shorthand": "deepseek.chat",
+        "deprecated": true,
+        "message": "Model \"deepseek.chat\" is deprecated: DeepSeek has dropped deepseek-chat from its docs. Migrate to \"deepseek.v4-flash\", but note it runs in thinking mode by default, so it spends reasoning tokens and needs a larger maxTokens than deepseek.chat did."
       }
     ]
   },

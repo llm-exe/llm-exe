@@ -540,7 +540,13 @@ export interface GenericLLm extends BaseLlmOptions {
   effort?: "minimal" | "low" | "medium" | "high";
 }
 
-export interface OpenAiRequest extends GenericLLm {
+export interface OpenAiRequest extends Omit<GenericLLm, "effort"> {
+  /**
+   * Maps to `reasoning_effort` on gpt-5 / o-series models. `"none"` is the
+   * only value under which gpt-5.1+ accept `temperature` / `topP`; the
+   * original gpt-5 / gpt-5-mini / gpt-5-nano reject `"none"`.
+   */
+  effort?: "none" | "minimal" | "low" | "medium" | "high";
   model: string;
   frequencyPenalty?: number;
   logitBias?: Record<string, any> | null;
@@ -646,6 +652,13 @@ export type AllLlm = {
 };
 
 export type AllUseLlmOptions = AllLlm & {
+  // OpenAI - GPT-6 family
+  "openai.gpt-6": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-6-astra": {
+    input: Omit<OpenAiRequest, "model">;
+  };
   // OpenAI - GPT-5 family
   "openai.gpt-5.6": {
     input: Omit<OpenAiRequest, "model">;

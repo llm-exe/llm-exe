@@ -162,6 +162,20 @@ jobs:
           source ./scripts/agents/config.sh
           clock_out "${{ steps.prompt.outputs.log_file }}" "${{ job.status == 'success' && '0' || '1' }}"
 
+      # The findings log lives in the runner's checkout and is never committed, so
+      # without this upload it dies with the job and the curator can only see the
+      # logs committed back in March. Uploaded after clock_out so Finished/Status
+      # are populated. Consumed by run-curator below — keep the name in sync with
+      # its download pattern.
+      - name: Upload persona findings log
+        if: always() && steps.prompt.outputs.log_file != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: persona-log-${{ matrix.persona }}-${{ github.run_id }}
+          path: ${{ steps.prompt.outputs.log_file }}
+          if-no-files-found: warn
+          retention-days: 7
+
   run-curator:
     needs: [gate, run-persona]
     if: always() && needs.gate.outputs.proceed == 'true' && needs.run-persona.result != 'cancelled'
@@ -196,6 +210,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Curate only the logs produced by this workflow run. Each artifact lands in
+      # its own persona-named subdirectory (no merge-multiple), so persona identity
+      # survives the handoff and a log can only ever be curated by the run that
+      # wrote it. No artifacts is a valid outcome — the prompt handles the no-op.
+      - name: Download persona findings logs
+        id: logs
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          pattern: persona-log-*-${{ github.run_id }}
+          path: /tmp/persona-logs
+
       - name: Build prompt
         id: prompt
         run: |
@@ -205,7 +231,20 @@ jobs:
           log_file=$(clock_in "curator" "$branch")
           echo "log_file=$log_file" >> "$GITHUB_OUTPUT"
 
-          prompt=$(sed -e "s|\$BRANCH|$branch|g" -e "s|\$LOG_FILE|$log_file|g" "./scripts/agents/prompts/curator.md")
+          persona_logs="/tmp/persona-logs"
+          mkdir -p "$persona_logs"
+          log_count=$(find "$persona_logs" -name '*.md' -type f | wc -l | tr -d ' ')
+          echo "::notice::Persona findings logs available to curator: $log_count"
+          if [ "$log_count" -eq 0 ]; then
+            echo "::warning::No persona findings logs from this run — curator will no-op."
+          fi
+
+          prompt=$(sed \
+            -e "s|\$BRANCH|$branch|g" \
+            -e "s|\$LOG_FILE|$log_file|g" \
+            -e "s|\$PERSONA_LOGS|$persona_logs|g" \
+            -e "s|\$PERSONA_LOG_COUNT|$log_count|g" \
+            "./scripts/agents/prompts/curator.md")
 
           deadline="$(date -u -d "+600 seconds" +%H:%M)"
           prompt="${prompt}

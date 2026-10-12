@@ -187,7 +187,7 @@ flowchart LR
     CCA[anthropics/claude-code-action@v1<br/>vars.ANTHROPIC_OPUS_LATEST or sonnet-4-6]:::rt
     CFG[scripts/agents/config.sh<br/>shared bash helpers]:::rt
     PROMPT[scripts/agents/prompts/*.md]:::rt
-    LOG[scripts/agents/logs/&lt;role&gt;/*.md<br/>committed run ledger]:::rt
+    LOG[scripts/agents/logs/&lt;role&gt;/*.md<br/>run ledger, committed by task agents only]:::rt
 
     APP --> MINT --> BOT
     BOT --> CCA
@@ -1006,7 +1006,7 @@ sequenceDiagram
 
 ### 10.3. Log feedback loop
 
-Every agent reads the last three logs of its role before writing the new one. Logs are committed to the repo because they must persist across runs.
+Every task agent reads the last three logs of its role before writing the new one, and commits its log with its PR because it must persist across runs. Persona and curator runs in `personas-run.yml` are the exception: they get no prior-run context and commit nothing (see 9.3).
 
 ```mermaid
 flowchart LR

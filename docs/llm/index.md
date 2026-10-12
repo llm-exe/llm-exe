@@ -91,3 +91,54 @@ You can create custom LLM configurations using `useLlmConfiguration`. This allow
 - Add support for new providers
 
 See the [Custom Provider Configuration](/llm/custom) guide for details.
+
+## Token usage and prompt caching
+
+Read normalized usage from `response.getResult().usage` after `llm.call()`. In an
+executor hook, use `execution.handlerOutput?.getResult().usage`:
+
+```ts
+executor.on("onSuccess", (execution) => {
+  const usage = execution.handlerOutput?.getResult().usage;
+  if (!usage) return;
+  console.log({
+    input: usage.input_tokens,
+    output: usage.output_tokens,
+    total: usage.total_tokens,
+    cacheRead: usage.cache_read_input_tokens,
+    cacheWrite: usage.cache_creation_input_tokens,
+  });
+});
+```
+
+`input_tokens` includes cached input. The optional cache counts are a breakdown
+of that input, so **do not add them to `input_tokens` or `total_tokens` again**.
+An absent cache field means the provider did not report that count; an explicit
+zero means it reported no tokens in that category. These counts describe tokens,
+not prices, and reporting them does not enable caching.
+
+| Provider | Cache reads | Cache writes | Input accounting |
+| --- | --- | --- | --- |
+| Anthropic, including Anthropic-format Bedrock responses | `usage.cache_read_input_tokens` | `usage.cache_creation_input_tokens` | Add reads and writes to the provider's uncached `input_tokens`. |
+| OpenAI and compatible Chat Completions | `usage.prompt_tokens_details.cached_tokens` | `usage.prompt_tokens_details.cache_write_tokens`, when reported | Preserve the provider totals, which already include cached input. |
+| xAI | `usage.prompt_tokens_details.cached_tokens` | Only when reported in the compatible response | Preserve provider totals. |
+| DeepSeek | `usage.prompt_cache_hit_tokens`, falling back to `usage.prompt_tokens_details.cached_tokens` | Not inferred from cache misses | Preserve provider totals. |
+| Gemini | `usageMetadata.cachedContentTokenCount` | Not reported by this adapter | Preserve provider totals. |
+
+Anthropic's optional `usage.cache_creation` also preserves
+`ephemeral_5m_input_tokens` and `ephemeral_1h_input_tokens`. These subdivide cache
+writes and must not be counted again. Bedrock header-only usage keeps the existing
+fallback totals without inventing cache counts. Other adapters leave cache fields
+absent when they do not report them.
+
+For cached Anthropic requests, this corrects earlier llm-exe releases that
+reported only uncached input and consequently understated total tokens. OpenAI,
+xAI, DeepSeek, and Gemini totals are unchanged. Provider totals can include other
+categories (for example, Gemini thoughts); the adapter preserves those totals.
+
+Provider references:
+[Anthropic accounting](https://platform.claude.com/docs/en/build-with-claude/prompt-caching#tracking-cache-performance),
+[OpenAI usage fields](https://developers.openai.com/api/reference/resources/completions),
+[xAI cache usage](https://docs.x.ai/developers/advanced-api-usage/prompt-caching/usage-and-pricing),
+[DeepSeek usage fields](https://api-docs.deepseek.com/api/create-chat-completion/),
+and [Gemini UsageMetadata](https://ai.google.dev/api/generate-content#UsageMetadata).

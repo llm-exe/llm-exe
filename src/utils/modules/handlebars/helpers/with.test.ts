@@ -7,7 +7,7 @@ describe('withFn', () => {
             fn: jest.fn()
         };
 
-        withFn.call({}, options, context);
+        withFn.call({}, context, options);
 
         expect(options.fn).toHaveBeenCalledWith(context);
     });
@@ -19,7 +19,7 @@ describe('withFn', () => {
             fn: jest.fn().mockReturnValue(expectedResult)
         };
 
-        const result = withFn.call({}, options, context);
+        const result = withFn.call({}, context, options);
 
         expect(result).toBe(expectedResult);
     });

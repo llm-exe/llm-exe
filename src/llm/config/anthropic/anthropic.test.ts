@@ -78,6 +78,10 @@ describe("anthropic config", () => {
         ["claude-opus-4-8", "medium", "medium"],
         ["claude-sonnet-5", "high", "high"],
         ["claude-sonnet-5", "low", "low"],
+        ["claude-haiku-5-5", "high", "high"],
+        ["claude-haiku-5-5", "medium", "medium"],
+        ["claude-haiku-5-5", "low", "low"],
+        ["claude-haiku-5-5", "minimal", "low"],
         ["claude-fable-5", "high", "high"],
         ["claude-fable-5", "medium", "medium"],
       ] as const)(
@@ -107,7 +111,12 @@ describe("anthropic config", () => {
         // start with "high" on Opus 5 and warns against carrying the 4.x
         // escalation over, so "high" must remain reachable. Do not add opus-5
         // back to the xhigh list above.
-        for (const model of ["claude-opus-5", "claude-sonnet-5", "claude-fable-5"]) {
+        for (const model of [
+          "claude-opus-5",
+          "claude-sonnet-5",
+          "claude-haiku-5-5",
+          "claude-fable-5",
+        ]) {
           const output: Record<string, any> = {};
           expect(effortTransform("high", { model }, output)).toBe("high");
         }
@@ -189,7 +198,7 @@ describe("anthropic config", () => {
       });
 
       it("does not apply the floor to non-escalated adaptive models (high stays high)", () => {
-        for (const model of ["claude-sonnet-5", "claude-fable-5"]) {
+        for (const model of ["claude-sonnet-5", "claude-haiku-5-5", "claude-fable-5"]) {
           const output: Record<string, any> = { max_tokens: 4096 };
           const result = effortTransform("high", stateWith(model, ["effort"]), output);
           expect(result).toBe("high");
@@ -521,6 +530,28 @@ describe("anthropic config", () => {
       expect(body.top_k).toBeUndefined();
     });
 
+    it("drops temperature, top_p, and top_k for claude-haiku-5-5", () => {
+      const body = buildBody({
+        model: "claude-haiku-5-5",
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+      });
+      expect(body.temperature).toBeUndefined();
+      expect(body.top_p).toBeUndefined();
+      expect(body.top_k).toBeUndefined();
+    });
+
+    it("drops temperature 0 for claude-haiku-5-5 even without effort (any non-1 value is a 400)", () => {
+      // Regression: before haiku-5-5 was in the reject list, a deterministic
+      // `temperature: 0` was forwarded verbatim and the request 400'd. 0 is
+      // falsy, so this also guards against a truthiness check sneaking in.
+      const body = buildBody({ model: "claude-haiku-5-5", temperature: 0 });
+      expect(body.temperature).toBeUndefined();
+      expect(body.thinking).toBeUndefined();
+      expect(body.output_config).toBeUndefined();
+    });
+
     it("drops top_p but keeps temperature on Claude 4.x when both are set", () => {
       for (const model of [
         "claude-opus-4-6",
@@ -642,6 +673,27 @@ describe("anthropic config", () => {
 
       expect(outgoingBody.temperature).toBe(0.5);
       expect(outgoingBody.top_p).toBe(0.9);
+    });
+
+    it("drops temperature 0 and maps effort for claude-haiku-5-5 via the options path", async () => {
+      // The platform fallback shape: options-based model with a deterministic
+      // temperature. Haiku 5.5 rejects any temperature other than 1, so it must
+      // be dropped, and effort must reach the body as adaptive thinking.
+      const llm = useLlm("anthropic.chat.v1", {
+        model: "claude-haiku-5-5",
+        temperature: 0,
+        topK: 40,
+        effort: "low",
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.model).toBe("claude-haiku-5-5");
+      expect(outgoingBody.temperature).toBeUndefined();
+      expect(outgoingBody.top_p).toBeUndefined();
+      expect(outgoingBody.top_k).toBeUndefined();
+      expect(outgoingBody.thinking).toEqual({ type: "adaptive" });
+      expect(outgoingBody.output_config).toEqual({ effort: "low" });
     });
 
     it.each([

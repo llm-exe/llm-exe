@@ -1,3 +1,4 @@
+import { getChatCompletionUsage } from "./_utils/getChatCompletionUsage";
 import {
   XAiResponse,
   OutputOpenAIChatChoice,
@@ -43,11 +44,7 @@ export function OutputXAIChat(result: XAiResponse, _config?: Config<any>) {
   const content = formatResult(_content);
   const options = formatOptions(_options, formatResult);
 
-  const usage = {
-    output_tokens: result?.usage?.completion_tokens,
-    input_tokens: result?.usage?.prompt_tokens,
-    total_tokens: result?.usage?.total_tokens,
-  };
+  const usage = getChatCompletionUsage(result?.usage);
 
   return {
     id,

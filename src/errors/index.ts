@@ -44,6 +44,7 @@ export type {
   ParserInvalidTypeContext,
   ParserSchemaValidationContext,
   ParserParseFailedContext,
+  ResponseErrorContext,
   PromptInputContext,
   PromptMessagesContext,
   PromptMissingTemplateVariableContext,

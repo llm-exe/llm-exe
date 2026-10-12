@@ -394,6 +394,41 @@ describe("openaiPromptMessageCallback", () => {
       });
     });
 
+    it("throws when a tool result carries an image block", () => {
+      const message = {
+        role: "function",
+        id: "call_1",
+        name: "get_snapshot",
+        content: [
+          { type: "text", text: "here it is" },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          },
+        ],
+      };
+
+      expect(() => openaiPromptMessageCallback(message)).toThrow(
+        "Image content is not supported in tool results by this provider"
+      );
+    });
+
+    it("passes a text-only tool result block array through", () => {
+      const message = {
+        role: "function",
+        id: "call_1",
+        content: [{ type: "text", text: "72 and sunny" }],
+      };
+
+      const result = openaiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "tool",
+        tool_call_id: "call_1",
+        content: [{ type: "text", text: "72 and sunny" }],
+      });
+    });
+
     it("leaves non-image blocks in arrays untouched", () => {
       const message = {
         role: "user",

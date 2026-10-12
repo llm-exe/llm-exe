@@ -63,11 +63,19 @@ export class Dialogue extends BaseStateItem<IChatMessages> {
     return this;
   }
 
-  setToolMessage(content: string, name: string, id?: string) {
+  setToolMessage(
+    content: string | IChatMessageContentDetailed[],
+    name: string,
+    id?: string
+  ) {
     return this.setFunctionMessage(content, name, id);
   }
 
-  setFunctionMessage(content: string, name: string, id?: string) {
+  setFunctionMessage(
+    content: string | IChatMessageContentDetailed[],
+    name: string,
+    id?: string
+  ) {
     if (content) {
       this.value.push({
         role: "function",
@@ -172,7 +180,11 @@ export class Dialogue extends BaseStateItem<IChatMessages> {
     return this.setSystemMessage(content);
   }
 
-  addToolMessage(content: string, name: string, id?: string) {
+  addToolMessage(
+    content: string | IChatMessageContentDetailed[],
+    name: string,
+    id?: string
+  ) {
     return this.setToolMessage(content, name, id);
   }
 
@@ -180,7 +192,11 @@ export class Dialogue extends BaseStateItem<IChatMessages> {
     return this.setToolCallMessage(input);
   }
 
-  addFunctionMessage(content: string, name: string, id?: string) {
+  addFunctionMessage(
+    content: string | IChatMessageContentDetailed[],
+    name: string,
+    id?: string
+  ) {
     return this.setFunctionMessage(content, name, id);
   }
 

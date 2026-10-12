@@ -23,6 +23,28 @@ describe("replaceTemplateString", () => {
       replaceTemplateString("hello {{helperFromConfig}}", {}, { helpers })
     ).toBe("hello from function");
   });
+  it("replaceTemplateString renders {{#with}} block on the sync path", () => {
+    expect(
+      replaceTemplateString("{{#with u}}{{email}}{{/with}}", {
+        u: { email: "a@b.c" },
+      })
+    ).toBe("a@b.c");
+  });
+  it("replaceTemplateString renders other block helpers on the sync path", () => {
+    expect(
+      replaceTemplateString("{{#if active}}on{{/if}}", { active: true })
+    ).toBe("on");
+    expect(
+      replaceTemplateString("{{#each items}}{{this}}{{/each}}", {
+        items: ["a", "b"],
+      })
+    ).toBe("ab");
+    expect(
+      replaceTemplateString("{{#unless active}}off{{/unless}}", {
+        active: false,
+      })
+    ).toBe("off");
+  });
   it("replaceTemplateString replaces template with custom partial", async () => {
     const partials = [
       {

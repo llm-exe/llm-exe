@@ -22,7 +22,10 @@ import { LlmExeError } from "@/errors";
 export const PROVIDED_OPTION_KEYS = Symbol("llm-exe.providedOptionKeys");
 
 export function stateFromOptions(options: Partial<GenericLLm>, config: Config) {
-  const optionsKeys = Object.keys(config.options) as (keyof typeof options)[];
+  // extraBody is consumed by LLM request assembly, outside provider mappings.
+  const optionsKeys = Array.from(
+    new Set([...Object.keys(config.options), "extraBody"])
+  ) as (keyof typeof options)[];
 
   // Snapshot provenance from the raw options BEFORE the default-fill loop below
   // overwrites undefined values: a declared key counts as caller-provided only

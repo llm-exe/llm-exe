@@ -69,7 +69,8 @@ describe("useLlm", () => {
     expect(useLlm_call).toHaveBeenCalledWith(
       expect.anything(),
       mockMessages,
-      undefined
+      undefined,
+      mockConfig
     );
   });
 
@@ -87,7 +88,8 @@ describe("useLlm", () => {
     expect(useLlm_call).toHaveBeenCalledWith(
       expect.anything(),
       mockMessages,
-      undefined
+      undefined,
+      mockConfig
     );
   });
 });
@@ -185,7 +187,8 @@ describe("useLlmConfiguration", () => {
     expect(useLlm_call).toHaveBeenCalledWith(
       expect.anything(),
       mockMessages,
-      undefined
+      undefined,
+      mockConfig
     );
   });
 });

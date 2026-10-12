@@ -2,6 +2,7 @@ import { IChatMessage } from "@/types";
 import { LlmExeError } from "@/errors";
 import { maybeParseJSON } from "@/utils";
 import {
+  isContentBlockArray,
   isImageUrlContentBlock,
   parseImageUrl,
 } from "../_utils/imageContent";
@@ -46,6 +47,63 @@ function googleGeminiContentBlockToPart(block: any) {
   return block;
 }
 
+/**
+ * `functionResponse.response` is a Struct, so it can only carry text. Media
+ * rides alongside it in `functionResponse.parts` — an ordered
+ * `FunctionResponsePart[]` whose only member is `inlineData`
+ * (`{ mimeType, data }`). Text blocks flatten into `response.result` (what the
+ * non-function branch does for every other role); image blocks become inline
+ * parts.
+ *
+ * Only content-block arrays are rewritten. An arbitrary JSON array is valid,
+ * idiomatic structured tool output for a Struct, so it keeps landing verbatim
+ * in `response.result`.
+ */
+function googleGeminiFunctionResponse(name: string, content: any) {
+  if (!isContentBlockArray(content)) {
+    return { name, response: { result: content } };
+  }
+
+  const text: string[] = [];
+  const parts: { inlineData: { mimeType: string; data: string } }[] = [];
+
+  for (const block of content as any[]) {
+    if (isImageUrlContentBlock(block)) {
+      const parsed = parseImageUrl(block.image_url.url, {
+        operation: "googleGeminiPromptMessageCallback",
+        provider: "google.chat",
+      });
+      // FunctionResponsePart has no fileData member — inline bytes only.
+      if (parsed.kind !== "base64") {
+        throw new LlmExeError(
+          "Gemini tool results can only carry inline image data",
+          {
+            code: "prompt.invalid_messages",
+            context: {
+              operation: "googleGeminiPromptMessageCallback",
+              provider: "google.chat",
+              received: parsed.url,
+              expected: "a base64 data: URI",
+              resolution:
+                "functionResponse.parts only accepts inlineData. Pass the image as a data: URI (data:image/png;base64,...), or send it as a separate user message where file URIs are supported.",
+            },
+          }
+        );
+      }
+      parts.push({
+        inlineData: { mimeType: parsed.mediaType, data: parsed.data },
+      });
+      continue;
+    }
+    // isContentBlockArray admits only text or image blocks, and images are
+    // handled above, so anything reaching here is a text block.
+    text.push(block.text);
+  }
+
+  const response = { name, response: { result: text.join("\n") } };
+  return parts.length ? { ...response, parts } : response;
+}
+
 export function googleGeminiPromptMessageCallback(_message: IChatMessage) {
   /// TODO: Type this properly, its a Gemini message
   let message: Record<string, any> = { ..._message };
@@ -78,12 +136,10 @@ export function googleGeminiPromptMessageCallback(_message: IChatMessage) {
   if (message.role === "function") {
     role = "user";
     parts.push({
-      functionResponse: {
-        name: message.name,
-        response: {
-          result: message.content,
-        },
-      },
+      functionResponse: googleGeminiFunctionResponse(
+        message.name,
+        message.content
+      ),
     });
 
     delete message.id;

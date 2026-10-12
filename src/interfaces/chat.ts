@@ -57,7 +57,7 @@ export interface IChatUserMessage extends IChatMessageBase {
 export interface IChatFunctionMessage extends IChatMessageBase {
   id?: string;
   role: Extract<IChatMessageRole, "function">;
-  content: string;
+  content: string | IChatMessageContentDetailed[];
   name: string;
 }
 

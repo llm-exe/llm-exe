@@ -556,6 +556,22 @@ describe("llm-exe:state/Dialogue", () => {
       expect(history[0].id).toEqual("tool-1");
     });
 
+    it("addToolMessage accepts content blocks", () => {
+      const dialogue = new Dialogue("main");
+      const content = [
+        { type: "text", text: "here it is" },
+        {
+          type: "image_url",
+          image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+        },
+      ];
+      dialogue.addToolMessage(content, "myTool", "tool-1");
+      const history = dialogue.getHistory();
+      expect(history).toHaveLength(1);
+      assert(history[0].role === "function");
+      expect(history[0].content).toEqual(content);
+    });
+
     it("addToolCallMessage delegates to setToolCallMessage", () => {
       const dialogue = new Dialogue("main");
       dialogue.addToolCallMessage({
@@ -578,6 +594,22 @@ describe("llm-exe:state/Dialogue", () => {
       expect(history[0].role).toEqual("function");
       assert(history[0].role === "function");
       expect(history[0].name).toEqual("fn1");
+    });
+
+    it("addFunctionMessage accepts content blocks", () => {
+      const dialogue = new Dialogue("main");
+      const content = [
+        { type: "text", text: "result" },
+        {
+          type: "image_url",
+          image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+        },
+      ];
+      dialogue.addFunctionMessage(content, "fn1", "fn-1");
+      const history = dialogue.getHistory();
+      expect(history).toHaveLength(1);
+      assert(history[0].role === "function");
+      expect(history[0].content).toEqual(content);
     });
 
     it("addFunctionCallMessage delegates to setFunctionCallMessage", () => {

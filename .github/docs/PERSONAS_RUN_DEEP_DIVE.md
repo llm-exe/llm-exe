@@ -57,7 +57,7 @@ flowchart LR
         host["scripts/agents/prompts/_persona.md\n(host template)"]:::file
         per["scripts/agents/prompts/personas/&lt;name&gt;.md\n(personality block)"]:::file
         cur["scripts/agents/prompts/curator.md"]:::file
-        plog["scripts/agents/logs/personas/&lt;name&gt;/*.md\n(written by each persona)"]:::file
+        plog["scripts/agents/logs/&lt;name&gt;/*.md\n(written by each persona in its runner,\nnever committed; local runs use logs/personas/, #841)"]:::file
         art["artifact persona-log-&lt;persona&gt;-&lt;run_id&gt;\n(staged as &lt;persona&gt;/&lt;file&gt;.md, 7-day retention)"]:::file
         pdl["/tmp/persona-logs/&lt;persona&gt;/*.md\n(curator's only findings input)"]:::file
         clog["scripts/agents/logs/curator/*.md\n(curator decisions)"]:::file
@@ -71,11 +71,11 @@ flowchart LR
     end
 
     subgraph O["Outputs"]
-        b1["branch agent/&lt;persona&gt;/&lt;date&gt;\n(one per persona run)"]:::out
-        b2["branch agent/curator/&lt;date&gt;"]:::out
+        b1["branch agent/&lt;persona&gt;/&lt;date&gt;\n(local to the runner, never pushed)"]:::out
+        b2["branch agent/curator/&lt;date&gt;\n(local unless the curator pushes it itself, as in #494)"]:::out
         iss["GitHub issues\n(curator only, deduped)"]:::out
         cmt["comments on existing issues\n(curator when dup found)"]:::out
-        log["committed log files\n(both personas and curator)"]:::out
+        log["no committed logs\n(persona logs leave only as artifacts;\nno step commits or uploads the curator log)"]:::out
     end
 
     subgraph D["Downstream workflows"]
@@ -311,7 +311,7 @@ sequenceDiagram
         RP->>FS: checkout fetch-depth 0
         RP->>C: source config.sh
         C->>FS: create_agent_branch agent/(persona)/(date)
-        C->>FS: clock_in writes skeleton log under logs/personas/(name)/
+        C->>FS: clock_in writes skeleton log under logs/(name)/
         RP->>FS: read _persona.md (host)
         RP->>FS: read personas/(name).md (block)
         RP->>FS: sed sub LOG_FILE then bash sub PERSONA
@@ -345,7 +345,7 @@ sequenceDiagram
     CR->>C: clock_out (always)
 ```
 
-Source: [.github/workflows/personas-run.yml](../workflows/personas-run.yml) lines 72-186 (run-persona), 187-289 (run-curator).
+Source: [.github/workflows/personas-run.yml](../workflows/personas-run.yml) lines 72-185 (run-persona), 187-289 (run-curator).
 
 The artifact hop is the whole handoff: a findings log lives in the runner's checkout and is never committed, so without the upload it dies with the job. Staging it as `(persona)/(file).md` before upload means `merge-multiple: true` on the download puts every persona's log straight under `/tmp/persona-logs` with its persona name intact, at any persona count. Without `merge-multiple`, `download-artifact` only adds a per-artifact directory when two or more artifacts match, so the layout the curator prompt describes would change with `count`.
 
@@ -385,10 +385,10 @@ flowchart TB
     H4 --> R4
 
     subgraph Logs["Per-persona logs (runner checkout, never committed)"]
-        L1["logs/personas/beginner/(ts).md"]:::log
-        L2["logs/personas/harsh-critic/(ts).md"]:::log
-        L3["logs/personas/speed-runner/(ts).md"]:::log
-        L4["logs/personas/enterprise/(ts).md"]:::log
+        L1["logs/beginner/(ts).md"]:::log
+        L2["logs/harsh-critic/(ts).md"]:::log
+        L3["logs/speed-runner/(ts).md"]:::log
+        L4["logs/enterprise/(ts).md"]:::log
     end
 
     R1 --> L1
@@ -478,8 +478,8 @@ flowchart LR
     end
 
     subgraph both["READ + WRITE"]
-        b1["scripts/agents/logs/personas/(name)/*.md\nwritten by persona, reaches the curator only as an artifact copy"]:::both
-        b2["scripts/agents/logs/curator/*.md\nwritten by curator, read by future curator runs (via Prior Runs convention)"]:::both
+        b1["scripts/agents/logs/(name)/*.md\nwritten by persona, reaches the curator only as an artifact copy"]:::both
+        b2["scripts/agents/logs/curator/*.md\nwritten by curator in its runner; not committed or uploaded,\nand this workflow passes no Prior Runs context"]:::both
     end
 
     r3 --> b1
@@ -522,7 +522,7 @@ flowchart LR
     subgraph During["While the LLM runs (persona OR curator)"]
         d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)\ncost meter: --max-turns 80"]:::llm
         d2["api.github.com (gh CLI)\nauth: bot token\nused by: curator only\ncalls: gh issue list, gh search issues, gh issue create, gh issue comment"]:::gh
-        d3["origin remote (git push)\nauth: bot token\nused by: both (branch push for log commits)"]:::gh
+        d3["origin remote\nauth: bot token\nused by: both, git pull in create_agent_branch\nno step pushes; the token can, and the curator did once (#494)"]:::gh
     end
 
     c1 --> c2
@@ -559,8 +559,8 @@ flowchart LR
 
     PR["personas-run.yml\nsession completes"]:::src
 
-    PR --> O1["per-persona log files\nlogs/personas/(name)/(ts).md"]:::out
-    PR --> O2["curator log file\nlogs/curator/(ts).md"]:::out
+    PR --> O1["per-persona log files\nlogs/(name)/(ts).md in each runner,\nkept 7 days as persona-log artifacts"]:::out
+    PR --> O2["curator log file\nlogs/curator/(ts).md, runner only"]:::out
     PR --> O3["GitHub issues created\n(by curator, deduped)"]:::out
     PR --> O4["comments on existing issues\n(when curator dedupes)"]:::out
 
@@ -579,7 +579,7 @@ flowchart LR
 
 Why personas do not file issues directly: every persona is a biased observer by design (the beginner over-reports, the harsh-critic over-criticizes). The curator is the single quality gate that turns four biased streams into one signal stream. See [curator.md](../../scripts/agents/prompts/curator.md) section "Your bar for PROMOTE".
 
-Why curator log lives separately from persona logs: the digest workflow can count personas-vs-curator activity independently, and the curator's dedup decisions are auditable from one place.
+Why curator log lives separately from persona logs: the curator's dedup decisions are meant to be auditable from one place (curator.md step 5e). Neither log is committed, though, so that audit trail ends with the run, and the weekly digest, which reads only committed logs under `scripts/agents/logs/`, sees neither.
 
 [Back to top](#navigate)
 
@@ -730,7 +730,7 @@ flowchart LR
     K14["Gate caps"]:::k --- V14["bot PRs &lt;= 20, open issues &lt;= 40"]:::v
     K15["Persona branches"]:::k --- V15["agent/&lt;persona&gt;/&lt;YYYY-MM-DD&gt;"]:::v
     K16["Curator branch"]:::k --- V16["agent/curator/&lt;YYYY-MM-DD&gt;"]:::v
-    K17["Persona logs"]:::k --- V17["scripts/agents/logs/personas/&lt;name&gt;/&lt;ts&gt;.md"]:::v
+    K17["Persona logs"]:::k --- V17["scripts/agents/logs/&lt;name&gt;/&lt;ts&gt;.md (CI, never committed; local: logs/personas/&lt;name&gt;/, #841)"]:::v
     K18["Curator log"]:::k --- V18["scripts/agents/logs/curator/&lt;ts&gt;.md"]:::v
     K19["Host template"]:::k --- V19["scripts/agents/prompts/_persona.md"]:::v
     K20["Persona blocks"]:::k --- V20["beginner, harsh-critic, speed-runner, enterprise"]:::v

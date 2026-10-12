@@ -884,6 +884,12 @@ export type AllUseLlmOptions = AllLlm & {
   "ollama.gpt-oss": {
     input: GenericLLm;
   };
+  "ollama.glm-5.3": {
+    input: GenericLLm;
+  };
+  "ollama.glm-5.3-flash": {
+    input: GenericLLm;
+  };
 
   // Deepseek
   "deepseek.chat": {

@@ -28,6 +28,10 @@ const llm = useLlm("ollama.deepseek-r1", {
 
 <ImportModelNames provider="ollama" />
 
+::: warning Cloud models
+`ollama.glm-5.3` and `ollama.glm-5.3-flash` are Ollama cloud models (they resolve to the `:cloud` tag, which is the only tag Ollama publishes for them). They still go through your local Ollama daemon, but the daemon has to be signed in to ollama.com first: run `ollama signin`. Without that, requests fail even though the model name is valid.
+:::
+
 ## Configuration
 
 By default, llm-exe connects to `http://localhost:11434`. To use a different Ollama endpoint, set the `OLLAMA_ENDPOINT` environment variable.

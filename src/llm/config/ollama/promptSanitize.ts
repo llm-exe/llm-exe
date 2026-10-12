@@ -13,9 +13,11 @@ import {
  * `images`.
  *
  * Tool traffic is converted too: llm-exe's internal `function_call` becomes
- * ollama's `tool_calls: [{ function: { name, arguments } }]` — with
- * `arguments` as an object, not a JSON string — and `role: "function"`
- * becomes `role: "tool"`.
+ * ollama's `tool_calls: [{ function: { name, arguments } }]` (with
+ * `arguments` as an object, not a JSON string), and `role: "function"`
+ * becomes `role: "tool"` with the tool named by `tool_name`. Images on a tool
+ * result go in `images` like any other message: ollama passes them to the
+ * model (verified live on ollama 0.34.2 with a vision model).
  */
 export function ollamaPromptSanitize(_messages: string | IChatMessages) {
   if (typeof _messages === "string") {
@@ -26,9 +28,12 @@ export function ollamaPromptSanitize(_messages: string | IChatMessages) {
     const message: Record<string, any> = { ..._message };
 
     if (message.role === "function") {
-      // ollama tool results are plain `role: "tool"` messages with the
-      // stringified result as content — no id/name on the wire
+      // ollama has no tool call ids, so `id` is dropped; the tool is named by
+      // `tool_name`, the field its /api/chat docs use for tool history
       message.role = "tool";
+      if (typeof message.name === "string" && message.name) {
+        message.tool_name = message.name;
+      }
       delete message.id;
       delete message.name;
     }

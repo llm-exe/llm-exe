@@ -365,7 +365,7 @@ The minimal tree, annotated with why each path exists. A replica must reproduce 
 │   ├── generate-llms-txt.sh              docs helper (out of scope for automation)
 │   └── agents/
 │       ├── README.md                     maintainer-facing summary of agent system
-│       ├── config.sh                     bash library sourced by every agent workflow; defines DEFAULT_BRANCH, DATE_STAMP, AGENT_TIMEOUT, LOG_PLACEHOLDER, color helpers, create_agent_branch, clock_in, log_has_content, clock_out, recent_logs, run_claude, check_prerequisites
+│       ├── config.sh                     bash library sourced by every agent workflow; defines DEFAULT_BRANCH, DATE_STAMP, AGENT_TIMEOUT, LOG_PLACEHOLDER, color helpers, create_agent_branch, clock_in, log_has_content, clock_out, recent_logs, stage_persona_log, count_persona_logs, render_curator_prompt, run_claude, check_prerequisites
 │       ├── prompts/
 │       │   ├── docs.md                   docs agent prompt template (uses $BRANCH and $LOG_FILE substitutions)
 │       │   ├── tester.md                 tester prompt
@@ -582,7 +582,7 @@ flowchart TB
     end
 
     subgraph gatekeepers["Gatekeepers"]
-        curator["curator\nreads persona logs\npromotes signal, files issues"]:::meta
+        curator["curator\nreads this run's persona logs\n(artifact handoff, not the repo)\npromotes signal, files issues"]:::meta
         reviewer["reviewer\nreviews development PRs\napprove, request changes, or close"]:::meta
     end
 
@@ -612,7 +612,7 @@ flowchart TB
 | coder | `coder-run.yml` cron `0 8 * * 1,4` or dispatch; one job per unclaimed issue, matrix max 5, `max-parallel: 1` | The assigned issue body, src/**, *.test.ts, CLAUDE.md known issues | src/**/*.ts, *.test.ts, log file | One PR per issue titled `fix: …` or `feat: …`, body includes `Fixes #N`. Posts a plan comment on the issue before coding. |
 | scout | `agent-run.yml` cron `0 11 * * 1` or dispatch | src/llm/**, provider documentation URLs, `/tmp/all-issues.json` | Issues only; comments on existing issues when duplicate detected | Zero or more issues with labels `enhancement`, `bug`, `needs-discussion`, or `breaking`. Tags `@gregreindel` for breaking or imminent deprecations. |
 | beginner / harsh-critic / speed-runner / enterprise | `personas-run.yml` (random subset by dispatch, all four on cron Sunday) | CLAUDE.md, README.md, docs/, examples/ | log file only | A persona log file with categorized findings (`genuine-bug`, `confusing`, `rough-edge`, `suggestion`). |
-| curator | `personas-run.yml` final job (waits for persona matrix) or local `maintain.sh curator` | All persona logs, `/tmp/all-issues.json`, CLAUDE.md | Issues plus comments on existing issues; updates own log | Triaged issues with labels `bug`, `documentation`, `enhancement`, `testing`. |
+| curator | `personas-run.yml` final job (waits for persona matrix) or local `maintain.sh curator <log.md>...` | Only this run's persona logs, staged as `<persona>/<file>.md` under `$PERSONA_LOGS`, plus `/tmp/all-issues.json` and CLAUDE.md | Issues plus comments on existing issues; updates own log | Triaged issues with labels `bug`, `documentation`, `enhancement`, `testing`. |
 | reviewer | `agent-review-pr.yml` on `opened` PRs targeting `development`, or via `workflow_dispatch` (dispatched by bot-respond for re-review) | The PR diff, the PR description, CLAUDE.md | A single `gh pr review` call (approve, request-changes, or close) plus own log; decide job auto-approves when tests pass and verdict is approve | Verdict on the PR. Does not push commits. |
 | bot-respond | `bot-respond.yml` on issue or PR comment mentioning `@llm-exe-bot` from OWNER/MEMBER/COLLABORATOR | The comment body and any referenced PR diff | Comments on the issue or PR; can dispatch `agent-review-pr.yml` for review requests; if asked to fix, commits and pushes to the existing PR branch (never creates a new PR) | A reply comment; optionally code commits on the existing branch; optionally a dispatched review pipeline. |
 | digest | `agent-digest.yml` Monday cron | Last 7 days of issues, last 20 PRs, recent agent logs, last 3 releases | `/tmp/digest.html` only | HTML body posted via Microsoft Graph to `MARKETING_EMAILS`. |
@@ -699,8 +699,9 @@ Four jobs: `gate`, `pick-personas`, `run-persona` (matrix), `run-curator`.
 | Triggers | `workflow_dispatch` with `count` choice (`1|2|3|4`, default `2`); cron `0 6 * * 0` (Sunday) |
 | Selection | `pick-personas` shuffles `beginner harsh-critic speed-runner enterprise` and takes `count` of them. Output is a JSON array consumed by the matrix. |
 | Persona matrix | `max-parallel: 1`, 20-minute timeout per leg, `vars.ANTHROPIC_OPUS_LATEST` or `claude-opus-4-6`, 80 turns. Each persona writes only its own log file; it does not commit code. After the agent step, the assembled `/tmp/agent-prompt.txt` is uploaded as an artifact (`agent-prompt-persona-<name>-<run_id>`, 7-day retention) for debugging. |
+| Findings handoff | After `clock_out`, `stage_persona_log` copies the findings log to `/tmp/persona-log-upload/<persona>/<file>.md` and that directory is uploaded as `persona-log-<persona>-<run_id>` (7-day retention, `if-no-files-found: warn`). The log lives in the runner checkout and is never committed, so this artifact is the only way it reaches the curator. |
 | Curator turns | 80 (matches the persona budget). |
-| Curator job | Depends on `gate` and `run-persona`. Runs even if some persona matrix legs failed, as long as the matrix was not cancelled: `if: always() && needs.gate.outputs.proceed == 'true' && needs.run-persona.result != 'cancelled'`. The curator reads `scripts/agents/logs/personas/*/` and files GitHub issues. |
+| Curator job | Depends on `gate` and `run-persona`. Runs even if some persona matrix legs failed, as long as the matrix was not cancelled: `if: always() && needs.gate.outputs.proceed == 'true' && needs.run-persona.result != 'cancelled'`. It downloads `persona-log-*-<run_id>` into `/tmp/persona-logs` with `merge-multiple: true` (`continue-on-error`), so the layout is `<persona>/<file>.md` at any persona count, then reads only those logs and files GitHub issues. Reading `scripts/agents/logs/personas/` in the repo is explicitly forbidden: those findings already have issues. Zero logs is a valid no-op (`::warning`, the prompt handles it). |
 | Output | Persona log files committed to `scripts/agents/logs/personas/<persona>/`, one curator log in `scripts/agents/logs/curator/`, and zero or more GitHub issues (with deduplication against `/tmp/all-issues.json`). |
 
 ### 9.4. `agent-review-pr.yml` - Reviewer
@@ -1275,6 +1276,8 @@ Order of manual verifications, from cheapest to most invasive:
 | `$PR_NUMBER` | The PR number being reviewed | `reviewer.md` |
 | `$PR_CONTEXT` | Context string describing whether the PR was opened by a bot agent or a human contributor (computed from the head_ref branch prefix) | `reviewer.md` |
 | `$PERSONA` | Verbatim contents of `prompts/personas/<persona>.md` | `_persona.md` only |
+| `$PERSONA_LOGS` | Directory holding this run's staged persona findings logs as `<persona>/<file>.md` (`/tmp/persona-logs` in CI, a `mktemp -d` locally) | `curator.md` only, via `render_curator_prompt` |
+| `$PERSONA_LOG_COUNT` | How many `.md` files are staged under `$PERSONA_LOGS`, from `count_persona_logs` | `curator.md` only, via `render_curator_prompt` |
 
 The substitution is a literal `sed` replace for most agents, not a templating engine. Do not put characters that conflict with `sed`'s delimiter in the values; the workflows use `|` as the delimiter for that reason. The reviewer workflow uses `perl -0pe` with environment variables instead of `sed` for multi-line safety.
 

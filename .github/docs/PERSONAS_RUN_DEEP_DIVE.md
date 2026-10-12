@@ -80,7 +80,7 @@ flowchart LR
 
     subgraph D["Downstream workflows"]
         cdr["coder-run.yml\nfinds bug/enhancement/agent-ok\nissues filed by curator"]:::job
-        dig["agent-digest.yml\nreads logs Monday"]:::job
+        dig["agent-digest.yml\nreads committed logs Monday,\nso it sees nothing from this workflow"]:::job
     end
 
     c1 --> G
@@ -114,8 +114,6 @@ flowchart LR
     K --> iss
     K --> cmt
     iss --> cdr
-    plog --> dig
-    clog --> dig
 ```
 
 [Back to top](#navigate)
@@ -329,10 +327,10 @@ sequenceDiagram
     RP-->>CR: matrix complete (any non-cancelled result)
     CR->>T: mint bot token
     CR->>FS: checkout fetch-depth 0
+    CR->>FS: download-artifact@v7 persona-log-*-(run_id) to /tmp/persona-logs (merge-multiple)
     CR->>C: source config.sh
     C->>FS: create_agent_branch agent/curator/(date)
     C->>FS: clock_in writes skeleton log under logs/curator/
-    CR->>FS: download-artifact@v7 persona-log-*-(run_id) to /tmp/persona-logs (merge-multiple)
     CR->>C: count_persona_logs then render_curator_prompt (BRANCH, LOG_FILE, PERSONA_LOGS, PERSONA_LOG_COUNT)
     CR->>FS: append Time Budget, write /tmp/agent-prompt.txt
     CR->>CCA: prompt = Read /tmp/agent-prompt.txt
@@ -567,9 +565,7 @@ flowchart LR
     O3 --> C1["coder-run.yml find-issues\npicks unclaimed bug / enhancement / agent-ok"]:::cons
     O3 --> C2["maintainer triage\nlabels, milestones"]:::human
 
-    O1 --> C3["next persona run for same name\n(if convention adds Prior Runs later)"]:::cons
     O1 --> C4["this run's curator only\n(artifact scoped to github.run_id)"]:::cons
-    O2 --> C5["agent-digest.yml\nMonday summary of agent activity"]:::cons
 
     C1 --> C6["coder opens PR to development"]:::cons
     C6 --> C7["agent-review-pr.yml\nfires on agent/* PR"]:::cons
@@ -677,7 +673,7 @@ flowchart TB
 
     F7["Curator skips dedup procedure"]:::fail
     F7 --> F7E["duplicate issues filed"]:::effect
-    F7X["curator.md step 5 is auditable: log queries\nmaintainer reviews log if dup slips"]:::fix
+    F7X["curator.md step 5e asks the curator to log its queries,\nbut the curator log is not committed or uploaded,\nso after the run there is no log to review"]:::fix
     F7E --> F7X
 
     F8["Anthropic API outage mid-session"]:::fail

@@ -463,7 +463,8 @@ Every agent prompt is the concatenation of four pieces, in this order:
    - `$LOG_FILE` -> the absolute path of the run ledger
    - For the reviewer, `$PR_NUMBER` is also substituted.
    - For personas, `$PERSONA` is replaced by the contents of `prompts/personas/<persona>.md` and the host template is `prompts/_persona.md`.
-2. `build_prior_context` output: the last three log files from `scripts/agents/logs/<role>/` (excluding the current one), concatenated under a `## Prior Runs` header. This is what gives the agents continuity.
+   - For the curator, `render_curator_prompt` also fills `$PERSONA_LOGS` and `$PERSONA_LOG_COUNT`.
+2. `build_prior_context` output: the last three log files from `scripts/agents/logs/<role>/` (excluding the current one), concatenated under a `## Prior Runs` header. This is what gives the task agents continuity. `personas-run.yml` doesn't call it, so persona and curator runs in CI start without prior context.
 3. A `## Time Budget` block with the exact UTC start time and the UTC deadline (`+600 seconds` from now). The prompt tells the agent to run `date -u +%H:%M` periodically.
 4. (Optional) `## Additional Instructions from Maintainer`, populated from the `instructions` workflow input.
 
@@ -1260,8 +1261,8 @@ Order of manual verifications, from cheapest to most invasive:
 |-----------|-----|
 | Pause a single agent | Comment out its cron line in `agent-run.yml` (or `coder-run.yml` / `personas-run.yml`) and push to `development`. Manual dispatch still works. |
 | Pause all agents | Lower the backlog caps to 0 in the gate job. Cron runs will skip; dispatch will still work for testing. |
-| Replay a failed run | Dispatch the workflow with the same inputs. The agent will read its previous log under Prior Runs and decide whether to retry. |
-| Investigate a misbehaving agent | Read its latest log under `scripts/agents/logs/<role>/`. Cross-reference with the Actions run logs. |
+| Replay a failed run | Dispatch the workflow with the same inputs. A task agent will read its previous log under Prior Runs and decide whether to retry; a `personas-run.yml` replay starts fresh. |
+| Investigate a misbehaving agent | Read its latest log under `scripts/agents/logs/<role>/`. Cross-reference with the Actions run logs. Persona logs aren't committed, so download the run's `persona-log-<persona>-<run_id>` artifact instead; the curator's log isn't kept at all, so only the Actions run log remains. |
 | Update an agent's instructions permanently | Edit the prompt file under `scripts/agents/prompts/`. Changes take effect on the next scheduled or dispatched run. |
 | Temporarily redirect a scheduled run | Use the `instructions` input on the next dispatch; it is appended verbatim as `## Additional Instructions from Maintainer` and overrides nothing but adds priority. |
 

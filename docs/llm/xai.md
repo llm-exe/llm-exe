@@ -1,6 +1,6 @@
 ---
 title: "Use xAI Grok Models in TypeScript with llm-exe"
-description: "Call xAI Grok models like grok-4.3 and grok-4.6 from TypeScript with llm-exe. Covers typed model shorthands, API key setup, and xAI-specific options."
+description: "Call xAI Grok models like grok-4.3 and grok-4.7 from TypeScript with llm-exe. Covers typed model shorthands, API key setup, and xAI-specific options."
 ---
 
 # xAI
@@ -17,6 +17,7 @@ llm-exe ships typed shorthands for the most common xAI models so you do not have
 | `xai.grok-4.20-reasoning`  | `grok-4.20-0309-reasoning`          |
 | `xai.grok-4.5`             | `grok-4.5` (reasoning model)        |
 | `xai.grok-4.6`             | `grok-4.6` (reasoning model)        |
+| `xai.grok-4.7`             | `grok-4.7` (reasoning model)        |
 
 ### Deprecated shorthands
 
@@ -52,9 +53,9 @@ const llm = useLlm("xai.grok-4.3", {
 ```
 
 ```ts
-const llm = useLlm("xai.grok-4.6", {
+const llm = useLlm("xai.grok-4.7", {
   // other options,
-  // no model needed, using grok-4.6
+  // no model needed, using grok-4.7
 });
 ```
 
@@ -88,14 +89,15 @@ In addition to the generic options, the following options are xAI-specific and c
 | frequencyPenalty | number  | undefined   | Maps to `frequency_penalty`. See xAI Docs                     |
 | logitBias        | object  | undefined   | Maps to `logit_bias`. See xAI Docs                            |
 | useJson          | boolean | undefined   | When `true`, sets `response_format` to `json_object`           |
-| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`, `"xhigh"` (`grok-4.5` treats `"xhigh"` as `"high"`). Only sent for `grok-4.3`, `grok-4.5` and `grok-4.6`; on any other model, or for a value outside that list, it is silently dropped. `"none"` is not supported: xAI rejects it on `grok-4.5` and later. |
+| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`, `"xhigh"` (`grok-4.5` treats `"xhigh"` as `"high"`). Only sent for `grok-4.3`, `grok-4.5`, `grok-4.6` and `grok-4.7`; on any other model, or for a value outside that list, it is silently dropped. `"none"` is not supported: xAI rejects it on `grok-4.5` and later. |
 
 ::: warning `effort` and `xai.grok-4.20-reasoning`
 `xai.grok-4.20-reasoning` resolves to `grok-4.20-0309-reasoning`, which is a
 reasoning model, but xAI rejects `reasoning_effort` for it: every value returns
 a 400 ("does not support parameter reasoningEffort"). So llm-exe drops `effort`
 for this shorthand instead of sending it. There is no error or warning. To
-control reasoning effort, use `xai.grok-4.3`, `xai.grok-4.5`, or `xai.grok-4.6`.
+control reasoning effort, use `xai.grok-4.3`, `xai.grok-4.5`, `xai.grok-4.6`, or
+`xai.grok-4.7`.
 :::
 
 See [xAI API Reference](https://docs.x.ai/docs/overview) for details on these parameters.

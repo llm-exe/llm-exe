@@ -85,6 +85,21 @@ describe("openai configuration", () => {
     });
   });
 
+  describe("xai.grok-4.7", () => {
+    const config = xai["xai.grok-4.7"] as Config;
+
+    it("should have the correct default model", () => {
+      expect(config.options.model.default).toBe("grok-4.7");
+    });
+
+    it("should have the correct key, provider, endpoint, and method", () => {
+      expect(config.key).toBe("xai.chat.v1");
+      expect(config.provider).toBe("xai.chat");
+      expect(config.endpoint).toBe("https://api.x.ai/v1/chat/completions");
+      expect(config.method).toBe("POST");
+    });
+  });
+
   describe("all shorthands resolve to expected default model", () => {
     it.each([
       ["xai.grok-2", "grok-2-latest"],
@@ -98,6 +113,7 @@ describe("openai configuration", () => {
       ["xai.grok-4.20-reasoning", "grok-4.20-0309-reasoning"],
       ["xai.grok-4.5", "grok-4.5"],
       ["xai.grok-4.6", "grok-4.6"],
+      ["xai.grok-4.7", "grok-4.7"],
     ] as const)(
       "%s should resolve to %s and share base config",
       (shorthand, expectedModel) => {
@@ -142,6 +158,7 @@ describe("openai configuration", () => {
       "xai.grok-4.20-reasoning",
       "xai.grok-4.5",
       "xai.grok-4.6",
+      "xai.grok-4.7",
     ] as const)("%s should not be marked deprecated", (shorthand) => {
       expect((xai[shorthand] as Config).deprecated).toBeUndefined();
     });
@@ -151,7 +168,7 @@ describe("openai configuration", () => {
   // OpenAI-only reasoning rules (max_completion_tokens, sampling drop) must not
   // leak through the shared factory.
   describe("reasoning models keep legacy params (OpenAI gpt-5 rules do not apply)", () => {
-    it.each(["grok-4.3", "grok-4.5", "grok-4.6"])(
+    it.each(["grok-4.3", "grok-4.5", "grok-4.6", "grok-4.7"])(
       "%s forwards max_tokens, temperature, and top_p alongside reasoning_effort",
       (model) => {
         const body = mapBody(xai["xai.chat.v1"].mapBody, {
@@ -196,7 +213,7 @@ describe("openai configuration", () => {
 
     // Every value here returned 200 from each model (verified 2026-10-13).
     // "none" is dropped because grok-4.5 and later reject it with a 400.
-    it.each(["grok-4.3", "grok-4.5", "grok-4.6"])(
+    it.each(["grok-4.3", "grok-4.5", "grok-4.6", "grok-4.7"])(
       "passes through every supported effort value for %s",
       (model) => {
         for (const value of ["minimal", "low", "medium", "high", "xhigh"]) {
@@ -205,7 +222,7 @@ describe("openai configuration", () => {
       }
     );
 
-    it.each(["grok-4.3", "grok-4.5", "grok-4.6"])(
+    it.each(["grok-4.3", "grok-4.5", "grok-4.6", "grok-4.7"])(
       "drops unsupported effort values for %s",
       (model) => {
         expect(transform("none", { model })).toBeUndefined();

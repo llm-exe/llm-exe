@@ -8,7 +8,12 @@ import { createOpenAiCompatibleConfiguration } from "../openai/compatible";
 // "grok-4.20-0309-reasoning" is left out on purpose: it reasons, but xAI
 // rejects `reasoning_effort` for it with a 400 ("does not support parameter
 // reasoningEffort", every value, verified 2026-10-13), so effort is dropped.
-const XAI_REASONING_MODELS = ["grok-4.3", "grok-4.5", "grok-4.6"];
+const XAI_REASONING_MODELS = [
+  "grok-4.3",
+  "grok-4.5",
+  "grok-4.6",
+  "grok-4.7",
+];
 
 const xaiChatV1: Config = createOpenAiCompatibleConfiguration({
   key: "xai.chat.v1",
@@ -34,6 +39,7 @@ export const xai = {
   ),
   "xai.grok-4.5": withDefaultModel(xaiChatV1, "grok-4.5"),
   "xai.grok-4.6": withDefaultModel(xaiChatV1, "grok-4.6"),
+  "xai.grok-4.7": withDefaultModel(xaiChatV1, "grok-4.7"),
 
   // Deprecated — retired by xAI on 2026-05-15. The slugs still resolve, but
   // xAI redirects them to grok-4.3 (non-reasoning models with "none" effort).

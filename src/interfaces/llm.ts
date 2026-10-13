@@ -558,7 +558,7 @@ export interface OpenAiRequest extends Omit<GenericLLm, "effort"> {
 export interface XAiRequest extends Omit<GenericLLm, "effort"> {
   /**
    * Maps to `reasoning_effort` on the xAI models that accept it: grok-4.3,
-   * grok-4.5 and grok-4.6. Dropped for any other model, including
+   * grok-4.5, grok-4.6 and grok-4.7. Dropped for any other model, including
    * grok-4.20-0309-reasoning, which rejects the parameter. `"xhigh"` is
    * documented from grok-4.6 on and treated as `"high"` on grok-4.5.
    */
@@ -854,6 +854,9 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<XAiRequest, "model">;
   };
   "xai.grok-4.6": {
+    input: Omit<XAiRequest, "model">;
+  };
+  "xai.grok-4.7": {
     input: Omit<XAiRequest, "model">;
   };
 

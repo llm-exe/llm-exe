@@ -3,14 +3,12 @@ import { withDefaultModel } from "@/llm/_utils.withDefaultModel";
 import { Config } from "@/types";
 import { createOpenAiCompatibleConfiguration } from "../openai/compatible";
 
-// Explicit list rather than a suffix match — "grok-4.20-0309-non-reasoning"
-// also ends in "-reasoning", so `endsWith` would wrongly enable effort for it.
-const XAI_REASONING_MODELS = [
-  "grok-4.3",
-  "grok-4.5",
-  "grok-4.6",
-  "grok-4.20-0309-reasoning",
-];
+// Models that accept `reasoning_effort`. Explicit list rather than a suffix
+// match: "grok-4.20-0309-non-reasoning" also ends in "-reasoning". And
+// "grok-4.20-0309-reasoning" is left out on purpose: it reasons, but xAI
+// rejects `reasoning_effort` for it with a 400 ("does not support parameter
+// reasoningEffort", every value, verified 2026-10-13), so effort is dropped.
+const XAI_REASONING_MODELS = ["grok-4.3", "grok-4.5", "grok-4.6"];
 
 const xaiChatV1: Config = createOpenAiCompatibleConfiguration({
   key: "xai.chat.v1",

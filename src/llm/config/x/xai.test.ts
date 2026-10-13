@@ -186,6 +186,8 @@ describe("openai configuration", () => {
         "grok-4-fast-non-reasoning",
         "grok-4-1-fast-non-reasoning",
         "grok-4.20-0309-non-reasoning",
+        // reasons, but xAI rejects reasoning_effort for it with a 400
+        "grok-4.20-0309-reasoning",
       ]) {
         expect(transform("low", { model })).toBeUndefined();
         expect(transform("high", { model })).toBeUndefined();
@@ -232,29 +234,15 @@ describe("openai configuration", () => {
       expect(transform(123, { model: "grok-4.6" })).toBeUndefined();
     });
 
-    it("passes through valid effort values for grok-4.20-0309-reasoning", () => {
-      for (const value of ["minimal", "low", "medium", "high"]) {
-        expect(transform(value, { model: "grok-4.20-0309-reasoning" })).toBe(
-          value
-        );
-      }
-    });
-
-    it("drops invalid effort values for grok-4.20-0309-reasoning", () => {
-      const model = "grok-4.20-0309-reasoning";
-      expect(transform("none", { model })).toBeUndefined();
-      expect(transform("xhigh", { model })).toBeUndefined();
-      expect(transform(123, { model })).toBeUndefined();
-    });
-
-    it("sends effort for the xai.grok-4.20-reasoning shorthand", () => {
+    it("never sends reasoning_effort for the xai.grok-4.20-reasoning shorthand", () => {
       const cfg = xai["xai.grok-4.20-reasoning"] as Config;
-      const model = cfg.options.model.default;
-      const shorthandTransform = cfg.mapBody.effort.transform as (
-        v: any,
-        s: any
-      ) => any;
-      expect(shorthandTransform("high", { model })).toBe("high");
+      const body = mapBody(cfg.mapBody, {
+        prompt: [{ role: "user", content: "hi" }],
+        model: cfg.options.model.default,
+        effort: "high",
+      });
+      expect(body.model).toBe("grok-4.20-0309-reasoning");
+      expect(body.reasoning_effort).toBeUndefined();
     });
   });
 });

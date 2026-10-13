@@ -92,6 +92,6 @@ describe("createLlmExeError", () => {
       { parser: "weird" },
       { cause: root }
     );
-    expect((err as { cause?: unknown }).cause).toBe(root);
+    expect(err.cause).toBe(root);
   });
 });

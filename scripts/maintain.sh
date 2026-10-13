@@ -37,6 +37,10 @@ ${context}"
 TASK_AGENTS=(docs tester coder scout docs-sync)
 PERSONAS=(beginner harsh-critic speed-runner enterprise)
 
+# Persona logs written by run_persona in this invocation. `all` hands exactly
+# these to the curator, so a log is curated by the run that wrote it.
+PERSONA_RUN_LOGS=()
+
 usage() {
   cat <<EOF
 Usage: ./scripts/maintain.sh <command>
@@ -58,7 +62,9 @@ Persona agents (use the library, report findings):
   personas       Run all personas sequentially
 
 Curator (reviews persona findings, files real issues):
-  curator        Gatekeeper — promotes signal, kills noise
+  curator <log.md>...
+                 Gatekeeper: promotes signal, kills noise. Curates only the
+                 persona logs given ('all' passes the ones it just wrote)
 
 PR review:
   review <PR#>   Review a PR — approve, request changes, or close
@@ -151,6 +157,7 @@ run_persona() {
   run_claude "$prompt" || exit_code=$?
 
   clock_out "$log_file" "$exit_code"
+  PERSONA_RUN_LOGS+=("$log_file")
 
   if [[ "$exit_code" -ne 0 ]]; then
     warn "Persona $persona interrupted (exit $exit_code). Log: $log_file"
@@ -161,12 +168,30 @@ run_persona() {
   fi
 }
 
-# Run the curator — reviews persona findings, files issues
+# Run the curator: reviews persona findings, files issues. It curates the log
+# paths it is given plus any logs run_persona wrote in this invocation, staged
+# in a temp dir as <persona>/<file>.md, the same layout CI downloads into.
+# Staging happens before the cd so relative paths resolve from the caller's
+# directory, and before create_agent_branch so a bad path leaves git alone.
 run_curator() {
-  local prompt_file="$PROMPTS_DIR/curator.md"
-
   check_prerequisites
   info "Starting curator..."
+
+  local persona_logs_dir
+  persona_logs_dir="$(mktemp -d "${TMPDIR:-/tmp}/curator-input.XXXXXX")"
+  local persona_log
+  for persona_log in "$@" ${PERSONA_RUN_LOGS[@]+"${PERSONA_RUN_LOGS[@]}"}; do
+    stage_persona_log "$persona_logs_dir" "$persona_log" || { rm -rf "$persona_logs_dir"; exit 1; }
+  done
+
+  local log_count
+  log_count="$(count_persona_logs "$persona_logs_dir")"
+  if [[ "$log_count" -eq 0 ]]; then
+    rm -rf "$persona_logs_dir"
+    err "No persona logs to curate. Run 'all', or pass logs: ./scripts/maintain.sh curator <log.md>..."
+    exit 1
+  fi
+  info "Curating $log_count persona log(s), staged in $persona_logs_dir"
 
   cd "$REPO_ROOT" || exit 1
 
@@ -179,12 +204,13 @@ run_curator() {
   info "Log file: $log_file"
 
   local prompt
-  prompt=$(sed -e "s|\$BRANCH|$branch|g" -e "s|\$LOG_FILE|$log_file|g" "$prompt_file")
+  prompt="$(render_curator_prompt "$branch" "$log_file" "$persona_logs_dir")"
 
   local exit_code=0
   run_claude "$prompt" || exit_code=$?
 
   clock_out "$log_file" "$exit_code"
+  rm -rf "$persona_logs_dir"
 
   if [[ "$exit_code" -ne 0 ]]; then
     warn "Curator interrupted (exit $exit_code). Log: $log_file"
@@ -249,7 +275,8 @@ case "$1" in
     done
     ;;
   curator)
-    run_curator
+    shift
+    run_curator "$@"
     ;;
   review)
     if [[ -z "${2:-}" ]]; then

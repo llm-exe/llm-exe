@@ -1133,7 +1133,7 @@ describe("useLlm_call", () => {
           expect(ctx.provider).toBe("openai.chat");
           expect(ctx.status).toBe(status);
           expect(ctx.providerError).toEqual({ message: "provider says no" });
-          expect((e as unknown as { cause?: unknown }).cause).toBeDefined();
+          expect((e as InstanceType<typeof LlmExeError>).cause).toBeDefined();
         }
       }
     );

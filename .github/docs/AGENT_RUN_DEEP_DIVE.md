@@ -281,7 +281,8 @@ sequenceDiagram
     CCA->>API: gh pr create / gh issue create
     CCA->>L: rewrite Summary, Files Changed, Next Steps
     J->>C: clock_out (always) maps job.status to exit code
-    C->>L: stamp Finished UTC + Status completed|interrupted
+    C->>L: stamp Finished UTC + Status completed, no-output, or interrupted
+    Note over C,L: exit 0 with every section still the placeholder is stamped no-output and emits a ::warning:: annotation; clock_out itself always returns 0
 ```
 
 Source: [.github/workflows/agent-run.yml](../workflows/agent-run.yml) lines 74-171.
@@ -639,6 +640,7 @@ flowchart LR
     K14["Prompt file"]:::k --- V14["scripts/agents/prompts/&lt;agent&gt;.md"]:::v
     K15["Assembled prompt"]:::k --- V15["/tmp/agent-prompt.txt"]:::v
     K16["Base branch for PRs"]:::k --- V16["development"]:::v
+    K17["Log status values"]:::k --- V17["completed, no-output, interrupted"]:::v
 ```
 
 Direct links:

@@ -267,7 +267,8 @@ sequenceDiagram
     CCA->>API: gh pr create --base development
     CCA->>L: rewrite Summary, Files Changed, Next Steps
     J->>C: clock_out (if: always())
-    C->>L: stamp Finished UTC + Status
+    C->>L: stamp Finished UTC + Status completed, no-output, or interrupted
+    Note over C,L: a run that finds no drift must still rewrite its log sections, otherwise clock_out stamps no-output and warns
 ```
 
 [Back to top](#navigate)

@@ -60,7 +60,56 @@ describe("LlmExeError", () => {
       code: "parser.invalid_type",
       cause: original,
     });
-    expect((err as { cause?: unknown }).cause).toBe(original);
+    expect(err.cause).toBe(original);
+  });
+
+  it("exposes cause on the public type without a cast", () => {
+    const original = new Error("root cause");
+    const err = new LlmExeError("x", {
+      code: "parser.invalid_type",
+      cause: original,
+    });
+    const cause: unknown = err.cause;
+    expect(cause).toBe(original);
+    expect(err.cause).toBeInstanceOf(Error);
+  });
+
+  it("leaves cause undefined when none is provided", () => {
+    const err = new LlmExeError("x", { code: "parser.invalid_type" });
+    expect(err.cause).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(err, "cause")).toBe(false);
+  });
+
+  it("keeps the declared cause consistent with the serialized cause", () => {
+    const original = new Error("root cause");
+    const err = new LlmExeError("x", {
+      code: "parser.invalid_type",
+      cause: original,
+    });
+    expect(err.cause).toBe(original);
+    expect(err.toJSON().cause).toEqual({
+      name: "Error",
+      message: "root cause",
+    });
+  });
+
+  it("does not expose cause in enumerable error output", () => {
+    const err = new LlmExeError("x", {
+      code: "parser.invalid_type",
+      cause: new Error("root cause"),
+    });
+    expect(Object.keys(err)).not.toContain("cause");
+    expect(Object.prototype.propertyIsEnumerable.call(err, "cause")).toBe(
+      false
+    );
+  });
+
+  it("accepts a non-Error cause and keeps it readable", () => {
+    const err = new LlmExeError("x", {
+      code: "parser.invalid_type",
+      cause: "just a string",
+    });
+    expect(err.cause).toBe("just a string");
   });
 
   it("exposes isLlmExeError marker", () => {

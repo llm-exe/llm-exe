@@ -194,44 +194,33 @@ describe("openai configuration", () => {
       }
     });
 
-    it("passes through valid effort values for grok-4.3", () => {
-      for (const value of ["low", "medium", "high"]) {
-        expect(transform(value, { model: "grok-4.3" })).toBe(value);
+    // Every value here returned 200 from each model (verified 2026-10-13).
+    // "none" is dropped because grok-4.5 and later reject it with a 400.
+    it.each(["grok-4.3", "grok-4.5", "grok-4.6"])(
+      "passes through every supported effort value for %s",
+      (model) => {
+        for (const value of ["minimal", "low", "medium", "high", "xhigh"]) {
+          expect(transform(value, { model })).toBe(value);
+        }
       }
-    });
+    );
 
-    it("passes through minimal effort for grok-4.3", () => {
-      expect(transform("minimal", { model: "grok-4.3" })).toBe("minimal");
-    });
-
-    it("drops invalid effort values for grok-4.3", () => {
-      expect(transform("none", { model: "grok-4.3" })).toBeUndefined();
-      expect(transform("xhigh", { model: "grok-4.3" })).toBeUndefined();
-      expect(transform(123, { model: "grok-4.3" })).toBeUndefined();
-    });
-
-    it("passes through valid effort values for grok-4.5", () => {
-      for (const value of ["minimal", "low", "medium", "high"]) {
-        expect(transform(value, { model: "grok-4.5" })).toBe(value);
+    it.each(["grok-4.3", "grok-4.5", "grok-4.6"])(
+      "drops unsupported effort values for %s",
+      (model) => {
+        expect(transform("none", { model })).toBeUndefined();
+        expect(transform("max", { model })).toBeUndefined();
+        expect(transform(123, { model })).toBeUndefined();
       }
-    });
+    );
 
-    it("drops invalid effort values for grok-4.5", () => {
-      expect(transform("none", { model: "grok-4.5" })).toBeUndefined();
-      expect(transform("xhigh", { model: "grok-4.5" })).toBeUndefined();
-      expect(transform(123, { model: "grok-4.5" })).toBeUndefined();
-    });
-
-    it("passes through valid effort values for grok-4.6", () => {
-      for (const value of ["minimal", "low", "medium", "high"]) {
-        expect(transform(value, { model: "grok-4.6" })).toBe(value);
-      }
-    });
-
-    it("drops invalid effort values for grok-4.6", () => {
-      expect(transform("none", { model: "grok-4.6" })).toBeUndefined();
-      expect(transform("xhigh", { model: "grok-4.6" })).toBeUndefined();
-      expect(transform(123, { model: "grok-4.6" })).toBeUndefined();
+    it("sends xhigh as reasoning_effort in the request body", () => {
+      const body = mapBody(xai["xai.grok-4.6"].mapBody, {
+        prompt: [{ role: "user", content: "hi" }],
+        model: "grok-4.6",
+        effort: "xhigh",
+      });
+      expect(body.reasoning_effort).toBe("xhigh");
     });
 
     it("never sends reasoning_effort for the xai.grok-4.20-reasoning shorthand", () => {

@@ -16,6 +16,12 @@ const xaiChatV1: Config = createOpenAiCompatibleConfiguration({
   endpoint: `https://api.x.ai/v1/chat/completions`,
   apiKeyMapping: ["xAiApiKey", "XAI_API_KEY"],
   isReasoningModel: (model) => XAI_REASONING_MODELS.includes(model),
+  // Every model in XAI_REASONING_MODELS accepted all of these (verified
+  // 2026-10-13); "minimal" is missing from xAI's guide but still works. xAI
+  // documents "xhigh" from grok-4.6 on and treats it as "high" on grok-4.5.
+  // "none" is left out: grok-4.5 and later reject it with a 400, though
+  // grok-4.3 accepts it.
+  reasoningEfforts: ["minimal", "low", "medium", "high", "xhigh"],
 });
 
 export const xai = {

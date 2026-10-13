@@ -88,7 +88,7 @@ In addition to the generic options, the following options are xAI-specific and c
 | frequencyPenalty | number  | undefined   | Maps to `frequency_penalty`. See xAI Docs                     |
 | logitBias        | object  | undefined   | Maps to `logit_bias`. See xAI Docs                            |
 | useJson          | boolean | undefined   | When `true`, sets `response_format` to `json_object`           |
-| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only sent for xAI reasoning models (`grok-4.3`, `grok-4.5`, `grok-4.6`); on any other model, or for a value outside that list, it is silently dropped. |
+| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`, `"xhigh"` (`grok-4.5` treats `"xhigh"` as `"high"`). Only sent for `grok-4.3`, `grok-4.5` and `grok-4.6`; on any other model, or for a value outside that list, it is silently dropped. `"none"` is not supported: xAI rejects it on `grok-4.5` and later. |
 
 ::: warning `effort` and `xai.grok-4.20-reasoning`
 `xai.grok-4.20-reasoning` resolves to `grok-4.20-0309-reasoning`, which is a

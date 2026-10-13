@@ -555,7 +555,14 @@ export interface OpenAiRequest extends Omit<GenericLLm, "effort"> {
   useJson?: boolean;
 }
 
-export interface XAiRequest extends GenericLLm {
+export interface XAiRequest extends Omit<GenericLLm, "effort"> {
+  /**
+   * Maps to `reasoning_effort` on the xAI models that accept it: grok-4.3,
+   * grok-4.5 and grok-4.6. Dropped for any other model, including
+   * grok-4.20-0309-reasoning, which rejects the parameter. `"xhigh"` is
+   * documented from grok-4.6 on and treated as `"high"` on grok-4.5.
+   */
+  effort?: "minimal" | "low" | "medium" | "high" | "xhigh";
   model: string;
   frequencyPenalty?: number;
   logitBias?: Record<string, any> | null;

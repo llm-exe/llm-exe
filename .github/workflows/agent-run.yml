@@ -128,7 +128,7 @@ jobs:
           # Build the prompt
           prompt_file="./scripts/agents/prompts/${agent}.md"
           prompt=$(sed -e "s|\$BRANCH|$branch|g" -e "s|\$LOG_FILE|$log_file|g" "$prompt_file")
-          prior_context=$(build_prior_context "$agent" "$log_file" 2>/dev/null || true)
+          prior_context=$(build_prior_context "$agent" "$log_file" || true)
           prompt="${prompt}${prior_context}"
 
           # Add time budget

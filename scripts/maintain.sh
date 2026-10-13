@@ -8,32 +8,6 @@ PROMPTS_DIR="$AGENTS_DIR/prompts"
 
 source "$AGENTS_DIR/config.sh"
 
-# Build prior context from recent logs, excluding the current log file
-build_prior_context() {
-  local agent_key="$1"
-  local current_log="$2"
-  local logs
-  logs=$(recent_logs "$agent_key" 3)
-  local context=""
-
-  while IFS= read -r log; do
-    [[ -z "$log" || "$log" == "$current_log" ]] && continue
-    context="${context}
-
----
-
-$(cat "$log")"
-  done <<< "$logs"
-
-  if [[ -n "$context" ]]; then
-    echo "
-
-## Prior Runs
-Recent logs from previous runs — review these to understand where things stand:
-${context}"
-  fi
-}
-
 TASK_AGENTS=(docs tester coder scout docs-sync)
 PERSONAS=(beginner harsh-critic speed-runner enterprise)
 

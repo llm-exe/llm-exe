@@ -257,7 +257,8 @@ sequenceDiagram
     CCA->>API: gh pr review N --comment OR --request-changes OR gh pr close N
     CCA->>L: rewrite Summary, Files Changed, Next Steps
     J->>C: clock_out (always) maps job.status to exit code
-    C->>L: stamp Finished UTC + Status completed or interrupted
+    C->>L: stamp Finished UTC + Status completed, no-output, or interrupted
+    Note over C,L: a review that exits clean without writing any section is stamped no-output, not completed
 ```
 
 Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 76-166 (review job).

@@ -57,7 +57,9 @@ flowchart LR
         host["scripts/agents/prompts/_persona.md\n(host template)"]:::file
         per["scripts/agents/prompts/personas/&lt;name&gt;.md\n(personality block)"]:::file
         cur["scripts/agents/prompts/curator.md"]:::file
-        plog["scripts/agents/logs/personas/&lt;name&gt;/*.md\n(written by each persona)"]:::file
+        plog["scripts/agents/logs/&lt;name&gt;/*.md\n(written by each persona in its runner,\nnever committed; local runs use logs/personas/, #841)"]:::file
+        art["artifact persona-log-&lt;persona&gt;-&lt;run_id&gt;\n(staged as &lt;persona&gt;/&lt;file&gt;.md, 7-day retention)"]:::file
+        pdl["/tmp/persona-logs/&lt;persona&gt;/*.md\n(curator's only findings input)"]:::file
         clog["scripts/agents/logs/curator/*.md\n(curator decisions)"]:::file
         tmp["/tmp/agent-prompt.txt\n(per-job assembled prompt)"]:::file
         ji["/tmp/all-issues.json\n(curator scratch)"]:::file
@@ -69,16 +71,16 @@ flowchart LR
     end
 
     subgraph O["Outputs"]
-        b1["branch agent/&lt;persona&gt;/&lt;date&gt;\n(one per persona run)"]:::out
-        b2["branch agent/curator/&lt;date&gt;"]:::out
+        b1["branch agent/&lt;persona&gt;/&lt;date&gt;\n(local to the runner, never pushed)"]:::out
+        b2["branch agent/curator/&lt;date&gt;\n(local unless the curator pushes it itself, as in #494)"]:::out
         iss["GitHub issues\n(curator only, deduped)"]:::out
         cmt["comments on existing issues\n(curator when dup found)"]:::out
-        log["committed log files\n(both personas and curator)"]:::out
+        log["no committed logs\n(persona logs leave only as artifacts;\nno step commits or uploads the curator log)"]:::out
     end
 
     subgraph D["Downstream workflows"]
         cdr["coder-run.yml\nfinds bug/enhancement/agent-ok\nissues filed by curator"]:::job
-        dig["agent-digest.yml\nreads logs Monday"]:::job
+        dig["agent-digest.yml\nMonday: lists the week's issues;\nreads committed logs, so no log from this run"]:::job
     end
 
     c1 --> G
@@ -98,7 +100,9 @@ flowchart LR
     per --> R
     cur --> K
     R --> plog
-    plog --> K
+    plog --> art
+    art --> pdl
+    pdl --> K
     K --> clog
     K --> ji
     R --> tmp
@@ -110,8 +114,7 @@ flowchart LR
     K --> iss
     K --> cmt
     iss --> cdr
-    plog --> dig
-    clog --> dig
+    iss --> dig
 ```
 
 [Back to top](#navigate)
@@ -254,11 +257,12 @@ flowchart TB
         c2["Checkout fetch-depth: 0"]:::step
         c3["Configure git"]:::step
         c4["setup-node@v6 + npm ci"]:::step
-        c5["Build curator prompt"]:::step
-        c6["Run curator\nclaude-code-action@v1"]:::step
-        c7["Upload agent prompt artifact\n(if: always() and log_file set)"]:::step
-        c8["Clock out (if: always())"]:::step
-        c1 --> c2 --> c3 --> c4 --> c5 --> c6 --> c7 --> c8
+        c5["Download persona findings logs\npattern persona-log-*-&lt;run_id&gt;\nmerge-multiple, continue-on-error"]:::step
+        c6["Build curator prompt\ncount_persona_logs + render_curator_prompt"]:::step
+        c7["Run curator\nclaude-code-action@v1"]:::step
+        c8["Upload agent prompt artifact\n(if: always() and log_file set)"]:::step
+        c9["Clock out (if: always())"]:::step
+        c1 --> c2 --> c3 --> c4 --> c5 --> c6 --> c7 --> c8 --> c9
     end
 ```
 
@@ -306,7 +310,7 @@ sequenceDiagram
         RP->>FS: checkout fetch-depth 0
         RP->>C: source config.sh
         C->>FS: create_agent_branch agent/(persona)/(date)
-        C->>FS: clock_in writes skeleton log under logs/personas/(name)/
+        C->>FS: clock_in writes skeleton log under logs/(name)/
         RP->>FS: read _persona.md (host)
         RP->>FS: read personas/(name).md (block)
         RP->>FS: sed sub LOG_FILE then bash sub PERSONA
@@ -317,18 +321,21 @@ sequenceDiagram
         Note over CCA: persona writes findings to its log file ONLY (no PRs, no issues)
         RP->>FS: upload-artifact@v7 /tmp/agent-prompt.txt (always, 7-day retention)
         RP->>C: clock_out (always) stamps status
+        RP->>C: stage_persona_log /tmp/persona-log-upload (persona)/(file).md
+        RP->>FS: upload-artifact@v7 persona-log-(persona)-(run_id) (7-day retention)
     end
 
     RP-->>CR: matrix complete (any non-cancelled result)
     CR->>T: mint bot token
     CR->>FS: checkout fetch-depth 0
+    CR->>FS: download-artifact@v7 persona-log-*-(run_id) to /tmp/persona-logs (merge-multiple)
     CR->>C: source config.sh
     C->>FS: create_agent_branch agent/curator/(date)
     C->>FS: clock_in writes skeleton log under logs/curator/
-    CR->>FS: sed sub BRANCH + LOG_FILE into curator.md
+    CR->>C: count_persona_logs then render_curator_prompt (BRANCH, LOG_FILE, PERSONA_LOGS, PERSONA_LOG_COUNT)
     CR->>FS: append Time Budget, write /tmp/agent-prompt.txt
     CR->>CCA: prompt = Read /tmp/agent-prompt.txt
-    CCA->>FS: read all logs/personas/*/*.md
+    CCA->>FS: read only /tmp/persona-logs/(persona)/*.md
     CCA->>API: gh issue list --state all > /tmp/all-issues.json
     CCA->>API: gh search issues per finding (dedup)
     CCA->>API: gh issue create OR gh issue comment
@@ -337,7 +344,9 @@ sequenceDiagram
     CR->>C: clock_out (always)
 ```
 
-Source: [.github/workflows/personas-run.yml](../workflows/personas-run.yml) lines 72-163 (run-persona), 165-245 (run-curator).
+Source: [.github/workflows/personas-run.yml](../workflows/personas-run.yml) lines 72-185 (run-persona), 187-289 (run-curator).
+
+The artifact hop is the whole handoff: a findings log lives in the runner's checkout and is never committed, so without the upload it dies with the job. Staging it as `(persona)/(file).md` before upload means `merge-multiple: true` on the download puts every persona's log straight under `/tmp/persona-logs` with its persona name intact, at any persona count. Without `merge-multiple`, `download-artifact` only adds a per-artifact directory when two or more artifacts match, so the layout the curator prompt describes would change with `count`.
 
 [Back to top](#navigate)
 
@@ -374,11 +383,11 @@ flowchart TB
     H4 --> R3
     H4 --> R4
 
-    subgraph Logs["Per-persona logs (committed to git)"]
-        L1["logs/personas/beginner/(ts).md"]:::log
-        L2["logs/personas/harsh-critic/(ts).md"]:::log
-        L3["logs/personas/speed-runner/(ts).md"]:::log
-        L4["logs/personas/enterprise/(ts).md"]:::log
+    subgraph Logs["Per-persona logs (runner checkout, never committed)"]
+        L1["logs/beginner/(ts).md"]:::log
+        L2["logs/harsh-critic/(ts).md"]:::log
+        L3["logs/speed-runner/(ts).md"]:::log
+        L4["logs/enterprise/(ts).md"]:::log
     end
 
     R1 --> L1
@@ -386,8 +395,20 @@ flowchart TB
     R3 --> L3
     R4 --> L4
 
+    subgraph Hop["Artifact handoff (one per persona)"]
+        A1["stage_persona_log\n/tmp/persona-log-upload/(persona)/(file).md"]:::log
+        A2["artifact persona-log-(persona)-(run_id)"]:::log
+        A3["download-artifact merge-multiple\n/tmp/persona-logs/(persona)/(file).md"]:::log
+        A1 --> A2 --> A3
+    end
+
+    L1 --> A1
+    L2 --> A1
+    L3 --> A1
+    L4 --> A1
+
     subgraph Curator["Curator job"]
-        C1["read all logs/personas/*/*.md"]:::cur
+        C1["read only /tmp/persona-logs/(persona)/*.md\n(this run's logs, never the repo's)"]:::cur
         C2["read CLAUDE.md Known Issues"]:::cur
         C3["gh issue list --state all\n> /tmp/all-issues.json"]:::cur
         C4{"per finding:\nPROMOTE or SKIP?"}:::cur
@@ -400,10 +421,7 @@ flowchart TB
         C5 --> C6
     end
 
-    L1 --> C1
-    L2 --> C1
-    L3 --> C1
-    L4 --> C1
+    A3 --> C1
 
     C6 -->|no match| O1["gh issue create\nlabel: bug | documentation | enhancement | testing\ncombine if multiple personas hit same thing"]:::out
     C6 -->|match found| O2["gh issue comment <N>\nPersona X hit this again on YYYY-MM-DD"]:::out
@@ -421,6 +439,8 @@ Finding fields each persona must write per item (from [_persona.md](../../script
 | File/line | If applicable |
 
 Curator's bar for PROMOTE (from [curator.md](../../scripts/agents/prompts/curator.md)): "Would a maintainer thank me for this issue, or roll their eyes?"
+
+Step 1 of that prompt names `$PERSONA_LOGS` and `$PERSONA_LOG_COUNT`, both filled in by `render_curator_prompt` in [config.sh](../../scripts/agents/config.sh), and it explicitly forbids reading `scripts/agents/logs/personas/` in the repo: those are historical logs whose findings already have issues, and re-reading them is the duplicate-filing bug this handoff exists to prevent.
 
 [Back to top](#navigate)
 
@@ -449,14 +469,16 @@ flowchart LR
     subgraph writes["WRITE"]
         w1["agent/(persona)/(date) and agent/curator/(date)\nfresh git branches"]:::write
         w2["/tmp/agent-prompt.txt\nephemeral, per job"]:::write
+        w2b["/tmp/persona-log-upload/(persona)/(file).md\nstage_persona_log output, uploaded as an artifact"]:::write
+        w2c["/tmp/persona-logs/(persona)/(file).md\ncurator's download target, its only findings input"]:::write
         w3["/tmp/all-issues.json\ncurator scratch for dedup"]:::write
         w4["GitHub issues\ncurator only, deduped"]:::write
         w5["GitHub issue comments\ncurator only, when dup found"]:::write
     end
 
     subgraph both["READ + WRITE"]
-        b1["scripts/agents/logs/personas/(name)/*.md\nwritten by persona, read by curator + next runs"]:::both
-        b2["scripts/agents/logs/curator/*.md\nwritten by curator, read by future curator runs (via Prior Runs convention)"]:::both
+        b1["scripts/agents/logs/(name)/*.md\nwritten by persona, reaches the curator only as an artifact copy"]:::both
+        b2["scripts/agents/logs/curator/*.md\nwritten by curator in its runner; not committed or uploaded,\nand this workflow passes no Prior Runs context"]:::both
     end
 
     r3 --> b1
@@ -467,8 +489,10 @@ flowchart LR
     r1 --> w4
     r2 --> b1
     r7 --> b1
-    b1 --> w4
-    b1 --> w5
+    b1 --> w2b
+    w2b --> w2c
+    w2c --> w4
+    w2c --> w5
     r1 --> w5
 ```
 
@@ -497,7 +521,7 @@ flowchart LR
     subgraph During["While the LLM runs (persona OR curator)"]
         d1["api.anthropic.com\nauth: CLAUDE_CODE_OAUTH_TOKEN\nwhy: model inference (vars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6)\ncost meter: --max-turns 80"]:::llm
         d2["api.github.com (gh CLI)\nauth: bot token\nused by: curator only\ncalls: gh issue list, gh search issues, gh issue create, gh issue comment"]:::gh
-        d3["origin remote (git push)\nauth: bot token\nused by: both (branch push for log commits)"]:::gh
+        d3["origin remote\nauth: bot token\nused by: both, git pull in create_agent_branch\nno step pushes; the token can, and the curator did once (#494)"]:::gh
     end
 
     c1 --> c2
@@ -534,17 +558,16 @@ flowchart LR
 
     PR["personas-run.yml\nsession completes"]:::src
 
-    PR --> O1["per-persona log files\nlogs/personas/(name)/(ts).md"]:::out
-    PR --> O2["curator log file\nlogs/curator/(ts).md"]:::out
+    PR --> O1["per-persona log files\nlogs/(name)/(ts).md in each runner,\nkept 7 days as persona-log artifacts"]:::out
+    PR --> O2["curator log file\nlogs/curator/(ts).md, runner only"]:::out
     PR --> O3["GitHub issues created\n(by curator, deduped)"]:::out
     PR --> O4["comments on existing issues\n(when curator dedupes)"]:::out
 
     O3 --> C1["coder-run.yml find-issues\npicks unclaimed bug / enhancement / agent-ok"]:::cons
     O3 --> C2["maintainer triage\nlabels, milestones"]:::human
+    O3 --> C5["agent-digest.yml\nMonday summary lists the issues filed"]:::cons
 
-    O1 --> C3["next persona run for same name\n(if convention adds Prior Runs later)"]:::cons
-    O1 --> C4["next curator run\nre-reads all persona logs"]:::cons
-    O2 --> C5["agent-digest.yml\nMonday summary of agent activity"]:::cons
+    O1 --> C4["this run's curator only\n(artifact scoped to github.run_id)"]:::cons
 
     C1 --> C6["coder opens PR to development"]:::cons
     C6 --> C7["agent-review-pr.yml\nfires on agent/* PR"]:::cons
@@ -554,7 +577,7 @@ flowchart LR
 
 Why personas do not file issues directly: every persona is a biased observer by design (the beginner over-reports, the harsh-critic over-criticizes). The curator is the single quality gate that turns four biased streams into one signal stream. See [curator.md](../../scripts/agents/prompts/curator.md) section "Your bar for PROMOTE".
 
-Why curator log lives separately from persona logs: the digest workflow can count personas-vs-curator activity independently, and the curator's dedup decisions are auditable from one place.
+Why curator log lives separately from persona logs: the curator's dedup decisions are meant to be auditable from one place (curator.md step 5e). Neither log is committed, though, so that audit trail ends with the run, and the weekly digest, which reads only committed logs under `scripts/agents/logs/`, sees neither.
 
 [Back to top](#navigate)
 
@@ -582,7 +605,7 @@ stateDiagram-v2
     NextSlot --> CuratorGate: matrix complete
     CuratorGate --> CuratorSkipped: matrix.result == cancelled
     CuratorGate --> CuratorRunning: success / failure / skipped
-    CuratorRunning --> CuratorReading: pull all persona logs
+    CuratorRunning --> CuratorReading: read /tmp/persona-logs (this run's artifacts only)
     CuratorReading --> CuratorDeduping: gh issue list + gh search per finding
     CuratorDeduping --> CuratorFiling: PROMOTE + no dup
     CuratorDeduping --> CuratorCommenting: PROMOTE + dup found
@@ -591,15 +614,21 @@ stateDiagram-v2
     CuratorCommenting --> CuratorLogged
     CuratorSkipping --> CuratorLogged
     CuratorLogged --> ClockOut: status mapped to exit code
-    ClockOut --> Completed: exit 0
+    ClockOut --> Completed: exit 0 and log_has_content
+    ClockOut --> NoOutput: exit 0 but every section still the placeholder
     ClockOut --> Interrupted: any non-zero
     Skipped --> [*]
     CuratorSkipped --> [*]
     Completed --> [*]
+    NoOutput --> [*]
     Interrupted --> [*]
 ```
 
 `if: always()` on every clock-out step means even interrupted personas and an interrupted curator stamp a finish time. No log file is ever left in `running`.
+
+A clean exit is not the same as a useful run. `clock_out` calls `log_has_content` and stamps `no-output` when a persona or the curator exited 0 but left all three log sections as the `_Pending ..._` placeholder that `clock_in` wrote. In CI that surfaces as a `::warning title=Agent wrote no output::` annotation; `clock_out` still returns 0 so the job stays green, because it is the last command of a `bash -e` step. The local `run_persona` and `run_curator` runners in [scripts/maintain.sh](../../scripts/maintain.sh) re-check `log_has_content` after `clock_out` and print a `warn` line for the same case. This is the check that would have caught the four 2026-03-05 persona stubs, which looked identical to clean runs.
+
+The local curator mirrors the CI handoff rather than reading the repo: `./scripts/maintain.sh curator <log.md>...` stages the logs you name (plus any `run_persona` wrote in this invocation, which is how `all` feeds it) into a `mktemp -d` directory as `(persona)/(file).md`, then calls the same `render_curator_prompt` CI uses, and removes the staging directory after clock-out. Staging happens before the `cd` so relative paths resolve from your shell's directory, and before `create_agent_branch` so a bad path leaves git untouched. With no logs to curate it errors out instead of running.
 
 [Back to top](#navigate)
 
@@ -631,7 +660,7 @@ flowchart TB
 
     F4["All personas fail"]:::fail
     F4 --> F4E["run-persona.result = failure\ncurator still runs (always() + != cancelled)"]:::effect
-    F4X["curator reads logs/personas/*/*.md anyway\nemits empty session log"]:::fix
+    F4X["curator downloads whatever artifacts exist\n0 logs is a valid no-op (::warning + prompt handles it)"]:::fix
     F4E --> F4X
 
     F5["Matrix cancelled by user / GH"]:::fail
@@ -646,13 +675,23 @@ flowchart TB
 
     F7["Curator skips dedup procedure"]:::fail
     F7 --> F7E["duplicate issues filed"]:::effect
-    F7X["curator.md step 5 is auditable: log queries\nmaintainer reviews log if dup slips"]:::fix
+    F7X["curator.md step 5e asks the curator to log its queries,\nbut the curator log is not committed or uploaded,\nso after the run there is no log to review"]:::fix
     F7E --> F7X
 
     F8["Anthropic API outage mid-session"]:::fail
     F8 --> F8E["affected job returns error\nclock_out marks interrupted\nremaining jobs still attempt"]:::effect
     F8X["next cron retries; manual dispatch available"]:::fix
     F8E --> F8X
+
+    F10["Staging fails (log missing, or two logs collide on one target path)"]:::fail
+    F10 --> F10E["stage_persona_log returns 1\n::warning Persona log not staged\nupload step finds no files (if-no-files-found: warn)"]:::effect
+    F10X["that persona's findings miss this curator run only\nthe log still exists in the runner checkout; rerun the session"]:::fix
+    F10E --> F10X
+
+    F11["Download step fails (artifact API hiccup)"]:::fail
+    F11 --> F11E["continue-on-error: true, job keeps going\ncount_persona_logs returns 0 on the missing dir"]:::effect
+    F11X["curator no-ops with a ::warning; no partial or stale curation"]:::fix
+    F11E --> F11X
 
     F9["Two sessions overlap"]:::fail
     F9 --> F9E["no concurrency group declared at workflow level\nGitHub runs both\nbranch names collide on same date"]:::effect
@@ -689,7 +728,7 @@ flowchart LR
     K14["Gate caps"]:::k --- V14["bot PRs &lt;= 20, open issues &lt;= 40"]:::v
     K15["Persona branches"]:::k --- V15["agent/&lt;persona&gt;/&lt;YYYY-MM-DD&gt;"]:::v
     K16["Curator branch"]:::k --- V16["agent/curator/&lt;YYYY-MM-DD&gt;"]:::v
-    K17["Persona logs"]:::k --- V17["scripts/agents/logs/personas/&lt;name&gt;/&lt;ts&gt;.md"]:::v
+    K17["Persona logs"]:::k --- V17["scripts/agents/logs/&lt;name&gt;/&lt;ts&gt;.md (CI, never committed; local: logs/personas/&lt;name&gt;/, #841)"]:::v
     K18["Curator log"]:::k --- V18["scripts/agents/logs/curator/&lt;ts&gt;.md"]:::v
     K19["Host template"]:::k --- V19["scripts/agents/prompts/_persona.md"]:::v
     K20["Persona blocks"]:::k --- V20["beginner, harsh-critic, speed-runner, enterprise"]:::v
@@ -698,6 +737,10 @@ flowchart LR
     K23["Persona writes"]:::k --- V23["log file ONLY (no PRs, no issues)"]:::v
     K24["Curator writes"]:::k --- V24["GitHub issues + comments + log file"]:::v
     K25["Prompt artifact"]:::k --- V25["upload-artifact@v7, /tmp/agent-prompt.txt, 7-day retention (both jobs)"]:::v
+    K26["Findings artifact"]:::k --- V26["persona-log-&lt;persona&gt;-&lt;run_id&gt;, staged &lt;persona&gt;/&lt;file&gt;.md, 7-day retention"]:::v
+    K27["Curator input"]:::k --- V27["/tmp/persona-logs (download pattern persona-log-*-&lt;run_id&gt;, merge-multiple)"]:::v
+    K28["Shared helpers"]:::k --- V28["stage_persona_log, count_persona_logs, render_curator_prompt"]:::v
+    K29["Local curator"]:::k --- V29["./scripts/maintain.sh curator &lt;log.md&gt;... (or via 'all')"]:::v
 ```
 
 Direct links:

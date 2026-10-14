@@ -106,7 +106,7 @@ A couple of things to keep in mind:
 - **Defaults are applied _after_ validation.** A `default` on a `required` property does **not** satisfy that requirement — if the LLM omits the field, validation still fails.
 - **Opt out with `validateSchema: false`.** This switches to filter/default-only behavior: unknown keys are stripped and defaults are applied, but `required` and constraints are **not** checked. Use it only if you intentionally want that looser behavior.
 
-See the [JSON parser reference](/parser/included-parsers.html#json) for the full option list.
+See the [JSON parser reference](/parser/included-parsers#json) for the full option list.
 
 ### Related
 

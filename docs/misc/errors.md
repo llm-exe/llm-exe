@@ -173,8 +173,8 @@ try {
 ```
 
 - Serializes `LlmExeError`, native `Error`, `Response`, and arbitrary objects.
-- Walks the `cause` chain (up to 5 levels; deeper causes are marked
-  `{ truncated: true }`).
+- Walks the `cause` chain up to 4 causes deep. A longer chain ends with
+  `{ truncated: true }` in place of the fifth cause.
 - Guards against circular references (rendered as `"[Circular]"`) and normalizes
   values that are not JSON-safe (`BigInt`, `Date`, `Map`, functions, etc.).
 - Secrets in provider error context are redacted.
@@ -203,4 +203,5 @@ try {
 
 The header is formatted as `Name [code]: message` (falling back to the
 `category`, then just the name when neither is present), followed by one
-`Caused by:` line per level of the `cause` chain (up to 5 levels).
+`Caused by:` line for each of the first 5 causes in the `cause` chain. Deeper
+causes are left out without a marker.

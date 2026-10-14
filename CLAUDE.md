@@ -60,7 +60,7 @@ const result = await executor.execute({ text: "..." });
 - See https://llm-exe.com/llm/openai.html#basic-usage for full provider docs
 
 ### Parsers
-- Built-in: `string`, `json`, `listToArray`, `listToKeyValue`, `stringExtract`, `markdownCodeBlock`, `boolean`, `number`
+- Built-in: `string`, `json`, `listToJson`, `listToArray`, `listToKeyValue`, `stringExtract`, `markdownCodeBlock`, `markdownCodeBlocks`, `replaceStringTemplate`, `boolean`, `number`
 - `createParser("type", options?)` — returns a typed parser
 - `createCustomParser<OutputType>("name", (input, context) => result)` — for custom logic
 - The parser's return type becomes the executor's return type — this is where the type safety pays off

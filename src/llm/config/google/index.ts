@@ -118,9 +118,17 @@ export const google = {
     googleGeminiChatV1,
     "gemini-3.6-flash"
   ),
+  // Google auto-routes gemini-3.5-flash to 3.6 and gemini-3.7-flash to 3.8 and
+  // has pulled both from AI Studio's picker, but publishes no shutdown date for
+  // anything in the 3.x flash line (checked 2026-10-15). They stay as working,
+  // non-deprecated shorthands; new code should prefer 3.8. See issue #846.
   "google.gemini-3.7-flash": withDefaultModel(
     googleGeminiChatV1,
     "gemini-3.7-flash"
+  ),
+  "google.gemini-3.8-flash": withDefaultModel(
+    googleGeminiChatV1,
+    "gemini-3.8-flash"
   ),
 
   // Google limits the 2.5 line to projects that have used it before (a new
@@ -148,7 +156,7 @@ export const google = {
   ...deprecateShorthand("google.gemini-2.0-flash", {
     config: withDefaultModel(googleGeminiChatV1, "gemini-2.0-flash"),
     message:
-      'Model "google.gemini-2.0-flash" was shut down by Google on 2026-06-01 and will fail at the API. Migrate to "google.gemini-3.5-flash".',
+      'Model "google.gemini-2.0-flash" was shut down by Google on 2026-06-01 and will fail at the API. Migrate to "google.gemini-3.8-flash".',
   }),
   ...deprecateShorthand("google.gemini-2.0-flash-lite", {
     config: withDefaultModel(googleGeminiChatV1, "gemini-2.0-flash-lite"),
@@ -158,6 +166,6 @@ export const google = {
   ...deprecateShorthand("google.gemini-1.5-pro", {
     config: withDefaultModel(googleGeminiChatV1, "gemini-1.5-pro"),
     message:
-      'Model "google.gemini-1.5-pro" was shut down by Google on 2025-09-29 and will fail at the API. Migrate to "google.gemini-3.5-flash".',
+      'Model "google.gemini-1.5-pro" was shut down by Google on 2025-09-29 and will fail at the API. Migrate to "google.gemini-3.8-flash".',
   }),
 };

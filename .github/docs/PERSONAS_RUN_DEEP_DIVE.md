@@ -57,7 +57,7 @@ flowchart LR
         host["scripts/agents/prompts/_persona.md\n(host template)"]:::file
         per["scripts/agents/prompts/personas/&lt;name&gt;.md\n(personality block)"]:::file
         cur["scripts/agents/prompts/curator.md"]:::file
-        plog["scripts/agents/logs/&lt;name&gt;/*.md\n(written by each persona in its runner,\nnever committed; local runs use logs/personas/, #841)"]:::file
+        plog["scripts/agents/logs/personas/&lt;name&gt;/*.md\n(written by each persona in its runner,\nnever committed in CI; same layout as local runs, #841)"]:::file
         art["artifact persona-log-&lt;persona&gt;-&lt;run_id&gt;\n(staged as &lt;persona&gt;/&lt;file&gt;.md, 7-day retention)"]:::file
         pdl["/tmp/persona-logs/&lt;persona&gt;/*.md\n(curator's only findings input)"]:::file
         clog["scripts/agents/logs/curator/*.md\n(curator decisions)"]:::file
@@ -313,7 +313,7 @@ sequenceDiagram
         RP->>FS: checkout fetch-depth 0
         RP->>C: source config.sh
         C->>FS: create_agent_branch agent/(persona)/(date)
-        C->>FS: clock_in writes skeleton log under logs/(name)/
+        C->>FS: clock_in writes skeleton log under logs/personas/(name)/
         RP->>FS: read _persona.md (host)
         RP->>FS: read personas/(name).md (block)
         RP->>FS: sed sub LOG_FILE then bash sub PERSONA
@@ -483,7 +483,7 @@ flowchart LR
     end
 
     subgraph both["READ + WRITE"]
-        b1["scripts/agents/logs/(name)/*.md\nwritten by persona, reaches the curator only as an artifact copy"]:::both
+        b1["scripts/agents/logs/personas/(name)/*.md\nwritten by persona, reaches the curator only as an artifact copy"]:::both
         b2["scripts/agents/logs/curator/*.md\nwritten by curator in its runner; never committed, but uploaded\nas curator-log-(run_id); this workflow passes no Prior Runs context"]:::both
     end
 
@@ -564,7 +564,7 @@ flowchart LR
 
     PR["personas-run.yml\nsession completes"]:::src
 
-    PR --> O1["per-persona log files\nlogs/(name)/(ts).md in each runner,\nkept 7 days as persona-log artifacts"]:::out
+    PR --> O1["per-persona log files\nlogs/personas/(name)/(ts).md in each runner,\nkept 7 days as persona-log artifacts"]:::out
     PR --> O2["curator log file\nlogs/curator/(ts).md, runner only,\nkept 90 days as curator-log-(run_id)"]:::out
     PR --> O3["GitHub issues created\n(by curator, deduped)"]:::out
     PR --> O4["comments on existing issues\n(when curator dedupes)"]:::out
@@ -735,7 +735,7 @@ flowchart LR
     K14["Gate caps"]:::k --- V14["bot PRs &lt;= 20, open issues &lt;= 40"]:::v
     K15["Persona branches"]:::k --- V15["agent/&lt;persona&gt;/&lt;YYYY-MM-DD&gt;"]:::v
     K16["Curator branch"]:::k --- V16["agent/curator/&lt;YYYY-MM-DD&gt;"]:::v
-    K17["Persona logs"]:::k --- V17["scripts/agents/logs/&lt;name&gt;/&lt;ts&gt;.md (CI, never committed; local: logs/personas/&lt;name&gt;/, #841)"]:::v
+    K17["Persona logs"]:::k --- V17["scripts/agents/logs/personas/&lt;name&gt;/&lt;ts&gt;.md (CI and local; never committed in CI, #841)"]:::v
     K18["Curator log"]:::k --- V18["scripts/agents/logs/curator/&lt;ts&gt;.md (never committed)"]:::v
     K19["Host template"]:::k --- V19["scripts/agents/prompts/_persona.md"]:::v
     K20["Persona blocks"]:::k --- V20["beginner, harsh-critic, speed-runner, enterprise"]:::v

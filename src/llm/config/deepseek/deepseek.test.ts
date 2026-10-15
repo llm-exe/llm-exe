@@ -90,8 +90,8 @@ describe("deepseek configuration", () => {
       // The message must not state it as having occurred.
       expect(deepseekChat.deprecated!.message).not.toContain("2026-07-24");
       expect(deepseekChat.deprecated!.message).not.toMatch(/retired|will fail|no longer resolves/i);
-      // deepseek-v4-flash defaults to thinking mode (verified live), so it is
-      // not a drop-in replacement; the migration hint must say so.
+      // deepseek-flash defaults to thinking mode (verified live 2026-10-15), so
+      // it is not a drop-in replacement; the migration hint must say so.
       expect(deepseekChat.deprecated!.message).toMatch(/thinking mode/);
     });
   });

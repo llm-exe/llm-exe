@@ -901,7 +901,6 @@ export type AllUseLlmOptions = AllLlm & {
   "deepseek.flash": {
     input: Omit<DeepseekRequest, "model">;
   };
-  /** @deprecated Retired model id, still served as a legacy alias. Use `deepseek.flash`. */
   "deepseek.v4-flash": {
     input: Omit<DeepseekRequest, "model">;
   };

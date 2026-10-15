@@ -19,21 +19,32 @@ const deepseekChatV1: Config = createOpenAiCompatibleConfiguration({
 
 export const deepseek = {
   "deepseek.chat.v1": deepseekChatV1,
-  "deepseek.v4-flash": withDefaultModel(deepseekChatV1, "deepseek-v4-flash"),
+  "deepseek.flash": withDefaultModel(deepseekChatV1, "deepseek-flash"),
   "deepseek.v4-pro": withDefaultModel(deepseekChatV1, "deepseek-v4-pro"),
   // Deprecated
   // DeepSeek announced deepseek-chat would stop working on 2026-07-24 and
   // dropped it from their docs, but it is still served: verified live on
   // 2026-10-12 it returns 200 with response model "deepseek-flash". It is not
-  // interchangeable with deepseek-v4-flash, though, despite the shared model
-  // name: deepseek-chat answers in non-thinking mode, while deepseek-v4-flash
-  // defaults to thinking mode, spends reasoning tokens, and returns empty
-  // content when maxTokens is too small to finish reasoning. That is why the
-  // shorthand keeps its original model id and warns instead of being repointed,
-  // matching every other deprecated shorthand in the repo.
+  // interchangeable with the Flash model, though, despite the shared name:
+  // deepseek-chat answers in non-thinking mode, while deepseek-flash defaults
+  // to thinking mode, spends reasoning tokens, and returns empty content when
+  // maxTokens is too small to finish reasoning. That is why the shorthand keeps
+  // its original model id and warns instead of being repointed, matching every
+  // other deprecated shorthand in the repo.
   ...deprecateShorthand("deepseek.chat", {
     config: withDefaultModel(deepseekChatV1, "deepseek-chat"),
     message:
-      'Model "deepseek.chat" is deprecated: DeepSeek has dropped deepseek-chat from its docs. Migrate to "deepseek.v4-flash", but note it runs in thinking mode by default, so it spends reasoning tokens and needs a larger maxTokens than deepseek.chat did.',
+      'Model "deepseek.chat" is deprecated: DeepSeek has dropped deepseek-chat from its docs. Migrate to "deepseek.flash", but note it runs in thinking mode by default, so it spends reasoning tokens and needs a larger maxTokens than deepseek.chat did.',
+  }),
+  // DeepSeek has retired the model behind deepseek-v4-flash. The id is still an
+  // accepted legacy alias — requests are served by DeepSeek-V4.1-Flash and
+  // billed at the Flash price — and no shutdown date is published, so this keeps
+  // working rather than breaking callers. Like every deprecated shorthand here
+  // it keeps the model id the caller asked for and warns instead of being
+  // silently repointed; use "deepseek.flash" for the current name.
+  ...deprecateShorthand("deepseek.v4-flash", {
+    config: withDefaultModel(deepseekChatV1, "deepseek-v4-flash"),
+    message:
+      'Model "deepseek.v4-flash" is deprecated: DeepSeek has retired the model behind deepseek-v4-flash and now recommends deepseek-flash. The legacy id is still accepted and served by DeepSeek-V4.1-Flash, but migrate to "deepseek.flash".',
   }),
 };

@@ -365,7 +365,7 @@ The minimal tree, annotated with why each path exists. A replica must reproduce 
 │   ├── generate-llms-txt.sh              docs helper (out of scope for automation)
 │   └── agents/
 │       ├── README.md                     maintainer-facing summary of agent system
-│       ├── config.sh                     bash library sourced by every agent workflow; defines DEFAULT_BRANCH, DATE_STAMP, AGENT_TIMEOUT, LOG_PLACEHOLDER, color helpers, create_agent_branch, clock_in, log_has_content, clock_out, recent_logs, stage_persona_log, count_persona_logs, render_curator_prompt, run_claude, check_prerequisites
+│       ├── config.sh                     bash library sourced by every agent workflow; defines DEFAULT_BRANCH, DATE_STAMP, AGENT_TIMEOUT, LOG_PLACEHOLDER, color helpers, create_agent_branch, clock_in, log_has_content, clock_out, recent_logs, build_prior_context, stage_persona_log, count_persona_logs, render_curator_prompt, run_claude, check_prerequisites
 │       ├── prompts/
 │       │   ├── docs.md                   docs agent prompt template (uses $BRANCH and $LOG_FILE substitutions)
 │       │   ├── tester.md                 tester prompt
@@ -464,7 +464,7 @@ Every agent prompt is the concatenation of four pieces, in this order:
    - For the reviewer, `$PR_NUMBER` is also substituted.
    - For personas, `$PERSONA` is replaced by the contents of `prompts/personas/<persona>.md` and the host template is `prompts/_persona.md`.
    - For the curator, `render_curator_prompt` also fills `$PERSONA_LOGS` and `$PERSONA_LOG_COUNT`.
-2. `build_prior_context` output: the last three log files from `scripts/agents/logs/<role>/` (excluding the current one), concatenated under a `## Prior Runs` header. This is what gives the task agents continuity. `personas-run.yml` doesn't call it, so persona and curator runs in CI start without prior context.
+2. `build_prior_context` output: the last three log files from `scripts/agents/logs/<role>/` (excluding the current one), concatenated under a `## Prior Runs` header. This is what gives the task agents continuity. The function lives in [config.sh](../../scripts/agents/config.sh) next to `recent_logs` (it used to live in `maintain.sh`, which CI never sources, so CI agents silently got no prior context). It filters out the current log before taking three, so a run sees three prior logs, not two. Workflows call it as `build_prior_context ... || true` with no `2>/dev/null`: a failure shows in the job log but cannot fail the run. `personas-run.yml` doesn't call it, so persona and curator runs in CI start without prior context.
 3. A `## Time Budget` block with the exact UTC start time and the UTC deadline (`+600 seconds` from now). The prompt tells the agent to run `date -u +%H:%M` periodically.
 4. (Optional) `## Additional Instructions from Maintainer`, populated from the `instructions` workflow input.
 

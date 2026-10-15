@@ -366,7 +366,7 @@ flowchart TB
     classDef l4 fill:#581c87,color:#fff,stroke:#000
 
     A["LAYER 1: Role template\nscripts/agents/prompts/docs-sync.md\nwith $BRANCH and $LOG_FILE substituted"]:::l1
-    B["LAYER 2: Prior runs\nlast 3 logs from logs/docs-sync/\nunder ## Prior Runs header"]:::l2
+    B["LAYER 2: Prior runs\nlast 3 logs from logs/docs-sync/\nunder ## Prior Runs header\nbuild_prior_context in config.sh, current log excluded"]:::l2
     C["LAYER 3: Time Budget\nstart UTC + deadline UTC + 600s"]:::l3
     D["LAYER 4: Changed Source Files\nthe verbatim contents of /tmp/changed-files.txt\nunder ## Changed Source Files header"]:::l4
 

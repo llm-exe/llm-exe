@@ -1,6 +1,6 @@
 ---
 title: "Use Google Gemini Models in TypeScript with llm-exe"
-description: "Call Google Gemini models like gemini-3.5-flash from TypeScript with llm-exe. Covers setup, API key authentication, and Gemini-specific options like effort."
+description: "Call Google Gemini models like gemini-3.8-flash from TypeScript with llm-exe. Covers setup, API key authentication, and Gemini-specific options like effort."
 ---
 
 # Google Gemini
@@ -17,9 +17,12 @@ llm-exe ships typed shorthands for the most common Gemini models so you do not h
 | `google.gemini-3.5-flash-lite` | `gemini-3.5-flash-lite`  |
 | `google.gemini-3.6-flash`      | `gemini-3.6-flash`       |
 | `google.gemini-3.7-flash`      | `gemini-3.7-flash`       |
+| `google.gemini-3.8-flash`      | `gemini-3.8-flash`       |
 | `google.gemini-2.5-flash`      | `gemini-2.5-flash`       |
 | `google.gemini-2.5-flash-lite` | `gemini-2.5-flash-lite`  |
 | `google.gemini-2.5-pro`        | `gemini-2.5-pro`         |
+
+Google now serves requests for `gemini-3.5-flash` with `gemini-3.6-flash`, and requests for `gemini-3.7-flash` with `gemini-3.8-flash` (the response's `modelVersion` names the model that answered). It has announced no shutdown date for either, so both shorthands keep working without a deprecation warning. For new code, use `google.gemini-3.8-flash`.
 
 ::: warning Gemini 2.5 access
 Google limits the 2.5 models to projects that have used them before, so a new project gets a 404 from `google.gemini-2.5-flash`, `google.gemini-2.5-flash-lite`, and `google.gemini-2.5-pro`. Google says these models are not deprecated and will keep being served, so llm-exe doesn't warn on them. For a new project, use a 3.x shorthand.
@@ -42,16 +45,16 @@ when used. Migrate to an active shorthand above.
 
 ```ts
 const llm = useLlm("google.chat.v1", {
-  model: "gemini-3.5-flash", // specify a model
+  model: "gemini-3.8-flash", // specify a model
 });
 ```
 
 ### Gemini Chat By Model
 
 ```ts
-const llm = useLlm("google.gemini-3.5-flash", {
+const llm = useLlm("google.gemini-3.8-flash", {
   // other options,
-  // no model needed, using gemini-3.5-flash
+  // no model needed, using gemini-3.8-flash
 });
 ```
 

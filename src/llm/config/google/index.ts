@@ -106,6 +106,10 @@ export const google = {
     googleGeminiChatV1,
     "gemini-3.1-flash-lite"
   ),
+  // Google auto-routes gemini-3.5-flash to 3.6 and gemini-3.7-flash to 3.8 and
+  // has pulled both from AI Studio's picker, but publishes no shutdown date for
+  // anything in the 3.x flash line (checked 2026-10-15). They stay as working,
+  // non-deprecated shorthands; new code should prefer 3.8. See issue #846.
   "google.gemini-3.5-flash": withDefaultModel(
     googleGeminiChatV1,
     "gemini-3.5-flash"
@@ -118,10 +122,6 @@ export const google = {
     googleGeminiChatV1,
     "gemini-3.6-flash"
   ),
-  // Google auto-routes gemini-3.5-flash to 3.6 and gemini-3.7-flash to 3.8 and
-  // has pulled both from AI Studio's picker, but publishes no shutdown date for
-  // anything in the 3.x flash line (checked 2026-10-15). They stay as working,
-  // non-deprecated shorthands; new code should prefer 3.8. See issue #846.
   "google.gemini-3.7-flash": withDefaultModel(
     googleGeminiChatV1,
     "gemini-3.7-flash"

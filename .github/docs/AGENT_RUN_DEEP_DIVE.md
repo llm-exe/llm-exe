@@ -303,7 +303,7 @@ flowchart TB
     classDef l4 fill:#581c87,color:#fff,stroke:#000
 
     A["LAYER 1: Role template\nscripts/agents/prompts/&lt;agent&gt;.md\nwith $BRANCH and $LOG_FILE substituted"]:::l1
-    B["LAYER 2: Prior runs\nconcatenated contents of last 3 log files\nunder ## Prior Runs header\n(skips current run)"]:::l2
+    B["LAYER 2: Prior runs\nconcatenated contents of last 3 log files\nunder ## Prior Runs header\n(current run filtered out before taking 3)\nbuild_prior_context in config.sh, called with || true"]:::l2
     C["LAYER 3: Time Budget\nstart UTC + deadline UTC + 600s\ntells agent to run date -u +%H:%M to pace itself"]:::l3
     D["LAYER 4: Maintainer Instructions\n(only present on workflow_dispatch with inputs.instructions)\nAppended under ## Additional Instructions from Maintainer"]:::l4
 

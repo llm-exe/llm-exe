@@ -911,6 +911,9 @@ export type AllUseLlmOptions = AllLlm & {
   "deepseek.chat": {
     input: DeepseekRequest;
   };
+  "deepseek.flash": {
+    input: Omit<DeepseekRequest, "model">;
+  };
   "deepseek.v4-flash": {
     input: Omit<DeepseekRequest, "model">;
   };

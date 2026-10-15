@@ -131,7 +131,7 @@ flowchart LR
         M1["agent-review-pr: 628 lines, 12"]:::md
         M2["cache-cleanup: 548 lines, 12"]:::md
         M3["create-draft-release: 496 lines, 11"]:::md
-        M4["personas-run: 713 lines, 12"]:::md
+        M4["personas-run: 764 lines, 12"]:::md
         M5["publish-release: 603 lines, 12"]:::md
         M6["test-package: 551 lines, 11"]:::md
     end

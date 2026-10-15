@@ -114,7 +114,10 @@ jobs:
           source ./scripts/agents/config.sh
 
           branch=$(create_agent_branch "$agent")
-          log_file=$(clock_in "$agent" "$branch")
+          # clock_in takes the nested "personas/<name>" key so the log lands in
+          # scripts/agents/logs/personas/<name>/, the layout maintain.sh writes
+          # and the committed tree already uses. The branch keeps the bare name.
+          log_file=$(clock_in "personas/$agent" "$branch")
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
           echo "log_file=$log_file" >> "$GITHUB_OUTPUT"
 

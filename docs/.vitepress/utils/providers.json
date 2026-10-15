@@ -300,6 +300,10 @@
       {
         "id": "grok-4.6",
         "shorthand": "xai.grok-4.6"
+      },
+      {
+        "id": "grok-4.7",
+        "shorthand": "xai.grok-4.7"
       }
     ]
   },

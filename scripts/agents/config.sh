@@ -130,6 +130,36 @@ recent_logs() {
   fi
 }
 
+# Helper: build the "## Prior Runs" prompt section from an agent's last three
+# logs, excluding the current run's log. clock_in has already written that log,
+# so it is the newest file; it is filtered out before taking three, or a run
+# would see only two. Defined here rather than in maintain.sh because the CI
+# workflows source only this file.
+build_prior_context() {
+  local agent_key="$1"
+  local current_log="$2"
+  local logs
+  logs=$(recent_logs "$agent_key" 4 | { grep -v -x -F "$current_log" || true; } | tail -3)
+  local context=""
+
+  while IFS= read -r log; do
+    [[ -z "$log" ]] && continue
+    context="${context}
+
+---
+
+$(cat "$log")"
+  done <<< "$logs"
+
+  if [[ -n "$context" ]]; then
+    echo "
+
+## Prior Runs
+Recent logs from previous runs. Review these to understand where things stand:
+${context}"
+  fi
+}
+
 # Helper: stage a persona findings log as <dest_dir>/<persona>/<file>.md, the
 # layout the curator prompt describes. The persona defaults to the log's parent
 # directory name. CI stages each persona's log before uploading it, so the

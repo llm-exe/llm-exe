@@ -30,9 +30,9 @@ A few issues per run max. Pick them, fix them properly with tests, ship the PR, 
    gh issue list --label 'bug' --state open --limit 10
    gh issue list --label 'enhancement' --state open --limit 10
 
-   If no labeled issues exist, check the Known Issues in CLAUDE.md:
-   - NumberParser bug: '42' parses to '4' (extracts only first digit)
-   - setToolMessage/setToolCallMessage don't return 'this' (breaks chaining)
+   If no labeled issues exist, check the Known Issues section of CLAUDE.md.
+   Reproduce an item on the current branch before working on it: fixes can land
+   before that list is updated.
 
 4. Pick ONE issue. Prefer:
    - Bugs over enhancements

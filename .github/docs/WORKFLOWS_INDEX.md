@@ -131,14 +131,14 @@ flowchart LR
         M1["agent-review-pr: 644 lines, 12"]:::md
         M2["cache-cleanup: 548 lines, 12"]:::md
         M3["create-draft-release: 496 lines, 11"]:::md
-        M4["personas-run: 713 lines, 12"]:::md
+        M4["personas-run: 756 lines, 12"]:::md
         M5["publish-release: 603 lines, 12"]:::md
         M6["test-package: 551 lines, 11"]:::md
     end
 
     subgraph Large["13-14 diagrams"]
-        L1["agent-run: 653 lines, 13"]:::lg
-        L2["coder-run: 736 lines, 13"]:::lg
+        L1["agent-run: 655 lines, 13"]:::lg
+        L2["coder-run: 737 lines, 13"]:::lg
         L3["draft-main-pr: 677 lines, 13"]:::lg
         L4["deploy-docs: 581 lines, 13"]:::lg
         L5["bot-respond: 603 lines, 13"]:::lg
@@ -148,7 +148,7 @@ flowchart LR
     end
 
     subgraph XL["16 diagrams"]
-        X1["docs-sync: 639 lines, 16"]:::xl
+        X1["docs-sync: 640 lines, 16"]:::xl
     end
 ```
 

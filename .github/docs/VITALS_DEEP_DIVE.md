@@ -111,7 +111,7 @@ flowchart TB
         s3["Configure git<br/>(llm-exe-bot[bot])"]:::step
         s4["Run .github/vitals/generate.sh AUTOMATION.md"]:::step
         s5["git diff --quiet AUTOMATION.md"]:::step
-        s6["commit + push if changed<br/>(message contains [skip ci])"]:::step
+        s6["commit + push if changed<br/>(no [skip ci], see Loop prevention)"]:::step
 
         s1 --> s2 --> s3 --> s4 --> s5 --> s6
     end
@@ -154,7 +154,7 @@ sequenceDiagram
     Gen->>Out: write template + workflow table + activity + health + release + links
     J->>G: git diff --quiet AUTOMATION.md
     Note over J: if no diff, exit early with notice
-    J->>G: git add + commit "chore: refresh automation vitals [skip ci]"
+    J->>G: git add + commit "chore: refresh automation vitals"
     J->>G: git push origin development (with rebase-retry on failure)
 ```
 
@@ -289,18 +289,17 @@ flowchart LR
     classDef risk fill:#7c2d12,color:#fff,stroke:#000
     classDef guard fill:#064e3b,color:#fff,stroke:#000
 
-    R1["The push commit might<br/>retrigger workflows"]:::risk
     R2["The push might retrigger<br/>vitals itself"]:::risk
     R3["docs-sync might catch the<br/>AUTOMATION.md change"]:::risk
 
-    G1["Guard 1: [skip ci] in commit<br/>message tells GitHub Actions<br/>to skip all workflows"]:::guard
-    G2["Guard 2: vitals has no push<br/>trigger. It only listens to<br/>cron and dispatch."]:::guard
-    G3["Guard 3: AUTOMATION.md is at the<br/>repo root. docs-sync paths<br/>filter does not include it."]:::guard
+    G2["Guard 1: vitals has no push<br/>trigger. It only listens to<br/>cron and dispatch."]:::guard
+    G3["Guard 2: AUTOMATION.md is at the<br/>repo root. docs-sync paths<br/>filter does not include it."]:::guard
 
-    R1 -. blocked by .-> G1
     R2 -. blocked by .-> G2
     R3 -. blocked by .-> G3
 ```
+
+The commit deliberately has no `[skip ci]`. It lands on `development`, so it becomes the head commit of the open `development` to `main` release PR, and GitHub skips every `pull_request` workflow for a PR whose head commit carries `[skip ci]`. With it, the required `Run Tests` checks never reported, the release PR sat BLOCKED, and `auto-merge-main-pr.yml` never ran even after the PR was marked ready (#830). Without it, a vitals commit fires the release PR's checks like any other push: one run of the test matrix and semver check per vitals commit. Once the release PR is out of draft, that includes `auto-merge-main-pr.yml`, so a vitals commit can ship the release the same way a merged PR would. Nothing loops: the only workflow with a push trigger on `development` is `docs-sync-trigger.yml`, and its path filter does not match `AUTOMATION.md`.
 
 [Back to top](#navigate)
 
@@ -347,12 +346,13 @@ flowchart LR
     classDef noop fill:#374151,color:#fff,stroke:#000
 
     V["vitals refresh"]:::src
-    V --> A["commit to development<br/>AUTOMATION.md change<br/>message: [skip ci]"]:::out
+    V --> A["commit to development<br/>AUTOMATION.md change<br/>(no [skip ci])"]:::out
 
     A --> C1["repo viewers see live state<br/>(GitHub web UI, mobile app, IDE)"]:::cons
     A --> C2["shields.io badges<br/>always reflect latest CI runs<br/>(no vitals trigger needed)"]:::cons
 
-    A --> N1["NO downstream workflow triggers<br/>(skip ci + no path matches)"]:::noop
+    A --> N1["no push-triggered workflow runs<br/>(no path filter matches)"]:::noop
+    A --> C3["release PR checks run<br/>(the commit is the PR head)"]:::cons
 ```
 
 [Back to top](#navigate)
@@ -439,8 +439,8 @@ flowchart LR
     K6["Timeout"]:::k --- V6["10 minutes"]:::v
     K7["Concurrency"]:::k --- V7["vitals, cancel-in-progress: true"]:::v
     K8["Identity"]:::k --- V8["llm-exe-bot[bot] via App token"]:::v
-    K9["Commit message"]:::k --- V9["chore: refresh automation vitals [skip ci]"]:::v
-    K10["Loop guard"]:::k --- V10["no push trigger + [skip ci] + path is at repo root"]:::v
+    K9["Commit message"]:::k --- V9["chore: refresh automation vitals"]:::v
+    K10["Loop guard"]:::k --- V10["no push trigger + path is at repo root"]:::v
     K11["Cost"]:::k --- V11["1 run/day, ~30s each, ~0.5 GH minutes/day"]:::v
 ```
 

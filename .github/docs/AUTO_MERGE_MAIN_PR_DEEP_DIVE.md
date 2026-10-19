@@ -523,7 +523,7 @@ flowchart TB
     F7E --> F7X
 
     F8["Required check never reported\n(skipped by branch filter, etc.)"]:::fail
-    F8 --> F8E["step 5 sees no FAILURE\nstep 6 calls gh pr merge admin\nbypasses branch protection\nmerge proceeds"]:::effect
+    F8 --> F8E["step 5 sees no fail or cancel\nstep 6 calls gh pr merge admin\nbypasses branch protection\nmerge proceeds"]:::effect
     F8X["audit required checks list\nadd explicit allowlist in step 5"]:::fix
     F8E --> F8X
 ```

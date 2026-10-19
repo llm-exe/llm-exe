@@ -191,4 +191,24 @@ describe("useLlmConfiguration", () => {
       mockConfig
     );
   });
+
+  it("types custom options declared on the config without a cast", () => {
+    const customLlm = useLlmConfiguration({
+      ...mockConfig,
+      endpoint: "http://localhost/{{region}}",
+      options: { region: {}, model: { default: "gpt-4" } },
+    });
+
+    // `region` is only known from the config's `options`; this is a
+    // compile-time check that the factory accepts it (issue #867)
+    const llmInstance = customLlm({ region: "us" });
+    expect(typeof llmInstance.call).toBe("function");
+    customLlm({ region: "us", model: "custom-model" });
+
+    // built-in provider options are still accepted
+    customLlm({ temperature: 0.5 });
+
+    // @ts-expect-error keys not declared on the config or a provider are rejected
+    customLlm({ notAnOption: 1 });
+  });
 });

@@ -11,10 +11,25 @@ export function useLlm<T extends keyof typeof configs>(
   return useLlmConfiguration<T>(config)(options);
 }
 
-export function useLlmConfiguration<T extends keyof typeof configs>(
-  config: Config<any>,
-) {
-  return <Options extends AllUseLlmOptions[T]["input"]>(options?: Options) =>
+/**
+ * Options declared on a config literal (e.g. `options: { region: {} }`).
+ * Resolves to `never` when the keys are only known as `string`, so a config
+ * typed as plain `Config` adds nothing to the accepted options.
+ */
+type ConfigDeclaredOptions<C extends Config<any>> =
+  string extends keyof C["options"]
+    ? never
+    : { [K in keyof C["options"]]?: unknown };
+
+export function useLlmConfiguration<
+  T extends keyof typeof configs,
+  C extends Config<any> = Config<any>,
+>(config: C) {
+  return <
+    Options extends AllUseLlmOptions[T]["input"] | ConfigDeclaredOptions<C>,
+  >(
+    options?: Options,
+  ) =>
     apiRequestWrapper(
       config,
       options ?? {},

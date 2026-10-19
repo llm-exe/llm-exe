@@ -114,7 +114,10 @@ jobs:
           source ./scripts/agents/config.sh
 
           branch=$(create_agent_branch "$agent")
-          log_file=$(clock_in "$agent" "$branch")
+          # clock_in takes the nested "personas/<name>" key so the log lands in
+          # scripts/agents/logs/personas/<name>/, the layout maintain.sh writes
+          # and the committed tree already uses. The branch keeps the bare name.
+          log_file=$(clock_in "personas/$agent" "$branch")
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
           echo "log_file=$log_file" >> "$GITHUB_OUTPUT"
 
@@ -287,3 +290,17 @@ jobs:
         run: |
           source ./scripts/agents/config.sh
           clock_out "${{ steps.prompt.outputs.log_file }}" "${{ job.status == 'success' && '0' || '1' }}"
+
+      # curator.md step 5e has the curator log every dedup search and decision
+      # so a duplicate that slips through can be traced, but nothing commits the
+      # curator log, so without this upload it dies with the job. Kept longer
+      # than the persona logs because a duplicate can go unnoticed for weeks;
+      # upload-artifact caps it at the repository's retention limit.
+      - name: Upload curator log
+        if: always() && steps.prompt.outputs.log_file != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: curator-log-${{ github.run_id }}
+          path: ${{ steps.prompt.outputs.log_file }}
+          if-no-files-found: warn
+          retention-days: 90

@@ -555,7 +555,14 @@ export interface OpenAiRequest extends Omit<GenericLLm, "effort"> {
   useJson?: boolean;
 }
 
-export interface XAiRequest extends GenericLLm {
+export interface XAiRequest extends Omit<GenericLLm, "effort"> {
+  /**
+   * Maps to `reasoning_effort` on the xAI models that accept it: grok-4.3,
+   * grok-4.5, grok-4.6 and grok-4.7. Dropped for any other model, including
+   * grok-4.20-0309-reasoning, which rejects the parameter. `"xhigh"` is
+   * documented from grok-4.6 on and treated as `"high"` on grok-4.5.
+   */
+  effort?: "minimal" | "low" | "medium" | "high" | "xhigh";
   model: string;
   frequencyPenalty?: number;
   logitBias?: Record<string, any> | null;
@@ -804,6 +811,9 @@ export type AllUseLlmOptions = AllLlm & {
   "google.gemini-3.7-flash": {
     input: Omit<GeminiRequest, "model">;
   };
+  "google.gemini-3.8-flash": {
+    input: Omit<GeminiRequest, "model">;
+  };
   // Google - Deprecated
   "google.gemini-2.0-flash": {
     input: Omit<GeminiRequest, "model">;
@@ -847,6 +857,9 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<XAiRequest, "model">;
   };
   "xai.grok-4.6": {
+    input: Omit<XAiRequest, "model">;
+  };
+  "xai.grok-4.7": {
     input: Omit<XAiRequest, "model">;
   };
 
@@ -897,6 +910,9 @@ export type AllUseLlmOptions = AllLlm & {
   // Deepseek
   "deepseek.chat": {
     input: DeepseekRequest;
+  };
+  "deepseek.flash": {
+    input: Omit<DeepseekRequest, "model">;
   };
   "deepseek.v4-flash": {
     input: Omit<DeepseekRequest, "model">;

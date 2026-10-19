@@ -8,7 +8,7 @@ Minimum prose. Maximum diagrams.
 
 - [1. The whole picture](#1-the-whole-picture)
 - [2. Triggers and filters](#2-triggers-and-filters)
-- [3. The one-job DAG](#3-the-one-job-dag)
+- [3. The three-job DAG](#3-the-three-job-dag)
 - [4. Step-by-step lifecycle](#4-step-by-step-lifecycle)
 - [5. Anatomy of the review prompt](#5-anatomy-of-the-review-prompt)
 - [6. Filesystem reads](#6-filesystem-reads)
@@ -42,12 +42,12 @@ flowchart LR
     subgraph T["Trigger"]
         t1["pull_request: opened, synchronize\nbranches: main, development"]:::trig
         t2["workflow_dispatch\ninputs: pr_number, base_ref, head_ref\n(dispatched by bot-respond.yml)"]:::trig
-        f1["job if:\nbase_ref == 'development'"]:::gate
+        f1["job if:\nbase_ref == 'development'\nAND head repo == this repo\n(fork guard on review + decide,\npull_request events only)"]:::gate
     end
 
     subgraph A["agent-review-pr.yml"]
         TS["tests job\ntimeout 20m\nNode 18/20/22/24 matrix"]:::job
-        R["review job\ntimeout 15m\nopened events only"]:::job
+        R["review job\ntimeout 15m\nopened events and re-review dispatch"]:::job
         DC["decide job\ntimeout 5m\nneeds: tests + review"]:::job
     end
 
@@ -89,8 +89,9 @@ flowchart LR
     t1 --> f1
     t2 --> f1
     f1 -->|base is development| TS
-    f1 -->|base is development AND opened| R
+    f1 -->|base is development AND opened AND not a fork, or dispatch| R
     f1 -.->|base is not development| skip(["skip"])
+    f1 -.->|pull_request from a fork| skipfork(["review + decide skipped\nmaintainer reviews by hand"])
     s1 --> reviewbot
     s3 --> bot
     reviewbot --> R
@@ -143,18 +144,28 @@ flowchart TB
     tests_if -->|yes| tests_run[(tests job runs\non opened, synchronize, AND dispatch)]:::out
     tests_if -->|no| tests_skip[(skipped)]:::gate
 
-    job --> review_if{"review job:\n(base_ref == 'development' AND action == 'opened')\nOR dispatch with inputs.base_ref == 'development'?"}
+    job --> review_if{"review job:\n(base_ref == 'development' AND action == 'opened'\nAND head.repo.full_name == github.repository)\nOR dispatch with inputs.base_ref == 'development'?"}
     review_if -->|yes| review_run[(review job runs\non opened and dispatch only)]:::out
     review_if -->|no| review_skip[(skipped)]:::gate
 
-    job --> decide_if{"decide job:\nbase_ref == 'development'\nOR dispatch with inputs.base_ref == 'development'?\n(always, after tests + review)"}
+    job --> decide_if{"decide job:\n(base_ref == 'development'\nAND head.repo.full_name == github.repository)\nOR dispatch with inputs.base_ref == 'development'?\n(always, after tests + review)"}
     decide_if -->|yes| decide_run[(decide job runs)]:::out
     decide_if -->|no| decide_skip[(skipped)]:::gate
 ```
 
-Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 3-26 (triggers) and lines 39, 79, 176 (job-level conditions).
+Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 3-26 (triggers) and lines 39, 83, 182 (job-level conditions).
 
 The `synchronize` event type lets the tests job re-run when new commits are pushed or the PR is rebased (e.g., by `update-prs-with-development`), while the review job is gated to `opened` only so the agent does not re-review on every rebase. The `workflow_dispatch` trigger is used by `bot-respond.yml` when a maintainer comments "@llm-exe-bot re-review"; it accepts `pr_number`, `base_ref`, and `head_ref` inputs and all three jobs treat it like an `opened` event.
+
+### Fork guard
+
+Both the `review` and `decide` jobs add `github.event.pull_request.head.repo.full_name == github.repository` to the `pull_request` half of their conditions. Fork PRs never receive repository secrets, so neither `LLM_EXE_REVIEW_BOT_PRIVATE_KEY` nor `APP_PRIVATE_KEY` is available and the token-mint step would fail with a red X on every external contribution. Skipping is the intended outcome: a maintainer reviews fork PRs directly.
+
+The guard matters most on `decide`, which mints both App tokens and (unlike `review`) is not gated to `opened`, so without it a fork PR would fail on every push rather than just once.
+
+Note what this is deliberately not: `pull_request_target`. That event would hand repository secrets to a job checking out untrusted code, which is a far worse trade than a skipped review. On a fork PR's `pull_request` events only `tests` runs, and it needs no secrets.
+
+The dispatch half has no fork check: a `workflow_dispatch` event carries no `pull_request` payload to test. So when a maintainer comments "@llm-exe-bot re-review" on a fork PR, `bot-respond.yml` dispatches the full pipeline with repository secrets. `review` and `decide` both run, and the `tests` job checks out the fork's code with `gh pr checkout` and runs `npm install` and the test suite on it.
 
 [Back to top](#navigate)
 
@@ -186,7 +197,7 @@ flowchart TB
         t1 --> t1a --> t2 --> t3 --> t4 --> t4a --> t5
     end
 
-    subgraph J2["Job: review (if: base_ref == development AND action == opened, OR dispatch)\nubuntu-latest, timeout 15m"]
+    subgraph J2["Job: review (if: base_ref == development AND action == opened AND not a fork, OR dispatch)\nubuntu-latest, timeout 15m"]
         direction TB
         s1["Generate review bot token"]:::step
         s2["Checkout (fetch-depth: 0)"]:::step
@@ -203,7 +214,7 @@ flowchart TB
     J1 --> J3
     J2 --> J3
 
-    subgraph J3["Job: decide (needs: tests + review)\nif: always() AND base_ref == development\nubuntu-latest, timeout 5m"]
+    subgraph J3["Job: decide (needs: tests + review)\nif: always() AND (base_ref == development AND not a fork, OR dispatch)\nubuntu-latest, timeout 5m"]
         direction TB
         d1["Generate review bot token"]:::step
         d2["Generate bot token"]:::step
@@ -213,7 +224,7 @@ flowchart TB
     end
 ```
 
-No concurrency group defined. Two PRs opened simultaneously fan out into two parallel runs. The tests job mirrors `tests.yml` (same matrix, cache action, `npm install`, `npm run typecheck` gated to Node 24.x, `npm run test`) and includes a conditional `gh pr checkout` step for `workflow_dispatch` events so tests run against the actual PR code. Coverage upload is deliberately left out: that is `tests.yml`'s job on main PRs. The Typecheck step is what enforces the compile-time type assertions in `*.test.ts` files, since ts-jest transpiles with `isolatedModules` and reports no type diagnostics. The review job runs only on `opened` events and `workflow_dispatch`, not on `synchronize` (rebase).
+No concurrency group defined. Two PRs opened simultaneously fan out into two parallel runs. The tests job mirrors `tests.yml` (same matrix, cache action, `npm install`, `npm run typecheck` gated to Node 24.x, `npm run test`) and includes a conditional `gh pr checkout` step for `workflow_dispatch` events so tests run against the actual PR code. Coverage upload is deliberately left out: that is `tests.yml`'s job on main PRs. The Typecheck step is what enforces the compile-time type assertions in `*.test.ts` files, since ts-jest transpiles with `isolatedModules` and reports no type diagnostics. The review job runs only on `opened` events and `workflow_dispatch`, not on `synchronize` (rebase). On a fork PR's `pull_request` events only `tests` runs: `review` and `decide` are skipped because they need App-token secrets a fork run cannot see. A re-review dispatch runs all three (see [section 2](#2-triggers-and-filters)).
 
 [Back to top](#navigate)
 
@@ -261,7 +272,7 @@ sequenceDiagram
     Note over C,L: a review that exits clean without writing any section is stamped no-output, not completed
 ```
 
-Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 76-166 (review job).
+Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 76-170 (review job).
 
 [Back to top](#navigate)
 
@@ -347,7 +358,7 @@ flowchart LR
 
 Notice what's missing: no `Write`, no `Edit` in the allowlist. The reviewer cannot modify source, tests, or docs. It can only emit GitHub side effects via the `gh` CLI through `Bash`, plus log file updates the action handles via its own GitHub identity.
 
-Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 138-141.
+Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 142-145.
 
 [Back to top](#navigate)
 
@@ -393,7 +404,7 @@ Tool allowlist passed to `claude-code-action@v1`:
 --model ${{ vars.ANTHROPIC_OPUS_LATEST || 'claude-opus-4-6' }}
 ```
 
-The `allowed_bots: "llm-exe-bot[bot]"` input is the load-bearing piece: by default the action refuses to run on PRs authored by bots. This explicit allowlist lets it review the very PRs `agent-run.yml` produces. Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) line 135.
+The `allowed_bots: "llm-exe-bot[bot]"` input is the load-bearing piece: by default the action refuses to run on PRs authored by bots. This explicit allowlist lets it review the very PRs `agent-run.yml` produces. Source: [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) line 139.
 
 [Back to top](#navigate)
 
@@ -441,9 +452,9 @@ flowchart TB
     G -->|gh pr close N| OutC[("comment: reason, doesn't meet the bar")]:::close
 ```
 
-Source: [scripts/agents/prompts/reviewer.md](../../scripts/agents/prompts/reviewer.md) and [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 168-232 (decide job).
+Source: [scripts/agents/prompts/reviewer.md](../../scripts/agents/prompts/reviewer.md) and [.github/workflows/agent-review-pr.yml](../workflows/agent-review-pr.yml) lines 172-238 (decide job).
 
-The decide job uses a split-token pattern: the dedicated `llm-exe-review-bot[bot]` App token for `--approve`, and the regular `llm-exe-bot[bot]` App token for `gh pr ready`. Draft-to-ready promotion only happens for `agent/*` branches.
+The decide job uses a split-token pattern: the dedicated `llm-exe-review-bot[bot]` App token for `--approve`, and the regular `llm-exe-bot[bot]` App token for `gh pr ready`. Draft-to-ready promotion only happens for `agent/*` branches. Both token mints are why `decide` carries the same fork guard as `review`: see [section 2](#2-triggers-and-filters).
 
 [Back to top](#navigate)
 
@@ -501,7 +512,8 @@ stateDiagram-v2
     [*] --> Queued: PR opened on main or development
     Queued --> Filtered: job-level if evaluated
     Filtered --> Skipped: base_ref is not development
-    Filtered --> Ready: base_ref is development
+    Filtered --> Skipped: head repo is a fork (no secrets)
+    Filtered --> Ready: base_ref is development and head repo is this repo
     Ready --> Booting: review job starts
     Booting --> Setup: checkout + node + npm ci
     Setup --> PromptBuilt: config.sh writes log skeleton + /tmp/review-prompt.txt
@@ -544,6 +556,10 @@ flowchart TB
     F1 --> F1E["workflow may start, but jobs skip\nbecause base is not development"]:::effect
     F1E --> F1X["retarget to development\nor review manually"]:::fix
 
+    F1b["PR comes from a fork"]:::fail
+    F1b --> F1bE["tests runs; review and decide skip\n(no secrets on fork runs, so no red X)"]:::effect
+    F1bE --> F1bX["maintainer reviews by hand,\nor pushes the branch to this repo\nand reopens the PR from it"]:::fix
+
     F2["Review bot token mint fails\nLLM_EXE_REVIEW_BOT_CLIENT_ID or key wrong"]:::fail
     F2 --> F2E["job fails at token step\nno log file written"]:::effect
     F2X["rotate review App key, re-add secrets"]:::fix
@@ -576,7 +592,7 @@ flowchart TB
 
     F8["allowed_bots input missing"]:::fail
     F8 --> F8E["claude-code-action refuses to act\non bot-authored PR"]:::effect
-    F8X["keep allowed_bots: llm-exe-bot[bot]\nin yaml line 135"]:::fix
+    F8X["keep allowed_bots: llm-exe-bot[bot]\nin yaml line 139"]:::fix
     F8E --> F8X
 
     F9["Anthropic API outage"]:::fail
@@ -600,7 +616,8 @@ flowchart LR
 
     K1["File"]:::k --- V1[".github/workflows/agent-review-pr.yml"]:::v
     K2["Trigger"]:::k --- V2["pull_request opened + synchronize on main or development;\nworkflow_dispatch with pr_number, base_ref, head_ref"]:::v
-    K3["Job filter"]:::k --- V3["base_ref == development (tests + review + decide)"]:::v
+    K3["Job filter"]:::k --- V3["base_ref == development (tests + review + decide);\nreview also needs action == opened;\nreview + decide also need a non-fork head repo\n(pull_request events only)"]:::v
+    K3b["Fork PRs"]:::k --- V3b["tests only; review + decide skipped (no secrets on forks);\na re-review dispatch runs all three with secrets"]:::v
     K4["Permissions"]:::k --- V4["contents: read, PR/issues: write, id-token: write"]:::v
     K5["Timeouts"]:::k --- V5["tests: 20m, review: 15m, decide: 5m"]:::v
     K6["Concurrency"]:::k --- V6["none (parallel reviews allowed)"]:::v

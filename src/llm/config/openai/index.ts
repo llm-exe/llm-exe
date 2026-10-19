@@ -39,6 +39,7 @@ const openAiChatMockV1: Config = {
     prompt: {},
     topP: {},
     useJson: {},
+    mockResponse: {},
     openAiApiKey: {
       default: getEnvironmentVariable("OPENAI_API_KEY_MOCK"),
     },

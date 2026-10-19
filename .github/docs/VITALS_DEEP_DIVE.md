@@ -441,7 +441,7 @@ flowchart LR
     K8["Identity"]:::k --- V8["llm-exe-bot[bot] via App token"]:::v
     K9["Commit message"]:::k --- V9["chore: refresh automation vitals"]:::v
     K10["Loop guard"]:::k --- V10["no push trigger + path is at repo root"]:::v
-    K11["Cost"]:::k --- V11["1 run/day, ~30s each, ~0.5 GH minutes/day"]:::v
+    K11["Cost"]:::k --- V11["1 run/day, ~30s each, ~0.5 GH minutes/day,<br/>plus one release PR check run per vitals commit"]:::v
 ```
 
 Direct links:

@@ -185,8 +185,8 @@ flowchart TB
         s2["2. Generate bot token\ncreate-github-app-token@v3"]:::step
         s3["3. Get PR number\ngh pr list, filter isDraft=false"]:::step
         c1{PR_NUMBER non-empty?}:::cond
-        s4["4. Wait for checks\nloop max 10 x 30s"]:::step
-        s5["5. Check PR check states\ncount FAILURE, exit if any"]:::step
+        s4["4. Wait for checks\nloop max 20 x 30s,\nfails if still pending"]:::step
+        s5["5. Check PR check states\ncount fail + cancel, exit if any"]:::step
         s6["6. Merge PR to main\ngh pr merge --merge --admin"]:::step
 
         s1 --> s2 --> s3 --> c1
@@ -232,27 +232,28 @@ sequenceDiagram
     J->>GH: gh pr list base=main head=development state=open
     GH-->>J: PR number (filtered isDraft=false)
     Note over J: if PR_NUMBER empty, skip remaining steps
-    loop max 10 iterations
+    loop max 20 iterations
         J->>CK: gh pr checks PR_NUMBER (exclude auto-merge)
-        CK-->>J: count of IN_PROGRESS
+        CK-->>J: count of pending (queued, waiting, in progress)
         alt count == 0
-            Note over J: break loop
+            Note over J: exit loop
         else count over 0
             J->>J: sleep 30 seconds
         end
     end
+    Note over J: still pending after 20 polls: exit 1, no merge
     J->>CK: gh pr checks PR_NUMBER (final read)
-    CK-->>J: counts by state
-    alt FAILURE count over 0
+    CK-->>J: counts by bucket
+    alt fail or cancel count over 0
         J-->>E: exit 1, job fails
-    else FAILURE count == 0
+    else fail and cancel count == 0
         J->>GH: gh pr merge PR_NUMBER merge admin
         GH->>M: create merge commit
         M-->>J: merged
     end
 ```
 
-Source: [.github/workflows/auto-merge-main-pr.yml](../workflows/auto-merge-main-pr.yml) lines 32 to 100.
+Source: [.github/workflows/auto-merge-main-pr.yml](../workflows/auto-merge-main-pr.yml) lines 32 to 108.
 
 [Back to top](#navigate)
 
@@ -260,33 +261,33 @@ Source: [.github/workflows/auto-merge-main-pr.yml](../workflows/auto-merge-main-
 
 ## 6. The check-polling loop
 
-Five-minute ceiling on waiting for sibling checks.
+Ten-minute ceiling on waiting for sibling checks. Running out of attempts fails the job.
 
 ```mermaid
 flowchart TB
     classDef state fill:#1e3a8a,color:#fff,stroke:#000
     classDef cond fill:#7c2d12,color:#fff,stroke:#000
     classDef done fill:#064e3b,color:#fff,stroke:#000
+    classDef fail fill:#9a1d1d,color:#fff,stroke:#000
 
-    init["ATTEMPT = 0\nMAX_ATTEMPTS = 10"]:::state
+    init["ATTEMPT = 0\nMAX_ATTEMPTS = 20"]:::state
     init --> guard
 
-    guard{ATTEMPT &lt; 10?}:::cond
-    guard -->|no| timeout["loop exits\n(checks may still be IN_PROGRESS)"]:::done
+    guard{ATTEMPT &lt; 20?}:::cond
+    guard -->|no| timeout["exit 1\n(checks still pending, no merge)"]:::fail
     guard -->|yes| poll
 
-    poll["gh pr checks PR_NUMBER\nfilter: name != auto-merge AND state == IN_PROGRESS\nreturn array length"]:::state
+    poll["gh pr checks PR_NUMBER\nfilter: name != auto-merge AND bucket == pending\nreturn array length"]:::state
     poll --> chk
 
-    chk{CHECKS_IN_PROGRESS == 0?}:::cond
-    chk -->|yes| ok["echo 'All checks are complete'\nbreak"]:::done
+    chk{CHECKS_PENDING == 0?}:::cond
+    chk -->|yes| ok["echo 'All checks are complete'\nexit 0"]:::done
     chk -->|no| inc
 
-    inc["echo waiting attempt N/10\nATTEMPT++\nsleep 30"]:::state
+    inc["echo N checks still pending\nATTEMPT++\nsleep 30"]:::state
     inc --> guard
 
-    timeout --> next["step 5 runs regardless\n(no failure on timeout)"]:::done
-    ok --> next
+    ok --> next["step 5 runs"]:::done
 ```
 
 Time math:
@@ -294,12 +295,12 @@ Time math:
 | Attempts | Wall clock |
 |----------|------------|
 | 1 success (no sleep) | ~5s (one API call) |
-| 10 attempts, all over zero | 10 polls + 10 sleeps of 30s = 5 minutes |
-| Worst case | ~5 minutes 5 seconds then step 5 fires |
+| 20 attempts, all over zero | 20 polls + 20 sleeps of 30s = 10 minutes |
+| Worst case | ~10 minutes, then the job fails without merging |
 
 Critical: the filter `name != "auto-merge"` is what prevents infinite loop. Without it, the workflow polls its own in-progress run forever (until the 6-hour GitHub Actions ceiling).
 
-The loop does NOT fail if it times out. It just exits and lets step 5 evaluate whatever state the checks are in. Step 5 will likely see no FAILURE (long-running checks are still IN_PROGRESS, not FAILURE), so the merge proceeds. This is a known soft spot, see Failure modes.
+`pending` is gh's bucket for every unfinished state: `QUEUED`, `WAITING`, `PENDING`, `REQUESTED`, `IN_PROGRESS`, `EXPECTED` and `STALE`. The loop used to count only `IN_PROGRESS` and fall through to the merge when it ran out of attempts, so a test job still waiting for a runner read as finished. In the v3.0.6 release (#821) the test jobs sat queued for over a minute after auto-merge started. Now a timeout fails the step, so step 5 and the merge never run. Merge by hand once the checks pass, or push to `development` to retrigger.
 
 [Back to top](#navigate)
 
@@ -316,12 +317,12 @@ flowchart TB
     classDef pass fill:#064e3b,color:#fff,stroke:#000
     classDef fail fill:#9a1d1d,color:#fff,stroke:#000
 
-    A["gh pr checks PR_NUMBER --json name,state"]:::read
-    A --> B["count FAILURE\n(name != auto-merge)"]:::read
-    A --> C["count SUCCESS\n(name != auto-merge)"]:::read
+    A["gh pr checks PR_NUMBER --json name,bucket"]:::read
+    A --> B["count fail + cancel\n(name != auto-merge)"]:::read
+    A --> C["count pass\n(name != auto-merge)"]:::read
     A --> D["count TOTAL\n(name != auto-merge)"]:::read
 
-    B --> E{FAILURE &gt; 0?}:::cond
+    B --> E{fail + cancel &gt; 0?}:::cond
     E -->|yes| F["echo 'Some checks failed'\nexit 1"]:::fail
     E -->|no| G["echo 'Checks passed'\nstep succeeds"]:::pass
 
@@ -331,15 +332,13 @@ flowchart TB
 
 What this catches and what it misses:
 
-| State | Counted as FAILURE? | Blocks merge? |
-|-------|--------------------|----|
-| `SUCCESS` | no | no |
-| `FAILURE` | yes | yes, exit 1 |
-| `IN_PROGRESS` (timed out from loop) | no | no, merge proceeds |
-| `CANCELLED` | no | no |
-| `SKIPPED` | no | no |
-| `PENDING` | no | no |
-| `NEUTRAL` | no | no |
+| State | gh bucket | Blocks merge? |
+|-------|-----------|---------------|
+| `SUCCESS` | `pass` | no |
+| `FAILURE`, `ERROR`, `TIMED_OUT`, `ACTION_REQUIRED` | `fail` | yes, step 5 exits 1 |
+| `CANCELLED` | `cancel` | yes, step 5 exits 1 |
+| `SKIPPED`, `NEUTRAL` | `skipping` | no |
+| `QUEUED`, `PENDING`, `IN_PROGRESS` and other unfinished states | `pending` | yes: step 4 waits, and exits 1 if they are still pending after 10 minutes |
 
 The check is strictly negative: "are any checks definitively failing?" not "did everything pass?". A required check that never reported still lets the merge through. Branch protection on `main` is the second line of defense, but the bot bypasses it via `--admin` (see section 10).
 
@@ -364,8 +363,8 @@ flowchart LR
 
     subgraph During["gh CLI calls"]
         d1["gh pr list\nbase=main head=development state=open\njson=number,isDraft\nwhy: find the eligible PR"]:::gh
-        d2["gh pr checks (in loop)\njson=name,state\nwhy: poll IN_PROGRESS count"]:::gh
-        d3["gh pr checks (final)\njson=name,state\nwhy: tally FAILURE / SUCCESS / TOTAL"]:::gh
+        d2["gh pr checks (in loop)\njson=name,bucket\nwhy: poll pending count"]:::gh
+        d3["gh pr checks (final)\njson=name,bucket\nwhy: tally fail + cancel / pass / TOTAL"]:::gh
         d4["gh pr merge\nflags: --merge --admin --repo {owner}/{repo}\nwhy: execute merge, bypass protection"]:::gh
     end
 
@@ -431,14 +430,14 @@ flowchart TB
     C --> D["GitHub App installation\nllm-exe-bot[bot]\ngranted admin on repo"]:::bypass
 
     D --> E["Two-layer safety net:"]:::safe
-    E --> F["Layer 1: workflow gates\n- workflow_run requires semver success\n- step 5 fails on any FAILURE check"]:::safe
+    E --> F["Layer 1: workflow gates\n- workflow_run requires semver success\n- step 4 fails if checks stay pending\n- step 5 fails on any failed or cancelled check"]:::safe
     E --> G["Layer 2: who can trigger\n- workflow_run is internal\n- pull_request to main only fires\n  if someone opens a PR there"]:::safe
 ```
 
 The risk shape:
 
 - Risk of bypassing reviews: low. A human still opens the dev to main PR (or the bot opens a draft for human review). The auto-merge only happens after explicit `ready_for_review`.
-- Risk of bypassing checks: medium. Step 5 only catches `FAILURE`, not stuck `IN_PROGRESS` checks. See Failure modes.
+- Risk of bypassing checks: low to medium. Unfinished, failed and cancelled checks all block the merge, but a required check that never reported does not (F8 in Failure modes).
 
 [Back to top](#navigate)
 
@@ -458,20 +457,22 @@ stateDiagram-v2
     Setup --> Lookup: gh pr list
     Lookup --> NoPR: PR_NUMBER empty
     Lookup --> Polling: PR_NUMBER set
-    Polling --> Polling: IN_PROGRESS count over zero, sleep 30
-    Polling --> Evaluating: IN_PROGRESS == 0 OR attempts exhausted
-    Evaluating --> CheckFailed: FAILURE count over zero
-    Evaluating --> Merging: FAILURE count == 0
+    Polling --> Polling: pending count over zero, sleep 30
+    Polling --> Evaluating: pending count == 0
+    Polling --> TimedOut: still pending after 20 attempts
+    Evaluating --> CheckFailed: fail or cancel count over zero
+    Evaluating --> Merging: fail and cancel count == 0
     Merging --> Merged: gh pr merge admin returned 0
     Merging --> MergeError: gh pr merge admin returned non-zero
     NoPR --> [*]
     Skipped --> [*]
     CheckFailed --> [*]: exit 1
+    TimedOut --> [*]: exit 1
     Merged --> [*]
     MergeError --> [*]: exit non-zero
 ```
 
-Note that `Polling` to `Evaluating` happens either way (success or attempt exhaustion). The polling step does not fail on timeout, it just yields control. `Evaluating` is the single gate.
+`Polling` only moves to `Evaluating` once nothing is pending. Running out of attempts ends the run in `TimedOut` with exit 1, so the merge never starts.
 
 [Back to top](#navigate)
 
@@ -491,14 +492,14 @@ flowchart TB
     F1 --> F1E["PR_NUMBER is empty string\nsteps 4, 5, 6 skipped via if env.PR_NUMBER != ''\njob succeeds with no-op"]:::effect
     F1E --> F1X["expected when dev is up to date\nor PR is still draft"]:::fix
 
-    F2["A required check reports FAILURE"]:::fail
-    F2 --> F2E["step 5 sees FAILURE count over 0\nexit 1, job fails\nno merge attempted"]:::effect
+    F2["A check fails, errors, times out,\nor is cancelled"]:::fail
+    F2 --> F2E["step 5 sees fail + cancel count over 0\nexit 1, job fails\nno merge attempted"]:::effect
     F2X["fix the failing check on development\npush, re-trigger via synchronize"]:::fix
     F2E --> F2X
 
-    F3["Polling timeout: checks still IN_PROGRESS\nafter 10 x 30s = 5 minutes"]:::fail
-    F3 --> F3E["loop exits without break\nstep 5 evaluates current state\nIN_PROGRESS is not FAILURE\nmerge proceeds prematurely"]:::effect
-    F3X["bump MAX_ATTEMPTS or sleep duration\nfor long-running CI matrices\nor add IN_PROGRESS check to step 5"]:::fix
+    F3["Polling timeout: checks still pending\nafter 20 x 30s = 10 minutes"]:::fail
+    F3 --> F3E["step 4 exits 1\nsteps 5 and 6 skipped\nno merge"]:::effect
+    F3X["merge by hand once checks pass,\nor push to development to retrigger"]:::fix
     F3E --> F3X
 
     F4["Bot token mint fails\n(APP_CLIENT_ID or APP_PRIVATE_KEY wrong)"]:::fail
@@ -546,13 +547,13 @@ flowchart LR
     K6["Job"]:::k --- V6["auto-merge on ubuntu-latest, 6 steps"]:::v
     K7["Identity"]:::k --- V7["llm-exe-bot[bot] via App token (admin)"]:::v
     K8["PR lookup"]:::k --- V8["gh pr list base=main head=development state=open, drop drafts"]:::v
-    K9["Wait loop"]:::k --- V9["10 attempts x 30s sleep = 5 min ceiling"]:::v
+    K9["Wait loop"]:::k --- V9["20 attempts x 30s sleep = 10 min ceiling, fails if still pending"]:::v
     K10["Self-exclusion"]:::k --- V10["name != 'auto-merge' filter avoids self-poll"]:::v
     K11["Merge style"]:::k --- V11["--merge (creates merge commit, not squash)"]:::v
     K12["Bypass"]:::k --- V12["--admin (overrides branch protection)"]:::v
     K13["Upstream gate"]:::k --- V13["check-semantic-versioning.yml must pass first"]:::v
     K14["Downstream effects"]:::k --- V14["create-draft-release.yml, draft-main-pr.yml, cache-cleanup.yml"]:::v
-    K15["Failure exits"]:::k --- V15["step 5 exits 1 on any FAILURE check"]:::v
+    K15["Failure exits"]:::k --- V15["step 4 exits 1 on timeout, step 5 exits 1 on any failed or cancelled check"]:::v
     K16["Silent skip"]:::k --- V16["empty PR_NUMBER skips steps 4-6 cleanly"]:::v
 ```
 

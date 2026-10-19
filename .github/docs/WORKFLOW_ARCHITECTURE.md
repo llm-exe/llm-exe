@@ -1056,7 +1056,7 @@ flowchart LR
 |-------|---------|--------------|------------------|
 | 1. Draft | PR closed to `development` OR release published | Patch-bumps `package.json` if behind; creates or updates the draft PR from `development` to `main`. | No new commits to draft over, body exceeds 65000 chars. |
 | 2. Verify | PR on `main` | Blocks if `package.json .version` is not strictly greater than the latest `v*` tag. | Version not bumped. |
-| 3. Merge | `workflow_run` on stage 2 success, or PR sync on `main` | Polls non-`auto-merge` checks (up to 10 x 30s), then `gh pr merge --admin`. | Any non-`auto-merge` check fails. |
+| 3. Merge | `workflow_run` on stage 2 success, or PR sync on `main` | Polls non-`auto-merge` checks until none are pending (up to 20 x 30s), then `gh pr merge --admin`. | Any non-`auto-merge` check fails or is cancelled, or checks are still pending after 10 minutes. |
 | 4. Stage | PR merged to `main` | Wipes existing drafts, creates a fresh draft release with cleaned auto-notes. | Empty draft list is OK; PATCH failure logs a warning only. |
 | 5. Publish | release published, target `main` | `npm publish --provenance`. Stable versions go to the `latest` dist-tag via `npm run publish-main`; pre-release versions with an alphabetic channel (e.g. `-beta.0`, `-rc.1`, `-alpha.2`) are published with `--tag $CHANNEL`; pre-releases with no alphabetic channel are refused. OIDC attestation is explicitly requested. | Wrong branch, wrong actor (only `gregreindel`), npm error, OIDC token failure, pre-release version with no alphabetic channel. |
 | 6. Deploy | release published, target `main` | Builds VitePress docs, ships to S3, rotates CloudFront OriginPath, invalidates `/*`. | Branch guard, OIDC denied, stale ETag on CloudFront. |

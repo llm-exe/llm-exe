@@ -79,6 +79,34 @@ describe("llm-exe:parser/JsonParser", () => {
       "is not of a type(s) string",
     );
   });
+  it("includes the failing field path in schema validation errors", () => {
+    const schema = defineSchema({
+      type: "object",
+      properties: {
+        answer: { type: "string" },
+        n: { type: "number" },
+        meta: {
+          type: "object",
+          properties: { score: { type: "number" } },
+        },
+      },
+      required: ["answer", "n"],
+    });
+    const parser = new JsonParser({ schema });
+    try {
+      parser.parse('{"answer":"hi","n":"2","meta":{"score":"x"}}');
+      throw new Error("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).message).toEqual(
+        "instance.n is not of a type(s) number",
+      );
+      expect((e as LlmExeError).context?.schemaErrors).toEqual([
+        "instance.n is not of a type(s) number",
+        "instance.meta.score is not of a type(s) number",
+      ]);
+    }
+  });
   it("validates schema by default when schema is provided", () => {
     const schema = defineSchema({
       type: "object",

@@ -191,4 +191,40 @@ describe("useLlmConfiguration", () => {
       mockConfig
     );
   });
+
+  it("types custom options declared on the config without a cast", () => {
+    const customLlm = useLlmConfiguration({
+      ...mockConfig,
+      endpoint: "http://localhost/{{region}}",
+      options: { region: {}, model: { default: "gpt-4" } },
+    });
+
+    // `region` is only known from the config's `options`; this is a
+    // compile-time check that the factory accepts it (issue #867)
+    const llmInstance = customLlm({ region: "us" });
+    expect(typeof llmInstance.call).toBe("function");
+    customLlm({ region: "us", model: "custom-model" });
+
+    // built-in provider options are still accepted
+    customLlm({ temperature: 0.5 });
+
+    // @ts-expect-error keys not declared on the config or a provider are rejected
+    customLlm({ notAnOption: 1 });
+  });
+
+  it("still rejects undeclared options when the config declares none", () => {
+    const customLlm = useLlmConfiguration({ ...mockConfig, options: {} });
+    customLlm({ temperature: 0.5 });
+    // @ts-expect-error an empty options map must not accept every key
+    customLlm({ tempreature: 1 });
+  });
+
+  it("still rejects misspelled top-level keys on the config literal", () => {
+    useLlmConfiguration({
+      ...mockConfig,
+      options: { region: {} },
+      // @ts-expect-error inferring the options must not switch off excess-property checks
+      endpont: "http://localhost",
+    });
+  });
 });

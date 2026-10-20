@@ -189,8 +189,11 @@ flowchart TB
         direction TB
         r1["if: always() && release event &&\n(examples failed || publish failed)"]:::gate
         r2["Generate bot token\n(create-github-app-token@v3)"]:::step
+        r2b["Checkout\n(fetch-depth: 0, bot token)"]:::step
         r3["Revert release to draft\n(PATCH with warning banner)"]:::cleanup
-        r1 --> r2 --> r3
+        r4["Delete release tag\n(blocked by ruleset in practice)"]:::cleanup
+        r5["Revert version bump in development\n(skipped if newest stable v* tag\nis at or past the failed version)"]:::cleanup
+        r1 --> r2 --> r2b --> r3 --> r4 --> r5
     end
 ```
 

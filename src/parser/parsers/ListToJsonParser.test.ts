@@ -101,6 +101,27 @@ describe("llm-exe:parser/ListToJsonParser", () => {
       })
     }
   });
+  it('includes the failing field path in schema validation errors', () => {
+    const schema = defineSchema({
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        age: { type: "number" },
+      },
+      required: ["name", "age"],
+    });
+    const parser = new ListToJsonParser({ schema })
+    try {
+      parser.parse(`Name: Greg\nAge: old`)
+      throw new Error("Expected an error to be thrown")
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError)
+      expect((e as LlmExeError).message).toEqual("instance.age is not of a type(s) number")
+      expect((e as LlmExeError).context?.schemaErrors).toEqual([
+        "instance.age is not of a type(s) number",
+      ])
+    }
+  });
   it('throws by default when schema required fields are missing', () => {
     const schema = defineSchema({
       type: "object",

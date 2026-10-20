@@ -196,7 +196,7 @@ try {
   await executor.execute(input);
 } catch (error) {
   console.error(formatLlmExeErrorForLog(error));
-  // LlmExeError [parser.schema_validation_failed]: requires property "name"
+  // LlmExeError [parser.schema_validation_failed]: instance requires property "name"
   // Caused by: Error: Unexpected token
 }
 ```

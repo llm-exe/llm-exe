@@ -102,12 +102,12 @@ export class ListToJsonParser<
       if (this.shouldValidateSchema) {
         const valid = validateParserSchema(this.schema, coerced);
         if (valid && valid.length) {
-          throw new LlmExeError(valid[0].message, {
+          throw new LlmExeError(valid[0].stack, {
             code: "parser.schema_validation_failed",
             context: {
               operation: "ListToJsonParser.parse",
               parser: "listToJson",
-              schemaErrors: valid.map((error) => error.message),
+              schemaErrors: valid.map((error) => error.stack),
             },
           });
         }

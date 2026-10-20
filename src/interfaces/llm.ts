@@ -555,7 +555,9 @@ export interface OpenAiRequest extends Omit<GenericLLm, "effort"> {
   useJson?: boolean;
 }
 
-export interface OpenAiMockRequest extends OpenAiRequest {
+export interface OpenAiMockRequest extends Omit<OpenAiRequest, "model"> {
+  /** The mock never sends a request, so the model is optional. */
+  model?: string;
   /**
    * Text the mock returns verbatim as the assistant message. Lets typed
    * parsers (json, number, list*, ...) be exercised offline. When unset, the

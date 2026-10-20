@@ -40,6 +40,12 @@ describe("openai.chat-mock.v1 mockResponse (issue #866)", () => {
     expect(out.getResultText()).toBe("");
   });
 
+  it("does not require a model", async () => {
+    const llm = useLlm("openai.chat-mock.v1", { mockResponse: "ok" });
+    const out = await llm.call("hi");
+    expect(out.getResultText()).toBe("ok");
+  });
+
   it("keeps mockResponse in llm state (declared option)", () => {
     const llm = useLlm("openai.chat-mock.v1", {
       model: "mock",

@@ -109,10 +109,12 @@ function extractJsonCandidates(input: string): JsonCandidate[] {
       candidates.push({
         parsed: JSON.parse(candidate),
       });
-      index = end;
     } catch {
-      // Balanced braces can still contain non-JSON content.
+      // Balanced braces can still contain non-JSON content. Skip the whole
+      // span rather than descending into it, so a malformed outer object
+      // never yields one of its inner fragments.
     }
+    index = end;
   }
 
   return candidates;

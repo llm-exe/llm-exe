@@ -578,5 +578,41 @@ describe("llm-exe:parser/JsonParser", () => {
       const parser = new JsonParser({ match: "extract" });
       expect(parser.parse('open { set then {"b":2} end')).toEqual({ b: 2 });
     });
+
+    it.each([
+      ['Here: {name: "x", tags: ["a","b"]}'],
+      ['Result: {"user": {"id": 1}, "ok": true,}'],
+    ])(
+      "does not return an inner fragment of a malformed outer span: %s",
+      (input) => {
+        const parser = new JsonParser({ match: "extract" });
+        expect(() => parser.parse(input)).toThrow(
+          expect.objectContaining({
+            code: "parser.parse_failed",
+            context: expect.objectContaining({
+              reason: "no_json_value",
+              match: "extract",
+            }),
+          }),
+        );
+      },
+    );
+
+    it("does not let a matching inner fragment pass schema validation", () => {
+      const schema = defineSchema({
+        type: "object",
+        properties: { id: { type: "number" } },
+        required: ["id"],
+      });
+      const parser = new JsonParser({ schema, match: "extract" });
+      expect(() =>
+        parser.parse('Result: {"user": {"id": 1}, "ok": true,}'),
+      ).toThrow(LlmExeError);
+    });
+
+    it("still extracts valid JSON after a malformed balanced span", () => {
+      const parser = new JsonParser({ match: "extract" });
+      expect(parser.parse('Note [see below]: {"a":1}')).toEqual({ a: 1 });
+    });
   });
 });

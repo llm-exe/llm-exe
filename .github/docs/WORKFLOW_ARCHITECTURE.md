@@ -862,7 +862,7 @@ PR body truncation: capped at 65000 characters.
 |-------|-------|
 | Triggers | `workflow_run` on `Release / Check Semver` completion; `pull_request` `ready_for_review` or `synchronize` on `main` |
 | Run filter | `workflow_run` must be `success` and head branch must be `development`; or any pull_request event. |
-| Steps | Resolves the open PR with base `main` head `development` that is NOT draft; polls every 30 seconds up to 10 times for non-`auto-merge` checks to settle; if any FAILURE among them, exits 1; otherwise `gh pr merge <N> --merge --admin --repo <owner>/<repo>`. |
+| Steps | Resolves the open PR with base `main` head `development` that is NOT draft; polls every 30 seconds up to 20 times until no non-`auto-merge` check is in gh's `pending` bucket, and exits 1 (fail closed) if any are still pending after 10 minutes; if any check is in the `fail` or `cancel` bucket, exits 1; otherwise `gh pr merge <N> --merge --admin --repo <owner>/<repo>`. |
 | Identity | App token. |
 
 ### 9.16. `publish-release.yml` - npm publish on release
@@ -1072,7 +1072,7 @@ flowchart LR
     F1 -. loops back to .-> S1
 
     S2["Stage 2 Verify"]:::stage -- version not bumped --> F2["exit 1<br/>PR cannot merge"]:::fail
-    S3["Stage 3 Merge"]:::stage -- check FAILURE --> F3["exit 1<br/>PR stays open"]:::fail
+    S3["Stage 3 Merge"]:::stage -- check fail, cancel, or still pending --> F3["exit 1<br/>PR stays open"]:::fail
     S5["Stage 5 Publish"]:::stage -- npm error --> F5["PATCH release back to draft<br/>prepend warning banner<br/>preserve original body"]:::fail
     S6["Stage 6 Deploy"]:::stage -- OIDC or ETag fail --> F6["job fails<br/>no live rotation<br/>S3 has new files but CloudFront still points to old"]:::fail
 ```

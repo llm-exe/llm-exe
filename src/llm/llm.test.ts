@@ -212,6 +212,13 @@ describe("useLlmConfiguration", () => {
     customLlm({ notAnOption: 1 });
   });
 
+  it("still rejects undeclared options when the config declares none", () => {
+    const customLlm = useLlmConfiguration({ ...mockConfig, options: {} });
+    customLlm({ temperature: 0.5 });
+    // @ts-expect-error an empty options map must not accept every key
+    customLlm({ tempreature: 1 });
+  });
+
   it("still rejects misspelled top-level keys on the config literal", () => {
     useLlmConfiguration({
       ...mockConfig,

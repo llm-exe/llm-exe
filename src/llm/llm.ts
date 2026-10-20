@@ -13,12 +13,16 @@ export function useLlm<T extends keyof typeof configs>(
 
 /**
  * Options declared on a config literal (e.g. `options: { region: {} }`).
- * Resolves to `never` when the keys are only known as `string`, so a config
- * typed as plain `Config` adds nothing to the accepted options.
+ * Resolves to `never` when the keys are only known as `string` (a config
+ * typed as plain `Config`) or when there are none (`options: {}`). In both
+ * cases the config adds nothing to the accepted options; an empty mapped
+ * type `{}` would otherwise accept any object.
  */
 type ConfigDeclaredOptions<O> = string extends keyof O
   ? never
-  : { [K in keyof O]?: unknown };
+  : [keyof O] extends [never]
+    ? never
+    : { [K in keyof O]?: unknown };
 
 export function useLlmConfiguration<
   T extends keyof typeof configs,

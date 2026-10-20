@@ -410,7 +410,7 @@ flowchart TB
     I -->|no| WARN["log warning, dump response\n(workflow still marked failed)"]:::fail
 ```
 
-Source: [publish-release.yml](../workflows/publish-release.yml) lines 123-177.
+Source: [publish-release.yml](../workflows/publish-release.yml) lines 135-279.
 
 Key invariants:
 
@@ -419,6 +419,15 @@ Key invariants:
 - The workflow URL is computed from `github.server_url`, `github.repository`, `github.run_id`. No magic strings.
 - The PATCH uses the bot token (App identity) rather than `GITHUB_TOKEN`, which lets the change look like the bot acted rather than the GitHub Actions service account.
 - The job uses `always()` combined with explicit `needs.*.result == 'failure'` checks to ensure it runs even when upstream jobs fail. A failure of `check-release-branch` short-circuits before examples or publish ever run, so the rollback never executes for a wrong-branch release. That is intentional: a wrong-branch release should not be auto-drafted by this workflow.
+
+### After the release is drafted
+
+Two more steps run after the PATCH:
+
+- **Delete release tag** tries to delete the failed tag, so that `draft-main-pr.yml` (which takes the next version from the newest stable `v*` tag) stops treating that version as released. The "Release/Tag Protection Rules" ruleset blocks tag deletion, so in practice this logs `Could not delete tag` and moves on.
+- **Revert version bump in development** resets `package.json` on `development` to the failed version through a bot PR merged with `--admin`, and retitles the open release PR to match. It only does this when every remaining stable `v*` tag is older than the failed version. If the newest tag is at or past it (the failed tag survived the delete, or a newer release already shipped), `draft-main-pr.yml` would bump `development` straight back, so the step logs a notice and changes nothing. It reads tags with `git ls-remote` because the checkout fetched them before the delete step ran, and it fails rather than guessing if that call fails.
+
+Without that check, a v3.0.5 run that expired on 2026-10-20 (see F9) reverted `development` from 3.0.8 to 3.0.5, even though v3.0.6 and v3.0.7 had already been tagged. Two bump PRs then put it back within a minute.
 
 [Back to top](#navigate)
 
@@ -558,6 +567,11 @@ flowchart TB
     F8 --> F8E["no concurrency group;\nsecond run will fail at npm publish\n(version conflict)"]:::effect
     F8X["wait for first run,\nor add concurrency group if this recurs"]:::fix
     F8E --> F8X
+
+    F9["Examples Test approval never given\n(required reviewers on the environment)"]:::fail
+    F9 --> F9E["run-examples-tests waits;\nafter 30 days GitHub fails it,\nand the rollback fires on that release"]:::effect
+    F9X["approve the pending deployment,\nor cancel the run (a cancelled job\ndoes not trigger the rollback)"]:::fix
+    F9E --> F9X
 ```
 
 [Back to top](#navigate)
@@ -577,7 +591,7 @@ flowchart LR
     K4["Permissions"]:::k --- V4["id-token: write, contents: write"]:::v
     K5["Branch guard"]:::k --- V5["release.target_commitish == 'main'"]:::v
     K6["Actor guard"]:::k --- V6["ALLOWED_PUBLISHERS = gregreindel"]:::v
-    K6b["Examples tests"]:::k --- V6b["Node 22.x, Examples Test env,\nreal provider keys, npm run test-examples"]:::v
+    K6b["Examples tests"]:::k --- V6b["Node 22.x, Examples Test env\n(required reviewers, 5 min wait timer),\nreal provider keys, npm run test-examples"]:::v
     K7["Node version (publish)"]:::k --- V7["24.x via ./.github/actions/setup-node"]:::v
     K8["Registry"]:::k --- V8["registry.npmjs.org"]:::v
     K9["Cache"]:::k --- V9["node_modules (composite); ~/.npm via setup-node@v6 cache: npm"]:::v

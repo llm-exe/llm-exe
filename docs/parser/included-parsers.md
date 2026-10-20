@@ -356,7 +356,7 @@ Options:
 | --- | --- | --- | --- |
 | `schema` | `JSONSchema` | `undefined` | Optional JSON Schema to validate and enforce types on the output. Use with [`defineSchema`](/parser/#defineschema) for full type inference. |
 | `validateSchema` | `boolean` | `true` (when `schema` is set) | When a schema is provided, `required` fields and type/constraint checks are enforced by default — invalid or incomplete input throws `parser.schema_validation_failed`. Set to `false` to opt out into filter/default-only behavior (strips unknown keys and applies defaults, but does **not** check `required`). |
-| `match` | `"exact" \| "extract"` | `"exact"` | `"exact"` parses the entire response as JSON. `"extract"` finds one JSON object or array in surrounding text. |
+| `match` | `"exact" \| "extract"` | `"exact"` | `"exact"` parses the entire response as JSON. `"extract"` finds one JSON object or array in surrounding text. A bracketed span that isn't valid JSON is skipped whole, so nothing nested inside it is returned: `{name: "x", tags: ["a"]}` throws instead of yielding `["a"]`. |
 
 ::: warning
 Providing a `schema` enforces `required` fields by default. Input missing a required field throws rather than returning a partial object. Defaults are applied **after** validation, so a `default` does not satisfy a `required` field. Pass `validateSchema: false` only if you intentionally want the legacy strip-and-default behavior without `required` enforcement.

@@ -59,8 +59,14 @@ The answer is 42.
 ## Boolean Parser
 
 `boolean`
-Parses a boolean value from the LLM response. Recognizes common truthy/falsy patterns like "true", "false", "yes", "no".
+Parses a boolean value from the LLM response. Recognizes the literals `true`/`false`, `yes`/`no`, `y`/`n`, and `1`/`0` (case-insensitive).
 Returns: boolean
+
+::: warning Default is `match: "exact"`
+Unlike the number parser (which defaults to `"extract"`), the boolean parser requires the **entire trimmed response** to be one literal by default. A response like `"Yes."` or `"No, it isn't"` throws `No boolean value found in input.` Pass `{ match: "extract" }` to find the boolean inside surrounding text.
+
+In `"extract"` mode, single letters and digits count as tokens too, so `"Yes, I found 0 issues"` contains both a truthy and a falsy token and throws rather than guessing. Ask the model for a bare yes/no answer when you can.
+:::
 
 ```ts
 const parser = createParser("boolean");

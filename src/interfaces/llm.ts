@@ -555,6 +555,17 @@ export interface OpenAiRequest extends Omit<GenericLLm, "effort"> {
   useJson?: boolean;
 }
 
+export interface OpenAiMockRequest extends Omit<OpenAiRequest, "model"> {
+  /** The mock never sends a request, so the model is optional. */
+  model?: string;
+  /**
+   * Text the mock returns verbatim as the assistant message. Lets typed
+   * parsers (json, number, list*, ...) be exercised offline. When unset, the
+   * mock returns a fixed "Hello world from LLM! The input was ..." string.
+   */
+  mockResponse?: string;
+}
+
 export interface XAiRequest extends Omit<GenericLLm, "effort"> {
   /**
    * Maps to `reasoning_effort` on the xAI models that accept it: grok-4.3,
@@ -621,7 +632,7 @@ export type AllLlm = {
     // output: OpenAiRequest;
   };
   "openai.chat-mock.v1": {
-    input: OpenAiRequest;
+    input: OpenAiMockRequest;
     // output: OpenAiRequest;
   };
   "anthropic.chat.v1": {

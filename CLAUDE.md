@@ -99,7 +99,7 @@ npm run build:ci        # tsup (CJS/ESM/DTS)
 ## Conventions
 
 - Tests are co-located: `[file].test.ts` next to implementation
-- Mock LLM providers: `openai.chat-mock.v1` makes no network call. By default it returns the fixed text `Hello world from LLM! The input was <messages JSON>`, which typed parsers can't reliably parse. Pass `mockResponse` to make it return that exact text instead, so `json`, `number`, `listToArray` and other typed parsers work offline
+- Mock LLM providers: `openai.chat-mock.v1` (echo input back)
 - Mock helper: `mockOutputResultObject(content[], options?)` in `utils/mock.helpers.ts`
 - All LLM responses normalize to `OutputResult` with `content: OutputResultContent[]` — this normalization layer is how we stay provider-agnostic
 - Tool calls are normalized internally so application code uses one shape regardless of provider

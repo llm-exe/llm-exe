@@ -3,7 +3,7 @@ import {
   ExecutorMetadata,
   HookErrorRecord,
   ListenerFunction,
-  ExecutorHookFunction,
+  ExecutorEventHookFunction,
   CoreExecutorHookInput,
   ExecutorExecutionMetadata,
   CoreExecutorExecuteOptions,
@@ -314,7 +314,10 @@ export abstract class BaseExecutor<
     return this;
   }
 
-  removeHook(eventName: keyof H, fn: ExecutorHookFunction<I, O, R, HI>) {
+  removeHook<K extends keyof H>(
+    eventName: K,
+    fn: ExecutorEventHookFunction<K, I, O, R, HI>
+  ) {
     if (typeof fn !== "function") return this;
     const lis = this.hooks[eventName];
     if (!lis) return this;
@@ -333,13 +336,19 @@ export abstract class BaseExecutor<
    * through the `hooks` option — `input`, `output`, `handlerInput`, and
    * `handlerOutput` are all inferred rather than `any`.
    */
-  on(eventName: keyof H, fn: ExecutorHookFunction<I, O, R, HI>) {
-    return this.setHooks({
-      [eventName]: fn,
-    } as CoreExecutorHookInput<I, O, R, HI, H>);
+  on<K extends keyof H>(
+    eventName: K,
+    fn: ExecutorEventHookFunction<K, I, O, R, HI>
+  ) {
+    const hooks: CoreExecutorHookInput<I, O, R, HI, H> = {};
+    hooks[eventName] = fn;
+    return this.setHooks(hooks);
   }
 
-  off(eventName: keyof H, fn: ExecutorHookFunction<I, O, R, HI>) {
+  off<K extends keyof H>(
+    eventName: K,
+    fn: ExecutorEventHookFunction<K, I, O, R, HI>
+  ) {
     return this.removeHook(eventName, fn);
   }
 
@@ -347,7 +356,10 @@ export abstract class BaseExecutor<
    * Register a hook that runs once, then removes itself. Same typing as
    * {@link BaseExecutor.on}.
    */
-  once(eventName: keyof H, fn: ExecutorHookFunction<I, O, R, HI>) {
+  once<K extends keyof H>(
+    eventName: K,
+    fn: ExecutorEventHookFunction<K, I, O, R, HI>
+  ) {
     if (typeof fn !== "function") return this;
 
     // Enforce hook limit to prevent unbounded memory growth
@@ -375,9 +387,12 @@ export abstract class BaseExecutor<
     // Wrapper that removes itself after first execution. try/finally so a
     // throwing fn still self-removes — otherwise runHook() catches the throw,
     // off() never runs, and the wrapper stays registered forever.
-    const onceWrapper: ExecutorHookFunction<I, O, R, HI> = (...args) => {
+    const onceWrapper: ExecutorEventHookFunction<K, I, O, R, HI> = (
+      metadata,
+      executor
+    ) => {
       try {
-        fn(...args);
+        fn(metadata, executor);
       } finally {
         this.off(eventName, onceWrapper);
       }

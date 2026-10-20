@@ -16,17 +16,21 @@ export function useLlm<T extends keyof typeof configs>(
  * Resolves to `never` when the keys are only known as `string`, so a config
  * typed as plain `Config` adds nothing to the accepted options.
  */
-type ConfigDeclaredOptions<C extends Config<any>> =
-  string extends keyof C["options"]
-    ? never
-    : { [K in keyof C["options"]]?: unknown };
+type ConfigDeclaredOptions<O> = string extends keyof O
+  ? never
+  : { [K in keyof O]?: unknown };
 
 export function useLlmConfiguration<
   T extends keyof typeof configs,
-  C extends Config<any> = Config<any>,
->(config: C) {
+  O extends Config<any>["options"] = Config<any>["options"],
+>(
+  // Only `options` is generic. Inferring the whole config as a type parameter
+  // would skip excess-property checks on the literal, so a misspelled
+  // top-level key such as `endpont` would compile.
+  config: Config<any> & { options: O },
+) {
   return <
-    Options extends AllUseLlmOptions[T]["input"] | ConfigDeclaredOptions<C>,
+    Options extends AllUseLlmOptions[T]["input"] | ConfigDeclaredOptions<O>,
   >(
     options?: Options,
   ) =>

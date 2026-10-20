@@ -211,4 +211,13 @@ describe("useLlmConfiguration", () => {
     // @ts-expect-error keys not declared on the config or a provider are rejected
     customLlm({ notAnOption: 1 });
   });
+
+  it("still rejects misspelled top-level keys on the config literal", () => {
+    useLlmConfiguration({
+      ...mockConfig,
+      options: { region: {} },
+      // @ts-expect-error inferring the options must not switch off excess-property checks
+      endpont: "http://localhost",
+    });
+  });
 });

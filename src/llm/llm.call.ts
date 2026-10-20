@@ -56,7 +56,7 @@ export async function useLlm_call(
   const { transformResponse = OutputDefault } = config;
 
   if (config.provider === "openai.chat-mock") {
-    const { mockResponse: content } = state as { mockResponse?: string };
+    const content = "mockResponse" in state ? state.mockResponse : undefined;
     const mockResponse = {
       id: "0123-45-6789",
       model: "model",

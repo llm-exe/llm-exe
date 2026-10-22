@@ -403,6 +403,37 @@ describe("truncateString", () => {
   it("handles max of 0", () => {
     expect(truncateString("hello", 0)).toBe("…(truncated)");
   });
+
+  it("does not split a surrogate pair at the cut", () => {
+    const out = truncateString("x".repeat(9) + "😀", 10);
+    expect(out).toBe("x".repeat(9) + "…(truncated)");
+    expect(out).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
+  });
+});
+
+describe("safeProviderErrorBody truncation order", () => {
+  const key = "sk-" + "A1b2C3d4E5".repeat(5);
+  const body = "x".repeat(90) + " " + key;
+
+  it("redacts a token that straddles the cut in a raw string body", () => {
+    const out = safeProviderErrorBody(body, { maxBodyBytes: 105 }) as string;
+    expect(out).not.toContain("A1b2C3d4E5");
+    expect(out).toBe(safeProviderString(body, 105));
+  });
+
+  it("redacts a token that straddles the cut in a nested string", () => {
+    const out = safeProviderErrorBody(
+      { m: body },
+      { maxStringLength: 105 }
+    ) as { m: string };
+    expect(out.m).not.toContain("A1b2C3d4E5");
+    expect(out.m).toBe(safeProviderString(body, 105));
+  });
+
+  it("still bounds the output length after redaction", () => {
+    const out = safeProviderErrorBody(body, { maxBodyBytes: 20 }) as string;
+    expect(out).toBe(out.slice(0, 20) + "…(truncated)");
+  });
 });
 
 describe("safeProviderString", () => {

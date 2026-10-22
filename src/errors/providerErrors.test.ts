@@ -597,3 +597,59 @@ describe("parseProviderErrorGeneric input shape fallbacks", () => {
     expect(out.message).toBeUndefined();
   });
 });
+
+describe("parseProviderErrorGeneric retryable boundaries", () => {
+  it.each([
+    [399, false],
+    [400, false],
+    [407, false],
+    [408, true],
+    [428, false],
+    [429, true],
+    [430, false],
+    [499, false],
+    [500, true],
+    [599, true],
+    [600, false],
+  ])("status %i -> retryable %s", (status, expected) => {
+    expect(parseProviderErrorGeneric({ status }).retryable).toBe(expected);
+  });
+
+  it("leaves retryable undefined when no status is known", () => {
+    expect(parseProviderErrorGeneric({}).retryable).toBeUndefined();
+  });
+});
+
+describe("parseProviderErrorGeneric scrubs every extracted string", () => {
+  const SECRET = "sk-" + "Z".repeat(40);
+
+  it("redacts secrets echoed in message, type, and code", () => {
+    const result = parseProviderErrorGeneric({
+      status: 401,
+      bodyJson: {
+        error: {
+          message: `Invalid key ${SECRET}`,
+          type: `bad_key ${SECRET}`,
+          code: `invalid_api_key:${SECRET}`,
+        },
+      },
+    });
+    for (const field of [
+      result.message,
+      result.providerType,
+      result.providerCode,
+    ]) {
+      expect(field).toBeDefined();
+      expect(field).not.toContain(SECRET);
+    }
+  });
+
+  it("redacts secrets in a root-level code field", () => {
+    const result = parseProviderErrorGeneric({
+      status: 400,
+      bodyJson: { message: "bad", code: `token=${SECRET}` },
+    });
+    expect(result.providerCode).toBeDefined();
+    expect(result.providerCode).not.toContain(SECRET);
+  });
+});

@@ -253,8 +253,8 @@ export class Dialogue extends BaseStateItem<IChatMessages> {
     return this;
   }
 
-  getHistory() {
-    return this.getValue();
+  getHistory(): IChatMessages {
+    return [...this.getValue()];
   }
 
   serialize() {

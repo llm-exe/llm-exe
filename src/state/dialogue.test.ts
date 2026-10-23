@@ -254,6 +254,28 @@ describe("llm-exe:state/Dialogue", () => {
     });
   });
 
+  describe("resetValue / getHistory isolation (#863)", () => {
+    it("resetValue clears history added after construction", () => {
+      const d = new Dialogue("c");
+      d.setUserMessage("hi");
+      d.setAssistantMessage("yo");
+      expect(d.getHistory()).toHaveLength(2);
+      d.resetValue();
+      expect(d.getHistory()).toEqual([]);
+      d.setUserMessage("again");
+      d.resetValue();
+      expect(d.getHistory()).toEqual([]);
+    });
+    it("getHistory returns a copy that does not mutate internal state", () => {
+      const d = new Dialogue("c");
+      d.setUserMessage("hi");
+      d.getHistory().push({ role: "user", content: "x" });
+      expect(d.getHistory()).toEqual([{ role: "user", content: "hi" }]);
+      d.resetValue();
+      expect(d.getHistory()).toEqual([]);
+    });
+  });
+
   describe("OutputResultsText handling", () => {
     it("can set assistant message with OutputResultsText object", () => {
       const dialogue = new Dialogue("main");

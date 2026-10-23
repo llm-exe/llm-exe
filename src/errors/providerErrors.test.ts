@@ -432,7 +432,8 @@ describe("safeProviderErrorBody truncation order", () => {
 
   it("still bounds the output length after redaction", () => {
     const out = safeProviderErrorBody(body, { maxBodyBytes: 20 }) as string;
-    expect(out).toBe(out.slice(0, 20) + "…(truncated)");
+    expect(out).toHaveLength(20 + "…(truncated)".length);
+    expect(out.endsWith("…(truncated)")).toBe(true);
   });
 });
 

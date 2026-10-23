@@ -208,6 +208,30 @@ describe("parseHeaders", () => {
     }
   });
 
+  it("redacts a header secret that straddles the excerpt cut", async () => {
+    const key = "sk-" + "A1b2C3d4E5".repeat(5);
+    const head = '{"x": "';
+    const label = '", "Authorization": "Bearer ';
+    // Pad so the 500-char excerpt cut lands 10 characters into the key.
+    const pad = "a".repeat(500 - head.length - label.length - 10);
+    (replaceTemplateStringSimple as jest.Mock).mockReturnValue(
+      head + pad + label + key + '", broken}'
+    );
+
+    try {
+      await parseHeaders(config, replacements, payload);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      const err = e as LlmExeError;
+      const excerpt = String(
+        (err.context as Record<string, unknown>).replacedHeadersExcerpt
+      );
+      expect(excerpt.endsWith("…(truncated)")).toBe(true);
+      expect(excerpt).not.toContain(key.slice(0, 10));
+      expect(err.message).not.toContain(key.slice(0, 10));
+    }
+  });
+
   it("Should throw an error with detailed context when JSON parsing fails", async () => {
     config.headers = '{"broken": {{token}}}';
     (replaceTemplateStringSimple as jest.Mock).mockReturnValue(

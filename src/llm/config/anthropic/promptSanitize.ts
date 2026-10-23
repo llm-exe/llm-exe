@@ -3,6 +3,7 @@ import {
   anthropicPromptMessageCallback,
   AnthropicPromptSanitizeOptions,
 } from "./promptSanitizeMessageCallback";
+import { canonicalAnthropicModel } from "./effort";
 
 // Models that 400 on a trailing assistant message (prefill): the 4.6+/5
 // generation. Issue #503 and Anthropic's migration guide name opus-4-6,
@@ -26,10 +27,14 @@ const PREFILL_UNSUPPORTED_MODELS = [
   "claude-fable-5",
 ];
 
+// `model` may be a Bedrock id ("us.anthropic.claude-opus-4-7-v1:0", an
+// inference-profile ARN, ...) since amazon:anthropic.chat shares this sanitizer,
+// so canonicalize to the bare "claude-..." name before matching (issue #861).
 function modelBlocksPrefill(model: string | undefined): boolean {
   if (!model) return false;
+  const canonical = canonicalAnthropicModel(model);
   return PREFILL_UNSUPPORTED_MODELS.some(
-    (prefix) => model === prefix || model.startsWith(`${prefix}-`)
+    (prefix) => canonical === prefix || canonical.startsWith(`${prefix}-`)
   );
 }
 

@@ -138,13 +138,58 @@ export interface LlmExecutorHooks extends BaseExecutorHooks {
 /**
  * A single executor hook callback. Receives the per-run execution metadata
  * (input/output/error fields typed via I/O) followed by the executor's own
- * identity metadata. This is the shape fired for onSuccess / onError /
- * onComplete — the metadata fields that are populated differ per event
- * (`output` on success, `error` on failure), but all are optional on
- * {@link ExecutorExecutionMetadata}, so one signature covers every hook.
+ * identity metadata. Every field is optional here, so this broad shape is
+ * assignable to any event. Per-event payloads are narrower — see
+ * {@link ExecutorHookMetadataByEvent} and {@link ExecutorEventHookFunction}.
  */
 export type ExecutorHookFunction<I = any, O = any, R = any, HI = any> = (
   metadata: ExecutorExecutionMetadata<I, O, R, HI>,
+  executor: ExecutorMetadata
+) => void;
+
+/**
+ * Execution metadata as delivered to each built-in hook event:
+ * - `onSuccess` — `output` is always set.
+ * - `onError` — `error` is always set. `errorCode` and friends stay optional:
+ *   they are only populated when the thrown error is an `LlmExeError`.
+ * - `onComplete` — fires on both paths, so keeps the all-optional shape.
+ */
+export interface ExecutorHookMetadataByEvent<
+  I = any,
+  O = any,
+  R = any,
+  HI = any,
+> {
+  onSuccess: ExecutorExecutionMetadata<I, O, R, HI> & { output: O };
+  onError: ExecutorExecutionMetadata<I, O, R, HI> & { error: Error };
+  onComplete: ExecutorExecutionMetadata<I, O, R, HI>;
+}
+
+/**
+ * Resolves the metadata payload for a hook event. Custom events (added via
+ * an extended hooks interface) fall back to the all-optional shape.
+ */
+export type ExecutorHookMetadataFor<
+  K,
+  I = any,
+  O = any,
+  R = any,
+  HI = any,
+> = K extends keyof ExecutorHookMetadataByEvent
+  ? ExecutorHookMetadataByEvent<I, O, R, HI>[K]
+  : ExecutorExecutionMetadata<I, O, R, HI>;
+
+/**
+ * A hook callback typed for a specific event `K`.
+ */
+export type ExecutorEventHookFunction<
+  K,
+  I = any,
+  O = any,
+  R = any,
+  HI = any,
+> = (
+  metadata: ExecutorHookMetadataFor<K, I, O, R, HI>,
   executor: ExecutorMetadata
 ) => void;
 
@@ -156,8 +201,8 @@ export type CoreExecutorHookInput<
   H = BaseExecutorHooks,
 > = {
   [key in keyof H]?:
-    | ExecutorHookFunction<I, O, R, HI>
-    | ExecutorHookFunction<I, O, R, HI>[];
+    | ExecutorEventHookFunction<key, I, O, R, HI>
+    | ExecutorEventHookFunction<key, I, O, R, HI>[];
 };
 
 export interface CoreExecutorExecuteOptions<

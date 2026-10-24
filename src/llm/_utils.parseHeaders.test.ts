@@ -10,6 +10,14 @@ jest.mock("@/utils/modules/getEnvironmentVariable");
 jest.mock("@/utils");
 jest.mock("@/utils/modules/getAwsAuthorizationHeaders");
 
+// This suite mocks replaceTemplateStringSimple, which means nothing here proves
+// the *real* replacement produces the secret-bearing string that redaction is
+// supposed to catch. Kept available so one test can run the real thing.
+const { replaceTemplateStringSimple: realReplaceTemplateStringSimple } =
+  jest.requireActual<
+    typeof import("@/utils/modules/replaceTemplateStringSimple")
+  >("@/utils/modules/replaceTemplateStringSimple");
+
 describe("parseHeaders", () => {
   let config: Config;
   let replacements: Record<string, any>;
@@ -168,8 +176,8 @@ describe("parseHeaders", () => {
       expect(ctx.key).toBe("openai.chat-mock.v1");
       expect(ctx.headerTemplate).toBe(config.headers);
       expect(ctx.replacedHeadersExcerpt).toBe("not valid json");
-      expect((e as unknown as { cause?: unknown }).cause).toBeDefined();
-      expect((e as unknown as { cause?: Error }).cause).toBeInstanceOf(Error);
+      expect((e as LlmExeError).cause).toBeDefined();
+      expect((e as LlmExeError).cause).toBeInstanceOf(Error);
     }
   });
 
@@ -200,6 +208,30 @@ describe("parseHeaders", () => {
     }
   });
 
+  it("redacts a header secret that straddles the excerpt cut", async () => {
+    const key = "sk-" + "A1b2C3d4E5".repeat(5);
+    const head = '{"x": "';
+    const label = '", "Authorization": "Bearer ';
+    // Pad so the 500-char excerpt cut lands 10 characters into the key.
+    const pad = "a".repeat(500 - head.length - label.length - 10);
+    (replaceTemplateStringSimple as jest.Mock).mockReturnValue(
+      head + pad + label + key + '", broken}'
+    );
+
+    try {
+      await parseHeaders(config, replacements, payload);
+      fail("Expected an error to be thrown");
+    } catch (e) {
+      const err = e as LlmExeError;
+      const excerpt = String(
+        (err.context as Record<string, unknown>).replacedHeadersExcerpt
+      );
+      expect(excerpt.endsWith("…(truncated)")).toBe(true);
+      expect(excerpt).not.toContain(key.slice(0, 10));
+      expect(err.message).not.toContain(key.slice(0, 10));
+    }
+  });
+
   it("Should throw an error with detailed context when JSON parsing fails", async () => {
     config.headers = '{"broken": {{token}}}';
     (replaceTemplateStringSimple as jest.Mock).mockReturnValue(
@@ -225,6 +257,41 @@ describe("parseHeaders", () => {
     await expect(parseHeaders(config, replacements, payload)).rejects.toThrow(
       /Headers must be a JSON object/
     );
+  });
+
+  it("Should throw an error when parsed headers is a JSON scalar", async () => {
+    (replaceTemplateStringSimple as jest.Mock).mockReturnValue("42");
+
+    await expect(parseHeaders(config, replacements, payload)).rejects.toThrow(
+      /Headers must be a JSON object/
+    );
+  });
+
+  it("redacts the secret produced by the real template replacement", async () => {
+    (replaceTemplateStringSimple as jest.Mock).mockImplementation(
+      realReplaceTemplateStringSimple
+    );
+
+    const secret = "sk-syntheticRealReplacementPath0001";
+    config.headers = '{"Authorization": "Bearer {{token}}", broken}';
+    replacements.token = secret;
+
+    // Guard against a vacuous assertion below: the real replacement really
+    // does inline the live credential into the string that fails to parse.
+    expect(
+      realReplaceTemplateStringSimple(config.headers, replacements)
+    ).toContain(secret);
+
+    const err = await parseHeaders(config, replacements, payload).catch(
+      (e) => e as LlmExeError
+    );
+
+    expect(err).toBeInstanceOf(LlmExeError);
+    const ctx = err.context as Record<string, unknown>;
+    expect(err.code).toBe("configuration.invalid_headers");
+    expect(err.message).not.toContain(secret);
+    expect(String(ctx.replacedHeadersExcerpt)).not.toContain(secret);
+    expect(String(ctx.replacedHeadersExcerpt)).toContain("[redacted]");
   });
 
   it("Should include 'Unknown error' in message when catch receives a non-Error value", async () => {

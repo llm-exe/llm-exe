@@ -1,6 +1,6 @@
 ---
 title: "Use Google Gemini Models in TypeScript with llm-exe"
-description: "Call Google Gemini models like gemini-3.5-flash from TypeScript with llm-exe. Covers setup, API key authentication, and Gemini-specific options like effort."
+description: "Call Google Gemini models like gemini-3.8-flash from TypeScript with llm-exe. Covers setup, API key authentication, and Gemini-specific options like effort."
 ---
 
 # Google Gemini
@@ -17,6 +17,16 @@ llm-exe ships typed shorthands for the most common Gemini models so you do not h
 | `google.gemini-3.5-flash-lite` | `gemini-3.5-flash-lite`  |
 | `google.gemini-3.6-flash`      | `gemini-3.6-flash`       |
 | `google.gemini-3.7-flash`      | `gemini-3.7-flash`       |
+| `google.gemini-3.8-flash`      | `gemini-3.8-flash`       |
+| `google.gemini-2.5-flash`      | `gemini-2.5-flash`       |
+| `google.gemini-2.5-flash-lite` | `gemini-2.5-flash-lite`  |
+| `google.gemini-2.5-pro`        | `gemini-2.5-pro`         |
+
+Google now serves requests for `gemini-3.5-flash` with `gemini-3.6-flash`, and requests for `gemini-3.7-flash` with `gemini-3.8-flash` (the response's `modelVersion` names the model that answered). It has announced no shutdown date for either, so both shorthands keep working without a deprecation warning. For new code, use `google.gemini-3.8-flash`.
+
+::: warning Gemini 2.5 access
+Google limits the 2.5 models to projects that have used them before, so a new project gets a 404 from `google.gemini-2.5-flash`, `google.gemini-2.5-flash-lite`, and `google.gemini-2.5-pro`. Google says these models are not deprecated and will keep being served, so llm-exe doesn't warn on them. For a new project, use a 3.x shorthand.
+:::
 
 ### Deprecated shorthands
 
@@ -25,9 +35,6 @@ when used. Migrate to an active shorthand above.
 
 | Shorthand                      | Default model           | Status                                                     |
 | ------------------------------ | ----------------------- | ---------------------------------------------------------- |
-| `google.gemini-2.5-pro`        | `gemini-2.5-pro`        | Deprecated by Google — shuts down 2026-06-17                |
-| `google.gemini-2.5-flash`      | `gemini-2.5-flash`      | Deprecated by Google — shuts down 2026-06-17                |
-| `google.gemini-2.5-flash-lite` | `gemini-2.5-flash-lite` | Deprecated by Google — shuts down 2026-07-22                |
 | `google.gemini-2.0-flash`      | `gemini-2.0-flash`      | Shut down on 2026-06-01 — requests will fail at the API      |
 | `google.gemini-2.0-flash-lite` | `gemini-2.0-flash-lite` | Shut down on 2026-06-01 — requests will fail at the API      |
 | `google.gemini-1.5-pro`        | `gemini-1.5-pro`        | Shut down on 2025-09-29 — requests will fail at the API      |
@@ -38,16 +45,16 @@ when used. Migrate to an active shorthand above.
 
 ```ts
 const llm = useLlm("google.chat.v1", {
-  model: "gemini-3.5-flash", // specify a model
+  model: "gemini-3.8-flash", // specify a model
 });
 ```
 
 ### Gemini Chat By Model
 
 ```ts
-const llm = useLlm("google.gemini-3.5-flash", {
+const llm = useLlm("google.gemini-3.8-flash", {
   // other options,
-  // no model needed, using gemini-3.5-flash
+  // no model needed, using gemini-3.8-flash
 });
 ```
 
@@ -76,20 +83,9 @@ In addition to the generic options, the following options are Gemini-specific an
 | ------------ | ------ | ---------------- | -------------------------------------------------------------------- |
 | model        | string | —                | The model to use. Must be specified when using `google.chat.v1`. See Google Gemini Docs |
 | geminiApiKey | string | undefined        | API key for Google. See [authentication](/llm/gemini#authentication) |
-| effort       | string | undefined        | Maps to `thinkingConfig.thinkingBudget`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Only sent for `gemini-2.5-pro`, `gemini-2.5-flash`, and `gemini-2.5-flash-lite`; on any other model, or for a value outside that list, it is silently dropped. |
-
-::: warning `effort` and the Gemini 3.x shorthands
-The model list `effort` checks against covers only the three 2.5 models above —
-all of which are deprecated. That means `effort` is currently **dropped** on
-every active shorthand (`google.gemini-3.1-flash-lite`, `google.gemini-3.5-flash`,
-`google.gemini-3.5-flash-lite`, `google.gemini-3.6-flash`,
-`google.gemini-3.7-flash`). There is no error or warning — the request simply
-goes out without `thinkingConfig.thinkingBudget`.
-
-Tracked in [llm-exe#781](https://github.com/llm-exe/llm-exe/issues/781).
-:::
+| effort       | string | undefined        | Maps to `generationConfig.thinkingConfig.thinkingBudget`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`, sent as budgets of 1024, 1024, 8192, and 24576 tokens. Sent for every Gemini 2.5 or later model, including all the 3.x shorthands; dropped on earlier models or for a value outside that list. |
 
 > [!NOTE]
-> The Gemini provider currently maps `model`, `geminiApiKey`, and `effort`. Generic options like `temperature`, `maxTokens`, and `topP` are not mapped to the Gemini API at this time.
+> Besides `model`, `geminiApiKey`, and `effort`, the Gemini provider maps the [generic options](/llm/generic) `temperature`, `topP`, `maxTokens` (sent as `maxOutputTokens`), and `stopSequences`, all under `generationConfig`.
 
 See [Google Gemini API Reference](https://ai.google.dev/gemini-api/docs) for details.

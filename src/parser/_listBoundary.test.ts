@@ -20,6 +20,12 @@ describe("normalizeListLines", () => {
     expect(out.lines).toEqual(["a", "b"]);
   });
 
+  it("returns the original 0-based line index of each kept line", () => {
+    const out = normalizeListLines("a\n   \n\r\nb\rc\n", ctx);
+    expect(out.lines).toEqual(["a", "b", "c"]);
+    expect(out.lineIndexes).toEqual([0, 3, 4]);
+  });
+
   it("detects dash-marked lists and strips the marker", () => {
     const out = normalizeListLines("- one\n- two\n- three", ctx);
     expect(out.marked).toBe(true);

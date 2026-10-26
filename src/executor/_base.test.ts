@@ -144,8 +144,8 @@ describe("llm-exe:executor/BaseExecutor", () => {
       expect(error.message).toEqual("Something happened")
     } finally {
       expect(executor.runHook).toHaveBeenCalledTimes(2);
-      expect(executor.runHook).toHaveBeenNthCalledWith(1, "onError", expect.any(Object));
-      expect(executor.runHook).toHaveBeenNthCalledWith(2, "onComplete", expect.any(Object));
+      expect(executor.runHook).toHaveBeenNthCalledWith(1, "onError", expect.any(Object), undefined);
+      expect(executor.runHook).toHaveBeenNthCalledWith(2, "onComplete", expect.any(Object), undefined);
     }
   });
   it("MockExecutor can removeHooks", async () => {

@@ -1,5 +1,10 @@
 import { BaseExecutor } from "@/executor";
-import { CoreExecutorHookInput, PlainObject } from "@/interfaces";
+import {
+  BaseExecutorHooks,
+  CoreExecutorHookInput,
+  ListenerFunction,
+  PlainObject,
+} from "@/interfaces";
 import { LlmExeError } from "@/errors";
 
 /**
@@ -98,6 +103,23 @@ describe("llm-exe:executor/BaseExecutor", () => {
       onComplete(){ console.log("fn2") },
     })
     expect(executor.hooks.onComplete).toHaveLength(2);
+  });
+
+  it("hooks and allowedHooks are typed from the hooks generic", () => {
+    const executor = new MockExecutor();
+    const onComplete: ListenerFunction[] = executor.hooks.onComplete;
+    const allowed: (keyof BaseExecutorHooks)[] = executor.allowedHooks;
+    expect(onComplete).toEqual([]);
+    expect(allowed).toEqual(["onComplete", "onError", "onSuccess"]);
+
+    // @ts-expect-error - unknown hook names are not on the hooks map
+    expect(executor.hooks.thisDoesntExist).toBeUndefined();
+    // @ts-expect-error - hook lists hold listener functions, not strings
+    const bad: string[] = executor.hooks.onComplete;
+    expect(bad).toEqual([]);
+    // @ts-expect-error - allowedHooks only accepts known hook names
+    const badAllowed: "notAHook"[] = executor.allowedHooks;
+    expect(badAllowed).toHaveLength(3);
   });
 
   it("MockExecutor invalid hooks don't get set", async () => {
@@ -483,7 +505,7 @@ describe("llm-exe:executor/BaseExecutor", () => {
     it("should initialize hooks array when once is called for uninitialized event", () => {
       const executor = new MockExecutor();
       // Manually delete an event's hooks array to simulate uninitialized state
-      delete executor.hooks.onSuccess;
+      delete (executor.hooks as Partial<typeof executor.hooks>).onSuccess;
       expect(executor.hooks.onSuccess).toBeUndefined();
 
       executor.once("onSuccess", () => {});

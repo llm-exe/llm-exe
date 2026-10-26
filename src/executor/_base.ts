@@ -60,8 +60,12 @@ export abstract class BaseExecutor<
   /**
    * @property hooks - hooks to be ran during execution
    */
-  public hooks: any;
-  readonly allowedHooks: any[] = [hookOnComplete, hookOnError, hookOnSuccess];
+  public hooks: Record<keyof H, ListenerFunction[]>;
+  readonly allowedHooks: (keyof H)[] = [
+    hookOnComplete,
+    hookOnError,
+    hookOnSuccess,
+  ];
 
   /**
    * @property maxHooksPerEvent - Maximum number of hooks allowed per event
@@ -82,7 +86,7 @@ export abstract class BaseExecutor<
       onSuccess: [],
       onError: [],
       onComplete: [],
-    };
+    } as Record<keyof H, ListenerFunction[]>;
 
     if (options?.hooks) {
       this.setHooks(options.hooks);
@@ -446,7 +450,7 @@ export abstract class BaseExecutor<
     // Return counts for all events
     const counts: Record<string, number> = {};
     for (const key of this.allowedHooks) {
-      counts[key] = this.hooks[key]?.length || 0;
+      counts[String(key)] = this.hooks[key]?.length || 0;
     }
     return counts;
   }

@@ -671,6 +671,37 @@ describe("llm-exe:executor/BaseExecutor", () => {
       await executor.execute({});
       expect(calls).toBe(1);
     });
+
+    it("off(fn) removes a pending once(fn) before it fires", async () => {
+      const executor = new MockExec();
+      const fn = jest.fn();
+      executor.once("onSuccess", fn);
+      expect(executor.getHookCount("onSuccess")).toBe(1);
+
+      executor.off("onSuccess", fn);
+      expect(executor.getHookCount("onSuccess")).toBe(0);
+
+      await executor.execute({});
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    it("off(fn) only removes the matching once registration", async () => {
+      const executor = new MockExec();
+      const fn = jest.fn();
+      const other = jest.fn();
+      executor.once("onSuccess", fn);
+      executor.once("onSuccess", other);
+      executor.on("onSuccess", fn);
+
+      executor.off("onSuccess", other);
+      expect(executor.getHookCount("onSuccess")).toBe(2);
+
+      await executor.execute({});
+      expect(other).not.toHaveBeenCalled();
+      // once(fn) fires and self-removes; on(fn) stays registered.
+      expect(fn).toHaveBeenCalledTimes(2);
+      expect(executor.getHookCount("onSuccess")).toBe(1);
+    });
   });
 
 });

@@ -68,6 +68,12 @@ export abstract class BaseExecutor<
    */
   readonly maxHooksPerEvent: number = 100;
 
+  /**
+   * Maps each once() wrapper to the listener it wraps, so off(fn) can
+   * remove a pending once(fn) (Node EventEmitter semantics).
+   */
+  private onceListeners = new WeakMap<object, object>();
+
   constructor(
     name: string,
     type: string,
@@ -321,8 +327,8 @@ export abstract class BaseExecutor<
     if (typeof fn !== "function") return this;
     const lis = this.hooks[eventName];
     if (!lis) return this;
-    for (let i = lis.length; i >= 0; i--) {
-      if (lis[i] === fn) {
+    for (let i = lis.length - 1; i >= 0; i--) {
+      if (lis[i] === fn || this.onceListeners.get(lis[i]) === fn) {
         lis.splice(i, 1);
         break;
       }
@@ -397,6 +403,7 @@ export abstract class BaseExecutor<
         this.off(eventName, onceWrapper);
       }
     };
+    this.onceListeners.set(onceWrapper, fn);
 
     if (!this.hooks[eventName]) {
       this.hooks[eventName] = [];

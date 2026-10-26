@@ -466,6 +466,50 @@ describe("llm-exe:state/Dialogue", () => {
       assert(history[0].role === "function_call");
       expect(history[0].function_call?.id).toEqual("func-456");
     });
+
+    it("preserves function message id in setHistory (#892)", () => {
+      const dialogue = new Dialogue("main");
+      dialogue.setHistory([
+        { role: "function", name: "getWeather", content: "sunny", id: "call_1" },
+      ]);
+      const history = dialogue.getHistory();
+      expect(history[0]).toEqual({
+        role: "function",
+        name: "getWeather",
+        content: "sunny",
+        id: "call_1",
+      });
+    });
+
+    it("round-trips every role through setHistory(getHistory()) (#892)", () => {
+      const original = new Dialogue("original");
+      original.setSystemMessage("You are helpful.");
+      original.setUserMessage(
+        [
+          { type: "text", text: "What is this?" },
+          {
+            type: "image_url",
+            image_url: { url: "https://example.com/cat.png" },
+          },
+        ],
+        "alice"
+      );
+      original.setAssistantMessage("Let me check the weather.");
+      original.setToolCallMessage({
+        id: "call_1",
+        name: "getWeather",
+        arguments: "{}",
+      });
+      original.setFunctionMessage("sunny", "getWeather", "call_1");
+
+      const copy = new Dialogue("copy").setHistory(original.getHistory());
+      expect(copy.getHistory()).toEqual(original.getHistory());
+
+      const restored = new Dialogue("restored").setHistory(
+        JSON.parse(JSON.stringify(original.serialize())).value
+      );
+      expect(restored.getHistory()).toEqual(original.getHistory());
+    });
   });
 
   describe("Additional coverage", () => {

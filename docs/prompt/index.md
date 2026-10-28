@@ -40,6 +40,46 @@ Prompts can validate that required template variables and helpers are available 
 
 See [Prompt Validation](/prompt/validation).
 
+## Prompt Options
+
+`createChatPrompt()`, `createPrompt()`, and the `ChatPrompt` / `TextPrompt` constructors all take an optional options object as the last argument.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `helpers` | `{ name: string; handler: function }[]` | `[]` | Handlebars helpers that only this prompt can use. See [Custom Helpers and Partials](/prompt/advanced). |
+| `partials` | `{ name: string; template: string }[]` | `[]` | Handlebars partials that only this prompt can use. |
+| `validateInput` | `false \| "strict" \| "warn"` | `false` | Checks the `format()` input against the template's variables before rendering. See [Prompt Validation](/prompt/validation). |
+| `preFilters` | `((prompt: string) => string)[]` | `[]` | Functions that run on each message's raw template **before** rendering. |
+| `postFilters` | `((prompt: string) => string)[]` | `[]` | Functions that run on the rendered output **after** rendering. |
+| `replaceTemplateString` | `(...args: any[]) => string` | built-in Handlebars renderer | Replaces the renderer `format()` uses. Advanced; you rarely need it. |
+| `allowUnsafeUserTemplate` | `boolean` | `true` | **Chat prompts only.** Set to `false` to send `user` messages as literal text instead of rendering them as templates. Turn this off when user messages contain untrusted input. |
+
+::: warning Text prompts via `createPrompt("text", ...)`
+`createPrompt("text", message, options)` currently ignores `options` ([#889](https://github.com/llm-exe/llm-exe/issues/889)). Until that is fixed, use `new TextPrompt(message, options)` when a text prompt needs options. Chat prompts are not affected.
+:::
+
+## Prompt Classes
+
+The factory functions return instances of two exported classes. You can also construct the classes yourself, which is handy for `instanceof` checks or type annotations:
+
+```ts
+import { ChatPrompt, TextPrompt, createChatPrompt } from "llm-exe";
+
+const chat = new ChatPrompt<{ topic: string }>("Talk about {{topic}}.");
+// same as: createChatPrompt<{ topic: string }>("Talk about {{topic}}.")
+
+const text = new TextPrompt<{ topic: string }>("Talk about {{topic}}.", {
+  validateInput: "strict",
+});
+
+chat instanceof ChatPrompt; // true
+```
+
+| Class | Created by | `format()` returns | Constructor |
+| --- | --- | --- | --- |
+| `ChatPrompt<I>` | `createChatPrompt()`, `createPrompt("chat")` | `IChatMessages` (an array of messages) | `new ChatPrompt<I>(initialSystemMessage?, options?)` |
+| `TextPrompt<I>` | `createPrompt()`, `createPrompt("text")` | a `string` (typed as `string \| IChatMessages`, inherited from the base class) | `new TextPrompt<I>(initialMessage?, options?)` |
+
 ## Using Types with Prompts
 
 <GenericOutput example="prompt.basic.exampleTwo">

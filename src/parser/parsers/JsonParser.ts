@@ -109,10 +109,12 @@ function extractJsonCandidates(input: string): JsonCandidate[] {
       candidates.push({
         parsed: JSON.parse(candidate),
       });
-      index = end;
     } catch {
-      // Balanced braces can still contain non-JSON content.
+      // Balanced braces can still contain non-JSON content. Skip the whole
+      // span rather than descending into it, so a malformed outer object
+      // never yields one of its inner fragments.
     }
+    index = end;
   }
 
   return candidates;
@@ -250,12 +252,12 @@ export class JsonParser<
       if (this.shouldValidateSchema) {
         const valid = validateParserSchema(this.schema, parsed as any);
         if (valid && valid.length) {
-          throw new LlmExeError(valid[0].message, {
+          throw new LlmExeError(valid[0].stack, {
             code: "parser.schema_validation_failed",
             context: {
               operation: "JsonParser.parse",
               parser: "json",
-              schemaErrors: valid.map((error) => error.message),
+              schemaErrors: valid.map((error) => error.stack),
             },
           });
         }

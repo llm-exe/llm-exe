@@ -40,6 +40,10 @@ import { useLlm, createChatPrompt, createParser } from "llm-exe";
 const llmExe = require("llm-exe");
 ```
 
+Set your provider's API key in the environment (for example `OPENAI_API_KEY`), or pass it as an option (`useLlm("openai.gpt-4o-mini", { openAiApiKey: "..." })`). See [LLM providers](https://llm-exe.com/llm/) for each provider's key.
+
+To try llm-exe without a key, use `useLlm("openai.chat-mock.v1")`. It makes no network call. By default it replies with the fixed text `Hello world from LLM! The input was [...]` (the prompt messages as JSON), which typed parsers can't reliably parse. Pass `mockResponse` to choose the reply, so typed parsers like `json`, `number`, or `boolean` work too: `useLlm("openai.chat-mock.v1", { mockResponse: '{"a":1}' })`.
+
 ## Overview
 
 ```ts
@@ -85,8 +89,9 @@ Welcome back!
 ```ts
 createParser("string");              // pass-through, returns string
 createParser("json", { schema });    // JSON with optional schema validation
-createParser("boolean");             // parses a boolean token
-createParser("number");              // extracts number from response
+createParser("boolean");             // whole response must be a boolean ("yes", "true"); "Yes." throws
+createParser("boolean", { match: "extract" }); // finds one boolean token in surrounding text
+createParser("number");              // extracts number from response (default match: "extract")
 createParser("stringExtract", { enum: ["yes", "no"] }); // match one of the enum values
 createParser("listToArray");         // newline-separated list → string[]
 createParser("listToJson");          // key: value list → object (with optional schema)

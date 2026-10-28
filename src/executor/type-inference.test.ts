@@ -2,7 +2,7 @@ import { useLlm } from "@/llm";
 import { createChatPrompt } from "@/prompt";
 import { createParser, createCustomParser } from "@/parser";
 import { createLlmExecutor } from "@/executor";
-import { BaseLlCall } from "@/types";
+import { BaseLlCall, ExecutorHookFunction } from "@/types";
 
 /**
  * Compile-time guarantees for the chain CLAUDE.md calls non-negotiable:
@@ -255,5 +255,129 @@ describe("hook registration type inference", () => {
     });
 
     expect(hooked.hooks.onComplete).toHaveLength(2);
+  });
+});
+
+/**
+ * Hook payloads are typed per event (#868): `output` is required in
+ * `onSuccess`, `error` is required in `onError`, and `onComplete` keeps the
+ * all-optional shape because it fires on both paths.
+ */
+describe("per-event hook metadata", () => {
+  const prompt = createChatPrompt<{ text: string }>("Say: {{text}}");
+
+  it("types output as required in onSuccess", async () => {
+    const executor = createLlmExecutor({
+      llm,
+      prompt,
+      parser: createParser("string"),
+    });
+
+    const outputs: string[] = [];
+    executor.on("onSuccess", (exec) => {
+      assertType<Equal<typeof exec.output, string>>();
+      // No `!` or guard needed.
+      const output: string = exec.output;
+      outputs.push(output);
+    });
+
+    await executor.execute({ text: "hello" });
+    expect(outputs).toHaveLength(1);
+    expect(typeof outputs[0]).toBe("string");
+  });
+
+  it("types error as required in onError", async () => {
+    const executor = createLlmExecutor({
+      llm,
+      prompt,
+      parser: createCustomParser<string>("boom", () => {
+        throw new Error("parse failed");
+      }),
+    });
+
+    const messages: string[] = [];
+    executor.once("onError", (exec) => {
+      assertType<Equal<typeof exec.error, Error>>();
+      // Only set for LlmExeError, so it stays optional.
+      assertType<Equal<typeof exec.errorCode, string | undefined>>();
+      const error: Error = exec.error;
+      messages.push(error.message);
+    });
+
+    await expect(executor.execute({ text: "hello" })).rejects.toThrow(
+      "parse failed"
+    );
+    expect(messages).toEqual(["parse failed"]);
+  });
+
+  it("keeps onComplete metadata optional", () => {
+    const executor = createLlmExecutor({
+      llm,
+      prompt,
+      parser: createParser("string"),
+    });
+
+    executor.on("onComplete", (exec) => {
+      assertType<Equal<typeof exec.output, string | undefined>>();
+      assertType<Equal<typeof exec.error, Error | undefined>>();
+      // @ts-expect-error - output is not guaranteed on completion.
+      const output: string = exec.output;
+      expect(output).toBeDefined();
+    });
+
+    expect(executor.hooks.onComplete).toHaveLength(1);
+  });
+
+  it("narrows the hooks option per event too", () => {
+    const executor = createLlmExecutor(
+      { llm, prompt, parser: createParser("string") },
+      {
+        hooks: {
+          onSuccess: (exec) => {
+            assertType<Equal<typeof exec.output, string>>();
+          },
+          onError: [
+            (exec) => {
+              assertType<Equal<typeof exec.error, Error>>();
+            },
+          ],
+        },
+      }
+    );
+
+    expect(executor.hooks.onSuccess).toHaveLength(1);
+    expect(executor.hooks.onError).toHaveLength(1);
+  });
+
+  it("still accepts a broadly-typed callback for every event", () => {
+    const executor = createLlmExecutor({
+      llm,
+      prompt,
+      parser: createParser("string"),
+    });
+
+    const broad: ExecutorHookFunction<{ text: string }, string> = () => {};
+    executor.on("onSuccess", broad);
+    executor.on("onError", broad);
+    executor.on("onComplete", broad);
+    executor.off("onSuccess", broad);
+
+    expect(executor.hooks.onSuccess).toHaveLength(0);
+    expect(executor.hooks.onError).toHaveLength(1);
+  });
+
+  it("rejects a success-typed callback on onComplete", () => {
+    const executor = createLlmExecutor({
+      llm,
+      prompt,
+      parser: createParser("string"),
+    });
+
+    const onSuccess = (exec: { output: string }) => exec.output;
+    executor.on("onSuccess", onSuccess);
+    // @ts-expect-error - onComplete may fire without an output.
+    executor.on("onComplete", onSuccess);
+
+    expect(executor.hooks.onSuccess).toHaveLength(1);
   });
 });

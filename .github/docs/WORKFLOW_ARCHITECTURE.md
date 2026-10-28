@@ -862,7 +862,7 @@ PR body truncation: capped at 65000 characters.
 |-------|-------|
 | Triggers | `workflow_run` on `Release / Check Semver` completion; `pull_request` `ready_for_review` or `synchronize` on `main` |
 | Run filter | `workflow_run` must be `success` and head branch must be `development`; or any pull_request event. |
-| Steps | Resolves the open PR with base `main` head `development` that is NOT draft; polls every 30 seconds up to 10 times for non-`auto-merge` checks to settle; if any FAILURE among them, exits 1; otherwise `gh pr merge <N> --merge --admin --repo <owner>/<repo>`. |
+| Steps | Resolves the open PR with base `main` head `development` that is NOT draft; polls every 30 seconds up to 20 times until no non-`auto-merge` check is in gh's `pending` bucket, and exits 1 (fail closed) if any are still pending after 10 minutes; if any check is in the `fail` or `cancel` bucket, exits 1; otherwise `gh pr merge <N> --merge --admin --repo <owner>/<repo>`. |
 | Identity | App token. |
 
 ### 9.16. `publish-release.yml` - npm publish on release
@@ -874,7 +874,7 @@ PR body truncation: capped at 65000 characters.
 | Examples tests | New `run-examples-tests` job runs before publish. Uses the `Examples Test` environment with real provider keys (OpenAI, Anthropic, Gemini, xAI, DeepSeek, AWS). Builds, packs, extracts tarball, replaces dist/, installs examples deps, runs `npm run test-examples`. |
 | Build | `npm install` then `npm run build:package`. |
 | Publish step | Reads `package.json .version`. If the version has no `-` suffix, runs `npm run publish-main` (stable, `latest` dist-tag). If the version has a `-CHANNEL` suffix where CHANNEL starts with letters (e.g. `-beta.0`, `-rc.1`, `-alpha.2`), runs `npm publish --provenance --tag $CHANNEL` directly. If the version has a `-` but no alphabetic channel (e.g. `3.0.0-1234`), the step exits 1 to refuse silently clobbering the `latest` dist-tag. |
-| Failure rollback | Separate `revert-to-draft` job: `if: always() && github.event_name == 'release' && (needs.run-examples-tests.result == 'failure' \|\| needs.publish-npm-package.result == 'failure')`. Mints its own bot token, patches the release back to `draft: true`, and prepends a warning banner with the specific failure reason and workflow URL. |
+| Failure rollback | Separate `revert-to-draft` job: `if: always() && github.event_name == 'release' && (needs.run-examples-tests.result == 'failure' \|\| needs.publish-npm-package.result == 'failure')`. Mints its own bot token, patches the release back to `draft: true`, and prepends a warning banner with the specific failure reason and workflow URL. Then tries to delete the failed tag (the tag ruleset blocks this in practice, so it logs and moves on), and resets `package.json` on `development` to the failed version via an `--admin` bot PR plus retitles the open release PR. That revert only runs when every remaining stable `v*` tag (read with `git ls-remote`) is older than the failed version; otherwise it logs a notice and leaves `development` alone, since `draft-main-pr.yml` would bump it straight back. |
 
 ### 9.17. `deploy-docs.yml` - VitePress to S3 plus CloudFront
 
@@ -1056,7 +1056,7 @@ flowchart LR
 |-------|---------|--------------|------------------|
 | 1. Draft | PR closed to `development` OR release published | Patch-bumps `package.json` if behind; creates or updates the draft PR from `development` to `main`. | No new commits to draft over, body exceeds 65000 chars. |
 | 2. Verify | PR on `main` | Blocks if `package.json .version` is not strictly greater than the latest `v*` tag. | Version not bumped. |
-| 3. Merge | `workflow_run` on stage 2 success, or PR sync on `main` | Polls non-`auto-merge` checks (up to 10 x 30s), then `gh pr merge --admin`. | Any non-`auto-merge` check fails. |
+| 3. Merge | `workflow_run` on stage 2 success, or PR sync on `main` | Polls non-`auto-merge` checks until none are pending (up to 20 x 30s), then `gh pr merge --admin`. | Any non-`auto-merge` check fails or is cancelled, or checks are still pending after 10 minutes. |
 | 4. Stage | PR merged to `main` | Wipes existing drafts, creates a fresh draft release with cleaned auto-notes. | Empty draft list is OK; PATCH failure logs a warning only. |
 | 5. Publish | release published, target `main` | `npm publish --provenance`. Stable versions go to the `latest` dist-tag via `npm run publish-main`; pre-release versions with an alphabetic channel (e.g. `-beta.0`, `-rc.1`, `-alpha.2`) are published with `--tag $CHANNEL`; pre-releases with no alphabetic channel are refused. OIDC attestation is explicitly requested. | Wrong branch, wrong actor (only `gregreindel`), npm error, OIDC token failure, pre-release version with no alphabetic channel. |
 | 6. Deploy | release published, target `main` | Builds VitePress docs, ships to S3, rotates CloudFront OriginPath, invalidates `/*`. | Branch guard, OIDC denied, stale ETag on CloudFront. |
@@ -1072,7 +1072,7 @@ flowchart LR
     F1 -. loops back to .-> S1
 
     S2["Stage 2 Verify"]:::stage -- version not bumped --> F2["exit 1<br/>PR cannot merge"]:::fail
-    S3["Stage 3 Merge"]:::stage -- check FAILURE --> F3["exit 1<br/>PR stays open"]:::fail
+    S3["Stage 3 Merge"]:::stage -- check fail, cancel, or still pending --> F3["exit 1<br/>PR stays open"]:::fail
     S5["Stage 5 Publish"]:::stage -- npm error --> F5["PATCH release back to draft<br/>prepend warning banner<br/>preserve original body"]:::fail
     S6["Stage 6 Deploy"]:::stage -- OIDC or ETag fail --> F6["job fails<br/>no live rotation<br/>S3 has new files but CloudFront still points to old"]:::fail
 ```

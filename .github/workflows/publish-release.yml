@@ -217,6 +217,22 @@ jobs:
           CURRENT_DEV_VERSION=$(git show origin/development:package.json | jq -r '.version')
           echo "Failed version: $FAILED_VERSION | Current version on development: $CURRENT_DEV_VERSION"
 
+          # draft-main-pr.yml takes the next version from the newest stable v* tag.
+          # If that tag is at or past the failed version, it bumps development
+          # straight back, so a revert here only churns version PRs, and it rolls
+          # development back past releases that already shipped. That happens when
+          # the tag ruleset blocked the delete above, or when a newer release was
+          # cut before this run failed (a v3.0.5 run expired after 30 days waiting
+          # for approval and reverted development from 3.0.8 to 3.0.5). Read the
+          # remote's tags, because the checkout fetched them before the delete step.
+          REMOTE_TAG_REFS=$(git ls-remote --tags --refs origin 'v*')
+          LATEST_TAG=$(echo "$REMOTE_TAG_REFS" | sed 's|.*refs/tags/||' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
+          LATEST_VERSION="${LATEST_TAG#v}"
+          if [ -n "$LATEST_VERSION" ] && [ "$(printf '%s\n%s\n' "$FAILED_VERSION" "$LATEST_VERSION" | sort -V | tail -n 1)" = "$LATEST_VERSION" ]; then
+            echo "::notice::Newest release tag is $LATEST_TAG, at or past the failed v$FAILED_VERSION. Leaving development at v$CURRENT_DEV_VERSION and the release PR title as they are."
+            exit 0
+          fi
+
           if [ "$CURRENT_DEV_VERSION" != "$FAILED_VERSION" ]; then
             echo "development was bumped to v$CURRENT_DEV_VERSION after the failed release — reverting to v$FAILED_VERSION"
 

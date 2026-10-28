@@ -98,7 +98,7 @@ Once a `schema` is provided, `required` fields and type/constraint checks are en
 
 ```ts
 parser.parse(`{"thought": "I should go"}`);
-// throws: parser.schema_validation_failed — requires property "direction"
+// throws: parser.schema_validation_failed — instance requires property "direction"
 ```
 
 A couple of things to keep in mind:

@@ -51,7 +51,7 @@ The executor still throws on failure — `onError` observes the error, it does n
 
 ### Hook Signature
 
-Every hook receives the same two arguments:
+Every hook receives two arguments:
 
 ```typescript
 type Hook = (
@@ -61,6 +61,28 @@ type Hook = (
 ```
 
 `executionMetadata` contains information about this specific execution (input, output, timings, and — for `onError` — the thrown error). `executorMetadata` contains information about the executor instance itself (id, type, name, total executions).
+
+The metadata type is narrowed per event. In `onSuccess`, `output` is always set and typed as the parser's output, with no `| undefined`. In `onError`, `error` is always set. `onComplete` fires on both paths, so its fields stay optional. `errorCode` and the other structured error fields stay optional in `onError` too, because they are only set when the thrown error is an `LlmExeError`.
+
+To type a callback you define separately, use `ExecutorEventHookFunction<Event, Input, Output>`:
+
+```typescript
+import type { ExecutorEventHookFunction } from "llm-exe";
+
+const executor = createLlmExecutor({
+  llm: useLlm("openai.gpt-4o-mini"),
+  prompt: createChatPrompt<{ text: string }>("Summarize: {{text}}"),
+  parser: createParser("string"),
+});
+
+const logSuccess: ExecutorEventHookFunction<"onSuccess", { text: string }, string> = (exec) => {
+  console.log(exec.output.length); // a string, no guard needed
+};
+
+executor.on("onSuccess", logSuccess);
+executor.on("onError", (exec) => console.error(exec.error.message));
+executor.on("onComplete", (exec) => console.log(exec.output ?? exec.error?.message));
+```
 
 | Field                              | Available on                         | Description                                      |
 | ---------------------------------- | ------------------------------------ | ------------------------------------------------ |
@@ -252,14 +274,16 @@ const counts = executor.getHookCount(); // { onSuccess: 0, onError: 0, onComplet
 
 #### Trace ID
 
-Use `.withTraceId()` to associate an executor with a trace identifier for observability. The trace ID is included in `executorMetadata` passed to hooks.
+Pass `traceId` when you call `execute()` to tag that call. The trace ID is included in the `executorMetadata` passed to hooks.
 
-```typescript{3}:no-line-numbers
+```typescript{7}:no-line-numbers
 const executor = createLlmExecutor({ llm, prompt });
-
-executor.withTraceId("req-abc-123");
 
 executor.on("onComplete", (exec, meta) => {
   console.log(meta.traceId); // "req-abc-123"
 });
+
+await executor.execute(input, { traceId: "req-abc-123" });
 ```
+
+`.withTraceId()` sets one trace ID for the whole executor instance. Don't rely on it for an executor shared across concurrent requests, because each call overwrites the others' ID. A per-call `traceId` takes precedence over it.

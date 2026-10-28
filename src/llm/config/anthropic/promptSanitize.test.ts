@@ -219,6 +219,38 @@ describe("anthropicPromptSanitize", () => {
       expect(warnSpy).not.toHaveBeenCalled();
     });
 
+    it.each([
+      "anthropic.claude-haiku-5-5-v1:0",
+      "us.anthropic.claude-sonnet-5-v1:0",
+      "global.anthropic.claude-opus-5",
+      "us-gov.anthropic.claude-opus-4-7-v1:0",
+      "arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-opus-4-7-v1:0",
+      "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-6",
+    ])("should warn on Bedrock model id %s", (model) => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, { model }, {});
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("does not support assistant message prefills")
+      );
+    });
+
+    it.each([
+      "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "anthropic.claude-haiku-4-5-20251001-v1:0",
+      "my-anthropic.claude-opus-5",
+    ])("should not warn on Bedrock model id %s", (model) => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, { model }, {});
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
     it("should not warn when a model id merely shares a prefix with an unsupported one", () => {
       const messages: IChatMessages = [
         { role: "user", content: "What's 2+2?" },

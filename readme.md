@@ -115,7 +115,7 @@ const parser = createCustomParser("MyUppercaseParser", (text, context) => {
 });
 ```
 
-`text` is the LLM's reply. `context` is the per-call `ExecutionContext`: `traceId`, `executor` (name, id), `execution` (the current run's input and state), and `attributes`. The return type of your function becomes the executor's return type.
+`text` is the LLM's reply. `context` is the per-call `ExecutionContext`: `traceId`, `executor` (name, id), `execution` (this run's `input`, timing, and the raw LLM response as `handlerOutput`; the parsed `output` doesn't exist yet), and `attributes`. The return type of your function becomes the executor's return type.
 
 #### State
 

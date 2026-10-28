@@ -241,7 +241,7 @@ export class Dialogue extends BaseStateItem<IChatMessages> {
           });
           break;
         case "function":
-          this.setFunctionMessage(message?.content, message.name);
+          this.setFunctionMessage(message?.content, message.name, message.id);
           break;
         default:
           this.value.push({

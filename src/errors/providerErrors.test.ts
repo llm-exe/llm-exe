@@ -347,6 +347,41 @@ describe("statusToEmbeddingProviderCode", () => {
   });
 });
 
+describe("status code mapper boundaries", () => {
+  // [status, expected suffix] — neighbours of every special-cased status
+  // and both edges of the 5xx range, so off-by-one edits fail.
+  const table: Array<[number, string]> = [
+    [399, "http_error"],
+    [400, "invalid_request"],
+    [402, "http_error"],
+    [403, "auth_failed"],
+    [404, "http_error"],
+    [407, "http_error"],
+    [408, "unavailable"],
+    [409, "http_error"],
+    [421, "http_error"],
+    [422, "invalid_request"],
+    [423, "http_error"],
+    [428, "http_error"],
+    [430, "http_error"],
+    [499, "http_error"],
+    [500, "unavailable"],
+    [599, "unavailable"],
+    [600, "http_error"],
+    [200, "http_error"],
+  ];
+
+  it.each(table)("llm: %i -> provider_%s", (status, suffix) => {
+    expect(statusToLlmProviderCode(status)).toBe(`llm.provider_${suffix}`);
+  });
+
+  it.each(table)("embedding: %i -> provider_%s", (status, suffix) => {
+    expect(statusToEmbeddingProviderCode(status)).toBe(
+      `embedding.provider_${suffix}`
+    );
+  });
+});
+
 describe("secret-scrubbing fixtures end-to-end through serializeLlmExeError", () => {
   it("does not leak synthetic secrets when serializing an LlmExeError carrying provider data", () => {
     const scrubbedBody = safeProviderErrorBody({

@@ -60,8 +60,12 @@ export abstract class BaseExecutor<
   /**
    * @property hooks - hooks to be ran during execution
    */
-  public hooks: any;
-  readonly allowedHooks: any[] = [hookOnComplete, hookOnError, hookOnSuccess];
+  public hooks: Record<keyof H, ListenerFunction[]>;
+  readonly allowedHooks: (keyof H)[] = [
+    hookOnComplete,
+    hookOnError,
+    hookOnSuccess,
+  ];
 
   /**
    * @property maxHooksPerEvent - Maximum number of hooks allowed per event
@@ -82,7 +86,7 @@ export abstract class BaseExecutor<
       onSuccess: [],
       onError: [],
       onComplete: [],
-    };
+    } as Record<keyof H, ListenerFunction[]>;
 
     if (options?.hooks) {
       this.setHooks(options.hooks);
@@ -101,11 +105,12 @@ export abstract class BaseExecutor<
    * taken (e.g. `handlerInput` becomes available after `getHandlerInput`).
    */
   protected snapshotContext(
-    execution: ExecutorExecutionMetadata<I, O>
+    execution: ExecutorExecutionMetadata<I, O>,
+    traceId?: string
   ): ExecutionContext<I, O> {
     return {
-      traceId: this.getTraceId() ?? undefined,
-      executor: this.getMetadata(),
+      traceId: traceId ?? this.getTraceId() ?? undefined,
+      executor: this.getExecutionMetadata(traceId),
       execution,
       attributes: {},
     };
@@ -164,6 +169,10 @@ export abstract class BaseExecutor<
    */
   async execute(_input: I, _options?: any): Promise<O> {
     this.executions++;
+    // A per-call traceId takes precedence over the instance value set by
+    // withTraceId(), so concurrent executions on a shared executor each keep
+    // their own trace ID (issue #893).
+    const traceId = resolveCallTraceId(_options);
     const _metadata = createMetadataState({
       start: new Date().getTime(),
       input: _input,
@@ -181,7 +190,7 @@ export abstract class BaseExecutor<
       let result = await this.handler(
         input,
         _options,
-        this.snapshotContext(_metadata.asPlainObject())
+        this.snapshotContext(_metadata.asPlainObject(), traceId)
       );
 
       _metadata.setItem({ handlerOutput: result });
@@ -190,12 +199,12 @@ export abstract class BaseExecutor<
         result,
         _metadata.asPlainObject(),
         _options,
-        this.snapshotContext(_metadata.asPlainObject())
+        this.snapshotContext(_metadata.asPlainObject(), traceId)
       );
       _metadata.setItem({ output });
 
       this.collectHookErrors(
-        this.runHook("onSuccess", _metadata.asPlainObject()),
+        this.runHook("onSuccess", _metadata.asPlainObject(), traceId),
         _metadata
       );
       return output;
@@ -206,7 +215,7 @@ export abstract class BaseExecutor<
         ...getErrorMetadata(error),
       });
       this.collectHookErrors(
-        this.runHook("onError", _metadata.asPlainObject()),
+        this.runHook("onError", _metadata.asPlainObject(), traceId),
         _metadata
       );
       throw error;
@@ -217,7 +226,7 @@ export abstract class BaseExecutor<
       // returned metadata. The return value is still collected for callers
       // who want to inspect it via a wrapped runHook; future onHookError
       // support would close this gap.
-      this.runHook("onComplete", _metadata.asPlainObject());
+      this.runHook("onComplete", _metadata.asPlainObject(), traceId);
     }
   }
 
@@ -246,9 +255,19 @@ export abstract class BaseExecutor<
     });
   }
 
+  /**
+   * Executor metadata for a single execution. When a per-call traceId is
+   * given it replaces the instance-level one; otherwise same as getMetadata().
+   */
+  protected getExecutionMetadata(traceId?: string): ExecutorMetadata {
+    const metadata = this.getMetadata();
+    return traceId ? { ...metadata, traceId } : metadata;
+  }
+
   runHook(
     hook: keyof H,
-    _metadata: ExecutorExecutionMetadata
+    _metadata: ExecutorExecutionMetadata,
+    traceId?: string
   ): HookErrorRecord[] {
     /* istanbul ignore next */
     const { [hook]: hooks = [] } = pick(this.hooks, this.allowedHooks);
@@ -256,7 +275,7 @@ export abstract class BaseExecutor<
     for (const hookFn of [...hooks] /** clone hooks */) {
       if (typeof hookFn === "function") {
         try {
-          hookFn(_metadata, this.getMetadata());
+          hookFn(_metadata, this.getExecutionMetadata(traceId));
         } catch (error) {
           // Collect instead of console.warn. The caller (execute()) folds
           // these into the execution metadata so onComplete can see them.
@@ -446,8 +465,18 @@ export abstract class BaseExecutor<
     // Return counts for all events
     const counts: Record<string, number> = {};
     for (const key of this.allowedHooks) {
-      counts[key] = this.hooks[key]?.length || 0;
+      counts[String(key)] = this.hooks[key]?.length || 0;
     }
     return counts;
   }
+}
+
+function resolveCallTraceId(options: unknown): string | undefined {
+  if (options && typeof options === "object" && "traceId" in options) {
+    const { traceId } = options as { traceId?: unknown };
+    if (typeof traceId === "string" && traceId) {
+      return traceId;
+    }
+  }
+  return undefined;
 }

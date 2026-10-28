@@ -240,6 +240,8 @@ await executor.execute({});
 await executor.execute({}); // the once handler no longer fires
 ```
 
+To cancel a pending `.once()` before it fires, pass the same function to `.off()`.
+
 ::: tip
 Default behavior is to not add the same handler to the same hook more than once. There is also a per-event hook limit to prevent unbounded memory growth — if you hit it, remove unused hooks with `.off()` rather than piling on new ones.
 :::

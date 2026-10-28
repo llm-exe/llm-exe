@@ -9,6 +9,8 @@ export interface ListBoundaryContext {
 
 export interface NormalizedListLines {
   lines: string[];
+  /** 0-based index of each entry in `lines` within the original input. */
+  lineIndexes: number[];
   marked: boolean;
 }
 
@@ -16,12 +18,19 @@ export function normalizeListLines(
   input: string,
   context: ListBoundaryContext
 ): NormalizedListLines {
-  const lines = input
+  const lines: string[] = [];
+  const lineIndexes: number[] = [];
+  input
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
     .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+    .forEach((rawLine, index) => {
+      const line = rawLine.trim();
+      if (line.length > 0) {
+        lines.push(line);
+        lineIndexes.push(index);
+      }
+    });
 
   if (lines.length === 0) {
     throw new LlmExeError(`No list items found in input.`, {
@@ -55,6 +64,7 @@ export function normalizeListLines(
     lines: hasMarked
       ? lines.map((line) => line.replace(LIST_MARKER_PATTERN, "").trim())
       : lines,
+    lineIndexes,
     marked: hasMarked,
   };
 }

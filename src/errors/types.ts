@@ -101,6 +101,8 @@ export type ParserParseFailedContext = BaseErrorContext &
     inputExcerpt?: string;
     inputExcerptTruncated?: boolean;
     inputLength?: number;
+    // 0-based line in the original input (blank lines counted).
+    lineIndex?: number;
     matchCount?: number;
     match?: string;
     outputExcerpt?: string;

@@ -276,14 +276,16 @@ const counts = executor.getHookCount(); // { onSuccess: 0, onError: 0, onComplet
 
 #### Trace ID
 
-Use `.withTraceId()` to associate an executor with a trace identifier for observability. The trace ID is included in `executorMetadata` passed to hooks.
+Pass `traceId` when you call `execute()` to tag that call. The trace ID is included in the `executorMetadata` passed to hooks.
 
-```typescript{3}:no-line-numbers
+```typescript{7}:no-line-numbers
 const executor = createLlmExecutor({ llm, prompt });
-
-executor.withTraceId("req-abc-123");
 
 executor.on("onComplete", (exec, meta) => {
   console.log(meta.traceId); // "req-abc-123"
 });
+
+await executor.execute(input, { traceId: "req-abc-123" });
 ```
+
+`.withTraceId()` sets one trace ID for the whole executor instance. Don't rely on it for an executor shared across concurrent requests, because each call overwrites the others' ID. A per-call `traceId` takes precedence over it.

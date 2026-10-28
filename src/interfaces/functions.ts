@@ -37,6 +37,7 @@ export interface ExecutorMetadata {
   name: string;
   created: number;
   executions: number;
+  traceId?: string | null;
   metadata?: Record<string, any>;
 }
 
@@ -225,6 +226,11 @@ export interface LlmExecutorExecuteOptions {
   functions?: CallableExecutorCore[];
   functionCall?: any;
   jsonSchema?: Record<string, any>;
+  /**
+   * Trace ID for this call only. Takes precedence over `withTraceId()`, which
+   * is instance-wide and not safe on executors shared across requests.
+   */
+  traceId?: string;
 }
 
 export type GenericFunctionCall = "auto" | "none" | "any" | { name: string };

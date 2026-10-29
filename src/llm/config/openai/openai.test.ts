@@ -526,12 +526,23 @@ describe("openai configuration", () => {
       }
     );
 
-    it("should not deprecate the gpt-4.1 shorthands that are staying", () => {
-      expect(openai["openai.gpt-4.1"].deprecated).toBeUndefined();
-      expect(openai["openai.gpt-4.1-mini"].deprecated).toBeUndefined();
-      expect(openai["openai.gpt-4o"].deprecated).toBeUndefined();
-      expect(openai["openai.gpt-4o-mini"].deprecated).toBeUndefined();
-    });
+    it.each([
+      ["openai.gpt-4.1", "gpt-4.1"],
+      ["openai.gpt-4.1-mini", "gpt-4.1-mini"],
+      ["openai.gpt-4o", "gpt-4o"],
+      ["openai.gpt-4o-mini", "gpt-4o-mini"],
+    ] as const)(
+      "%s warns about the 2027-01-14 shutdown, points at openai.gpt-5.6-luna, and still resolves to %s",
+      (shorthand, expectedModel) => {
+        const cfg = openai[shorthand] as Config;
+        expect(cfg.options.model.default).toBe(expectedModel);
+        expect(cfg.deprecated).toBeDefined();
+        expect(cfg.deprecated!.shorthand).toBe(shorthand);
+        expect(cfg.deprecated!.message).toContain(`"${shorthand}"`);
+        expect(cfg.deprecated!.message).toContain("2027-01-14");
+        expect(cfg.deprecated!.message).toContain("openai.gpt-5.6-luna");
+      }
+    );
 
     it.each([
       ["openai.gpt-5-mini", "openai.gpt-5.6-terra"],

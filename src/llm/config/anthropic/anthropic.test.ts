@@ -414,6 +414,7 @@ describe("anthropic config", () => {
   describe("deprecated shorthands still resolve", () => {
     it.each([
       ["anthropic.claude-opus-4-6", "claude-opus-4-6"],
+      ["anthropic.claude-sonnet-4-5", "claude-sonnet-4-5"],
       ["anthropic.claude-3-7-sonnet", "claude-3-7-sonnet-20250219"],
       ["anthropic.claude-3-5-sonnet", "claude-3-5-sonnet-latest"],
       ["anthropic.claude-3-5-haiku", "claude-3-5-haiku-latest"],
@@ -428,6 +429,31 @@ describe("anthropic config", () => {
     );
   });
 
+  describe("anthropic.claude-sonnet-4-5 deprecation (retires Nov 30, 2026)", () => {
+    const cfg = anthropic["anthropic.claude-sonnet-4-5"];
+
+    it("is marked deprecated", () => {
+      expect(cfg.deprecated?.shorthand).toBe("anthropic.claude-sonnet-4-5");
+    });
+
+    it("message names the retirement date and replacement shorthands", () => {
+      const message = cfg.deprecated?.message ?? "";
+      expect(message).toContain("November 30, 2026");
+      expect(message).toContain("anthropic.claude-sonnet-5");
+      expect(message).toContain("anthropic.claude-sonnet-4-6");
+    });
+
+    it("points to replacement shorthands that exist and are not deprecated", () => {
+      for (const replacement of [
+        "anthropic.claude-sonnet-5",
+        "anthropic.claude-sonnet-4-6",
+      ] as const) {
+        expect(anthropic[replacement]).toBeDefined();
+        expect(anthropic[replacement].deprecated).toBeUndefined();
+      }
+    });
+  });
+
   describe("active shorthands", () => {
     it.each([
       ["anthropic.claude-fable-5-1", "claude-fable-5-1"],
@@ -439,7 +465,6 @@ describe("anthropic config", () => {
       ["anthropic.claude-sonnet-4-6", "claude-sonnet-4-6"],
       ["anthropic.claude-opus-4-5", "claude-opus-4-5"],
       ["anthropic.claude-haiku-4-5", "claude-haiku-4-5"],
-      ["anthropic.claude-sonnet-4-5", "claude-sonnet-4-5"],
     ] as const)(
       "%s should resolve to %s",
       (shorthand, expectedModel) => {

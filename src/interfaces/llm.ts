@@ -677,6 +677,12 @@ export type AllUseLlmOptions = AllLlm & {
   "openai.gpt-6-astra": {
     input: Omit<OpenAiRequest, "model">;
   };
+  "openai.gpt-6.1-sol": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-6-luna": {
+    input: Omit<OpenAiRequest, "model">;
+  };
   // OpenAI - GPT-5 family
   "openai.gpt-5.6": {
     input: Omit<OpenAiRequest, "model">;

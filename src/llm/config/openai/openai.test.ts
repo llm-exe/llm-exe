@@ -528,7 +528,7 @@ describe("openai configuration", () => {
 
     it.each([
       ["openai.gpt-4.1-nano", "openai.gpt-5.6-luna"],
-      ["openai.gpt-4", "openai.gpt-4o"],
+      ["openai.gpt-4", "openai.gpt-6-luna"],
     ] as const)(
       "%s should warn about the 2026-10-23 shutdown and point at %s",
       (shorthand, replacement) => {
@@ -544,7 +544,7 @@ describe("openai configuration", () => {
       ["openai.gpt-4o", "gpt-4o"],
       ["openai.gpt-4o-mini", "gpt-4o-mini"],
     ] as const)(
-      "%s warns about the 2027-01-14 shutdown, points at openai.gpt-5.6-luna, and still resolves to %s",
+      "%s warns about the 2027-01-14 shutdown, points at openai.gpt-6-luna, and still resolves to %s",
       (shorthand, expectedModel) => {
         const cfg = openai[shorthand] as Config;
         expect(cfg.options.model.default).toBe(expectedModel);
@@ -552,9 +552,34 @@ describe("openai configuration", () => {
         expect(cfg.deprecated!.shorthand).toBe(shorthand);
         expect(cfg.deprecated!.message).toContain(`"${shorthand}"`);
         expect(cfg.deprecated!.message).toContain("2027-01-14");
-        expect(cfg.deprecated!.message).toContain("openai.gpt-5.6-luna");
+        expect(cfg.deprecated!.message).toContain("openai.gpt-6-luna");
       }
     );
+
+    // A deprecation that points users at another deprecated shorthand sends
+    // them through a second migration (openai.gpt-4 used to point at
+    // openai.gpt-4o).
+    it("every migration target named in a deprecation message is a live, non-deprecated shorthand", () => {
+      const targets = Object.values(openai as Record<string, Config>)
+        .map((cfg) => cfg.deprecated?.message ?? "")
+        .map((message) =>
+          /Migrate to "?(openai\.[A-Za-z0-9.-]*[A-Za-z0-9])"?\.?$/.exec(message)
+        )
+        .filter((match): match is RegExpExecArray => match !== null)
+        .map((match) => match[1]);
+      expect(targets.length).toBeGreaterThan(0);
+      for (const target of targets) {
+        const cfg = (openai as Record<string, Config>)[target];
+        expect({ target, exists: cfg !== undefined }).toEqual({
+          target,
+          exists: true,
+        });
+        expect({ target, deprecated: cfg.deprecated }).toEqual({
+          target,
+          deprecated: undefined,
+        });
+      }
+    });
 
     it.each([
       ["openai.gpt-5-mini", "openai.gpt-5.6-terra"],

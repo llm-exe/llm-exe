@@ -84,27 +84,26 @@ export const openai = {
   "openai.gpt-5.2": withDefaultModel(openAiChatV1, "gpt-5.2"),
   // Deprecated
   // NOTE: the GPT-4.1 and GPT-4o families shut down 2027-01-14. OpenAI names
-  // gpt-6-luna as the replacement; until that shorthand exists, point at
-  // gpt-5.6-luna.
+  // gpt-6-luna as the replacement for all four.
   ...deprecateShorthand("openai.gpt-4.1", {
     config: withDefaultModel(openAiChatV1, "gpt-4.1"),
     message:
-      'Model "openai.gpt-4.1" is deprecated and will shut down on 2027-01-14. Migrate to "openai.gpt-5.6-luna".',
+      'Model "openai.gpt-4.1" is deprecated and will shut down on 2027-01-14. Migrate to "openai.gpt-6-luna".',
   }),
   ...deprecateShorthand("openai.gpt-4.1-mini", {
     config: withDefaultModel(openAiChatV1, "gpt-4.1-mini"),
     message:
-      'Model "openai.gpt-4.1-mini" is deprecated and will shut down on 2027-01-14. Migrate to "openai.gpt-5.6-luna".',
+      'Model "openai.gpt-4.1-mini" is deprecated and will shut down on 2027-01-14. Migrate to "openai.gpt-6-luna".',
   }),
   ...deprecateShorthand("openai.gpt-4o", {
     config: withDefaultModel(openAiChatV1, "gpt-4o"),
     message:
-      'Model "openai.gpt-4o" is deprecated and will shut down on 2027-01-14. Migrate to "openai.gpt-5.6-luna".',
+      'Model "openai.gpt-4o" is deprecated and will shut down on 2027-01-14. Migrate to "openai.gpt-6-luna".',
   }),
   ...deprecateShorthand("openai.gpt-4o-mini", {
     config: withDefaultModel(openAiChatV1, "gpt-4o-mini"),
     message:
-      'Model "openai.gpt-4o-mini" is deprecated and will shut down on 2027-01-14. Migrate to "openai.gpt-5.6-luna".',
+      'Model "openai.gpt-4o-mini" is deprecated and will shut down on 2027-01-14. Migrate to "openai.gpt-6-luna".',
   }),
   ...deprecateShorthand("openai.gpt-4.1-nano", {
     config: withDefaultModel(openAiChatV1, "gpt-4.1-nano"),
@@ -117,7 +116,7 @@ export const openai = {
   ...deprecateShorthand("openai.gpt-4", {
     config: withDefaultModel(openAiChatV1, "gpt-4"),
     message:
-      'Model "openai.gpt-4" is deprecated and will shut down on 2026-10-23. Migrate to openai.gpt-4o.',
+      'Model "openai.gpt-4" is deprecated and will shut down on 2026-10-23. Migrate to openai.gpt-6-luna.',
   }),
   // NOTE: gpt-5-mini / gpt-5-nano / o3 resolve to undated aliases whose only
   // shipped snapshots (gpt-5-mini-2025-08-07, gpt-5-nano-2025-08-07,

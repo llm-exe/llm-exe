@@ -458,6 +458,9 @@ describe("anthropic config", () => {
     it.each([
       ["anthropic.claude-fable-5-1", "claude-fable-5-1"],
       ["anthropic.claude-fable-5", "claude-fable-5"],
+      ["anthropic.claude-opus-5-5", "claude-opus-5-5"],
+      ["anthropic.claude-sonnet-5-5", "claude-sonnet-5-5"],
+      ["anthropic.claude-haiku-5-5", "claude-haiku-5-5"],
       ["anthropic.claude-opus-5", "claude-opus-5"],
       ["anthropic.claude-opus-4-8", "claude-opus-4-8"],
       ["anthropic.claude-sonnet-5", "claude-sonnet-5"],
@@ -743,6 +746,28 @@ describe("anthropic config", () => {
     });
 
     it.each([
+      ["anthropic.claude-opus-5-5", "claude-opus-5-5"],
+      ["anthropic.claude-sonnet-5-5", "claude-sonnet-5-5"],
+      ["anthropic.claude-haiku-5-5", "claude-haiku-5-5"],
+    ] as const)(
+      "%s sends model %s with adaptive thinking for effort",
+      async (shorthand, expectedModel) => {
+        const llm = useLlm(shorthand, {
+          effort: "medium",
+          anthropicApiKey: "sk-ant-test",
+        });
+        await llm.call(messages);
+
+        expect(outgoingBody.model).toBe(expectedModel);
+        expect(outgoingBody.thinking).toEqual({ type: "adaptive" });
+        expect(outgoingBody.output_config).toEqual({ effort: "medium" });
+      }
+    );
+
+    it.each([
+      ["anthropic.claude-opus-5-5"],
+      ["anthropic.claude-sonnet-5-5"],
+      ["anthropic.claude-haiku-5-5"],
       ["anthropic.claude-opus-5"],
       ["anthropic.claude-opus-4-7"],
       ["anthropic.claude-opus-4-8"],

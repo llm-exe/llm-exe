@@ -62,7 +62,7 @@ const result = await executor.execute({ text: "..." });
 ### Parsers
 - Built-in: `string`, `json`, `listToJson`, `listToArray`, `listToKeyValue`, `stringExtract`, `markdownCodeBlock`, `markdownCodeBlocks`, `replaceStringTemplate`, `boolean`, `number`
 - `createParser("type", options?)` — returns a typed parser
-- `createCustomParser<OutputType>("name", (input, context) => result)` — for custom logic
+- `createCustomParser<OutputType>("name", (text, context) => result)` — for custom logic
 - The parser's return type becomes the executor's return type — this is where the type safety pays off
 
 ### Executors

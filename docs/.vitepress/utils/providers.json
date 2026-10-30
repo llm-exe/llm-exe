@@ -98,6 +98,18 @@
         "shorthand": "anthropic.claude-fable-5"
       },
       {
+        "id": "claude-opus-5-5",
+        "shorthand": "anthropic.claude-opus-5-5"
+      },
+      {
+        "id": "claude-sonnet-5-5",
+        "shorthand": "anthropic.claude-sonnet-5-5"
+      },
+      {
+        "id": "claude-haiku-5-5",
+        "shorthand": "anthropic.claude-haiku-5-5"
+      },
+      {
         "id": "claude-opus-5",
         "shorthand": "anthropic.claude-opus-5"
       },

@@ -436,21 +436,16 @@ describe("anthropic config", () => {
       expect(cfg.deprecated?.shorthand).toBe("anthropic.claude-sonnet-4-5");
     });
 
-    it("message names the retirement date and replacement shorthands", () => {
+    it("message names the retirement date and Anthropic's named replacement", () => {
       const message = cfg.deprecated?.message ?? "";
       expect(message).toContain("November 30, 2026");
-      expect(message).toContain("anthropic.claude-sonnet-5");
-      expect(message).toContain("anthropic.claude-sonnet-4-6");
+      expect(message).toContain('"anthropic.claude-sonnet-5-5"');
     });
 
-    it("points to replacement shorthands that exist and are not deprecated", () => {
-      for (const replacement of [
-        "anthropic.claude-sonnet-5",
-        "anthropic.claude-sonnet-4-6",
-      ] as const) {
-        expect(anthropic[replacement]).toBeDefined();
-        expect(anthropic[replacement].deprecated).toBeUndefined();
-      }
+    it("points to a replacement shorthand that exists and is not deprecated", () => {
+      const replacement = anthropic["anthropic.claude-sonnet-5-5"];
+      expect(replacement).toBeDefined();
+      expect(replacement.deprecated).toBeUndefined();
     });
   });
 

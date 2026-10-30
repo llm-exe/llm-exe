@@ -109,6 +109,8 @@ describe("openai configuration", () => {
       "gpt-5.6-terra",
       "gpt-5.6-luna",
       "gpt-6-astra",
+      "gpt-6.1-sol",
+      "gpt-6-luna",
       "o3",
       "o4-mini",
     ];
@@ -462,7 +464,12 @@ describe("openai configuration", () => {
     it("is registered as a typed shorthand, not just a config entry", () => {
       // Compile-time: fails typecheck if the shorthand is missing from
       // AllUseLlmOptions, which would drop users to the options-based form.
-      const keys: UseLlmKey[] = ["openai.gpt-6", "openai.gpt-6-astra"];
+      const keys: UseLlmKey[] = [
+        "openai.gpt-6",
+        "openai.gpt-6-astra",
+        "openai.gpt-6.1-sol",
+        "openai.gpt-6-luna",
+      ];
       for (const key of keys) {
         expect(openai[key as keyof typeof openai]).toBeDefined();
       }
@@ -471,6 +478,9 @@ describe("openai configuration", () => {
     it("is not deprecated", () => {
       expect(openAiGpt6.deprecated).toBeUndefined();
       expect(openAiGpt6Astra.deprecated).toBeUndefined();
+      for (const key of ["openai.gpt-6.1-sol", "openai.gpt-6-luna"] as const) {
+        expect((openai[key] as Config).deprecated).toBeUndefined();
+      }
     });
 
     it("is treated as a reasoning model, so effort maps to reasoning_effort", () => {
@@ -478,8 +488,10 @@ describe("openai configuration", () => {
         v: any,
         s: any
       ) => any;
-      for (const effort of ["minimal", "low", "medium", "high"] as const) {
-        expect(effortTransform(effort, { model: "gpt-6-astra" })).toBe(effort);
+      for (const model of ["gpt-6-astra", "gpt-6.1-sol", "gpt-6-luna"]) {
+        for (const effort of ["minimal", "low", "medium", "high"] as const) {
+          expect(effortTransform(effort, { model })).toBe(effort);
+        }
       }
       expect(
         effortTransform("nonsense", { model: "gpt-6-astra" })
@@ -574,6 +586,8 @@ describe("openai configuration", () => {
     it.each([
       ["openai.gpt-6", "gpt-6-astra"],
       ["openai.gpt-6-astra", "gpt-6-astra"],
+      ["openai.gpt-6.1-sol", "gpt-6.1-sol"],
+      ["openai.gpt-6-luna", "gpt-6-luna"],
       ["openai.gpt-5.6", "gpt-5.6-sol"],
       ["openai.gpt-5.6-terra", "gpt-5.6-terra"],
       ["openai.gpt-5.6-luna", "gpt-5.6-luna"],

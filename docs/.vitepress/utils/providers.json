@@ -139,7 +139,9 @@
       },
       {
         "id": "claude-sonnet-4-5",
-        "shorthand": "anthropic.claude-sonnet-4-5"
+        "shorthand": "anthropic.claude-sonnet-4-5",
+        "deprecated": true,
+        "message": "Shorthand \"anthropic.claude-sonnet-4-5\" is deprecated: Anthropic retires claude-sonnet-4-5 on November 30, 2026, after which requests will fail. Migrate to \"anthropic.claude-sonnet-5-5\"."
       },
       {
         "id": "claude-opus-4-6",

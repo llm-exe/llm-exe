@@ -414,6 +414,7 @@ describe("anthropic config", () => {
   describe("deprecated shorthands still resolve", () => {
     it.each([
       ["anthropic.claude-opus-4-6", "claude-opus-4-6"],
+      ["anthropic.claude-sonnet-4-5", "claude-sonnet-4-5"],
       ["anthropic.claude-3-7-sonnet", "claude-3-7-sonnet-20250219"],
       ["anthropic.claude-3-5-sonnet", "claude-3-5-sonnet-latest"],
       ["anthropic.claude-3-5-haiku", "claude-3-5-haiku-latest"],
@@ -428,10 +429,33 @@ describe("anthropic config", () => {
     );
   });
 
+  describe("anthropic.claude-sonnet-4-5 deprecation (retires Nov 30, 2026)", () => {
+    const cfg = anthropic["anthropic.claude-sonnet-4-5"];
+
+    it("is marked deprecated", () => {
+      expect(cfg.deprecated?.shorthand).toBe("anthropic.claude-sonnet-4-5");
+    });
+
+    it("message names the retirement date and Anthropic's named replacement", () => {
+      const message = cfg.deprecated?.message ?? "";
+      expect(message).toContain("November 30, 2026");
+      expect(message).toContain('"anthropic.claude-sonnet-5-5"');
+    });
+
+    it("points to a replacement shorthand that exists and is not deprecated", () => {
+      const replacement = anthropic["anthropic.claude-sonnet-5-5"];
+      expect(replacement).toBeDefined();
+      expect(replacement.deprecated).toBeUndefined();
+    });
+  });
+
   describe("active shorthands", () => {
     it.each([
       ["anthropic.claude-fable-5-1", "claude-fable-5-1"],
       ["anthropic.claude-fable-5", "claude-fable-5"],
+      ["anthropic.claude-opus-5-5", "claude-opus-5-5"],
+      ["anthropic.claude-sonnet-5-5", "claude-sonnet-5-5"],
+      ["anthropic.claude-haiku-5-5", "claude-haiku-5-5"],
       ["anthropic.claude-opus-5", "claude-opus-5"],
       ["anthropic.claude-opus-4-8", "claude-opus-4-8"],
       ["anthropic.claude-sonnet-5", "claude-sonnet-5"],
@@ -439,7 +463,6 @@ describe("anthropic config", () => {
       ["anthropic.claude-sonnet-4-6", "claude-sonnet-4-6"],
       ["anthropic.claude-opus-4-5", "claude-opus-4-5"],
       ["anthropic.claude-haiku-4-5", "claude-haiku-4-5"],
-      ["anthropic.claude-sonnet-4-5", "claude-sonnet-4-5"],
     ] as const)(
       "%s should resolve to %s",
       (shorthand, expectedModel) => {
@@ -718,6 +741,28 @@ describe("anthropic config", () => {
     });
 
     it.each([
+      ["anthropic.claude-opus-5-5", "claude-opus-5-5"],
+      ["anthropic.claude-sonnet-5-5", "claude-sonnet-5-5"],
+      ["anthropic.claude-haiku-5-5", "claude-haiku-5-5"],
+    ] as const)(
+      "%s sends model %s with adaptive thinking for effort",
+      async (shorthand, expectedModel) => {
+        const llm = useLlm(shorthand, {
+          effort: "medium",
+          anthropicApiKey: "sk-ant-test",
+        });
+        await llm.call(messages);
+
+        expect(outgoingBody.model).toBe(expectedModel);
+        expect(outgoingBody.thinking).toEqual({ type: "adaptive" });
+        expect(outgoingBody.output_config).toEqual({ effort: "medium" });
+      }
+    );
+
+    it.each([
+      ["anthropic.claude-opus-5-5"],
+      ["anthropic.claude-sonnet-5-5"],
+      ["anthropic.claude-haiku-5-5"],
       ["anthropic.claude-opus-5"],
       ["anthropic.claude-opus-4-7"],
       ["anthropic.claude-opus-4-8"],

@@ -9,6 +9,22 @@
         "shorthand": "openai.chat.v1"
       },
       {
+        "id": "gpt-6",
+        "shorthand": "openai.gpt-6"
+      },
+      {
+        "id": "gpt-6-astra",
+        "shorthand": "openai.gpt-6-astra"
+      },
+      {
+        "id": "gpt-6.1-sol",
+        "shorthand": "openai.gpt-6.1-sol"
+      },
+      {
+        "id": "gpt-6-luna",
+        "shorthand": "openai.gpt-6-luna"
+      },
+      {
         "id": "gpt-5.6",
         "shorthand": "openai.gpt-5.6"
       },
@@ -38,39 +54,57 @@
       },
       {
         "id": "gpt-5-mini",
-        "shorthand": "openai.gpt-5-mini"
+        "shorthand": "openai.gpt-5-mini",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-5-mini\" is deprecated and will shut down on 2026-12-11. Migrate to \"openai.gpt-5.6-terra\"."
       },
       {
         "id": "gpt-5-nano",
-        "shorthand": "openai.gpt-5-nano"
+        "shorthand": "openai.gpt-5-nano",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-5-nano\" is deprecated and will shut down on 2026-12-11. Migrate to \"openai.gpt-5.6-luna\"."
       },
       {
         "id": "gpt-4.1",
-        "shorthand": "openai.gpt-4.1"
+        "shorthand": "openai.gpt-4.1",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-4.1\" is deprecated and will shut down on 2027-01-14. Migrate to \"openai.gpt-6-luna\"."
       },
       {
         "id": "gpt-4.1-mini",
-        "shorthand": "openai.gpt-4.1-mini"
+        "shorthand": "openai.gpt-4.1-mini",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-4.1-mini\" is deprecated and will shut down on 2027-01-14. Migrate to \"openai.gpt-6-luna\"."
       },
       {
         "id": "gpt-4.1-nano",
-        "shorthand": "openai.gpt-4.1-nano"
+        "shorthand": "openai.gpt-4.1-nano",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-4.1-nano\" is deprecated and will shut down on 2026-10-23. Migrate to openai.gpt-5.6-luna."
       },
       {
         "id": "o3",
-        "shorthand": "openai.o3"
+        "shorthand": "openai.o3",
+        "deprecated": true,
+        "message": "Model \"openai.o3\" is deprecated and will shut down on 2026-12-11. Migrate to \"openai.gpt-5.6\"."
       },
       {
         "id": "gpt-4",
-        "shorthand": "openai.gpt-4"
+        "shorthand": "openai.gpt-4",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-4\" is deprecated and will shut down on 2026-10-23. Migrate to openai.gpt-6-luna."
       },
       {
         "id": "gpt-4o",
-        "shorthand": "openai.gpt-4o"
+        "shorthand": "openai.gpt-4o",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-4o\" is deprecated and will shut down on 2027-01-14. Migrate to \"openai.gpt-6-luna\"."
       },
       {
         "id": "gpt-4o-mini",
-        "shorthand": "openai.gpt-4o-mini"
+        "shorthand": "openai.gpt-4o-mini",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-4o-mini\" is deprecated and will shut down on 2027-01-14. Migrate to \"openai.gpt-6-luna\"."
       },
       {
         "id": "o4-mini",
@@ -96,6 +130,18 @@
       {
         "id": "claude-fable-5",
         "shorthand": "anthropic.claude-fable-5"
+      },
+      {
+        "id": "claude-opus-5-5",
+        "shorthand": "anthropic.claude-opus-5-5"
+      },
+      {
+        "id": "claude-sonnet-5-5",
+        "shorthand": "anthropic.claude-sonnet-5-5"
+      },
+      {
+        "id": "claude-haiku-5-5",
+        "shorthand": "anthropic.claude-haiku-5-5"
       },
       {
         "id": "claude-opus-5",
@@ -127,7 +173,9 @@
       },
       {
         "id": "claude-sonnet-4-5",
-        "shorthand": "anthropic.claude-sonnet-4-5"
+        "shorthand": "anthropic.claude-sonnet-4-5",
+        "deprecated": true,
+        "message": "Shorthand \"anthropic.claude-sonnet-4-5\" is deprecated: Anthropic retires claude-sonnet-4-5 on November 30, 2026, after which requests will fail. Migrate to \"anthropic.claude-sonnet-5-5\"."
       },
       {
         "id": "claude-opus-4-6",

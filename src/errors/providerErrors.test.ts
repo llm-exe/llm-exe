@@ -227,6 +227,59 @@ describe("parseProviderErrorGeneric", () => {
     expect(result.retryAfterMs).toBe(10_000);
   });
 
+  describe("retry-after header lookup", () => {
+    it("falls back to a Title-Case Retry-After key", () => {
+      const result = parseProviderErrorGeneric({
+        status: 429,
+        headers: { "Retry-After": "7" },
+      });
+      expect(result.retryAfterMs).toBe(7_000);
+    });
+
+    it("prefers the lowercase key when both casings are present", () => {
+      const result = parseProviderErrorGeneric({
+        status: 429,
+        headers: { "retry-after": "3", "Retry-After": "9" },
+      });
+      expect(result.retryAfterMs).toBe(3_000);
+    });
+
+    // The parser only reads two exact casings. Any other casing is lost
+    // unless the caller normalizes through safeResponseHeaders first. This
+    // pins that contract so a new caller passing raw headers is caught.
+    it("does not read other casings from raw headers", () => {
+      const result = parseProviderErrorGeneric({
+        status: 429,
+        headers: { "RETRY-AFTER": "5" },
+      });
+      expect(result.retryAfterMs).toBeUndefined();
+    });
+
+    it.each([
+      ["a Headers instance", () => new Headers({ "RETRY-AFTER": "5" })],
+      ["a plain object", () => ({ "RETRY-AFTER": "5" })],
+      ["a mixed-case plain object", () => ({ "rEtRy-AfTeR": "5" })],
+    ])(
+      "recovers any casing once %s goes through safeResponseHeaders",
+      (_label, makeHeaders) => {
+        const result = parseProviderErrorGeneric({
+          status: 429,
+          headers: safeResponseHeaders(makeHeaders()),
+        });
+        expect(result.retryAfterMs).toBe(5_000);
+      }
+    );
+
+    it("leaves retryAfterMs undefined for an unparseable value", () => {
+      const result = parseProviderErrorGeneric({
+        status: 503,
+        headers: { "retry-after": "soon" },
+      });
+      expect(result.retryAfterMs).toBeUndefined();
+      expect(result.retryable).toBe(true);
+    });
+  });
+
   it("normalizes an Anthropic-style body", () => {
     const result = parseProviderErrorGeneric({
       status: 401,

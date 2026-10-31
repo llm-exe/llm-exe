@@ -677,6 +677,12 @@ export type AllUseLlmOptions = AllLlm & {
   "openai.gpt-6-astra": {
     input: Omit<OpenAiRequest, "model">;
   };
+  "openai.gpt-6.1-sol": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-6-luna": {
+    input: Omit<OpenAiRequest, "model">;
+  };
   // OpenAI - GPT-5 family
   "openai.gpt-5.6": {
     input: Omit<OpenAiRequest, "model">;
@@ -742,6 +748,17 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<AnthropicRequest, "model">;
   };
 
+  // Anthropic - Claude 5.5 models
+  "anthropic.claude-opus-5-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+  "anthropic.claude-sonnet-5-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+  "anthropic.claude-haiku-5-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+
   // Anthropic - Claude Opus 5 models
   "anthropic.claude-opus-5": {
     input: Omit<AnthropicRequest, "model">;
@@ -774,11 +791,11 @@ export type AllUseLlmOptions = AllLlm & {
   "anthropic.claude-haiku-4-5": {
     input: Omit<AnthropicRequest, "model">;
   };
+  
+  // Anthropic - Deprecated
   "anthropic.claude-sonnet-4-5": {
     input: Omit<AnthropicRequest, "model">;
   };
-  
-  // Anthropic - Deprecated
   "anthropic.claude-opus-4-6": {
     input: Omit<AnthropicRequest, "model">;
   };

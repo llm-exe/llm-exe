@@ -17,6 +17,7 @@ import { createMetadataState } from "./_metadata";
 import { hookOnComplete, hookOnError, hookOnSuccess } from "@/utils/const";
 import { LlmExeError } from "@/errors";
 import { getErrorMetadata } from "@/errors/getErrorMetadata";
+import { debug } from "@/utils/modules/debug";
 
 /**
  * BaseExecutor
@@ -281,7 +282,26 @@ export abstract class BaseExecutor<
     for (const hookFn of [...hooks] /** clone hooks */) {
       if (typeof hookFn === "function") {
         try {
-          hookFn(_metadata, this.getExecutionMetadata(traceId));
+          const result: unknown = hookFn(
+            _metadata,
+            this.getExecutionMetadata(traceId)
+          );
+          // Hooks are fire-and-forget. An async hook that rejects must never
+          // become an unhandled rejection (fatal by default on Node >= 15).
+          // It settles after execute() returns, so it can't be folded into
+          // hookErrors; report it through debug() instead.
+          if (
+            result &&
+            typeof (result as PromiseLike<unknown>).then === "function"
+          ) {
+            (result as PromiseLike<unknown>).then(undefined, (error) => {
+              debug(
+                `[llm-exe] async hook "${String(hook)}" rejected: ${
+                  error instanceof Error ? error.message : String(error)
+                }`
+              );
+            });
+          }
         } catch (error) {
           // Collect instead of console.warn. The caller (execute()) folds
           // these into the execution metadata so onComplete can see them.
@@ -417,7 +437,7 @@ export abstract class BaseExecutor<
       executor
     ) => {
       try {
-        fn(metadata, executor);
+        return fn(metadata, executor);
       } finally {
         this.off(eventName, onceWrapper);
       }

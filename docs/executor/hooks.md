@@ -187,6 +187,8 @@ Each hook error record includes the raw thrown value and `errorMessage`. If the 
 
 `onComplete` runs last. If an `onComplete` hook throws, there is no later hook where that failure can be surfaced in execution metadata.
 
+Async hooks are not awaited. If an `async` hook rejects, llm-exe catches the rejection so it cannot crash the process, but it does not appear in `hookErrors`, because the executor does not wait for the hook to settle. Set `LLM_EXE_DEBUG` to log these rejections, or catch errors inside the hook if you need to act on them.
+
 You can attach hooks:
 
 - During initialization

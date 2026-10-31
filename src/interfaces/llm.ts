@@ -748,6 +748,17 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<AnthropicRequest, "model">;
   };
 
+  // Anthropic - Claude 5.5 models
+  "anthropic.claude-opus-5-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+  "anthropic.claude-sonnet-5-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+  "anthropic.claude-haiku-5-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+
   // Anthropic - Claude Opus 5 models
   "anthropic.claude-opus-5": {
     input: Omit<AnthropicRequest, "model">;

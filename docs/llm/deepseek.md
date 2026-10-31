@@ -1,6 +1,6 @@
 ---
 title: "Use Deepseek Models in TypeScript with llm-exe"
-description: "Call Deepseek chat models like deepseek-chat and deepseek-v4 from TypeScript with llm-exe. Covers typed shorthands, authentication, and model options."
+description: "Call Deepseek chat models like deepseek-flash and deepseek-v4-pro from TypeScript with llm-exe. Covers typed shorthands, authentication, and model options."
 ---
 
 # Deepseek
@@ -12,9 +12,18 @@ llm-exe ships typed shorthands for the most common Deepseek models so you do not
 | Shorthand              | Default model        |
 | ---------------------- | -------------------- |
 | `deepseek.chat.v1`     | _none — set `model`_ |
-| `deepseek.chat`        | `deepseek-chat`      |
-| `deepseek.v4-flash`    | `deepseek-v4-flash`  |
+| `deepseek.flash`       | `deepseek-flash`     |
 | `deepseek.v4-pro`      | `deepseek-v4-pro`    |
+
+### Deprecated shorthands
+
+These shorthands still resolve, but emit a [deprecation warning](/llm/deprecations)
+when used. Migrate to an active shorthand above.
+
+| Shorthand           | Default model       | Status                                                                                                                                         |
+| ------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deepseek.chat`     | `deepseek-chat`     | Dropped from DeepSeek's docs but still served. Migrate to `deepseek.flash`, which runs in thinking mode by default and needs a larger `maxTokens` |
+| `deepseek.v4-flash` | `deepseek-v4-flash` | DeepSeek retired the model behind this id. The id is still accepted, and requests are served by DeepSeek-V4.1-Flash. Migrate to `deepseek.flash` |
 
 ## Basic Usage
 
@@ -22,23 +31,16 @@ llm-exe ships typed shorthands for the most common Deepseek models so you do not
 
 ```ts
 const llm = useLlm("deepseek.chat.v1", {
-  model: "deepseek-chat", // specify a model
+  model: "deepseek-flash", // specify a model
 });
 ```
 
 ### Deepseek Chat By Model
 
 ```ts
-const llm = useLlm("deepseek.chat", {
+const llm = useLlm("deepseek.flash", {
   // other options,
-  // no model needed, using deepseek-chat model
-});
-```
-
-```ts
-const llm = useLlm("deepseek.v4-flash", {
-  // other options,
-  // no model needed, using deepseek-v4-flash model
+  // no model needed, using deepseek-flash model
 });
 ```
 
@@ -88,7 +90,7 @@ See [Deepseek API Reference](https://api-docs.deepseek.com/) for details on thes
 Disable thinking with `extraBody`:
 
 ```ts
-const llm = useLlm("deepseek.v4-flash", {
+const llm = useLlm("deepseek.flash", {
   extraBody: { thinking: { type: "disabled" } },
 });
 ```

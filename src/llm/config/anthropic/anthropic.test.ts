@@ -84,6 +84,9 @@ describe("anthropic config", () => {
         ["claude-haiku-5-5", "minimal", "low"],
         ["claude-fable-5", "high", "high"],
         ["claude-fable-5", "medium", "medium"],
+        ["claude-fable-5-1", "high", "high"],
+        ["claude-fable-5-1", "medium", "medium"],
+        ["claude-fable-5-1", "minimal", "low"],
       ] as const)(
         "%s with effort '%s' should return '%s'",
         (model, effort, expected) => {
@@ -116,6 +119,7 @@ describe("anthropic config", () => {
           "claude-sonnet-5",
           "claude-haiku-5-5",
           "claude-fable-5",
+          "claude-fable-5-1",
         ]) {
           const output: Record<string, any> = {};
           expect(effortTransform("high", { model }, output)).toBe("high");
@@ -410,6 +414,7 @@ describe("anthropic config", () => {
   describe("deprecated shorthands still resolve", () => {
     it.each([
       ["anthropic.claude-opus-4-6", "claude-opus-4-6"],
+      ["anthropic.claude-sonnet-4-5", "claude-sonnet-4-5"],
       ["anthropic.claude-3-7-sonnet", "claude-3-7-sonnet-20250219"],
       ["anthropic.claude-3-5-sonnet", "claude-3-5-sonnet-latest"],
       ["anthropic.claude-3-5-haiku", "claude-3-5-haiku-latest"],
@@ -424,9 +429,33 @@ describe("anthropic config", () => {
     );
   });
 
+  describe("anthropic.claude-sonnet-4-5 deprecation (retires Nov 30, 2026)", () => {
+    const cfg = anthropic["anthropic.claude-sonnet-4-5"];
+
+    it("is marked deprecated", () => {
+      expect(cfg.deprecated?.shorthand).toBe("anthropic.claude-sonnet-4-5");
+    });
+
+    it("message names the retirement date and Anthropic's named replacement", () => {
+      const message = cfg.deprecated?.message ?? "";
+      expect(message).toContain("November 30, 2026");
+      expect(message).toContain('"anthropic.claude-sonnet-5-5"');
+    });
+
+    it("points to a replacement shorthand that exists and is not deprecated", () => {
+      const replacement = anthropic["anthropic.claude-sonnet-5-5"];
+      expect(replacement).toBeDefined();
+      expect(replacement.deprecated).toBeUndefined();
+    });
+  });
+
   describe("active shorthands", () => {
     it.each([
+      ["anthropic.claude-fable-5-1", "claude-fable-5-1"],
       ["anthropic.claude-fable-5", "claude-fable-5"],
+      ["anthropic.claude-opus-5-5", "claude-opus-5-5"],
+      ["anthropic.claude-sonnet-5-5", "claude-sonnet-5-5"],
+      ["anthropic.claude-haiku-5-5", "claude-haiku-5-5"],
       ["anthropic.claude-opus-5", "claude-opus-5"],
       ["anthropic.claude-opus-4-8", "claude-opus-4-8"],
       ["anthropic.claude-sonnet-5", "claude-sonnet-5"],
@@ -434,7 +463,6 @@ describe("anthropic config", () => {
       ["anthropic.claude-sonnet-4-6", "claude-sonnet-4-6"],
       ["anthropic.claude-opus-4-5", "claude-opus-4-5"],
       ["anthropic.claude-haiku-4-5", "claude-haiku-4-5"],
-      ["anthropic.claude-sonnet-4-5", "claude-sonnet-4-5"],
     ] as const)(
       "%s should resolve to %s",
       (shorthand, expectedModel) => {
@@ -537,6 +565,22 @@ describe("anthropic config", () => {
         topP: 0.9,
         topK: 40,
       });
+      expect(body.temperature).toBeUndefined();
+      expect(body.top_p).toBeUndefined();
+      expect(body.top_k).toBeUndefined();
+    });
+
+    it("drops sampling params for claude-fable-5-1 even with no effort set", () => {
+      // Fable 5.1's adaptive thinking is always on, so the sampling params are
+      // invalid regardless of `effort` — the drop must not be conditional on
+      // the effort gate.
+      const body = buildBody({
+        model: "claude-fable-5-1",
+        temperature: 0.7,
+        topP: 0.99,
+        topK: 10,
+      });
+      expect(body.output_config).toBeUndefined();
       expect(body.temperature).toBeUndefined();
       expect(body.top_p).toBeUndefined();
       expect(body.top_k).toBeUndefined();
@@ -697,11 +741,34 @@ describe("anthropic config", () => {
     });
 
     it.each([
+      ["anthropic.claude-opus-5-5", "claude-opus-5-5"],
+      ["anthropic.claude-sonnet-5-5", "claude-sonnet-5-5"],
+      ["anthropic.claude-haiku-5-5", "claude-haiku-5-5"],
+    ] as const)(
+      "%s sends model %s with adaptive thinking for effort",
+      async (shorthand, expectedModel) => {
+        const llm = useLlm(shorthand, {
+          effort: "medium",
+          anthropicApiKey: "sk-ant-test",
+        });
+        await llm.call(messages);
+
+        expect(outgoingBody.model).toBe(expectedModel);
+        expect(outgoingBody.thinking).toEqual({ type: "adaptive" });
+        expect(outgoingBody.output_config).toEqual({ effort: "medium" });
+      }
+    );
+
+    it.each([
+      ["anthropic.claude-opus-5-5"],
+      ["anthropic.claude-sonnet-5-5"],
+      ["anthropic.claude-haiku-5-5"],
       ["anthropic.claude-opus-5"],
       ["anthropic.claude-opus-4-7"],
       ["anthropic.claude-opus-4-8"],
       ["anthropic.claude-sonnet-5"],
       ["anthropic.claude-fable-5"],
+      ["anthropic.claude-fable-5-1"],
     ] as const)(
       "%s drops all sampling params (model 400s if they are sent)",
       async (shorthand) => {

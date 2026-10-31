@@ -49,24 +49,29 @@ export class ListToJsonParser<
       );
     }
 
-    const { lines } = normalizeListLines(text, {
+    const { lines, lineIndexes } = normalizeListLines(text, {
       operation: "ListToJsonParser.parse",
       parser: "listToJson",
     });
 
     const output: any = {};
-    lines.forEach((line) => {
+    lines.forEach((line, i) => {
       const colonIndex = line.indexOf(":");
       if (colonIndex === -1) {
-        throw new LlmExeError(`Malformed key/value line.`, {
-          code: "parser.parse_failed",
-          context: {
-            operation: "ListToJsonParser.parse",
-            parser: "listToJson",
-            reason: "malformed_line",
-            inputLength: text.length,
-          },
-        });
+        const lineIndex = lineIndexes[i];
+        throw new LlmExeError(
+          `Malformed key/value line at line ${lineIndex + 1}: expected "key: value".`,
+          {
+            code: "parser.parse_failed",
+            context: {
+              operation: "ListToJsonParser.parse",
+              parser: "listToJson",
+              reason: "malformed_line",
+              lineIndex,
+              inputLength: text.length,
+            },
+          }
+        );
       }
 
       const key = line.slice(0, colonIndex).trim();
@@ -102,12 +107,12 @@ export class ListToJsonParser<
       if (this.shouldValidateSchema) {
         const valid = validateParserSchema(this.schema, coerced);
         if (valid && valid.length) {
-          throw new LlmExeError(valid[0].message, {
+          throw new LlmExeError(valid[0].stack, {
             code: "parser.schema_validation_failed",
             context: {
               operation: "ListToJsonParser.parse",
               parser: "listToJson",
-              schemaErrors: valid.map((error) => error.message),
+              schemaErrors: valid.map((error) => error.stack),
             },
           });
         }

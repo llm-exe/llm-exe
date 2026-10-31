@@ -8,10 +8,7 @@ export function safeProviderString(
   maxLength = PROVIDER_MESSAGE_MAX_LENGTH
 ): string | undefined {
   if (typeof value !== "string" || value.length === 0) return undefined;
-  const scrubbed = redactSecrets(value);
-  return scrubbed.length > maxLength
-    ? scrubbed.slice(0, maxLength) + "…(truncated)"
-    : scrubbed;
+  return truncateString(redactSecrets(value), maxLength);
 }
 
 const SECRET_KEY_REGEX =
@@ -55,7 +52,10 @@ export type SafeErrorContextOptions = {
 
 export function truncateString(value: string, max: number): string {
   if (value.length <= max) return value;
-  return value.slice(0, max) + "…(truncated)";
+  let cut = value.slice(0, max);
+  // Don't leave a lone high surrogate when the cut splits a pair.
+  if (/[\uD800-\uDBFF]$/.test(cut)) cut = cut.slice(0, -1);
+  return cut + "…(truncated)";
 }
 
 function scrub(
@@ -67,8 +67,10 @@ function scrub(
   if (value === null || value === undefined) return value;
 
   const t = typeof value;
+  // Redact before truncating, so a secret cut at the boundary can't slip
+  // past the token patterns.
   if (t === "string")
-    return redactSecrets(truncateString(value as string, maxStringLength));
+    return truncateString(redactSecrets(value as string), maxStringLength);
   if (t === "number" || t === "boolean") return value;
   if (t === "bigint") return (value as bigint).toString();
   if (t === "symbol") return String(value);
@@ -110,7 +112,7 @@ export function safeProviderErrorBody(
   const maxBodyBytes = options?.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
 
   if (typeof value === "string") {
-    return redactSecrets(truncateString(value, maxBodyBytes));
+    return truncateString(redactSecrets(value), maxBodyBytes);
   }
 
   return scrub(value, new WeakSet(), 0, maxStringLength);

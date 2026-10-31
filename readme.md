@@ -8,7 +8,8 @@ A package that provides simplified base components to make building and maintain
 
 - Write functions powered by LLMs with easy-to-use building blocks.
 - Pure JavaScript and TypeScript. Allows you to pass and infer types.
-- Supercharge your prompts by using handlebars within prompt template.
+- Supercharge your prompts by using [Handlebars](https://handlebarsjs.com/) within prompt template.
+- Parsers turn the LLM's text reply into typed values (JSON, numbers, booleans, lists, and more).
 - Support for text-based and chat-based prompts. (ChatGPT, Claude, Grok, Gemini, Bedrock, Ollama, etc)
 - Call LLMs from different providers without changing your code. (OpenAI/Anthropic/xAI/Google/AWS Bedrock/Ollama/DeepSeek)
 - Allow LLM's to call functions (or call other LLM executors).
@@ -40,14 +41,20 @@ import { useLlm, createChatPrompt, createParser } from "llm-exe";
 const llmExe = require("llm-exe");
 ```
 
+Set your provider's API key in the environment (for example `OPENAI_API_KEY`), or pass it as an option (`useLlm("openai.gpt-4o-mini", { openAiApiKey: "..." })`). See [LLM providers](https://llm-exe.com/llm/) for each provider's key.
+
+To try llm-exe without a key, use `useLlm("openai.chat-mock.v1")`. It makes no network call. By default it replies with the fixed text `Hello world from LLM! The input was [...]` (the prompt messages as JSON), which typed parsers can't reliably parse. Pass `mockResponse` to choose the reply, so typed parsers like `json`, `number`, or `boolean` work too: `useLlm("openai.chat-mock.v1", { mockResponse: '{"a":1}' })`.
+
 ## Overview
 
 ```ts
 import { useLlm, createChatPrompt, createParser, createLlmExecutor, defineSchema } from "llm-exe";
 
-// Prompt
-const prompt = createChatPrompt("You are a support agent. Help the user.");
-prompt.addUserMessage("I need help with my order.");
+// Prompt — the generic types the input; `{{input}}` is filled in from execute()
+const prompt = createChatPrompt<{ input: string }>(
+  "You are a support agent. Help the user."
+);
+prompt.addUserMessage("{{input}}");
 
 // LLM
 const llm = useLlm("openai.gpt-4o");
@@ -65,8 +72,11 @@ const parser = createParser("json", { schema });
 
 // Executor
 const executor = createLlmExecutor({ llm, prompt, parser });
-await executor.execute({ input: "..." });
+const result = await executor.execute({ input: "I need help with my order." });
+// result is typed as { answer: string; action: string }
 ```
+
+Every key you pass to `execute()` fills the matching `{{...}}` placeholder in the prompt. The parser turns the LLM's text reply into a typed value, and that type becomes the executor's return type.
 
 #### Prompt Helpers
 
@@ -85,8 +95,9 @@ Welcome back!
 ```ts
 createParser("string");              // pass-through, returns string
 createParser("json", { schema });    // JSON with optional schema validation
-createParser("boolean");             // parses a boolean token
-createParser("number");              // extracts number from response
+createParser("boolean");             // whole response must be a boolean ("yes", "true"); "Yes." throws
+createParser("boolean", { match: "extract" }); // finds one boolean token in surrounding text
+createParser("number");              // extracts number from response (default match: "extract")
 createParser("stringExtract", { enum: ["yes", "no"] }); // match one of the enum values
 createParser("listToArray");         // newline-separated list → string[]
 createParser("listToJson");          // key: value list → object (with optional schema)
@@ -99,17 +110,20 @@ createParser("replaceStringTemplate"); // handlebars-based output templating
 #### Custom Parsers
 
 ```ts
-const parser = createCustomParser("MyUppercaseParser", (output, input) => {
-  return output.toUpperCase();
+const parser = createCustomParser("MyUppercaseParser", (text, context) => {
+  return text.toUpperCase();
 });
 ```
+
+`text` is the LLM's reply. `context` is the per-call `ExecutionContext`: `traceId`, `executor` (name, id), `execution` (this run's `input`, timing, and the raw LLM response as `handlerOutput`; the parsed `output` doesn't exist yet), and `attributes`. The return type of your function becomes the executor's return type.
 
 #### State
 
 Manage conversation history and structured data across LLM calls:
 
 ```ts
-import { createState, createDialogue, createStateItem } from "llm-exe";
+import { createState, createDialogue, createStateItem, createChatPrompt } from "llm-exe";
+import type { IChatMessages } from "llm-exe";
 
 // Create a state container
 const state = createState();
@@ -123,6 +137,11 @@ chat.getHistory(); // returns message array
 // Standalone dialogue (without state)
 const dialogue = createDialogue("chat");
 dialogue.setUserMessage("Hi");
+
+// Put the history into a prompt
+const chatPrompt = createChatPrompt<{ chat: IChatMessages }>("You are helpful.");
+chatPrompt.addChatHistoryPlaceholder("chat");
+chatPrompt.format({ chat: chat.getHistory() });
 
 // Context items — typed values with get/set/reset
 const intent = createStateItem("userIntent", "unknown");
@@ -138,16 +157,34 @@ state.attributes["userId"]; // "abc-123"
 
 #### Hooks
 
+Executors emit `onSuccess`, `onError`, and `onComplete` events, which are handy for logging and metrics. Using the `executor` from the Overview above:
+
 ```ts
-executor.on("onSuccess", console.log);
-executor.on("onError", console.error);
+executor.on("onSuccess", ({ input, output }) => {
+  // output is typed as { answer: string; action: string }
+  console.log(`answered "${input.input}"`, output);
+});
+executor.on("onError", ({ error }) => console.error(error));
+executor.on("onComplete", ({ start, end }) => {
+  // end is only set once the run finishes, so time it here
+  if (start !== null && end !== null) console.log(`took ${end - start}ms`);
+});
 ```
+
+Use `executor.once(...)` for a hook that runs one time, and `executor.off(...)` to remove one.
 
 ## Basic Example
 
-Below is simple example:
+Below is a simple example:
 
 ```typescript
+import {
+  useLlm,
+  createChatPrompt,
+  createParser,
+  createLlmExecutor,
+} from "llm-exe";
+
 // 1. Use the model you want
 const llm = useLlm("openai.gpt-4o");
 

@@ -9,6 +9,22 @@
         "shorthand": "openai.chat.v1"
       },
       {
+        "id": "gpt-6",
+        "shorthand": "openai.gpt-6"
+      },
+      {
+        "id": "gpt-6-astra",
+        "shorthand": "openai.gpt-6-astra"
+      },
+      {
+        "id": "gpt-6.1-sol",
+        "shorthand": "openai.gpt-6.1-sol"
+      },
+      {
+        "id": "gpt-6-luna",
+        "shorthand": "openai.gpt-6-luna"
+      },
+      {
         "id": "gpt-5.6",
         "shorthand": "openai.gpt-5.6"
       },
@@ -38,39 +54,57 @@
       },
       {
         "id": "gpt-5-mini",
-        "shorthand": "openai.gpt-5-mini"
+        "shorthand": "openai.gpt-5-mini",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-5-mini\" is deprecated and will shut down on 2026-12-11. Migrate to \"openai.gpt-5.6-terra\"."
       },
       {
         "id": "gpt-5-nano",
-        "shorthand": "openai.gpt-5-nano"
+        "shorthand": "openai.gpt-5-nano",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-5-nano\" is deprecated and will shut down on 2026-12-11. Migrate to \"openai.gpt-5.6-luna\"."
       },
       {
         "id": "gpt-4.1",
-        "shorthand": "openai.gpt-4.1"
+        "shorthand": "openai.gpt-4.1",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-4.1\" is deprecated and will shut down on 2027-01-14. Migrate to \"openai.gpt-6-luna\"."
       },
       {
         "id": "gpt-4.1-mini",
-        "shorthand": "openai.gpt-4.1-mini"
+        "shorthand": "openai.gpt-4.1-mini",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-4.1-mini\" is deprecated and will shut down on 2027-01-14. Migrate to \"openai.gpt-6-luna\"."
       },
       {
         "id": "gpt-4.1-nano",
-        "shorthand": "openai.gpt-4.1-nano"
+        "shorthand": "openai.gpt-4.1-nano",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-4.1-nano\" is deprecated and will shut down on 2026-10-23. Migrate to openai.gpt-5.6-luna."
       },
       {
         "id": "o3",
-        "shorthand": "openai.o3"
+        "shorthand": "openai.o3",
+        "deprecated": true,
+        "message": "Model \"openai.o3\" is deprecated and will shut down on 2026-12-11. Migrate to \"openai.gpt-5.6\"."
       },
       {
         "id": "gpt-4",
-        "shorthand": "openai.gpt-4"
+        "shorthand": "openai.gpt-4",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-4\" is deprecated and will shut down on 2026-10-23. Migrate to openai.gpt-6-luna."
       },
       {
         "id": "gpt-4o",
-        "shorthand": "openai.gpt-4o"
+        "shorthand": "openai.gpt-4o",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-4o\" is deprecated and will shut down on 2027-01-14. Migrate to \"openai.gpt-6-luna\"."
       },
       {
         "id": "gpt-4o-mini",
-        "shorthand": "openai.gpt-4o-mini"
+        "shorthand": "openai.gpt-4o-mini",
+        "deprecated": true,
+        "message": "Model \"openai.gpt-4o-mini\" is deprecated and will shut down on 2027-01-14. Migrate to \"openai.gpt-6-luna\"."
       },
       {
         "id": "o4-mini",
@@ -90,8 +124,24 @@
         "shorthand": "anthropic.chat.v1"
       },
       {
+        "id": "claude-fable-5-1",
+        "shorthand": "anthropic.claude-fable-5-1"
+      },
+      {
         "id": "claude-fable-5",
         "shorthand": "anthropic.claude-fable-5"
+      },
+      {
+        "id": "claude-opus-5-5",
+        "shorthand": "anthropic.claude-opus-5-5"
+      },
+      {
+        "id": "claude-sonnet-5-5",
+        "shorthand": "anthropic.claude-sonnet-5-5"
+      },
+      {
+        "id": "claude-haiku-5-5",
+        "shorthand": "anthropic.claude-haiku-5-5"
       },
       {
         "id": "claude-opus-5",
@@ -123,7 +173,9 @@
       },
       {
         "id": "claude-sonnet-4-5",
-        "shorthand": "anthropic.claude-sonnet-4-5"
+        "shorthand": "anthropic.claude-sonnet-4-5",
+        "deprecated": true,
+        "message": "Shorthand \"anthropic.claude-sonnet-4-5\" is deprecated: Anthropic retires claude-sonnet-4-5 on November 30, 2026, after which requests will fail. Migrate to \"anthropic.claude-sonnet-5-5\"."
       },
       {
         "id": "claude-opus-4-6",
@@ -207,21 +259,15 @@
       },
       {
         "id": "gemini-2.5-flash",
-        "shorthand": "google.gemini-2.5-flash",
-        "deprecated": true,
-        "message": "Model \"google.gemini-2.5-flash\" is deprecated and will shut down on 2026-06-17."
+        "shorthand": "google.gemini-2.5-flash"
       },
       {
         "id": "gemini-2.5-flash-lite",
-        "shorthand": "google.gemini-2.5-flash-lite",
-        "deprecated": true,
-        "message": "Model \"google.gemini-2.5-flash-lite\" is deprecated and will shut down on 2026-07-22."
+        "shorthand": "google.gemini-2.5-flash-lite"
       },
       {
         "id": "gemini-2.5-pro",
-        "shorthand": "google.gemini-2.5-pro",
-        "deprecated": true,
-        "message": "Model \"google.gemini-2.5-pro\" is deprecated and will shut down on 2026-06-17."
+        "shorthand": "google.gemini-2.5-pro"
       }
     ]
   },
@@ -235,16 +281,24 @@
         "shorthand": "deepseek.chat.v1"
       },
       {
-        "id": "chat",
-        "shorthand": "deepseek.chat"
-      },
-      {
-        "id": "v4-flash",
-        "shorthand": "deepseek.v4-flash"
+        "id": "flash",
+        "shorthand": "deepseek.flash"
       },
       {
         "id": "v4-pro",
         "shorthand": "deepseek.v4-pro"
+      },
+      {
+        "id": "chat",
+        "shorthand": "deepseek.chat",
+        "deprecated": true,
+        "message": "Model \"deepseek.chat\" is deprecated: DeepSeek has dropped deepseek-chat from its docs. Migrate to \"deepseek.flash\", but note it runs in thinking mode by default, so it spends reasoning tokens and needs a larger maxTokens than deepseek.chat did."
+      },
+      {
+        "id": "v4-flash",
+        "shorthand": "deepseek.v4-flash",
+        "deprecated": true,
+        "message": "Model \"deepseek.v4-flash\" is deprecated: DeepSeek has retired the model behind deepseek-v4-flash and now recommends deepseek-flash. The legacy id is still accepted and served by DeepSeek-V4.1-Flash, but migrate to \"deepseek.flash\"."
       }
     ]
   },
@@ -300,6 +354,10 @@
       {
         "id": "grok-4.6",
         "shorthand": "xai.grok-4.6"
+      },
+      {
+        "id": "grok-4.7",
+        "shorthand": "xai.grok-4.7"
       }
     ]
   },
@@ -359,6 +417,14 @@
       {
         "id": "gpt-oss",
         "shorthand": "ollama.gpt-oss"
+      },
+      {
+        "id": "glm-5.3",
+        "shorthand": "ollama.glm-5.3"
+      },
+      {
+        "id": "glm-5.3-flash",
+        "shorthand": "ollama.glm-5.3-flash"
       }
     ]
   }

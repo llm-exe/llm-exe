@@ -7,7 +7,7 @@ description: "Turn an LLM into a typed boolean function in TypeScript: ask a que
 
 Sometimes you don't need a paragraph from an LLM — you need a boolean. "Does this comment contain a question?" "Is this ticket urgent?" "Should this PR run the expensive test suite?" This recipe builds a function that asks the LLM a question and returns an actual `true` or `false`, so the calling code can branch on it directly.
 
-The key is the [boolean parser](/parser/included-parsers): it converts the model's text answer ("yes", "No.", "true") into a real boolean, and throws if the response doesn't contain one — so your `if` statement never runs on a malformed answer.
+The key is the [boolean parser](/parser/included-parsers): with `match: "extract"` (used below), it converts the model's text answer ("yes", "No.", "true") into a real boolean, and throws if the response doesn't contain one — so your `if` statement never runs on a malformed answer.
 
 #### Step 1 - Imports
 

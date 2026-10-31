@@ -56,4 +56,10 @@ export const ollama = {
   "ollama.qwen3.5": withDefaultModel(ollamaChatV1, "qwen3.5"),
   "ollama.gemma4": withDefaultModel(ollamaChatV1, "gemma4"),
   "ollama.gpt-oss": withDefaultModel(ollamaChatV1, "gpt-oss"),
+  // GLM 5.3 is published only as an Ollama cloud model: the registry has a
+  // ":cloud" tag and no ":latest" (verified 2026-10-12). An untagged name
+  // resolves to ":latest" and 404s, so the tag is pinned. Cloud models run
+  // through the local daemon but need it signed in ("ollama signin").
+  "ollama.glm-5.3": withDefaultModel(ollamaChatV1, "glm-5.3:cloud"),
+  "ollama.glm-5.3-flash": withDefaultModel(ollamaChatV1, "glm-5.3-flash:cloud"),
 };

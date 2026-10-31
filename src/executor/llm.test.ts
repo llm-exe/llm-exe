@@ -57,12 +57,14 @@ describe("llm-exe:executor/LlmExecutor", () => {
     expect(executor.runHook).toHaveBeenNthCalledWith(
       1,
       "onSuccess",
-      expect.any(Object)
+      expect.any(Object),
+      undefined
     );
     expect(executor.runHook).toHaveBeenNthCalledWith(
       2,
       "onComplete",
-      expect.any(Object)
+      expect.any(Object),
+      undefined
     );
 
     expect(executor.getHandlerInput).toHaveBeenCalledWith(

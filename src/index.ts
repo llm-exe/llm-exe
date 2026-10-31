@@ -71,6 +71,8 @@ export type {
   ExecutorContext,
   ExecutionContext,
   ExecutorExecutionMetadata,
+  ExecutorHookMetadataByEvent,
+  ExecutorEventHookFunction,
   HookErrorRecord,
   LlmProviderKey,
   EmbeddingProviderKey,

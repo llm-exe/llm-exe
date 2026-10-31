@@ -791,11 +791,11 @@ export type AllUseLlmOptions = AllLlm & {
   "anthropic.claude-haiku-4-5": {
     input: Omit<AnthropicRequest, "model">;
   };
+  
+  // Anthropic - Deprecated
   "anthropic.claude-sonnet-4-5": {
     input: Omit<AnthropicRequest, "model">;
   };
-  
-  // Anthropic - Deprecated
   "anthropic.claude-opus-4-6": {
     input: Omit<AnthropicRequest, "model">;
   };

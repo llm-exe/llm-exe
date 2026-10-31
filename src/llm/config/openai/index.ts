@@ -72,6 +72,8 @@ export const openai = {
   // be added later without moving the bare shorthand.
   "openai.gpt-6": withDefaultModel(openAiChatV1, "gpt-6-astra"),
   "openai.gpt-6-astra": withDefaultModel(openAiChatV1, "gpt-6-astra"),
+  "openai.gpt-6.1-sol": withDefaultModel(openAiChatV1, "gpt-6.1-sol"),
+  "openai.gpt-6-luna": withDefaultModel(openAiChatV1, "gpt-6-luna"),
   // GPT-5 family
   "openai.gpt-5.6": withDefaultModel(openAiChatV1, "gpt-5.6-sol"),
   "openai.gpt-5.6-terra": withDefaultModel(openAiChatV1, "gpt-5.6-terra"),

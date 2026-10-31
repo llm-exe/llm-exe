@@ -9,6 +9,22 @@
         "shorthand": "openai.chat.v1"
       },
       {
+        "id": "gpt-6",
+        "shorthand": "openai.gpt-6"
+      },
+      {
+        "id": "gpt-6-astra",
+        "shorthand": "openai.gpt-6-astra"
+      },
+      {
+        "id": "gpt-6.1-sol",
+        "shorthand": "openai.gpt-6.1-sol"
+      },
+      {
+        "id": "gpt-6-luna",
+        "shorthand": "openai.gpt-6-luna"
+      },
+      {
         "id": "gpt-5.6",
         "shorthand": "openai.gpt-5.6"
       },

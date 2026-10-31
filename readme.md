@@ -157,16 +157,34 @@ state.attributes["userId"]; // "abc-123"
 
 #### Hooks
 
+Executors emit `onSuccess`, `onError`, and `onComplete` events, which are handy for logging and metrics. Using the `executor` from the Overview above:
+
 ```ts
-executor.on("onSuccess", console.log);
-executor.on("onError", console.error);
+executor.on("onSuccess", ({ input, output }) => {
+  // output is typed as { answer: string; action: string }
+  console.log(`answered "${input.input}"`, output);
+});
+executor.on("onError", ({ error }) => console.error(error));
+executor.on("onComplete", ({ start, end }) => {
+  // end is only set once the run finishes, so time it here
+  if (start !== null && end !== null) console.log(`took ${end - start}ms`);
+});
 ```
+
+Use `executor.once(...)` for a hook that runs one time, and `executor.off(...)` to remove one.
 
 ## Basic Example
 
-Below is simple example:
+Below is a simple example:
 
 ```typescript
+import {
+  useLlm,
+  createChatPrompt,
+  createParser,
+  createLlmExecutor,
+} from "llm-exe";
+
 // 1. Use the model you want
 const llm = useLlm("openai.gpt-4o");
 

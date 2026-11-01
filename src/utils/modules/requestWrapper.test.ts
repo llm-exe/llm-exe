@@ -92,6 +92,61 @@ describe("apiRequestWrapper", () => {
     expect(apiRequest.getTraceId()).toBe("new-trace-id");
   });
 
+  it("should preserve maxDelay 0 in backoff and metadata", async () => {
+    const options = {
+      timeout: 1000,
+      maxDelay: 0,
+      numOfAttempts: 2,
+      jitter: "none" as const,
+    };
+    const result = { ok: true };
+    asyncCallWithTimeoutMock.mockResolvedValue(result);
+    backOffMock.mockImplementation(async (fn) => fn());
+
+    const apiRequest = apiRequestWrapper(mockConfig, options, mockHandler);
+    await expect(apiRequest.call(mockMessages)).resolves.toBe(result);
+
+    expect(apiRequest.getMetadata()).toEqual(
+      expect.objectContaining({
+        timeout: 1000,
+        maxDelay: 0,
+        numOfAttempts: 2,
+      })
+    );
+    expect(backOffMock).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ maxDelay: 0, numOfAttempts: 2 })
+    );
+  });
+
+  it.each([
+    ["timeout", 0],
+    ["numOfAttempts", 0],
+    ["maxDelay", -1],
+  ] as const)("should reject invalid %s", (option, value) => {
+    expect(() =>
+      apiRequestWrapper(mockConfig, { [option]: value }, mockHandler)
+    ).toThrow(
+      expect.objectContaining({
+        code: "configuration.incompatible_options",
+      })
+    );
+  });
+
+  it.each([
+    ["timeout", Number.NaN],
+    ["numOfAttempts", Number.POSITIVE_INFINITY],
+    ["maxDelay", Number.NEGATIVE_INFINITY],
+  ] as const)("should reject non-finite %s", (option, value) => {
+    expect(() =>
+      apiRequestWrapper(mockConfig, { [option]: value }, mockHandler)
+    ).toThrow(
+      expect.objectContaining({
+        code: "configuration.incompatible_options",
+      })
+    );
+  });
+
 //   it("should call handler and backOff with correct parameters and handle success", async () => {
 //     backOffMock.mockImplementation(async (fn) => {
 //       return fn();

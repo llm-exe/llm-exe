@@ -10,7 +10,9 @@ export interface NumberParserOptions {
 }
 
 const NUMERIC_TOKEN_PATTERN =
-  /(^|[^\w.,])([+-]?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)(?![\w,])/g;
+  /(^|[^\w.])([+-]?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)(?![\w])/g;
+const MALFORMED_GROUPED_NUMBER_PATTERN =
+  /(^|[^\w.])[+-]?\d{1,3}(?:,\d{2})+,\d{3}(?![\w])/;
 const EXACT_NUMERIC_PATTERN =
   /^[+-]?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?$/;
 
@@ -104,9 +106,11 @@ export class NumberParser extends BaseParser<number> {
       return value;
     }
 
-    const matches = Array.from(text.matchAll(NUMERIC_TOKEN_PATTERN)).map(
-      (match) => match[2],
-    );
+    const matches = MALFORMED_GROUPED_NUMBER_PATTERN.test(text)
+      ? []
+      : Array.from(text.matchAll(NUMERIC_TOKEN_PATTERN)).map(
+          (match) => match[2],
+        );
 
     if (matches.length === 0) {
       throw new LlmExeError(`No numeric value found in input.`, {

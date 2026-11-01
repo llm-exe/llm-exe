@@ -32,6 +32,24 @@ describe("llm-exe:parser/NumberParser", () => {
     expect(parser.parse("1,000")).toEqual(1000);
     expect(parser.parse("1,234,567")).toEqual(1234567);
   });
+  it("reports comma-separated numbers as multiple values", () => {
+    const parser = new NumberParser();
+    expect(() => parser.parse("1,2,3")).toThrow(LlmExeError);
+    expect(() => parser.parse("1, 2, 3")).toThrow(LlmExeError);
+
+    let error: unknown;
+    try {
+      parser.parse("1,2,3");
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(LlmExeError);
+    expect((error as LlmExeError).context).toMatchObject({
+      reason: "ambiguous_number",
+      match: "extract",
+      matchCount: 3,
+    });
+  });
   it("parses scientific notation", () => {
     const parser = new NumberParser();
     expect(parser.parse("1e3")).toEqual(1000);
@@ -176,7 +194,7 @@ describe("llm-exe:parser/NumberParser", () => {
     it("throws for multiple integers instead of guessing which one to use", () => {
       const parser = new NumberParser();
       expect(() => parser.parse("first 7 then 12 then 99")).toThrow(
-        LlmExeError
+        LlmExeError,
       );
     });
 

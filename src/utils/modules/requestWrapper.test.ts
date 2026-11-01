@@ -157,7 +157,12 @@ describe("apiRequestWrapper", () => {
       retry: expect.any(Function),
     });
 
-    expect(mockHandler).toHaveBeenCalledWith(deepFreeze(mockState), deepFreeze(mockMessages), deepFreeze({}));
+    expect(mockHandler).toHaveBeenCalledWith(
+      deepFreeze(mockState),
+      deepFreeze(mockMessages),
+      deepFreeze({}),
+      expect.any(AbortSignal),
+    );
   });
 
   it("should not retry on certain errors", async () => {
@@ -193,7 +198,12 @@ describe("apiRequestWrapper", () => {
       retry: expect.any(Function),
     });
 
-    expect(mockHandler).toHaveBeenCalledWith(deepFreeze(mockState), deepFreeze(mockMessages), deepFreeze({}));
+    expect(mockHandler).toHaveBeenCalledWith(
+      deepFreeze(mockState),
+      deepFreeze(mockMessages),
+      deepFreeze({}),
+      expect.any(AbortSignal),
+    );
   });
 
   it("does not retry deterministic LlmExeError categories (configuration/prompt/auth) (#723)", async () => {

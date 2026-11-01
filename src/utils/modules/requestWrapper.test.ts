@@ -1,4 +1,7 @@
-import { stateFromOptions } from "@/llm/_utils.stateFromOptions";
+import {
+  PROVIDED_OPTION_KEYS,
+  stateFromOptions,
+} from "@/llm/_utils.stateFromOptions";
 import { deepFreeze } from "@/utils/modules/deepFreeze";
 import { asyncCallWithTimeout } from "@/utils/modules/asyncCallWithTimeout";
 import { backOff } from "exponential-backoff";
@@ -12,6 +15,7 @@ jest.mock("exponential-backoff", () => ({
 }));
 
 jest.mock("@/llm/_utils.stateFromOptions", () => ({
+  ...jest.requireActual("@/llm/_utils.stateFromOptions"),
   stateFromOptions: jest.fn(),
 }));
 
@@ -36,6 +40,9 @@ describe("apiRequestWrapper", () => {
     deepFreezeMock.mockReset()
     asyncCallWithTimeoutMock.mockReset()
     backOffMock.mockReset()
+    mockHandler.mockReset();
+    stateFromOptionsMock.mockReturnValue(mockState);
+    deepFreezeMock.mockImplementation((obj) => obj);
   });
 
   const mockConfig: Config<any> = {} as any;
@@ -49,9 +56,6 @@ describe("apiRequestWrapper", () => {
   const mockHandler = jest.fn<Promise<any>, any>();
   const mockState = {};
   const mockMessages = { messageContent: "test" }
-
-  stateFromOptionsMock.mockReturnValue(mockState);
-  deepFreezeMock.mockImplementation((obj) => obj);
 
   function setupAPIRequestWrapper(doNotRetryErrorMessages: string[] = []) {
     return apiRequestWrapper(mockConfig, mockOptions, mockHandler, doNotRetryErrorMessages);
@@ -157,7 +161,13 @@ describe("apiRequestWrapper", () => {
       retry: expect.any(Function),
     });
 
-    expect(mockHandler).toHaveBeenCalledWith(deepFreeze(mockState), deepFreeze(mockMessages), deepFreeze({}));
+    expect(mockHandler).toHaveBeenCalledWith(
+      expect.objectContaining(mockState),
+      expect.objectContaining(mockMessages),
+      undefined,
+    );
+    expect(mockHandler.mock.calls[0][0]).not.toBe(mockState);
+    expect(mockHandler.mock.calls[0][1]).not.toBe(mockMessages);
   });
 
   it("should not retry on certain errors", async () => {
@@ -193,7 +203,33 @@ describe("apiRequestWrapper", () => {
       retry: expect.any(Function),
     });
 
-    expect(mockHandler).toHaveBeenCalledWith(deepFreeze(mockState), deepFreeze(mockMessages), deepFreeze({}));
+    expect(mockHandler).toHaveBeenCalledWith(
+      expect.objectContaining(mockState),
+      expect.objectContaining(mockMessages),
+      undefined,
+    );
+    expect(mockHandler.mock.calls[0][0]).not.toBe(mockState);
+    expect(mockHandler.mock.calls[0][1]).not.toBe(mockMessages);
+  });
+
+  it("preserves option provenance when cloning state before freezing", async () => {
+    const providedOptionKeys = new Set(["maxTokens"]);
+    const callerState = {
+      ...mockState,
+      [PROVIDED_OPTION_KEYS]: providedOptionKeys,
+    };
+    stateFromOptionsMock.mockReturnValueOnce(callerState);
+    asyncCallWithTimeoutMock.mockResolvedValue("result");
+    backOffMock.mockImplementation(async (fn) => fn());
+
+    const apiRequest = setupAPIRequestWrapper();
+    await apiRequest.call(mockMessages);
+
+    const receivedState = mockHandler.mock.calls[0][0];
+    expect(receivedState).not.toBe(callerState);
+    expect(Reflect.get(receivedState, PROVIDED_OPTION_KEYS)).toBe(
+      providedOptionKeys,
+    );
   });
 
   it("does not retry deterministic LlmExeError categories (configuration/prompt/auth) (#723)", async () => {

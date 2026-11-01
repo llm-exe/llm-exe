@@ -281,7 +281,8 @@ sequenceDiagram
     CCA->>API: gh pr create / gh issue create
     CCA->>L: rewrite Summary, Files Changed, Next Steps
     J->>C: clock_out (always) maps job.status to exit code
-    C->>L: stamp Finished UTC + Status completed|interrupted
+    C->>L: stamp Finished UTC + Status completed, no-output, or interrupted
+    Note over C,L: exit 0 with every section still the placeholder is stamped no-output and emits a ::warning:: annotation; clock_out itself always returns 0
 ```
 
 Source: [.github/workflows/agent-run.yml](../workflows/agent-run.yml) lines 74-171.
@@ -302,7 +303,7 @@ flowchart TB
     classDef l4 fill:#581c87,color:#fff,stroke:#000
 
     A["LAYER 1: Role template\nscripts/agents/prompts/&lt;agent&gt;.md\nwith $BRANCH and $LOG_FILE substituted"]:::l1
-    B["LAYER 2: Prior runs\nconcatenated contents of last 3 log files\nunder ## Prior Runs header\n(skips current run)"]:::l2
+    B["LAYER 2: Prior runs\nconcatenated contents of last 3 log files\nunder ## Prior Runs header\n(current run filtered out before taking 3)\nbuild_prior_context in config.sh, called with || true"]:::l2
     C["LAYER 3: Time Budget\nstart UTC + deadline UTC + 600s\ntells agent to run date -u +%H:%M to pace itself"]:::l3
     D["LAYER 4: Maintainer Instructions\n(only present on workflow_dispatch with inputs.instructions)\nAppended under ## Additional Instructions from Maintainer"]:::l4
 
@@ -639,6 +640,7 @@ flowchart LR
     K14["Prompt file"]:::k --- V14["scripts/agents/prompts/&lt;agent&gt;.md"]:::v
     K15["Assembled prompt"]:::k --- V15["/tmp/agent-prompt.txt"]:::v
     K16["Base branch for PRs"]:::k --- V16["development"]:::v
+    K17["Log status values"]:::k --- V17["completed, no-output, interrupted"]:::v
 ```
 
 Direct links:

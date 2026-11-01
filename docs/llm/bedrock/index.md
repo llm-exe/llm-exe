@@ -1,3 +1,8 @@
+---
+title: "Use AWS Bedrock Models in TypeScript with llm-exe"
+description: "Connect to AWS Bedrock models in TypeScript with llm-exe. Covers setup for Anthropic and Meta chat models, AWS credentials, and region configuration."
+---
+
 # AWS Bedrock
 
 ## Setup

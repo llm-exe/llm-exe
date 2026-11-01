@@ -1,3 +1,8 @@
+---
+title: "Combine Multiple LLM Executors in TypeScript | llm-exe"
+description: "Chain two LLM executors into one TypeScript function: the first plans a list of test cases, the second writes each Jest test, producing a full test suite."
+---
+
 ## Simple Combining  
 
 In this example, we will create a single function that wraps 2 executor functions. The function will be provided a block of code, and will output some Jest tests. Instead of just saying 'write me jest tests', we will have the LLM plan a bit in advance. 

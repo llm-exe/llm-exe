@@ -1,8 +1,13 @@
+---
+title: "Build Chat Prompts with System and User Messages | llm-exe"
+description: "Create chat-style prompts with system, user, and assistant messages in TypeScript. Works with chat models from OpenAI, Anthropic, Google, and more."
+---
+
 # Chat Prompt
 
 The other type of prompt is a chat prompt. The chat prompt can be used with chat-based models from any supported provider (OpenAI, Anthropic, Google, etc.).
 
-You create a chat prompt using `createPrompt("chat")` or `createChatPrompt()`.
+You create a chat prompt using `createPrompt("chat")` or `createChatPrompt()`. Both return a `ChatPrompt` instance; see [Prompt Classes](/prompt/#prompt-classes) and [Prompt Options](/prompt/#prompt-options).
 
 <GenericOutput example="prompt.chat.exampleCreateChatPrompt">
 
@@ -30,7 +35,7 @@ Chat prompts support more than just a basic text-based message. You can also add
 <<< ../../examples/prompt/chat.ts#exampleCreateChatPromptWithAssistant
 </GenericOutput>
 
-See [prompt templates](/prompt/advanced.html) for more advanced prompt usage.
+See [prompt templates](/prompt/advanced) for more advanced prompt usage.
 
 ## Chat Prompt Methods
 

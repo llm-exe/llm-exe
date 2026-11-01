@@ -11,7 +11,7 @@ Core pattern: **Prompt → LLM → Parser → Typed Result** — make LLM calls 
 - **Provider-agnostic.** One interface, any LLM. We internally normalize messages, responses, and tool calls so application code never touches provider-specific shapes.
 - **TypeScript-first. This is non-negotiable.** Full type inference must flow from prompt input → parser output → executor return type. No `any` types. No broken inference chains. No manual casting. The type safety on LLM responses is what makes llm-exe valuable — tiny leaks in the response types destroy the entire value prop.
 - **Modular.** Four pillars — Prompt, LLM, Parser, Executor — each works independently and composes together. Respect module boundaries: prompt logic in prompts, parsing in parsers, orchestration in executors, provider calls in LLM.
-- **Text-only scope** (currently). We support tool/function calls via our normalized interface, but we are text-in/text-out. No image, audio, or video support at this time.
+- **Text-out scope** (currently). We support tool/function calls via our normalized interface, and image *input* via `image_url` content blocks (https URL or base64 `data:` URI, converted to each provider's native shape at the provider-config layer). Output is text-only — no image generation, audio, or video support at this time.
 
 ## Feature Evaluation — Read This Before Adding Features
 
@@ -60,9 +60,9 @@ const result = await executor.execute({ text: "..." });
 - See https://llm-exe.com/llm/openai.html#basic-usage for full provider docs
 
 ### Parsers
-- Built-in: `string`, `json`, `listToArray`, `listToKeyValue`, `stringExtract`, `markdownCodeBlock`, `boolean`, `number`
+- Built-in: `string`, `json`, `listToJson`, `listToArray`, `listToKeyValue`, `stringExtract`, `markdownCodeBlock`, `markdownCodeBlocks`, `replaceStringTemplate`, `boolean`, `number`
 - `createParser("type", options?)` — returns a typed parser
-- `createCustomParser<OutputType>("name", (input, context) => result)` — for custom logic
+- `createCustomParser<OutputType>("name", (text, context) => result)` — for custom logic
 - The parser's return type becomes the executor's return type — this is where the type safety pays off
 
 ### Executors
@@ -99,7 +99,7 @@ npm run build:ci        # tsup (CJS/ESM/DTS)
 ## Conventions
 
 - Tests are co-located: `[file].test.ts` next to implementation
-- Mock LLM providers: `openai.chat-mock.v1` (echo input back)
+- Mock LLM providers: `openai.chat-mock.v1` makes no network call. By default it returns the fixed text `Hello world from LLM! The input was <messages JSON>`, which typed parsers can't reliably parse. Pass `mockResponse` to make it return that exact text instead, so `json`, `number`, `listToArray` and other typed parsers work offline
 - Mock helper: `mockOutputResultObject(content[], options?)` in `utils/mock.helpers.ts`
 - All LLM responses normalize to `OutputResult` with `content: OutputResultContent[]` — this normalization layer is how we stay provider-agnostic
 - Tool calls are normalized internally so application code uses one shape regardless of provider

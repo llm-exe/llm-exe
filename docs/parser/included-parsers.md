@@ -1,3 +1,8 @@
+---
+title: "Parse LLM Output into JSON, Lists, and Booleans | llm-exe"
+description: "Reference for llm-exe's built-in parsers: JSON, number, boolean, lists, markdown code blocks, and more. Turn raw LLM responses into typed TypeScript data."
+---
+
 # Default Included Parsers
 
 [[toc]]
@@ -54,8 +59,14 @@ The answer is 42.
 ## Boolean Parser
 
 `boolean`
-Parses a boolean value from the LLM response. Recognizes common truthy/falsy patterns like "true", "false", "yes", "no".
+Parses a boolean value from the LLM response. Recognizes the literals `true`/`false`, `yes`/`no`, `y`/`n`, and `1`/`0` (case-insensitive).
 Returns: boolean
+
+::: warning Default is `match: "exact"`
+Unlike the number parser (which defaults to `"extract"`), the boolean parser requires the **entire trimmed response** to be one literal by default. A response like `"Yes."` or `"No, it isn't"` throws `No boolean value found in input.` Pass `{ match: "extract" }` to find the boolean inside surrounding text.
+
+In `"extract"` mode, single letters and digits count as tokens too, so `"Yes, I found 0 issues"` contains both a truthy and a falsy token and throws rather than guessing. Ask the model for a bare yes/no answer when you can.
+:::
 
 ```ts
 const parser = createParser("boolean");
@@ -65,6 +76,8 @@ Options:
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `match` | `"exact" \| "extract"` | `"exact"` | `"exact"` requires the entire trimmed response to be one boolean literal. `"extract"` finds one boolean literal in surrounding text. |
+
+See a complete recipe using this parser: [Get a Yes/No Decision from an LLM](/examples/bots/yes-no).
 
 ::: code-group
 
@@ -151,8 +164,17 @@ const parser = createParser("listToArray");
 ## List to Key/Value[]
 
 `listToKeyValue`
-Converts a list of `key: value` pairs (separated by newlines) to an array of key/value objects.
+Converts a list of `key: value` pairs (separated by newlines) to an array of key/value objects. Each line is split at the first colon; duplicate keys are preserved because the output is an ordered array.
 Returns `Array<{ key: string; value: string; }>`
+
+```ts
+const parser = createParser("listToKeyValue");
+```
+
+Options:
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `keyTransform` | `"preserve" \| "camelCase"` | `"preserve"` | How to transform keys. `"preserve"` returns keys exactly as written (trimmed). `"camelCase"` converts keys like "First Name" to "firstName", matching [`listToJson`](#list-to-json)'s key normalization. |
 
 ::: code-group
 
@@ -338,9 +360,9 @@ const parser = createParser("json");
 Options:
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `schema` | `JSONSchema` | `undefined` | Optional JSON Schema to validate and enforce types on the output. Use with [`defineSchema`](/parser/index.html#defineschema) for full type inference. |
+| `schema` | `JSONSchema` | `undefined` | Optional JSON Schema to validate and enforce types on the output. Use with [`defineSchema`](/parser/#defineschema) for full type inference. |
 | `validateSchema` | `boolean` | `true` (when `schema` is set) | When a schema is provided, `required` fields and type/constraint checks are enforced by default — invalid or incomplete input throws `parser.schema_validation_failed`. Set to `false` to opt out into filter/default-only behavior (strips unknown keys and applies defaults, but does **not** check `required`). |
-| `match` | `"exact" \| "extract"` | `"exact"` | `"exact"` parses the entire response as JSON. `"extract"` finds one JSON object or array in surrounding text. |
+| `match` | `"exact" \| "extract"` | `"exact"` | `"exact"` parses the entire response as JSON. `"extract"` finds one JSON object or array in surrounding text. A bracketed span that isn't valid JSON is skipped whole, so nothing nested inside it is returned: `{name: "x", tags: ["a"]}` throws instead of yielding `["a"]`. |
 
 ::: warning
 Providing a `schema` enforces `required` fields by default. Input missing a required field throws rather than returning a partial object. Defaults are applied **after** validation, so a `default` does not satisfy a `required` field. Pass `validateSchema: false` only if you intentionally want the legacy strip-and-default behavior without `required` enforcement.

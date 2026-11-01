@@ -1,3 +1,8 @@
+---
+title: "Chain Sequential LLM Calls in TypeScript | llm-exe"
+description: "Compose LLM calls in sequence with TypeScript: one executor outlines a story, the next writes it — a typed, modular pattern for multi-step LLM workflows."
+---
+
 # Story Writing with Sequential Composition of LLM Calls
 
 In llm-exe, each LLM call can be encapsulated as a function (an LLM executor) with defined input/output types. You can then call these executors in sequence using regular TypeScript code, passing along data from one to the next. This chaining enables workflows like first analyzing a problem, then solving it, then formatting the result – each with a dedicated prompt and parser. The strength of llm-exe’s design is that it encourages composability: you assemble complex workflows from simple, reusable components.

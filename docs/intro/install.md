@@ -1,3 +1,8 @@
+---
+title: "Install llm-exe | Getting Started"
+description: "Install llm-exe with npm and make your first LLM call in TypeScript. A quick-start example showing prompts, executors, and typed responses in minutes."
+---
+
 # Install
 
 Install llm-exe using npm.

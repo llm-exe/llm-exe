@@ -1,3 +1,8 @@
+---
+title: "LLM Hello World Example in TypeScript | llm-exe"
+description: "A minimal hello world example with llm-exe: combine a prompt, LLM, and parser into a single typed TypeScript function and make your first LLM call."
+---
+
 ## Hello World
 
 Here is a simple example of an llm executor.

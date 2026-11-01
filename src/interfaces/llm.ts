@@ -63,9 +63,10 @@ export interface OpenAiResponse {
     completion_tokens: number;
     total_tokens: number;
 
-    prompt_tokens_details: {
-      cached_tokens: number;
-      audio_tokens: number;
+    prompt_tokens_details?: {
+      cached_tokens?: number | null;
+      cache_write_tokens?: number | null;
+      audio_tokens?: number;
     };
     completion_tokens_details: {
       reasoning_tokens: number;
@@ -123,8 +124,12 @@ export interface Claude3Response {
   usage: {
     input_tokens: number;
     output_tokens: number;
-    cache_creation_input_tokens: number;
-    cache_read_input_tokens: number;
+    cache_creation_input_tokens?: number | null;
+    cache_read_input_tokens?: number | null;
+    cache_creation?: {
+      ephemeral_5m_input_tokens: number;
+      ephemeral_1h_input_tokens: number;
+    } | null;
     service_tier: "standard";
   };
 }
@@ -138,14 +143,14 @@ export interface XAiResponse {
   created: number;
   model: string;
   usage: {
-    prompt_tokens: 28;
-    completion_tokens: 5;
-    total_tokens: 33;
-    prompt_tokens_details: {
-      text_tokens: 28;
-      audio_tokens: 0;
-      image_tokens: 0;
-      cached_tokens: 0;
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    prompt_tokens_details?: {
+      text_tokens?: number;
+      audio_tokens?: number;
+      image_tokens?: number;
+      cached_tokens?: number | null;
     };
   };
   choices: OutputOpenAIChatChoice[];
@@ -292,6 +297,7 @@ export interface GoogleGeminiResponse {
   model?: string;
   usageMetadata: {
     promptTokenCount: number;
+    cachedContentTokenCount?: number;
     candidatesTokenCount: number;
     totalTokenCount: number;
     promptTokensDetails?: {
@@ -349,6 +355,29 @@ export interface OutputResultsFunction extends OutputResultsBase {
 
 export type OutputResultContent = OutputResultsText | OutputResultsFunction;
 
+/** Normalized LLM usage. Cache counts are included in input_tokens. */
+export interface OutputUsage {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  /** Input tokens read from cache; absent when the provider does not report it. */
+  cache_read_input_tokens?: number;
+  /** Input tokens written to cache; not inferred from cache misses. */
+  cache_creation_input_tokens?: number;
+  /** Anthropic cache writes by TTL; a breakdown of cache_creation_input_tokens. */
+  cache_creation?: {
+    ephemeral_5m_input_tokens: number;
+    ephemeral_1h_input_tokens: number;
+  };
+}
+
+export interface DeepSeekResponse extends OpenAiResponse {
+  usage: OpenAiResponse["usage"] & {
+    prompt_cache_hit_tokens?: number | null;
+    prompt_cache_miss_tokens?: number;
+  };
+}
+
 export interface OutputResult {
   id: string;
   name?: string;
@@ -356,11 +385,7 @@ export interface OutputResult {
   stopReason: string;
   content: OutputResultContent[];
   options?: OutputResultContent[][];
-  usage: {
-    input_tokens: number;
-    output_tokens: number;
-    total_tokens: number;
-  };
+  usage: OutputUsage;
   // TODO: add metadata
 }
 
@@ -389,9 +414,34 @@ export interface BaseLlmOptions {
   headers?: Record<string, string>;
 }
 
+/**
+ * A single interleaved text + image request entry, as accepted by Cohere
+ * Embed v4 (Bedrock request body field `inputs`). The provider fuses every
+ * part of `content` into ONE vector, which is the whole point: a caption and
+ * its image become a single searchable embedding.
+ *
+ * `image_url.url` must be a complete data URI, e.g.
+ * "data:image/png;base64,iVBORw0KGgo...". A remote http(s) URL is NOT
+ * accepted by Bedrock; fetch the bytes and inline them.
+ */
+export interface EmbeddingContentItem {
+  content: Array<
+    | { type: "text"; text: string }
+    | { type: "image_url"; image_url: { url: string } }
+  >;
+}
+
+/**
+ * Accepted embedding input. A `string` or `string[]` is a plain text batch and
+ * is supported by every embedding provider. An `EmbeddingContentItem[]` is a
+ * multimodal batch and is supported ONLY by "amazon:cohere.embedding.v1";
+ * other providers throw `embedding.unsupported_input`.
+ */
+export type EmbeddingInput = string | string[] | EmbeddingContentItem[];
+
 export interface GenericEmbeddingOptions extends BaseLlmOptions {
   model?: string;
-  // input: string;
+  input?: EmbeddingInput;
   dimensions?: number;
 }
 
@@ -418,6 +468,13 @@ export interface CohereBedrockEmbeddingOptions
     | "classification"
     | "clustering";
   truncate?: "NONE" | "START" | "END" | "LEFT" | "RIGHT";
+  /**
+   * Escape hatch that writes Cohere Embed v4's `inputs` request field
+   * directly. Normally you do not set this: pass an EmbeddingContentItem[]
+   * as the call input instead, and the config routes it to `inputs` for you.
+   * A multimodal call input takes precedence over this value.
+   */
+  imageInputs?: EmbeddingContentItem[];
 }
 
 // Embed v3 returns `embeddings` as a plain array (response_type
@@ -468,6 +525,8 @@ export interface AmazonTitanEmbeddingApiResponseOutput {
 }
 
 export interface GenericLLm extends BaseLlmOptions {
+  /** Raw provider body fields, shallow-merged last; explicit fields override mappings. */
+  extraBody?: Record<string, unknown>;
   model?: string;
   system?: string;
   prompt?: string | { role: string; content: string }[];
@@ -481,7 +540,13 @@ export interface GenericLLm extends BaseLlmOptions {
   effort?: "minimal" | "low" | "medium" | "high";
 }
 
-export interface OpenAiRequest extends GenericLLm {
+export interface OpenAiRequest extends Omit<GenericLLm, "effort"> {
+  /**
+   * Maps to `reasoning_effort` on gpt-5 / o-series models. `"none"` is the
+   * only value under which gpt-5.1+ accept `temperature` / `topP`; the
+   * original gpt-5 / gpt-5-mini / gpt-5-nano reject `"none"`.
+   */
+  effort?: "none" | "minimal" | "low" | "medium" | "high";
   model: string;
   frequencyPenalty?: number;
   logitBias?: Record<string, any> | null;
@@ -490,7 +555,25 @@ export interface OpenAiRequest extends GenericLLm {
   useJson?: boolean;
 }
 
-export interface XAiRequest extends GenericLLm {
+export interface OpenAiMockRequest extends Omit<OpenAiRequest, "model"> {
+  /** The mock never sends a request, so the model is optional. */
+  model?: string;
+  /**
+   * Text the mock returns verbatim as the assistant message. Lets typed
+   * parsers (json, number, list*, ...) be exercised offline. When unset, the
+   * mock returns a fixed "Hello world from LLM! The input was ..." string.
+   */
+  mockResponse?: string;
+}
+
+export interface XAiRequest extends Omit<GenericLLm, "effort"> {
+  /**
+   * Maps to `reasoning_effort` on the xAI models that accept it: grok-4.3,
+   * grok-4.5, grok-4.6 and grok-4.7. Dropped for any other model, including
+   * grok-4.20-0309-reasoning, which rejects the parameter. `"xhigh"` is
+   * documented from grok-4.6 on and treated as `"high"` on grok-4.5.
+   */
+  effort?: "minimal" | "low" | "medium" | "high" | "xhigh";
   model: string;
   frequencyPenalty?: number;
   logitBias?: Record<string, any> | null;
@@ -522,7 +605,8 @@ export interface GeminiRequest extends GenericLLm {
   geminiApiKey?: string;
 }
 
-export interface DeepseekRequest extends GenericLLm {
+export interface DeepseekRequest extends Omit<GenericLLm, "effort"> {
+  effort?: "low" | "high" | "max";
   model: string;
   responseFormat?: Record<string, any>;
   deepseekApiKey?: string;
@@ -548,7 +632,7 @@ export type AllLlm = {
     // output: OpenAiRequest;
   };
   "openai.chat-mock.v1": {
-    input: OpenAiRequest;
+    input: OpenAiMockRequest;
     // output: OpenAiRequest;
   };
   "anthropic.chat.v1": {
@@ -586,7 +670,38 @@ export type AllLlm = {
 };
 
 export type AllUseLlmOptions = AllLlm & {
+  // OpenAI - GPT-6 family
+  "openai.gpt-6": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-6-astra": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-6.1-sol": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-6-luna": {
+    input: Omit<OpenAiRequest, "model">;
+  };
   // OpenAI - GPT-5 family
+  "openai.gpt-5.6": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-5.6-terra": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-5.6-luna": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-5.5": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-5.4": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-5.4-mini": {
+    input: Omit<OpenAiRequest, "model">;
+  };
   "openai.gpt-5.2": {
     input: Omit<OpenAiRequest, "model">;
   };
@@ -625,8 +740,37 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<OpenAiRequest, "model">;
   };
 
+  // Anthropic - Claude Fable 5 models
+  "anthropic.claude-fable-5-1": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+  "anthropic.claude-fable-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+
+  // Anthropic - Claude 5.5 models
+  "anthropic.claude-opus-5-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+  "anthropic.claude-sonnet-5-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+  "anthropic.claude-haiku-5-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+
+  // Anthropic - Claude Opus 5 models
+  "anthropic.claude-opus-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+
   // Anthropic - Claude 4.8 models
   "anthropic.claude-opus-4-8": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+
+  // Anthropic - Claude Sonnet 5 models
+  "anthropic.claude-sonnet-5": {
     input: Omit<AnthropicRequest, "model">;
   };
 
@@ -647,29 +791,17 @@ export type AllUseLlmOptions = AllLlm & {
   "anthropic.claude-haiku-4-5": {
     input: Omit<AnthropicRequest, "model">;
   };
+  
+  // Anthropic - Deprecated
   "anthropic.claude-sonnet-4-5": {
     input: Omit<AnthropicRequest, "model">;
   };
-  
-  // Anthropic - Deprecated
   "anthropic.claude-opus-4-6": {
     input: Omit<AnthropicRequest, "model">;
   };
-  "anthropic.claude-opus-4-1": {
-    input: Omit<AnthropicRequest, "model">;
-  };
-  "anthropic.claude-sonnet-4-0": {
-    input: Omit<AnthropicRequest, "model">;
-  };
-  "anthropic.claude-opus-4-0": {
-    input: Omit<AnthropicRequest, "model">;
-  };
-  "anthropic.claude-sonnet-4": {
-    input: Omit<AnthropicRequest, "model">;
-  };
-  "anthropic.claude-opus-4": {
-    input: Omit<AnthropicRequest, "model">;
-  };
+  // Removed: Claude Opus 4 / Sonnet 4 (claude-opus-4-0, claude-sonnet-4-0) are
+  // retired at Anthropic (HTTP 404). The claude-*-4-0 keys were type-only orphans
+  // with no runtime shorthand and threw "Invalid provider" if used.
   "anthropic.claude-3-7-sonnet": {
     input: Omit<AnthropicRequest, "model">;
   };
@@ -696,6 +828,18 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<GeminiRequest, "model">;
   };
   "google.gemini-3.5-flash": {
+    input: Omit<GeminiRequest, "model">;
+  };
+  "google.gemini-3.5-flash-lite": {
+    input: Omit<GeminiRequest, "model">;
+  };
+  "google.gemini-3.6-flash": {
+    input: Omit<GeminiRequest, "model">;
+  };
+  "google.gemini-3.7-flash": {
+    input: Omit<GeminiRequest, "model">;
+  };
+  "google.gemini-3.8-flash": {
     input: Omit<GeminiRequest, "model">;
   };
   // Google - Deprecated
@@ -737,6 +881,15 @@ export type AllUseLlmOptions = AllLlm & {
   "xai.grok-4.20-reasoning": {
     input: Omit<XAiRequest, "model">;
   };
+  "xai.grok-4.5": {
+    input: Omit<XAiRequest, "model">;
+  };
+  "xai.grok-4.6": {
+    input: Omit<XAiRequest, "model">;
+  };
+  "xai.grok-4.7": {
+    input: Omit<XAiRequest, "model">;
+  };
 
   // Ollama
   "ollama.deepseek-r1": {
@@ -775,10 +928,19 @@ export type AllUseLlmOptions = AllLlm & {
   "ollama.gpt-oss": {
     input: GenericLLm;
   };
+  "ollama.glm-5.3": {
+    input: GenericLLm;
+  };
+  "ollama.glm-5.3-flash": {
+    input: GenericLLm;
+  };
 
   // Deepseek
   "deepseek.chat": {
     input: DeepseekRequest;
+  };
+  "deepseek.flash": {
+    input: Omit<DeepseekRequest, "model">;
   };
   "deepseek.v4-flash": {
     input: Omit<DeepseekRequest, "model">;
@@ -799,7 +961,11 @@ export interface BaseLlCall {
 }
 
 export interface BaseEmbeddingCall {
-  getEmbedding: () => number[];
+  /**
+   * Returns the embedding at `index` from the batch, or the first embedding
+   * when `index` is omitted. Matches BaseEmbeddingOutput's implementation.
+   */
+  getEmbedding: (index?: number) => number[];
   getResult: () => EmbeddingOutputResult;
 }
 

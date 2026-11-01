@@ -3,13 +3,20 @@ import {
   OutputResultContent,
   ParserOutput,
 } from "@/types";
+import { LlmExeError } from "@/errors";
 import { BaseParser } from "../_base";
 
 import { maybeParseJSON } from "@/utils";
 
-export interface LlmNativeFunctionParserOptions<T extends BaseParser<any, any>> {
+export interface LlmFunctionParserOptions<T extends BaseParser<any, any>> {
   parser: T;
 }
+
+/**
+ * @deprecated Use `LlmFunctionParserOptions` instead.
+ */
+export type LlmNativeFunctionParserOptions<T extends BaseParser<any, any>> =
+  LlmFunctionParserOptions<T>;
 
 export class LlmFunctionParser<T extends BaseParser<any, any>> extends BaseParser<
   ParserOutput<T> | OutputResultContent[],
@@ -17,7 +24,7 @@ export class LlmFunctionParser<T extends BaseParser<any, any>> extends BaseParse
 > {
   public parser: T;
 
-  constructor(options: LlmNativeFunctionParserOptions<T>) {
+  constructor(options: LlmFunctionParserOptions<T>) {
     // pass the `function_call` target through so the executor knows
     super("functionCall", "function_call");
     this.parser = options.parser;
@@ -26,12 +33,21 @@ export class LlmFunctionParser<T extends BaseParser<any, any>> extends BaseParse
     if (typeof text === "string") {
       return this.parser.parse(text, _options) as ParserOutput<T>;
     }
-    const { content } = text;
-    const functionUses =
-      content?.filter((a) => a.type === "function_use") || [];
+    const content = text.content ?? [];
+    const functionUses = content.filter((a) => a.type === "function_use");
 
     if (functionUses.length === 0) {
       const [item] = content;
+      if (!item) {
+        throw new LlmExeError("Response has no content blocks to parse.", {
+          code: "parser.parse_failed",
+          context: {
+            operation: "LlmFunctionParser.parse",
+            parser: "functionCall",
+            reason: "empty_content",
+          },
+        });
+      }
       return this.parser.parse(item.text!, _options) as ParserOutput<T>;
     }
 

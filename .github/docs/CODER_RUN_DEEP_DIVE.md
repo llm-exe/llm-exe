@@ -275,7 +275,8 @@ sequenceDiagram
         CCA->>API: gh pr create --base development
         CCA->>L: rewrite Summary, Files Changed, Next Steps
         J->>C: clock_out (if always) maps job.status to exit code
-        C->>L: stamp Finished UTC + Status
+        C->>L: stamp Finished UTC + Status completed, no-output, or interrupted
+        Note over C,L: a clean exit that left every section as the placeholder is stamped no-output and warned about, not completed
     end
 ```
 
@@ -642,7 +643,7 @@ flowchart LR
     classDef cr fill:#581c87,color:#fff,stroke:#000
 
     subgraph Shared["Shared between both workflows"]
-        s1["scripts/agents/config.sh helpers\ncreate_agent_branch, clock_in, clock_out,\nbuild_prior_context"]:::same
+        s1["scripts/agents/config.sh helpers\ncreate_agent_branch, clock_in, log_has_content, clock_out,\nbuild_prior_context"]:::same
         s2["claude-code-action@v1\nvars.ANTHROPIC_OPUS_LATEST or claude-opus-4-6, --max-turns 50"]:::same
         s3["bot identity via App token"]:::same
         s4["log files committed to git"]:::same

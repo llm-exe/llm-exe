@@ -11,6 +11,7 @@ const ALL_CODES = [
   "configuration.file_not_found",
   "configuration.file_read_failed",
   "configuration.unsupported_format",
+  "configuration.incompatible_options",
   "parser.invalid_type",
   "parser.invalid_input",
   "parser.parse_failed",
@@ -33,6 +34,7 @@ const ALL_CODES = [
   "embedding.missing_provider",
   "embedding.invalid_provider",
   "embedding.unsupported_dimensions",
+  "embedding.unsupported_input",
   "embedding.invalid_response_shape",
   "executor.missing_prompt",
   "executor.hook_limit_reached",
@@ -45,6 +47,7 @@ const ALL_CODES = [
   "auth.aws_signing_input_missing",
   "request.invalid_url",
   "request.http_error",
+  "request.timeout",
   "internal.invariant_failed",
   "unknown.unclassified",
 ] as const satisfies readonly ErrorCodes[];

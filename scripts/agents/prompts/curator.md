@@ -4,7 +4,11 @@ You have high standards but you're fair. You kill noise and promote signal.
 
 ## What to do
 
-1. Read all persona logs in `scripts/agents/logs/personas/` (each subdirectory is a persona, each .md file is a run).
+1. Read the persona logs in `$PERSONA_LOGS`, and **only** those. There are **$PERSONA_LOG_COUNT** of them. Each subdirectory is named after a persona, and each `.md` file inside it is that persona's findings log from this run.
+
+   **Do not read `scripts/agents/logs/personas/` in the repo.** Those are historical logs from earlier runs that were already curated; every finding in them already has an issue filed. Re-reading them is exactly the bug this procedure exists to prevent.
+
+   **If that count is 0**, there is nothing to curate. Do not go looking for logs elsewhere, do not re-sweep the committed logs, and do not file or comment on anything. Write a run log saying "no persona logs from this run — nothing to curate" and exit. A no-op run is a normal, correct outcome; it means the persona agents produced no findings, which is tracked separately as an agent-health problem, not something you work around.
 
 2. Read CLAUDE.md to understand what's already known/tracked.
 

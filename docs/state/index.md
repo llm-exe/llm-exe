@@ -1,3 +1,8 @@
+---
+title: "Manage LLM State, Context, and Memory | llm-exe"
+description: "Give your LLM apps memory with the llm-exe state module. Manage dialogues, typed context items, and attributes to track conversation data in TypeScript."
+---
+
 # State
 
 When calling an LLM from your code, the LLM only knows the history you provide it.
@@ -58,7 +63,7 @@ chatHistory.setUserMessage("Hey anyone there?");
 state.getDialogue("chatHistory").setAssistantMessage("Yep! What's up?");
 ```
 
-You can also create a standalone dialogue without state using `createDialogue`. See the [Dialogue](/state/dialogue.html) page for full details.
+You can also create a standalone dialogue without state using `createDialogue`. See the [Dialogue](/state/dialogue) page for full details.
 
 ## Saving State
 

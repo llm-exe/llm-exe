@@ -1,3 +1,8 @@
+---
+title: "Manage Chat History and Conversation State in TypeScript | llm-exe"
+description: "Use the Dialogue class to manage chat history for multi-turn LLM conversations in TypeScript. Add messages, load history, and capture LLM output automatically."
+---
+
 # Dialogue
 
 The `Dialogue` class manages conversation history for multi-turn LLM interactions. It's used internally by `state`, but you can also use it independently with `createDialogue`.
@@ -33,7 +38,8 @@ dialogue
 | `setFunctionCallMessage(input)` | Add a function call message (legacy format also supported). |
 | `setMessageTurn(user, assistant, system?)` | Add a complete turn (user + assistant + optional system). |
 | `setHistory(messages)` | Load an array of messages into the dialogue. |
-| `getHistory()` | Get all messages as an `IChatMessages` array. |
+| `getHistory()` | Get a copy of all messages as an `IChatMessages` array. Pushing to the copy doesn't change the dialogue. |
+| `resetValue()` | Clear the history back to empty, for example between requests when one dialogue is reused. |
 | `addFromOutput(output)` | Add messages from an LLM `OutputResult` or `BaseLlCall`. |
 
 ## Adding LLM output directly

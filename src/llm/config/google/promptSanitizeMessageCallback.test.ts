@@ -126,6 +126,211 @@ describe("googleGeminiPromptMessageCallback", () => {
       });
       expect(result).not.toHaveProperty("id");
     });
+
+    it("flattens a text-only block array into the response result", () => {
+      const message: IChatMessage = {
+        role: "function",
+        name: "testFunction",
+        content: [
+          { type: "text", text: "line one" },
+          { type: "text", text: "line two" },
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        parts: [
+          {
+            functionResponse: {
+              name: "testFunction",
+              response: {
+                result: "line one\nline two",
+              },
+            },
+          },
+        ],
+      });
+    });
+
+    it("passes an arbitrary JSON array tool result into the Struct verbatim", () => {
+      // Regression: functionResponse.response is an arbitrary Struct, so a JSON
+      // array is valid (and idiomatic) structured tool output. Widening the
+      // type for content blocks must not turn this into a thrown error.
+      const message: IChatMessage = {
+        role: "function",
+        name: "search",
+        content: [{ title: "a" }, { title: "b" }] as any,
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result.parts[0].functionResponse.response.result).toEqual([
+        { title: "a" },
+        { title: "b" },
+      ]);
+    });
+
+    it("passes a JSON array whose entries carry a discriminator `type` into the Struct verbatim", () => {
+      // Not content blocks (no text / image_url), so this stays arbitrary JSON
+      // and must not be flattened or thrown on.
+      const message: IChatMessage = {
+        role: "function",
+        name: "search",
+        content: [
+          { type: "flight", id: 1 },
+          { type: "hotel", id: 2 },
+        ] as any,
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result.parts[0].functionResponse.response.result).toEqual([
+        { type: "flight", id: 1 },
+        { type: "hotel", id: 2 },
+      ]);
+    });
+
+    it("passes an empty array into the Struct verbatim", () => {
+      const message: IChatMessage = {
+        role: "function",
+        name: "search",
+        content: [] as any,
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result.parts[0].functionResponse.response.result).toEqual([]);
+    });
+
+    it("passes a mixed array through verbatim rather than flattening it", () => {
+      // One entry has no `type`, so this is arbitrary JSON, not content blocks.
+      const message: IChatMessage = {
+        role: "function",
+        name: "search",
+        content: [{ type: "text", text: "a" }, { title: "b" }] as any,
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result.parts[0].functionResponse.response.result).toEqual([
+        { type: "text", text: "a" },
+        { title: "b" },
+      ]);
+    });
+
+    it("emits an image block as an inlineData functionResponse part", () => {
+      const message: IChatMessage = {
+        role: "function",
+        name: "testFunction",
+        content: [
+          { type: "text", text: "here it is" },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          },
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        parts: [
+          {
+            functionResponse: {
+              name: "testFunction",
+              response: { result: "here it is" },
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: "image/png",
+                    data: "iVBORw0KGgo=",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      });
+    });
+
+    it("emits one inlineData part per image, in order", () => {
+      const message: IChatMessage = {
+        role: "function",
+        name: "testFunction",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,AAAA" },
+          },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/jpeg;base64,BBBB" },
+          },
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result.parts[0].functionResponse.parts).toEqual([
+        { inlineData: { mimeType: "image/png", data: "AAAA" } },
+        { inlineData: { mimeType: "image/jpeg", data: "BBBB" } },
+      ]);
+      // `response` is required, so it still ships — empty when there is no text
+      expect(result.parts[0].functionResponse.response).toEqual({ result: "" });
+    });
+
+    it("omits `parts` when the tool result has no image blocks", () => {
+      const message: IChatMessage = {
+        role: "function",
+        name: "testFunction",
+        content: [{ type: "text", text: "just text" }],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result.parts[0].functionResponse).not.toHaveProperty("parts");
+    });
+
+    it("throws when a tool result image is not inline base64", () => {
+      // FunctionResponsePart has no fileData member, so a Files API / gs:// URI
+      // that is valid on a user message cannot ride along on a tool result.
+      const message: IChatMessage = {
+        role: "function",
+        name: "testFunction",
+        content: [
+          {
+            type: "image_url",
+            image_url: {
+              url: "https://generativelanguage.googleapis.com/v1beta/files/abc",
+            },
+          },
+        ],
+      };
+
+      expect(() => googleGeminiPromptMessageCallback(message)).toThrow(
+        "Gemini tool results can only carry inline image data"
+      );
+    });
+
+    it("treats an unrecognized typed block as arbitrary JSON, not a content block", () => {
+      // {type:"audio"} is not a shape IChatMessageContentDetailed models, so it
+      // stays on the long-standing arbitrary-JSON path and lands in the Struct
+      // verbatim rather than throwing.
+      const message: IChatMessage = {
+        role: "function",
+        name: "testFunction",
+        content: [{ type: "audio" } as any],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result.parts[0].functionResponse.response.result).toEqual([
+        { type: "audio" },
+      ]);
+    });
   });
 
   describe("function_call handling", () => {
@@ -298,6 +503,134 @@ describe("googleGeminiPromptMessageCallback", () => {
       expect(result).toEqual({
         role: "model",
         parts: [{ text: "Test" }],
+      });
+    });
+  });
+
+  describe("array content handling", () => {
+    it("converts text blocks to text parts", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          { type: "text", text: "Hello" },
+          { type: "text", text: "World" },
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        parts: [{ text: "Hello" }, { text: "World" }],
+      });
+    });
+
+    it("converts a data: URI image block to an inlineData part", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          { type: "text", text: "What is this?" },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          },
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        parts: [
+          { text: "What is this?" },
+          { inlineData: { mimeType: "image/png", data: "iVBORw0KGgo=" } },
+        ],
+      });
+    });
+
+    it("converts Files API and gs:// URIs to fileData parts", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: {
+              url: "https://generativelanguage.googleapis.com/v1beta/files/abc123",
+            },
+          },
+          {
+            type: "image_url",
+            image_url: { url: "gs://my-bucket/cat.png" },
+          },
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        parts: [
+          {
+            fileData: {
+              fileUri:
+                "https://generativelanguage.googleapis.com/v1beta/files/abc123",
+            },
+          },
+          { fileData: { fileUri: "gs://my-bucket/cat.png" } },
+        ],
+      });
+    });
+
+    it("throws for arbitrary https image URLs", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "https://example.com/cat.png" },
+          },
+        ],
+      };
+
+      expect(() => googleGeminiPromptMessageCallback(message)).toThrow(
+        /Gemini cannot load images from arbitrary URLs/
+      );
+    });
+
+    it("converts legacy blocks typed 'image' that carry image_url", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          } as any,
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        parts: [
+          { inlineData: { mimeType: "image/png", data: "iVBORw0KGgo=" } },
+        ],
+      });
+    });
+
+    it("passes unrecognized blocks through as native parts", () => {
+      const message: IChatMessage = {
+        role: "user",
+        content: [
+          { inlineData: { mimeType: "image/png", data: "abc" } } as any,
+        ],
+      };
+
+      const result = googleGeminiPromptMessageCallback(message);
+
+      expect(result).toEqual({
+        role: "user",
+        parts: [{ inlineData: { mimeType: "image/png", data: "abc" } }],
       });
     });
   });

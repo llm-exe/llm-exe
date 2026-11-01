@@ -13,6 +13,7 @@ import { MarkdownCodeBlocksParser } from "./parsers/MarkdownCodeBlocks";
 import { StringExtractParser } from "./parsers/StringExtractParser";
 import { createCustomParser, createParser } from "./_functions";
 import {
+  LlmFunctionParser,
   LlmNativeFunctionParser,
   OpenAiFunctionParser,
 } from "@/parser/parsers/LlmNativeFunctionParser";
@@ -28,6 +29,7 @@ export {
   ListToKeyValueParser,
   ListToArrayParser,
   ReplaceStringTemplateParser,
+  LlmFunctionParser,
   LlmNativeFunctionParser,
   OpenAiFunctionParser,
   MarkdownCodeBlockParser,
@@ -50,3 +52,7 @@ export type {
   StringExtractMatch,
   StringExtractParserOptions,
 } from "./parsers/StringExtractParser";
+export type {
+  LlmFunctionParserOptions,
+  LlmNativeFunctionParserOptions,
+} from "./parsers/LlmNativeFunctionParser";

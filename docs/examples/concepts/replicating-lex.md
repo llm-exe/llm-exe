@@ -1,3 +1,8 @@
+---
+title: "Replicate Amazon Lex with LLMs in TypeScript | llm-exe"
+description: "Rebuild Amazon Lex-style chatbots in TypeScript with composable LLM executors that identify intent, extract slots, confirm, and generate responses."
+---
+
 # Replicating Lex
 
 This is a non-exhaustive overview on how to replace some of the core concepts of Amazon Lex with a series of LLM executor functions.
@@ -24,13 +29,13 @@ We can also use some tricks to help get the best match:
 
 These are all prompt tricks. They are tips, not rules. Experiment yourself with what works.
 
-Note: See [intent](/examples/bots/intent.html) for detailed example of the intent executor.
+Note: See [intent](/examples/bots/intent) for detailed example of the intent executor.
 
 
 ## Extract Slots
 We'd use the result of the intent LLM to know which slots are available/required for the next step. Then, we'll ask the LLM if the specific information is included in the conversation.
 
-Note: See [extract](/examples/bots/extract.html) for detailed example of the confirm executor.
+Note: See [extract](/examples/bots/extract) for detailed example of the confirm executor.
 
 
 ## Confirm
@@ -39,7 +44,7 @@ To confirm the intent, you guessed it, we'll be asking an LLM if the user has co
 The validator LLM executor takes a conversation, and a series of true/false statements, and asks the LLM to work through the statements and identify if they are true or false. Our LLM Executor has a custom output parser which will summarize this output into something easily usable.
 
 
-Note: See [intent](/examples/bots/intent.html) for detailed example of the confirm executor.
+Note: See [intent](/examples/bots/intent) for detailed example of the confirm executor.
 
 ## Response Generator
 You can use a single LLM executor with some prompt templates to generate responses when you need to elicit intent, confirm, or carry on conversation.

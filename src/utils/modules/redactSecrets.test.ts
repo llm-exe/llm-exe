@@ -262,6 +262,31 @@ Line 3: AKIAIOSFODNN7EXAMPLE`;
       expect(out).not.toContain("AIzaSyntheticGoogleApiKeyAAAAAAAAAAAAAA");
     });
   });
+
+  // x-api-key is the auth header Anthropic (and others) use, and providers
+  // routinely echo request headers back inside JSON error bodies — which
+  // apiRequest scrubs before storing in error context. These pin the two
+  // working shapes and document the leaking one (issue #652).
+  describe("x-api-key across shapes", () => {
+    it("fully redacts x-api-key in the header/colon form", () => {
+      const out = maskApiKeys("request header x-api-key: shhh-secret-value");
+      expect(out).not.toContain("shhh-secret-value");
+      expect(out).toBe("request header x-api-key: [redacted]");
+    });
+
+    it("fully redacts the api_key JSON field", () => {
+      const out = maskApiKeys('{"api_key":"shhh-secret-value"}');
+      expect(out).not.toContain("shhh-secret-value");
+    });
+
+    // FIXED (issue #652): the JSON pattern now lists `x-api-key` explicitly, so
+    // the `x-` prefix no longer breaks the match and short secrets are redacted.
+    it("fully redacts x-api-key in a JSON body", () => {
+      const out = maskApiKeys('{"x-api-key":"shhh-secret-value"}');
+      expect(out).not.toContain("shhh-secret-value");
+      expect(out).toBe('{"x-api-key": "[redacted]"}');
+    });
+  });
 });
 
 describe("safeRequestUrl", () => {
@@ -326,5 +351,76 @@ describe("safeRequestUrl", () => {
   it("returns empty/undefined inputs as-is", () => {
     expect(safeRequestUrl("")).toBe("");
     expect(safeRequestUrl(undefined as unknown as string)).toBe(undefined);
+  });
+
+  describe("URL userinfo credentials", () => {
+    // `safeRequestUrl` redacts secret-bearing *query params* and then runs a
+    // generic `redactSecrets` pass, but it never inspects `URL.username` /
+    // `URL.password`. Credentials in the userinfo component
+    // (https://user:pass@host) therefore survive into error messages and debug
+    // logs unless the password coincidentally matches a token-shaped regex.
+    //
+    // These `it.failing` cases pin the leak: they pass while the bug exists and
+    // start failing the moment userinfo redaction lands, which forces whoever
+    // fixes it to promote them to regular `it(...)`.
+    // See: https://github.com/llm-exe/llm-exe/issues/747
+
+    it.failing("redacts a basic-auth password in the userinfo component", () => {
+      const out = safeRequestUrl("https://admin:hunter2@api.example.com/v1/chat");
+      expect(out).not.toContain("hunter2");
+      expect(out).toContain("api.example.com");
+    });
+
+    it.failing("redacts a short userinfo password on a non-default port", () => {
+      const out = safeRequestUrl("http://svc:pw@localhost:1234/v1");
+      expect(out).not.toContain(":pw@");
+    });
+
+    it.failing("redacts a bare userinfo username with no password", () => {
+      const out = safeRequestUrl("https://sometoken@api.example.com/v1");
+      expect(out).not.toContain("sometoken");
+    });
+
+    it.failing(
+      "fully redacts userinfo rather than partially masking it",
+      () => {
+        // A token-shaped password is only *incidentally* caught by the generic
+        // redactSecrets pass, which preserves a 4-char prefix and suffix. For a
+        // credential that is never useful in a log, full redaction is correct.
+        const out = safeRequestUrl(
+          "https://admin:sk-syntheticUserinfoAAAAAAAAAAAA@api.example.com/v1"
+        );
+        expect(out).not.toContain("sk-s");
+        expect(out).not.toContain("AAAA");
+      }
+    );
+
+    // --- Behavior that is correct today; pinned so a userinfo fix does not
+    // regress the surrounding redaction or mangle ordinary URLs. ---
+
+    it("still redacts secret query params when userinfo is present", () => {
+      const out = safeRequestUrl(
+        "https://admin:hunter2@api.example.com/v1?api_key=syntheticApiKeyValueXXX"
+      );
+      expect(out).not.toContain("syntheticApiKeyValueXXX");
+      expect(out).toContain("api.example.com");
+    });
+
+    it("partially masks a token-shaped userinfo password via redactSecrets", () => {
+      // Documents the incidental coverage that exists today: the full secret is
+      // not present, but the masking is a side effect of the token regex rather
+      // than deliberate userinfo handling.
+      const out = safeRequestUrl(
+        "https://admin:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@api.example.com/v1"
+      );
+      expect(out).not.toContain("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    });
+
+    it("leaves URLs without userinfo untouched", () => {
+      const out = safeRequestUrl("https://api.example.com/v1/chat?model=gpt-4");
+      expect(out).toContain("https://api.example.com/v1/chat");
+      expect(out).toContain("model=gpt-4");
+      expect(out).not.toContain("@");
+    });
   });
 });

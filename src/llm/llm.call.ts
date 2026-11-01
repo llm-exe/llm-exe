@@ -1,6 +1,5 @@
 import { apiRequest } from "@/utils/modules/request";
 import { replaceTemplateStringSimple } from "@/utils/modules/replaceTemplateStringSimple";
-import { getLlmConfig } from "@/llm/config";
 import { mapBody } from "@/llm/_utils.mapBody";
 import { parseHeaders } from "@/llm/_utils.parseHeaders";
 import {
@@ -10,6 +9,7 @@ import {
 } from "@/errors";
 
 import {
+  Config,
   GenericFunctionCall,
   GenericLLm,
   IChatMessages,
@@ -25,10 +25,9 @@ import { mapOptions } from "./_utils.mapOptions";
 export async function useLlm_call(
   state: GenericLLm & { provider: LlmProvider; key: LlmProviderKey },
   messages: string | IChatMessages,
-  _options?: LlmExecutorWithFunctionsOptions<GenericFunctionCall>
+  _options: LlmExecutorWithFunctionsOptions<GenericFunctionCall> | undefined,
+  config: Config<any>
 ) {
-  const config = getLlmConfig(state.key);
-
   const transformBody = mapBody(
     config.mapBody,
     Object.assign({}, state, {
@@ -38,9 +37,15 @@ export async function useLlm_call(
 
   const applyOptions = mapOptions(transformBody, _options, config);
 
-  const body = JSON.stringify(applyOptions);
+  // Merge raw provider fields last, before serialization and AWS signing.
+  // This is intentionally shallow: an explicit nested object replaces its mapping.
+  const body = JSON.stringify({ ...applyOptions, ...state.extraBody });
 
-  const url = replaceTemplateStringSimple(config.endpoint, state);
+  // Encode the model id in the endpoint path: a Bedrock ARN model id contains
+  // ":" and "/", which otherwise break the request path (see issue #722).
+  const url = replaceTemplateStringSimple(config.endpoint, state, {
+    encodeKeys: ["model"],
+  });
 
   const headers = await parseHeaders(config, state, {
     url,
@@ -51,6 +56,7 @@ export async function useLlm_call(
   const { transformResponse = OutputDefault } = config;
 
   if (config.provider === "openai.chat-mock") {
+    const content = "mockResponse" in state ? state.mockResponse : undefined;
     const mockResponse = {
       id: "0123-45-6789",
       model: "model",
@@ -60,7 +66,10 @@ export async function useLlm_call(
         {
           message: {
             role: "assistant",
-            content: `Hello world from LLM! The input was ${JSON.stringify(messages)}`,
+            content:
+              typeof content === "string"
+                ? content
+                : `Hello world from LLM! The input was ${JSON.stringify(messages)}`,
           },
         },
       ],

@@ -353,6 +353,23 @@ describe("serializeLlmExeError", () => {
     expect(out.code).toBe("unknown.unclassified");
   });
 
+  it("recognizes an LlmExeError-like value tagged only with the internal symbol", () => {
+    // No `isLlmExeError: true` property — recognition must come from the
+    // Symbol.for("llm-exe.error") brand alone.
+    const branded: Record<string | symbol, unknown> = {
+      message: "branded failure",
+      category: "internal",
+      code: "internal.unexpected",
+    };
+    branded[Symbol.for("llm-exe.error")] = true;
+
+    const out = serializeLlmExeError(branded) as any;
+    expect(out.name).toBe("LlmExeError");
+    expect(out.message).toBe("branded failure");
+    expect(out.category).toBe("internal");
+    expect(out.code).toBe("internal.unexpected");
+  });
+
   it("returns null for a non-finite number passed as the top-level error", () => {
     expect(serializeLlmExeError(NaN)).toBeNull();
   });
@@ -364,11 +381,207 @@ describe("serializeLlmExeError", () => {
     expect(out.message).toBe("no name");
   });
 
+  it("coerces a real Error instance's non-string message to an empty string", () => {
+    // isErrorLike matches via `instanceof Error`, so this reaches the Error
+    // branch even though `message` is not a string. The value must be coerced
+    // to "" rather than leaked verbatim into the serialized output.
+    const err = new Error("original");
+    Object.defineProperty(err, "message", { value: 42, configurable: true });
+    const out = serializeLlmExeError(err) as Record<string, unknown>;
+    expect(out.name).toBe("Error");
+    expect(out.message).toBe("");
+  });
+
+  it("does not leak a real Error's object-valued message and keeps its name", () => {
+    class ProviderError extends Error {
+      name = "ProviderError";
+    }
+    const err = new ProviderError("boom");
+    Object.defineProperty(err, "message", {
+      value: { leaked: true },
+      configurable: true,
+    });
+    const out = serializeLlmExeError(err) as Record<string, unknown>;
+    expect(out.name).toBe("ProviderError");
+    expect(out.message).toBe("");
+  });
+
   it("returns empty message string when a generic error-like message is non-string", () => {
     const errLike = { name: "Boom", message: 42 };
     // isErrorLike requires both message and name as strings, so this falls through
     // to the freshSafeValue branch and ends up as a plain serialized object.
     const out = serializeLlmExeError(errLike) as any;
     expect(out).toEqual({ name: "Boom", message: 42 });
+  });
+
+  it("serializes a null context field to null", () => {
+    // context is present (not undefined) but null — it should round-trip as null
+    // rather than being dropped or throwing.
+    const fake = {
+      isLlmExeError: true,
+      message: "boom",
+      category: "parser",
+      code: "parser.parse_failed",
+      context: null,
+    };
+    const out = serializeLlmExeError(fake) as any;
+    expect(out.context).toBeNull();
+  });
+
+  it("preserves null values nested inside context objects and arrays", () => {
+    const err = new LlmExeError("nested nulls", {
+      code: "parser.parse_failed",
+      context: { received: null, list: [1, null, undefined, "x"] } as any,
+    });
+    const out = serializeLlmExeError(err) as any;
+    expect(out.context.received).toBeNull();
+    // Array holes/undefined become null (arrays are not compacted like objects).
+    expect(out.context.list).toEqual([1, null, null, "x"]);
+  });
+
+  describe("fetch Response values", () => {
+    // A raw `fetch` Response is a common `cause` when a provider call fails.
+    // Serializing it must not attempt to read the (single-use, async) body —
+    // it is reduced to a flat status/statusText/url descriptor.
+    it("reduces a Response in context to a flat descriptor", () => {
+      const response = new Response("ignored body", {
+        status: 429,
+        statusText: "Too Many Requests",
+      });
+      Object.defineProperty(response, "url", {
+        value: "https://api.example.com/v1/messages",
+      });
+
+      const err = new LlmExeError("rate limited", {
+        code: "llm.provider_rate_limited",
+        context: { response } as any,
+      });
+
+      const out = serializeLlmExeError(err) as any;
+      expect(out.context.response).toEqual({
+        name: "Response",
+        status: 429,
+        statusText: "Too Many Requests",
+        url: "https://api.example.com/v1/messages",
+      });
+      // The body must never be drained during serialization.
+      expect(response.bodyUsed).toBe(false);
+    });
+
+    it("defaults missing statusText and url to empty strings", () => {
+      // A 204 has no statusText by default and an unfetched Response has no url.
+      const response = new Response(null, { status: 204 });
+
+      const err = new LlmExeError("empty response", {
+        code: "llm.invalid_response_shape",
+        context: { response } as any,
+      });
+
+      const out = serializeLlmExeError(err) as any;
+      expect(out.context.response).toEqual({
+        name: "Response",
+        status: 204,
+        statusText: "",
+        url: "",
+      });
+    });
+
+    it("reduces a Response passed as the cause", () => {
+      const response = new Response("nope", {
+        status: 503,
+        statusText: "Service Unavailable",
+      });
+
+      const err = new LlmExeError("upstream down", {
+        code: "llm.provider_unavailable",
+        cause: response,
+      });
+
+      const out = serializeLlmExeError(err) as any;
+      expect(out.cause).toEqual({
+        name: "Response",
+        status: 503,
+        statusText: "Service Unavailable",
+        url: "",
+      });
+      expect(response.bodyUsed).toBe(false);
+    });
+
+    it("reduces a bare Response passed directly to the serializer", () => {
+      const out = serializeLlmExeError(
+        new Response("x", { status: 400, statusText: "Bad Request" })
+      ) as any;
+
+      expect(out).toEqual({
+        name: "Response",
+        status: 400,
+        statusText: "Bad Request",
+        url: "",
+      });
+    });
+
+    // Not every Response reaching us is a spec-perfect one from this realm's
+    // `fetch`: polyfilled / cross-realm / test-double Responses can be missing
+    // `statusText` or `url` entirely rather than having them set to "". The
+    // descriptor must still be a flat all-strings shape so consumers that
+    // JSON.stringify a serialized error never see `undefined` where they were
+    // promised a string.
+    function responseWithAbsentFields(status: number): Response {
+      const response = new Response(null, { status });
+      // Shadow the prototype getters with own `undefined` properties; `status`
+      // is left alone so the instance stays a real, branded Response.
+      Object.defineProperty(response, "statusText", {
+        value: undefined,
+        configurable: true,
+      });
+      Object.defineProperty(response, "url", {
+        value: undefined,
+        configurable: true,
+      });
+      return response;
+    }
+
+    it("coerces absent statusText and url to empty strings at the top level", () => {
+      const out = serializeLlmExeError(responseWithAbsentFields(502)) as any;
+
+      expect(out).toEqual({
+        name: "Response",
+        status: 502,
+        statusText: "",
+        url: "",
+      });
+      // Explicitly not `undefined` — the fields must survive a JSON round-trip.
+      expect(JSON.parse(JSON.stringify(out))).toEqual(out);
+    });
+
+    it("coerces absent statusText and url to empty strings when nested in context", () => {
+      const err = new LlmExeError("bad gateway", {
+        code: "llm.provider_unavailable",
+        context: { response: responseWithAbsentFields(502) } as any,
+      });
+
+      const out = serializeLlmExeError(err) as any;
+      expect(out.context.response).toEqual({
+        name: "Response",
+        status: 502,
+        statusText: "",
+        url: "",
+      });
+    });
+
+    it("coerces absent statusText and url to empty strings when passed as the cause", () => {
+      const err = new LlmExeError("bad gateway", {
+        code: "llm.provider_unavailable",
+        cause: responseWithAbsentFields(502),
+      });
+
+      const out = serializeLlmExeError(err) as any;
+      expect(out.cause).toEqual({
+        name: "Response",
+        status: 502,
+        statusText: "",
+        url: "",
+      });
+    });
   });
 });

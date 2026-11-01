@@ -1,5 +1,6 @@
 import {
   BaseParser,
+  LlmFunctionParser as ExportedLlmFunctionParser,
   LlmNativeFunctionParser,
   OpenAiFunctionParser,
   StringParser,
@@ -350,5 +351,33 @@ describe("llm-exe:parser/LlmNativeFunctionParser", () => {
 describe("OpenAiFunctionParser export", () => {
   it("OpenAiFunctionParser is alias for LlmNativeFunctionParser", () => {
     expect(OpenAiFunctionParser).toBe(LlmNativeFunctionParser);
+  });
+});
+
+// LlmNativeFunctionParser is deprecated in favor of LlmFunctionParser, so the
+// replacement has to be reachable from the public parser index.
+describe("LlmFunctionParser export", () => {
+  it("is exported from the parser index", () => {
+    expect(ExportedLlmFunctionParser).toBe(LlmFunctionParser);
+  });
+  it("is a distinct class from the deprecated LlmNativeFunctionParser", () => {
+    expect(ExportedLlmFunctionParser).not.toBe(LlmNativeFunctionParser);
+  });
+  it("returns normalized content where LlmNativeFunctionParser returns name/arguments", () => {
+    const input = mockOutputResultObject([
+      {
+        type: "function_use",
+        functionId: "call_1",
+        name: "get_weather",
+        input: { city: "Toronto" },
+      },
+    ]);
+    const parser = new ExportedLlmFunctionParser({
+      parser: new StringParser(),
+    });
+    expect(parser.parse(input)).toEqual(input.content);
+    expect(
+      new LlmNativeFunctionParser({ parser: new StringParser() }).parse(input)
+    ).toEqual({ name: "get_weather", arguments: { city: "Toronto" } });
   });
 });

@@ -44,7 +44,7 @@ type ExecutionContextShape<I, O> = {
 
 - **Parser callbacks** — `createCustomParser(name, (text, context) => ...)`
 - **Hooks** — the first argument to `onSuccess`, `onError`, and `onComplete` is execution metadata; pair it with the executor metadata as the second argument
-- **Trace IDs** — `executor.withTraceId(id)` sets `traceId` on the context surfaced to parsers and hooks
+- **Trace IDs** — `execute(input, { traceId })` or `executor.withTraceId(id)` sets `traceId` on the context surfaced to parsers and hooks
 
 `createCoreExecutor(handler)` wraps a plain function, and that function only receives the executor input — it does not currently receive an `ExecutionContext` argument.
 
@@ -67,16 +67,17 @@ Execution data is available on `context.execution`. Executor metadata is availab
 
 ## Trace IDs
 
-Use `withTraceId()` to set a trace ID on the executor.
+Pass `traceId` in the options to `execute()` to tag one call:
 
 ```ts
 const executor = createLlmExecutor({ llm, prompt, parser });
-executor.withTraceId("req-123");
 
-await executor.execute({ input: "hello" });
+await executor.execute({ input: "hello" }, { traceId: "req-123" });
 ```
 
-The trace ID is included in `ExecutionContext`, hook metadata, and deprecation warning details.
+`withTraceId()` sets a trace ID on the executor instance instead, and every call on that executor shares it. If one executor serves concurrent requests, they overwrite each other's ID, so use the per-call option there. When both are set, the per-call `traceId` wins and the instance value stays unchanged.
+
+The trace ID is included in `ExecutionContext`, hook metadata, and deprecation warning details. It isn't attached to errors thrown by provider requests.
 
 ## Error Metadata
 

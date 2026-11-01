@@ -1,6 +1,24 @@
 import { Serializable } from "@/types";
 import { assert } from "@/utils/modules/assert";
 
+/**
+ * Shallow-copy arrays and plain objects so `value` never aliases
+ * `initialValue`; in-place mutations would otherwise survive resetValue().
+ */
+function copyInitialValue<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return [...value] as T;
+  }
+  if (
+    value !== null &&
+    typeof value === "object" &&
+    Object.getPrototypeOf(value) === Object.prototype
+  ) {
+    return { ...value };
+  }
+  return value;
+}
+
 export abstract class BaseStateItem<T> implements Serializable {
   protected key: string;
   protected value: T;
@@ -8,8 +26,8 @@ export abstract class BaseStateItem<T> implements Serializable {
 
   constructor(key: string, initialValue: T) {
     this.key = key;
-    this.value = initialValue;
     this.initialValue = initialValue;
+    this.value = copyInitialValue(initialValue);
   }
   setValue(value: T) {
     if (this.value !== undefined && this.value !== null) {
@@ -27,7 +45,7 @@ export abstract class BaseStateItem<T> implements Serializable {
     return this.value;
   }
   resetValue() {
-    this.value = this.initialValue;
+    this.value = copyInitialValue(this.initialValue);
   }
   serializeValue() {
     return {

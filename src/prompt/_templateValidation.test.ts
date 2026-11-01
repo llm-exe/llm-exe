@@ -153,6 +153,41 @@ describe("_templateValidation", () => {
       expect(paths(refs)).toEqual(["items"]);
     });
 
+    it("collects root-level paths from the #each {{else}} block when block params are declared", () => {
+      // The inverse (else) of #each renders when the collection is empty, so
+      // paths inside it are root input references, not item references. With
+      // block params declared, the program body is walked and the inverse walk
+      // must still surface those root paths.
+      const refs = collectTemplateInputReferences(
+        "{{#each users as |user|}}{{user.name}}{{else}}{{emptyMessage}}{{/each}}"
+      );
+      expect(paths(refs).sort()).toEqual(["emptyMessage", "users"]);
+    });
+
+    it("does not collect bare {{else}} paths from a #each without block params", () => {
+      // Bare #each swallows its whole body (documented approximation), so the
+      // else-block `fallback` is not surfaced. Locks the current contract so a
+      // change here is caught.
+      const refs = collectTemplateInputReferences(
+        "{{#each items}}{{name}}{{else}}{{fallback}}{{/each}}"
+      );
+      expect(paths(refs)).toEqual(["items"]);
+    });
+
+    it("collects paths from both branches of #if / {{else}}", () => {
+      const refs = collectTemplateInputReferences(
+        "{{#if show}}{{whenTrue}}{{else}}{{whenFalse}}{{/if}}"
+      );
+      expect(paths(refs).sort()).toEqual(["show", "whenFalse", "whenTrue"]);
+    });
+
+    it("ignores ../parent paths in the else block of a block-param #each", () => {
+      const refs = collectTemplateInputReferences(
+        "{{#each rows as |row|}}{{row}}{{else}}{{../footer}}{{/each}}"
+      );
+      expect(paths(refs)).toEqual(["rows"]);
+    });
+
     it("treats unknown helper with args as missing helper", () => {
       const result = validateTemplateInputReferences(
         "{{unknownHelper createdAt}}",
@@ -160,6 +195,62 @@ describe("_templateValidation", () => {
       );
       expect(result.missingHelpers).toEqual(["unknownHelper"]);
       expect(result.missingVariables).toEqual([]);
+    });
+
+    // The `hasBlockParams` check reads blockParams off BOTH the program and the
+    // inverse. These pin the branches where one side is absent or declares an
+    // empty list, which decides whether the bare-#each body gets swallowed.
+    it("swallows the body of an inverse-only #each that declares no block params", () => {
+      // `{{^each}}` builds a BlockStatement whose program is the else-branch,
+      // so the program-side blockParams lookup has nothing to read.
+      const refs = collectTemplateInputReferences(
+        "{{^each items}}{{fallback}}{{/each}}"
+      );
+      expect(paths(refs)).toEqual(["items"]);
+    });
+
+    it("walks an inverse-only #each body once block params are declared", () => {
+      const refs = collectTemplateInputReferences(
+        "{{^each items as |item|}}{{item}}{{heading}}{{/each}}"
+      );
+      expect(paths(refs).sort()).toEqual(["heading", "items"]);
+    });
+
+    it("swallows the body of an empty bare #each", () => {
+      const refs = collectTemplateInputReferences("{{#each items}}{{/each}}");
+      expect(paths(refs)).toEqual(["items"]);
+    });
+
+    it("keeps block params scoped to their own #each when two are siblings", () => {
+      // `user` is local to the first block only. The sibling declares its own
+      // param `row`, so `user` is out of scope there — `user.name` inside the
+      // second block is a real root reference and must surface. That is exactly
+      // what would break if a block param leaked across sibling blocks. `row`
+      // stays local; `users`/`rows` are the loop subjects.
+      const refs = collectTemplateInputReferences(
+        "{{#each users as |user|}}{{user.name}}{{/each}}{{#each rows as |row|}}{{user.name}}{{row}}{{/each}}"
+      );
+      expect(paths(refs).sort()).toEqual(["rows", "user.name", "users"]);
+    });
+
+    it("walks a bare #each nested inside a block-param #each", () => {
+      // The outer block declares params so its body is walked. The inner bare
+      // #each swallows its own body, and its subject `group.items` is rooted on
+      // the block-param alias, so it stays local too — only the outer
+      // collection and the sibling root path surface.
+      const refs = collectTemplateInputReferences(
+        "{{#each groups as |group|}}{{#each group.items}}{{label}}{{/each}}{{title}}{{/each}}"
+      );
+      expect(paths(refs).sort()).toEqual(["groups", "title"]);
+    });
+
+    it("collects a nested bare #each subject that is rooted on real input", () => {
+      // Same nesting, but the inner collection comes from the root input rather
+      // than the block-param alias — so it must be surfaced as a requirement.
+      const refs = collectTemplateInputReferences(
+        "{{#each groups as |group|}}{{#each sharedItems}}{{label}}{{/each}}{{/each}}"
+      );
+      expect(paths(refs).sort()).toEqual(["groups", "sharedItems"]);
     });
   });
 

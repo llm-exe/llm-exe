@@ -1,3 +1,8 @@
+---
+title: "Why Use Handlebars for LLM Prompts? | llm-exe"
+description: "Why llm-exe uses Handlebars instead of template literals for prompts: separation of logic and data, reusable partials, and typed inputs in TypeScript."
+---
+
 # Why Handlebars?
 
 When preparing your prompts, it may seem easier to use native Javascript template literals within your prompts instead of utilizing Handlebars. It is suggested you embrace the Handlebars approach.

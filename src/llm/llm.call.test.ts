@@ -172,7 +172,7 @@ describe("useLlm_call", () => {
     const mockBaseLlmOutputReturn = "parsedOutput";
     BaseLlmOutputMock.mockReturnValueOnce(mockBaseLlmOutputReturn);
 
-    const result = await useLlm_call(mockState, mockMessages, mockOptions);
+    const result = await useLlm_call(mockState, mockMessages, mockOptions, getLlmConfig(mockState.key));
 
     expect(getLlmConfig).toHaveBeenCalledWith(mockState.key);
     expect(mapBody).toHaveBeenCalledWith(mockConfig.mapBody, {
@@ -181,7 +181,8 @@ describe("useLlm_call", () => {
     });
     expect(replaceTemplateStringSimple).toHaveBeenCalledWith(
       mockConfig.endpoint,
-      mockState
+      mockState,
+      { encodeKeys: ["model"] }
     );
     expect(parseHeaders).toHaveBeenCalledWith(
       mockConfig,
@@ -223,7 +224,7 @@ describe("useLlm_call", () => {
     });
 
     await expect(
-      useLlm_call(mockState, mockMessages, mockOptions)
+      useLlm_call(mockState, mockMessages, mockOptions, getLlmConfig(mockState.key))
     ).rejects.toThrow("API Request Failed");
   });
 
@@ -232,7 +233,7 @@ describe("useLlm_call", () => {
       functionCall: "none",
       functions: [{ name: "something", description: "", parameters: {} }],
     };
-    await useLlm_call(mockStateAnthropic, mockMessages, mock_options as any);
+    await useLlm_call(mockStateAnthropic, mockMessages, mock_options as any, getLlmConfig(mockStateAnthropic.key));
     expect(apiRequestMock).toHaveBeenCalledWith(
       "http://api.test/endpoint",
       expect.objectContaining({
@@ -252,7 +253,7 @@ describe("useLlm_call", () => {
       functionCall: "auto" as GenericFunctionCall,
       functions: [{ name: "something", description: "", parameters: {} }],
     };
-    await useLlm_call(mockStateAnthropic, mockMessages, mock_options);
+    await useLlm_call(mockStateAnthropic, mockMessages, mock_options, getLlmConfig(mockStateAnthropic.key));
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
       body: JSON.stringify({
@@ -278,7 +279,7 @@ describe("useLlm_call", () => {
       functionCall: "any" as GenericFunctionCall,
       functions: [{ name: "something", description: "", parameters: {} }],
     };
-    await useLlm_call(mockStateAnthropic, mockMessages, mock_options);
+    await useLlm_call(mockStateAnthropic, mockMessages, mock_options, getLlmConfig(mockStateAnthropic.key));
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
       body: JSON.stringify({
@@ -304,12 +305,13 @@ describe("useLlm_call", () => {
       functionCall: { name: "something" },
       functions: [{ name: "something", description: "", parameters: {} }],
     };
-    await useLlm_call(mockStateAnthropic, mockMessages, mock_options as any);
+    await useLlm_call(mockStateAnthropic, mockMessages, mock_options as any, getLlmConfig(mockStateAnthropic.key));
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
       body: JSON.stringify({
         prompt: mockMessages,
-        tool_choice: mock_options.functionCall,
+        // named tool choice is normalized to Anthropic's { type: "tool", name } (issue #720)
+        tool_choice: { type: "tool", name: "something" },
         tools: mock_options.functions.map((a) => ({
           name: a.name,
           description: a.description,
@@ -330,7 +332,7 @@ describe("useLlm_call", () => {
       functionCall: "any" as GenericFunctionCall,
       functions: [{ name: "something", description: "", parameters: {} }],
     };
-    await useLlm_call(mockStateOpenAi, mockMessages, mock_options);
+    await useLlm_call(mockStateOpenAi, mockMessages, mock_options, getLlmConfig(mockStateOpenAi.key));
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
       body: JSON.stringify({
@@ -368,7 +370,7 @@ describe("useLlm_call", () => {
       },
     };
 
-    await useLlm_call(mockStateOpenAi, mockMessages, mock_options as any);
+    await useLlm_call(mockStateOpenAi, mockMessages, mock_options as any, getLlmConfig(mockStateOpenAi.key));
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
       body: JSON.stringify({
@@ -389,7 +391,7 @@ describe("useLlm_call", () => {
   });
 
   it("should handle openai with no options passed", async () => {
-    await useLlm_call(mockStateOpenAi, mockMessages, undefined as any);
+    await useLlm_call(mockStateOpenAi, mockMessages, undefined as any, getLlmConfig(mockStateOpenAi.key));
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
       body: JSON.stringify({
@@ -415,7 +417,7 @@ describe("useLlm_call", () => {
         additionalProperties: false,
       },
     };
-    await useLlm_call(mockStateOpenAi, mockMessages, mock_options as any);
+    await useLlm_call(mockStateOpenAi, mockMessages, mock_options as any, getLlmConfig(mockStateOpenAi.key));
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
       body: JSON.stringify({
@@ -448,7 +450,7 @@ describe("useLlm_call", () => {
         additionalProperties: false,
       },
     };
-    await useLlm_call(mockStateOpenAi, mockMessages, mock_options);
+    await useLlm_call(mockStateOpenAi, mockMessages, mock_options, getLlmConfig(mockStateOpenAi.key));
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
       body: JSON.stringify({
@@ -481,7 +483,7 @@ describe("useLlm_call", () => {
         additionalProperties: false,
       },
     };
-    await useLlm_call(mockStateOpenAi, mockMessages, mock_options as any);
+    await useLlm_call(mockStateOpenAi, mockMessages, mock_options as any, getLlmConfig(mockStateOpenAi.key));
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
       body: JSON.stringify({
@@ -514,7 +516,7 @@ describe("useLlm_call", () => {
         additionalProperties: false,
       },
     };
-    await useLlm_call(mockStateOpenAi, mockMessages, mock_options);
+    await useLlm_call(mockStateOpenAi, mockMessages, mock_options, getLlmConfig(mockStateOpenAi.key));
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
       body: JSON.stringify({
@@ -555,7 +557,7 @@ describe("useLlm_call", () => {
     const mockBaseLlmOutputReturn = "mockParsedOutput";
     BaseLlmOutputMock.mockReturnValueOnce(mockBaseLlmOutputReturn);
 
-    const result = await useLlm_call(mockStateMock, mockMessages, mockOptions);
+    const result = await useLlm_call(mockStateMock, mockMessages, mockOptions, getLlmConfig(mockStateMock.key));
 
     // Mock provider doesn't call apiRequest
     expect(apiRequestMock).not.toHaveBeenCalled();
@@ -601,7 +603,7 @@ describe("useLlm_call", () => {
       const mock_options = {
         functionCall: "auto" as GenericFunctionCall,
       };
-      await useLlm_call(mockStateGoogle, mockMessages, mock_options);
+      await useLlm_call(mockStateGoogle, mockMessages, mock_options, getLlmConfig(mockStateGoogle.key));
       expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
         method: mockConfig.method,
         body: JSON.stringify({
@@ -622,7 +624,7 @@ describe("useLlm_call", () => {
       const mock_options = {
         functionCall: "any" as GenericFunctionCall,
       };
-      await useLlm_call(mockStateGoogle, mockMessages, mock_options);
+      await useLlm_call(mockStateGoogle, mockMessages, mock_options, getLlmConfig(mockStateGoogle.key));
       expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
         method: mockConfig.method,
         body: JSON.stringify({
@@ -643,7 +645,7 @@ describe("useLlm_call", () => {
       const mock_options = {
         functionCall: "none" as GenericFunctionCall,
       };
-      await useLlm_call(mockStateGoogle, mockMessages, mock_options);
+      await useLlm_call(mockStateGoogle, mockMessages, mock_options, getLlmConfig(mockStateGoogle.key));
       expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
         method: mockConfig.method,
         body: JSON.stringify({
@@ -675,7 +677,7 @@ describe("useLlm_call", () => {
           },
         ],
       };
-      await useLlm_call(mockStateGoogle, mockMessages, mock_options);
+      await useLlm_call(mockStateGoogle, mockMessages, mock_options, getLlmConfig(mockStateGoogle.key));
       expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
         method: mockConfig.method,
         body: JSON.stringify({
@@ -712,7 +714,7 @@ describe("useLlm_call", () => {
           },
         ],
       };
-      await useLlm_call(mockStateGoogle, mockMessages, mock_options);
+      await useLlm_call(mockStateGoogle, mockMessages, mock_options, getLlmConfig(mockStateGoogle.key));
       expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
         method: mockConfig.method,
         body: JSON.stringify({
@@ -756,7 +758,7 @@ describe("useLlm_call", () => {
       },
     };
 
-    await useLlm_call(mockStateDeepseek, mockMessages, mock_options as any);
+    await useLlm_call(mockStateDeepseek, mockMessages, mock_options as any, getLlmConfig(mockStateDeepseek.key));
 
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
@@ -801,7 +803,7 @@ describe("useLlm_call", () => {
       functionCallStrictInput: true,
     };
 
-    await useLlm_call(mockStateDeepseek, mockMessages, mock_options);
+    await useLlm_call(mockStateDeepseek, mockMessages, mock_options, getLlmConfig(mockStateDeepseek.key));
 
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
@@ -844,7 +846,7 @@ describe("useLlm_call", () => {
       },
     };
 
-    await useLlm_call(mockStateXai, mockMessages, mock_options as any);
+    await useLlm_call(mockStateXai, mockMessages, mock_options as any, getLlmConfig(mockStateXai.key));
 
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
@@ -887,7 +889,7 @@ describe("useLlm_call", () => {
       ],
     };
 
-    await useLlm_call(mockStateXai, mockMessages, mock_options as any);
+    await useLlm_call(mockStateXai, mockMessages, mock_options as any, getLlmConfig(mockStateXai.key));
 
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
@@ -935,7 +937,7 @@ describe("useLlm_call", () => {
       functionCallStrictInput: true,
     };
 
-    await useLlm_call(mockStateOpenAi, mockMessages, mock_options as any);
+    await useLlm_call(mockStateOpenAi, mockMessages, mock_options as any, getLlmConfig(mockStateOpenAi.key));
 
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
       method: mockConfig.method,
@@ -973,7 +975,7 @@ describe("useLlm_call", () => {
       },
     };
 
-    await useLlm_call(mockStateOther, mockMessages, mock_options as any);
+    await useLlm_call(mockStateOther, mockMessages, mock_options as any, getLlmConfig(mockStateOther.key));
 
     // Should not have response_format since provider doesn't match the supported list
     expect(apiRequestMock).toHaveBeenCalledWith("http://api.test/endpoint", {
@@ -995,7 +997,7 @@ describe("useLlm_call", () => {
     const mockBaseLlmOutputReturn = "stringMessageOutput";
     BaseLlmOutputMock.mockReturnValueOnce(mockBaseLlmOutputReturn);
 
-    const result = await useLlm_call(mockState, stringMessage, mockOptions);
+    const result = await useLlm_call(mockState, stringMessage, mockOptions, getLlmConfig(mockState.key));
 
     expect(mapBody).toHaveBeenCalledWith(mockConfig.mapBody, {
       ...mockState,
@@ -1054,7 +1056,7 @@ describe("useLlm_call", () => {
     const mockBaseLlmOutputReturn = "defaultParsedOutput";
     BaseLlmOutputMock.mockReturnValueOnce(mockBaseLlmOutputReturn);
 
-    const result = await useLlm_call(mockState, mockMessages);
+    const result = await useLlm_call(mockState, mockMessages, undefined, getLlmConfig(mockState.key));
 
     // Should call OutputDefault when no output function is provided
     expect(OutputDefaultMock).toHaveBeenCalledWith(
@@ -1118,7 +1120,7 @@ describe("useLlm_call", () => {
       async (status, expectedCode) => {
         apiRequestMock.mockRejectedValue(makeRequestError(status));
         try {
-          await useLlm_call(mockStateOpenAi, "hi");
+          await useLlm_call(mockStateOpenAi, "hi", undefined, getLlmConfig(mockStateOpenAi.key));
           throw new Error("Expected an error to be thrown");
         } catch (e) {
           expect(e).toBeInstanceOf(LlmExeError);
@@ -1131,7 +1133,7 @@ describe("useLlm_call", () => {
           expect(ctx.provider).toBe("openai.chat");
           expect(ctx.status).toBe(status);
           expect(ctx.providerError).toEqual({ message: "provider says no" });
-          expect((e as unknown as { cause?: unknown }).cause).toBeDefined();
+          expect((e as InstanceType<typeof LlmExeError>).cause).toBeDefined();
         }
       }
     );
@@ -1146,7 +1148,7 @@ describe("useLlm_call", () => {
       });
       apiRequestMock.mockRejectedValue(err);
       try {
-        await useLlm_call(mockStateOpenAi, "hi");
+        await useLlm_call(mockStateOpenAi, "hi", undefined, getLlmConfig(mockStateOpenAi.key));
         throw new Error("Expected an error to be thrown");
       } catch (e) {
         expect((e as InstanceType<typeof LlmExeError>).code).toBe(
@@ -1161,7 +1163,7 @@ describe("useLlm_call", () => {
       });
       apiRequestMock.mockRejectedValue(err);
       try {
-        await useLlm_call(mockStateOpenAi, "hi");
+        await useLlm_call(mockStateOpenAi, "hi", undefined, getLlmConfig(mockStateOpenAi.key));
         throw new Error("Expected an error to be thrown");
       } catch (e) {
         expect(e).toBeInstanceOf(LlmExeError);
@@ -1185,7 +1187,7 @@ describe("useLlm_call", () => {
         })
       );
       try {
-        await useLlm_call(mockStateOpenAi, "hi");
+        await useLlm_call(mockStateOpenAi, "hi", undefined, getLlmConfig(mockStateOpenAi.key));
         throw new Error("Expected an error to be thrown");
       } catch (e) {
         // Re-thrown unchanged — still request.invalid_url, not wrapped as llm.*

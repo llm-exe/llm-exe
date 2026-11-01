@@ -1,3 +1,8 @@
+---
+title: "Build a ReAct Agent in TypeScript | llm-exe"
+description: "Build a ReAct agent in TypeScript: an LLM loop that reasons step by step, calls tools like search and a calculator, and iterates to a final answer."
+---
+
 ## ReAct with Actions (tools)
 
 In this example, we will create a series of LLM executor functions which will work together to think step-by-step to decide which action to take to ultimately come up with the correct answer to an input question. The functions will use an internal dialogue combined with gtp-3.5-turbo.

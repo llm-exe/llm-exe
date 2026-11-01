@@ -1,3 +1,8 @@
+---
+title: "Use Deepseek Models in TypeScript with llm-exe"
+description: "Call Deepseek chat models like deepseek-flash and deepseek-v4-pro from TypeScript with llm-exe. Covers typed shorthands, authentication, and model options."
+---
+
 # Deepseek
 
 When using Deepseek models, llm-exe will make POST requests to `https://api.deepseek.com/v1/chat/completions`. All models are supported if you pass `deepseek.chat.v1` as the first argument, and then specify a model in the options.
@@ -7,9 +12,18 @@ llm-exe ships typed shorthands for the most common Deepseek models so you do not
 | Shorthand              | Default model        |
 | ---------------------- | -------------------- |
 | `deepseek.chat.v1`     | _none — set `model`_ |
-| `deepseek.chat`        | `deepseek-chat`      |
-| `deepseek.v4-flash`    | `deepseek-v4-flash`  |
+| `deepseek.flash`       | `deepseek-flash`     |
 | `deepseek.v4-pro`      | `deepseek-v4-pro`    |
+
+### Deprecated shorthands
+
+These shorthands still resolve, but emit a [deprecation warning](/llm/deprecations)
+when used. Migrate to an active shorthand above.
+
+| Shorthand           | Default model       | Status                                                                                                                                         |
+| ------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deepseek.chat`     | `deepseek-chat`     | Dropped from DeepSeek's docs but still served. Migrate to `deepseek.flash`, which runs in thinking mode by default and needs a larger `maxTokens` |
+| `deepseek.v4-flash` | `deepseek-v4-flash` | DeepSeek retired the model behind this id. The id is still accepted, and requests are served by DeepSeek-V4.1-Flash. Migrate to `deepseek.flash` |
 
 ## Basic Usage
 
@@ -17,23 +31,16 @@ llm-exe ships typed shorthands for the most common Deepseek models so you do not
 
 ```ts
 const llm = useLlm("deepseek.chat.v1", {
-  model: "deepseek-chat", // specify a model
+  model: "deepseek-flash", // specify a model
 });
 ```
 
 ### Deepseek Chat By Model
 
 ```ts
-const llm = useLlm("deepseek.chat", {
+const llm = useLlm("deepseek.flash", {
   // other options,
-  // no model needed, using deepseek-chat model
-});
-```
-
-```ts
-const llm = useLlm("deepseek.v4-flash", {
-  // other options,
-  // no model needed, using deepseek-v4-flash model
+  // no model needed, using deepseek-flash model
 });
 ```
 
@@ -74,6 +81,31 @@ In addition to the generic options, the following options are Deepseek-specific 
 | frequencyPenalty | number  | undefined     | Maps to `frequency_penalty`. See Deepseek Docs                 |
 | logitBias        | object  | undefined     | Maps to `logit_bias`. See Deepseek Docs                        |
 | useJson          | boolean | undefined     | When `true`, sets `response_format` to `json_object`           |
-| effort           | string  | undefined     | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Currently not supported by Deepseek models and will be silently ignored. |
+| effort           | string  | undefined     | Maps to `reasoning_effort`. Valid values: `"low"`, `"high"`, `"max"`. Sent for `deepseek-flash`, `deepseek-v4-pro`, and legacy `deepseek-v4-*` ids; ignored for `deepseek-chat`. |
 
 See [Deepseek API Reference](https://api-docs.deepseek.com/) for details on these parameters.
+
+## Thinking and provider-specific body fields
+
+Disable thinking with `extraBody`:
+
+```ts
+const llm = useLlm("deepseek.flash", {
+  extraBody: { thinking: { type: "disabled" } },
+});
+```
+
+To control thinking effort instead, set `effort: "low"`, `"high"`, or `"max"`.
+See [DeepSeek thinking mode](https://api-docs.deepseek.com/guides/thinking_mode/).
+
+`extraBody` accepts raw request fields and is shallow-merged after normal options
+and executor schema/tool mappings. Its fields take precedence; nested objects are
+replaced in full. See [generic options](/llm/generic).
+
+## Schema-typed JSON
+
+A JSON parser with a schema requests `response_format: { type: "json_object" }`
+on DeepSeek's chat completions endpoint, which does not support `json_schema`.
+The parser retains TypeScript inference and validates the response locally by
+default. Include instructions for the expected JSON shape in your prompt;
+JSON mode does not enforce that shape on the server.

@@ -7,11 +7,15 @@ name: Agent / Vitals
 # Loop prevention:
 #   - This workflow has NO push trigger. It cannot be triggered by its
 #     own commit to development.
-#   - The commit message includes [skip ci] so workflows that DO listen
-#     to push events skip this commit.
 #   - AUTOMATION.md lives at the repo root, outside any docs-sync or
 #     workflow-source path filter. Other workflows do not retrigger on
 #     vitals updates.
+#
+# The commit message must NOT include [skip ci]. This commit becomes the
+# head of the open development -> main release PR, and GitHub skips every
+# pull_request workflow for a PR whose head commit carries [skip ci]. The
+# required "Run Tests" checks then never report, the PR stays BLOCKED, and
+# auto-merge never runs, even after the PR is marked ready (#830).
 
 on:
   schedule:
@@ -71,7 +75,7 @@ jobs:
             exit 0
           fi
           git add AUTOMATION.md
-          git commit -m "chore: refresh automation vitals [skip ci]"
+          git commit -m "chore: refresh automation vitals"
           # Use a small retry to absorb the rare race against a parallel commit
           # to development. If push fails, pull rebase and retry once.
           if ! git push origin development; then

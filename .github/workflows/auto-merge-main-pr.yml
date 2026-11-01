@@ -53,18 +53,24 @@ jobs:
         if: env.PR_NUMBER != ''
         id: wait-checks
         run: |
-          MAX_ATTEMPTS=10
+          # The "pending" bucket covers QUEUED, WAITING and PENDING as well as
+          # IN_PROGRESS. Counting only IN_PROGRESS let a test job that had not
+          # picked up a runner yet read as finished.
+          MAX_ATTEMPTS=20
           ATTEMPT=0
           while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
-            CHECKS_IN_PROGRESS=$(gh pr checks ${{ env.PR_NUMBER }} --json name,state --jq '[.[] | select(.name != "auto-merge") | select(.state == "IN_PROGRESS")] | length')
-            if [[ "$CHECKS_IN_PROGRESS" -eq "0" ]]; then
+            CHECKS_PENDING=$(gh pr checks ${{ env.PR_NUMBER }} --json name,bucket --jq '[.[] | select(.name != "auto-merge") | select(.bucket == "pending")] | length')
+            if [[ "$CHECKS_PENDING" -eq "0" ]]; then
               echo "All checks are complete"
-              break
+              exit 0
             fi
-            echo "Checks are still in progress... waiting number $ATTEMPT/$MAX_ATTEMPTS"
+            echo "$CHECKS_PENDING checks still pending... waiting number $ATTEMPT/$MAX_ATTEMPTS"
             ATTEMPT=$((ATTEMPT + 1))
             sleep 30
           done
+          # Fail closed: merging while checks are unfinished would ship untested code.
+          echo "::error::Checks still pending after $MAX_ATTEMPTS attempts. Not merging; merge #${{ env.PR_NUMBER }} by hand once they pass."
+          exit 1
         env:
           GH_TOKEN: ${{ steps.bot-token.outputs.token }}
           GITHUB_TOKEN: ${{ steps.bot-token.outputs.token }}
@@ -73,8 +79,10 @@ jobs:
         id: pr-checks
         if: env.PR_NUMBER != ''
         run: |
-          FAILED_CHECKS=$(gh pr checks ${{ env.PR_NUMBER }} --json name,state --jq '[.[] | select(.name != "auto-merge") | select(.state == "FAILURE")] | length')
-          ALL_PASSED=$(gh pr checks ${{ env.PR_NUMBER }} --json name,state --jq '[.[] | select(.name != "auto-merge") | select(.state == "SUCCESS")] | length')
+          # "fail" covers ERROR and TIMED_OUT as well as FAILURE. A cancelled
+          # check never finished, so it is not a pass either.
+          FAILED_CHECKS=$(gh pr checks ${{ env.PR_NUMBER }} --json name,bucket --jq '[.[] | select(.name != "auto-merge") | select(.bucket == "fail" or .bucket == "cancel")] | length')
+          ALL_PASSED=$(gh pr checks ${{ env.PR_NUMBER }} --json name,bucket --jq '[.[] | select(.name != "auto-merge") | select(.bucket == "pass")] | length')
           TOTAL_CHECKS=$(gh pr checks ${{ env.PR_NUMBER }} --json name,state --jq '[.[] | select(.name != "auto-merge")] | length')
           echo "Total checks: $TOTAL_CHECKS"
           echo "All passed: $ALL_PASSED"

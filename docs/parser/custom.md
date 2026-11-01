@@ -1,3 +1,8 @@
+---
+title: "Create Custom Parsers for LLM Output | llm-exe"
+description: "Define custom parsers to transform LLM output into any shape you need. Return types flow through to the executor for fully typed results in TypeScript."
+---
+
 # Custom Parser
 
 You can define a custom parser to have full control over transforming the LLM output into the format you expect.

@@ -1,5 +1,10 @@
 import { BaseExecutor } from "@/executor";
-import { CoreExecutorHookInput, PlainObject } from "@/interfaces";
+import {
+  BaseExecutorHooks,
+  CoreExecutorHookInput,
+  ListenerFunction,
+  PlainObject,
+} from "@/interfaces";
 import { LlmExeError } from "@/errors";
 
 /**
@@ -100,6 +105,23 @@ describe("llm-exe:executor/BaseExecutor", () => {
     expect(executor.hooks.onComplete).toHaveLength(2);
   });
 
+  it("hooks and allowedHooks are typed from the hooks generic", () => {
+    const executor = new MockExecutor();
+    const onComplete: ListenerFunction[] = executor.hooks.onComplete;
+    const allowed: (keyof BaseExecutorHooks)[] = executor.allowedHooks;
+    expect(onComplete).toEqual([]);
+    expect(allowed).toEqual(["onComplete", "onError", "onSuccess"]);
+
+    // @ts-expect-error - unknown hook names are not on the hooks map
+    expect(executor.hooks.thisDoesntExist).toBeUndefined();
+    // @ts-expect-error - hook lists hold listener functions, not strings
+    const bad: string[] = executor.hooks.onComplete;
+    expect(bad).toEqual([]);
+    // @ts-expect-error - allowedHooks only accepts known hook names
+    const badAllowed: "notAHook"[] = executor.allowedHooks;
+    expect(badAllowed).toHaveLength(3);
+  });
+
   it("MockExecutor invalid hooks don't get set", async () => {
     const executor = new MockExecutor("mock-executor", "mock", {
       thisDoesntExist(){} ,
@@ -144,8 +166,8 @@ describe("llm-exe:executor/BaseExecutor", () => {
       expect(error.message).toEqual("Something happened")
     } finally {
       expect(executor.runHook).toHaveBeenCalledTimes(2);
-      expect(executor.runHook).toHaveBeenNthCalledWith(1, "onError", expect.any(Object));
-      expect(executor.runHook).toHaveBeenNthCalledWith(2, "onComplete", expect.any(Object));
+      expect(executor.runHook).toHaveBeenNthCalledWith(1, "onError", expect.any(Object), undefined);
+      expect(executor.runHook).toHaveBeenNthCalledWith(2, "onComplete", expect.any(Object), undefined);
     }
   });
   it("MockExecutor can removeHooks", async () => {
@@ -483,7 +505,7 @@ describe("llm-exe:executor/BaseExecutor", () => {
     it("should initialize hooks array when once is called for uninitialized event", () => {
       const executor = new MockExecutor();
       // Manually delete an event's hooks array to simulate uninitialized state
-      delete executor.hooks.onSuccess;
+      delete (executor.hooks as Partial<typeof executor.hooks>).onSuccess;
       expect(executor.hooks.onSuccess).toBeUndefined();
 
       executor.once("onSuccess", () => {});
@@ -670,6 +692,37 @@ describe("llm-exe:executor/BaseExecutor", () => {
       // Subsequent executions must not re-fire the throwing callback.
       await executor.execute({});
       expect(calls).toBe(1);
+    });
+
+    it("off(fn) removes a pending once(fn) before it fires", async () => {
+      const executor = new MockExec();
+      const fn = jest.fn();
+      executor.once("onSuccess", fn);
+      expect(executor.getHookCount("onSuccess")).toBe(1);
+
+      executor.off("onSuccess", fn);
+      expect(executor.getHookCount("onSuccess")).toBe(0);
+
+      await executor.execute({});
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    it("off(fn) only removes the matching once registration", async () => {
+      const executor = new MockExec();
+      const fn = jest.fn();
+      const other = jest.fn();
+      executor.once("onSuccess", fn);
+      executor.once("onSuccess", other);
+      executor.on("onSuccess", fn);
+
+      executor.off("onSuccess", other);
+      expect(executor.getHookCount("onSuccess")).toBe(2);
+
+      await executor.execute({});
+      expect(other).not.toHaveBeenCalled();
+      // once(fn) fires and self-removes; on(fn) stays registered.
+      expect(fn).toHaveBeenCalledTimes(2);
+      expect(executor.getHookCount("onSuccess")).toBe(1);
     });
   });
 

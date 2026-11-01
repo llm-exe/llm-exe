@@ -2,6 +2,7 @@ import { withDefaultModel } from "@/llm/_utils.withDefaultModel";
 import { Config } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { OutputOllamaChat } from "@/llm/output/ollama";
+import { ollamaPromptSanitize } from "./promptSanitize";
 const ollamaChatV1: Config = {
   key: "ollama.chat.v1",
   provider: "ollama.chat",
@@ -20,12 +21,7 @@ const ollamaChatV1: Config = {
   mapBody: {
     prompt: {
       key: "messages",
-      transform: (v) => {
-        if (typeof v === "string") {
-          return [{ role: "user", content: v }];
-        }
-        return v;
-      },
+      transform: (v) => ollamaPromptSanitize(v),
     },
     model: {
       key: "model",
@@ -60,4 +56,10 @@ export const ollama = {
   "ollama.qwen3.5": withDefaultModel(ollamaChatV1, "qwen3.5"),
   "ollama.gemma4": withDefaultModel(ollamaChatV1, "gemma4"),
   "ollama.gpt-oss": withDefaultModel(ollamaChatV1, "gpt-oss"),
+  // GLM 5.3 is published only as an Ollama cloud model: the registry has a
+  // ":cloud" tag and no ":latest" (verified 2026-10-12). An untagged name
+  // resolves to ":latest" and 404s, so the tag is pinned. Cloud models run
+  // through the local daemon but need it signed in ("ollama signin").
+  "ollama.glm-5.3": withDefaultModel(ollamaChatV1, "glm-5.3:cloud"),
+  "ollama.glm-5.3-flash": withDefaultModel(ollamaChatV1, "glm-5.3-flash:cloud"),
 };

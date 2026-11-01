@@ -823,4 +823,75 @@ describe("llm-exe:prompt/ChatPrompt", () => {
       { content: null, role: "assistant" },
     ]);
   });
+  describe("function messages with content blocks", () => {
+    const imageBlock = {
+      type: "image_url",
+      image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+    };
+
+    it("templates text blocks and passes image blocks through (sync)", () => {
+      const prompt = new ChatPrompt<{ label: string }>("System");
+      prompt.addFunctionMessage(
+        [{ type: "text", text: "Screenshot of {{label}}" }, imageBlock],
+        "screenshot",
+        "call_1"
+      );
+      const result = prompt.format({ label: "the homepage" });
+      expect(result[1]).toEqual({
+        role: "function",
+        name: "screenshot",
+        id: "call_1",
+        content: [
+          { type: "text", text: "Screenshot of the homepage" },
+          imageBlock,
+        ],
+      });
+    });
+
+    it("templates text blocks and passes image blocks through (async)", async () => {
+      const prompt = new ChatPrompt<{ label: string }>("System");
+      prompt.addFunctionMessage(
+        [{ type: "text", text: "Screenshot of {{label}}" }, imageBlock],
+        "screenshot",
+        "call_1"
+      );
+      const result = await prompt.formatAsync({ label: "the homepage" });
+      expect(result[1]).toEqual({
+        role: "function",
+        name: "screenshot",
+        id: "call_1",
+        content: [
+          { type: "text", text: "Screenshot of the homepage" },
+          imageBlock,
+        ],
+      });
+    });
+
+    it("keeps string function content behavior unchanged", () => {
+      const prompt = new ChatPrompt<{ label: string }>("System");
+      prompt.addFunctionMessage("Result for {{label}}", "lookup", "call_2");
+      expect(prompt.format({ label: "x" })[1]).toEqual({
+        role: "function",
+        name: "lookup",
+        id: "call_2",
+        content: "Result for x",
+      });
+    });
+
+    it("round trips block content through addFromHistory", () => {
+      const prompt = new ChatPrompt("System");
+      prompt.addFromHistory([
+        {
+          role: "function",
+          name: "screenshot",
+          id: "call_3",
+          content: [{ type: "text", text: "done" }, imageBlock],
+        },
+      ]);
+      expect(prompt.format({})[1].content).toEqual([
+        { type: "text", text: "done" },
+        imageBlock,
+      ]);
+    });
+  });
 });

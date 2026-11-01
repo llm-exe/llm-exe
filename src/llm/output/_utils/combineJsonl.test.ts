@@ -90,7 +90,7 @@ describe("combineJsonl", () => {
       expect(ctx.operation).toBe("combineJsonl");
       expect(ctx.lineNumber).toBe(2);
       expect(String(ctx.lineExcerpt)).toContain("NOT VALID JSON");
-      expect((e as unknown as { cause?: unknown }).cause).toBeDefined();
+      expect((e as LlmExeError).cause).toBeDefined();
     }
   });
 

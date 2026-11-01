@@ -132,7 +132,7 @@ jobs:
 
           prompt_file="./scripts/agents/prompts/docs-sync.md"
           prompt=$(sed -e "s|\$BRANCH|$branch|g" -e "s|\$LOG_FILE|$log_file|g" "$prompt_file")
-          prior_context=$(build_prior_context "docs-sync" "$log_file" 2>/dev/null || true)
+          prior_context=$(build_prior_context "docs-sync" "$log_file" || true)
           prompt="${prompt}${prior_context}"
 
           deadline="$(date -u -d "+600 seconds" +%H:%M)"

@@ -1,3 +1,8 @@
+---
+title: "Create Custom LLM Providers in TypeScript | llm-exe"
+description: "Define custom LLM providers in TypeScript with llm-exe. Connect OpenAI-compatible APIs, local models, and corporate proxies using useLlmConfiguration."
+---
+
 # Custom Provider Configuration
 
 The `useLlmConfiguration` function allows you to define custom LLM provider configurations. This is useful for:
@@ -64,10 +69,11 @@ const customLlm = useLlmConfiguration({
 });
 
 // Use it like any other LLM
+// apiKey and model are accepted because the config declares them under `options`
 const llm = customLlm({
   apiKey: process.env.CUSTOM_API_KEY,
   model: "gpt-4o",
-} as any); // Note: Use 'as any' for custom options that aren't in base types
+});
 
 const response = await llm.call("Hello, how are you?");
 console.log(response.getResultText());
@@ -279,6 +285,9 @@ const llm = useLlmConfiguration(config);
 - **apiKeyMapping** ([string, string]): Tuple of `[optionName, envVarName]`
   - First element: the option name users will use (e.g., `apiKey`)
   - Second element: environment variable to read from (or empty string if no default)
+- **isReasoningModel** (optional): `(model: string) => boolean`; `effort` is sent as `reasoning_effort` only for models it accepts (defaults to none)
+- **reasoningEfforts** (optional): `readonly string[]` of accepted `effort` values (defaults to `minimal`, `low`, `medium`, `high`)
+- **mapOptions** (optional): Executor-option mappings (`jsonSchema`, `functions`, `functionCall`) that replace the OpenAI defaults of the same name; unspecified mappings keep the defaults
 - **transformResponse** (optional): Custom response transformer (defaults to OpenAI format)
 
 #### What's Included
@@ -406,11 +415,11 @@ Custom providers work seamlessly with executors:
 import { useLlmConfiguration, createLlmExecutor, createChatPrompt, createParser } from "llm-exe";
 
 const customLlm = useLlmConfiguration({
-  // ... your config
+  // ... your config, with `apiKey` declared under `options`
 });
 
 const executor = createLlmExecutor({
-  llm: customLlm({ apiKey: process.env.API_KEY } as any),
+  llm: customLlm({ apiKey: process.env.API_KEY }),
   prompt: createChatPrompt(`Analyze: {{text}}`),
   parser: createParser("json"),
 });
@@ -448,13 +457,28 @@ const mockLlm = useLlmConfiguration({
 
 ## Important Notes
 
-1. **Custom options require type assertion**: When passing custom options that aren't in the base types, use `as any`:
+1. **Custom options are typed from the config**: every key you declare under `options` is accepted by the returned factory without a cast. Keys that neither the config nor a built-in provider declares are rejected. The values are typed `unknown`.
    ```typescript
-   const llm = customLlm({ customOption: "value" } as any);
+   const customLlm = useLlmConfiguration({
+     // ...
+     options: { region: {} },
+   });
+   const llm = customLlm({ region: "us-east-1" }); // no cast needed
    ```
+   This inference needs TypeScript to infer the config type, so don't pass an explicit type argument (`useLlmConfiguration<"openai.chat.v1">(config)`). With one, custom keys are rejected again.
 
 2. **Transform functions are required**: You must implement your own `transformResponse` function to map the provider's response format to llm-exe's standard format.
 
 3. **Headers must be valid JSON**: The `headers` property expects a JSON string, not an object.
 
 4. **Template variables**: Both `endpoint` and `headers` support `{{variable}}` placeholders that will be replaced with values from the options.
+
+## Custom Configuration Behavior
+
+Custom configurations are used throughout execution: their endpoint, headers,
+body mappings, executor-option mappings, and response transformer are preserved,
+even when the key matches a built-in configuration. Custom keys do not need registry
+entries. Custom options must be declared in `config.options` to reach mappings.
+
+For raw provider body fields, use the generic `extraBody` option. It is applied
+last, with shallow replacement semantics, and does not need a `mapBody` entry.

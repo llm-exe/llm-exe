@@ -30,6 +30,7 @@ describe("llmExe", () => {
     expect(llmExe).toHaveProperty("createParser");
     expect(llmExe).toHaveProperty("createCustomParser");
     expect(llmExe).toHaveProperty("LlmNativeFunctionParser");
+    expect(llmExe).toHaveProperty("LlmFunctionParser");
     /**
      * Core Functions
      */
@@ -107,6 +108,7 @@ describe("llmExe", () => {
     expect(typeof llmExe.CustomParser).toBe("function");
     expect(typeof llmExe.OpenAiFunctionParser).toBe("function");
     expect(typeof llmExe.LlmNativeFunctionParser).toBe("function");
+    expect(typeof llmExe.LlmFunctionParser).toBe("function");
     expect(typeof llmExe.BaseExecutor).toBe("function");
     expect(typeof llmExe.LlmExecutorWithFunctions).toBe("function");
     expect(typeof llmExe.LlmExecutorOpenAiFunctions).toBe("function");

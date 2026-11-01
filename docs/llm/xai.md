@@ -1,3 +1,8 @@
+---
+title: "Use xAI Grok Models in TypeScript with llm-exe"
+description: "Call xAI Grok models like grok-4.3 and grok-4.7 from TypeScript with llm-exe. Covers typed model shorthands, API key setup, and xAI-specific options."
+---
+
 # xAI
 
 When using xAI models, llm-exe will make POST requests to `https://api.x.ai/v1/chat/completions`. All models are supported if you pass `xai.chat.v1` as the first argument, and then specify a model in the options.
@@ -7,15 +12,26 @@ llm-exe ships typed shorthands for the most common xAI models so you do not have
 | Shorthand                  | Default model                       |
 | -------------------------- | ----------------------------------- |
 | `xai.chat.v1`              | _none — set `model`_                |
-| `xai.grok-2`               | `grok-2-latest`                     |
-| `xai.grok-3`               | `grok-3`                            |
-| `xai.grok-3-mini`          | `grok-3-mini`                       |
-| `xai.grok-4`               | `grok-4`                            |
-| `xai.grok-4-fast`          | `grok-4-fast-non-reasoning`         |
-| `xai.grok-4-1-fast`        | `grok-4-1-fast-non-reasoning`       |
 | `xai.grok-4.3`             | `grok-4.3` (reasoning model)        |
 | `xai.grok-4.20`            | `grok-4.20-0309-non-reasoning`      |
 | `xai.grok-4.20-reasoning`  | `grok-4.20-0309-reasoning`          |
+| `xai.grok-4.5`             | `grok-4.5` (reasoning model)        |
+| `xai.grok-4.6`             | `grok-4.6` (reasoning model)        |
+| `xai.grok-4.7`             | `grok-4.7` (reasoning model)        |
+
+### Deprecated shorthands
+
+These shorthands still resolve, but emit a [deprecation warning](/llm/deprecations)
+when used. Migrate to `xai.grok-4.3` (or another active shorthand above).
+
+| Shorthand           | Default model                 | Status                                                              |
+| ------------------- | ----------------------------- | ------------------------------------------------------------------- |
+| `xai.grok-3`        | `grok-3`                      | Retired by xAI on 2026-05-15 — requests are redirected to `grok-4.3` |
+| `xai.grok-4-fast`   | `grok-4-fast-non-reasoning`   | Retired by xAI on 2026-05-15 — requests are redirected to `grok-4.3` |
+| `xai.grok-4-1-fast` | `grok-4-1-fast-non-reasoning` | Retired by xAI on 2026-05-15 — requests are redirected to `grok-4.3` |
+| `xai.grok-2`        | `grok-2-latest`               | No longer served by xAI — requests will fail at the API              |
+| `xai.grok-3-mini`   | `grok-3-mini`                 | Delisted by xAI, no published redirect                               |
+| `xai.grok-4`        | `grok-4`                      | Delisted by xAI, no published redirect                               |
 
 ## Basic Usage
 
@@ -23,23 +39,23 @@ llm-exe ships typed shorthands for the most common xAI models so you do not have
 
 ```ts
 const llm = useLlm("xai.chat.v1", {
-  model: "grok-4", // specify a model
+  model: "grok-4.3", // specify a model
 });
 ```
 
 ### x.ai Chat By Model
 
 ```ts
-const llm = useLlm("xai.grok-4", {
+const llm = useLlm("xai.grok-4.3", {
   // other options,
-  // no model needed, using grok-4
+  // no model needed, using grok-4.3
 });
 ```
 
 ```ts
-const llm = useLlm("xai.grok-3-mini", {
+const llm = useLlm("xai.grok-4.7", {
   // other options,
-  // no model needed, using grok-3-mini
+  // no model needed, using grok-4.7
 });
 ```
 
@@ -73,6 +89,15 @@ In addition to the generic options, the following options are xAI-specific and c
 | frequencyPenalty | number  | undefined   | Maps to `frequency_penalty`. See xAI Docs                     |
 | logitBias        | object  | undefined   | Maps to `logit_bias`. See xAI Docs                            |
 | useJson          | boolean | undefined   | When `true`, sets `response_format` to `json_object`           |
-| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`. Currently not supported by any available xAI model and will be silently ignored. |
+| effort           | string  | undefined   | Maps to `reasoning_effort`. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`, `"xhigh"` (`grok-4.5` treats `"xhigh"` as `"high"`). Only sent for `grok-4.3`, `grok-4.5`, `grok-4.6` and `grok-4.7`; on any other model, or for a value outside that list, it is silently dropped. `"none"` is always dropped: `grok-4.5` and later reject it, and although `grok-4.3` accepts it (it turns reasoning off), the value list is shared across models. |
+
+::: warning `effort` and `xai.grok-4.20-reasoning`
+`xai.grok-4.20-reasoning` resolves to `grok-4.20-0309-reasoning`, which is a
+reasoning model, but xAI rejects `reasoning_effort` for it: every value returns
+a 400 ("does not support parameter reasoningEffort"). So llm-exe drops `effort`
+for this shorthand instead of sending it. There is no error or warning. To
+control reasoning effort, use `xai.grok-4.3`, `xai.grok-4.5`, `xai.grok-4.6`, or
+`xai.grok-4.7`.
+:::
 
 See [xAI API Reference](https://docs.x.ai/docs/overview) for details on these parameters.

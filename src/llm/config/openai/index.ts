@@ -12,8 +12,23 @@ const openAiChatV1: Config = createOpenAiCompatibleConfiguration({
   apiKeyMapping: ["openAiApiKey", "OPENAI_API_KEY"],
   isReasoningModel: (model) =>
     model.startsWith("gpt-5") ||
+    model.startsWith("gpt-6") ||
     model.startsWith("o3") ||
     model.startsWith("o4"),
+  // "none" is the only effort under which gpt-5.1+ accept temperature / top_p.
+  // The original gpt-5 / gpt-5-mini / gpt-5-nano reject "none" itself (their
+  // floor is "minimal"); those shorthands are deprecated and shut down
+  // 2026-12-11, so the caller owns that combination.
+  reasoningEfforts: ["none", "minimal", "low", "medium", "high"],
+  // gpt-5 / o-series 400 on the legacy `max_tokens`
+  // ("Use 'max_completion_tokens' instead").
+  reasoningMaxTokensKey: "max_completion_tokens",
+  // gpt-5.x 400 on any non-default temperature / top_p while reasoning is
+  // active; gpt-5.5 and gpt-5.6 reject them even with reasoning_effort unset.
+  // Only an explicit "none" is accepted across the family (verified against
+  // the live API 2026-10-08), so that is the only effort under which they are
+  // forwarded.
+  reasoningSamplingAllowedEfforts: ["none"],
 });
 
 const openAiChatMockV1: Config = {
@@ -24,6 +39,7 @@ const openAiChatMockV1: Config = {
     prompt: {},
     topP: {},
     useJson: {},
+    mockResponse: {},
     openAiApiKey: {
       default: getEnvironmentVariable("OPENAI_API_KEY_MOCK"),
     },
@@ -51,21 +67,77 @@ const openAiChatMockV1: Config = {
 export const openai = {
   "openai.chat.v1": openAiChatV1,
   "openai.chat-mock.v1": openAiChatMockV1,
+  // GPT-6 family. The bare "openai.gpt-6" alias points at astra, matching the
+  // convention set by "openai.gpt-5.6" -> gpt-5.6-sol, so sibling variants can
+  // be added later without moving the bare shorthand.
+  "openai.gpt-6": withDefaultModel(openAiChatV1, "gpt-6-astra"),
+  "openai.gpt-6-astra": withDefaultModel(openAiChatV1, "gpt-6-astra"),
+  "openai.gpt-6.1-sol": withDefaultModel(openAiChatV1, "gpt-6.1-sol"),
+  "openai.gpt-6-luna": withDefaultModel(openAiChatV1, "gpt-6-luna"),
   // GPT-5 family
+  "openai.gpt-5.6": withDefaultModel(openAiChatV1, "gpt-5.6-sol"),
+  "openai.gpt-5.6-terra": withDefaultModel(openAiChatV1, "gpt-5.6-terra"),
+  "openai.gpt-5.6-luna": withDefaultModel(openAiChatV1, "gpt-5.6-luna"),
+  "openai.gpt-5.5": withDefaultModel(openAiChatV1, "gpt-5.5"),
+  "openai.gpt-5.4": withDefaultModel(openAiChatV1, "gpt-5.4"),
+  "openai.gpt-5.4-mini": withDefaultModel(openAiChatV1, "gpt-5.4-mini"),
   "openai.gpt-5.2": withDefaultModel(openAiChatV1, "gpt-5.2"),
-  "openai.gpt-5-mini": withDefaultModel(openAiChatV1, "gpt-5-mini"),
-  "openai.gpt-5-nano": withDefaultModel(openAiChatV1, "gpt-5-nano"),
-  // GPT-4.1 family
-  "openai.gpt-4.1": withDefaultModel(openAiChatV1, "gpt-4.1"),
-  "openai.gpt-4.1-mini": withDefaultModel(openAiChatV1, "gpt-4.1-mini"),
-  "openai.gpt-4.1-nano": withDefaultModel(openAiChatV1, "gpt-4.1-nano"),
-  // Reasoning models
-  "openai.o3": withDefaultModel(openAiChatV1, "o3"),
-  // GPT-4o family
-  "openai.gpt-4": withDefaultModel(openAiChatV1, "gpt-4"),
-  "openai.gpt-4o": withDefaultModel(openAiChatV1, "gpt-4o"),
-  "openai.gpt-4o-mini": withDefaultModel(openAiChatV1, "gpt-4o-mini"),
   // Deprecated
+  // NOTE: the GPT-4.1 and GPT-4o families shut down 2027-01-14. OpenAI names
+  // gpt-6-luna as the replacement for all four.
+  ...deprecateShorthand("openai.gpt-4.1", {
+    config: withDefaultModel(openAiChatV1, "gpt-4.1"),
+    message:
+      'Model "openai.gpt-4.1" is deprecated and will shut down on 2027-01-14. Migrate to "openai.gpt-6-luna".',
+  }),
+  ...deprecateShorthand("openai.gpt-4.1-mini", {
+    config: withDefaultModel(openAiChatV1, "gpt-4.1-mini"),
+    message:
+      'Model "openai.gpt-4.1-mini" is deprecated and will shut down on 2027-01-14. Migrate to "openai.gpt-6-luna".',
+  }),
+  ...deprecateShorthand("openai.gpt-4o", {
+    config: withDefaultModel(openAiChatV1, "gpt-4o"),
+    message:
+      'Model "openai.gpt-4o" is deprecated and will shut down on 2027-01-14. Migrate to "openai.gpt-6-luna".',
+  }),
+  ...deprecateShorthand("openai.gpt-4o-mini", {
+    config: withDefaultModel(openAiChatV1, "gpt-4o-mini"),
+    message:
+      'Model "openai.gpt-4o-mini" is deprecated and will shut down on 2027-01-14. Migrate to "openai.gpt-6-luna".',
+  }),
+  ...deprecateShorthand("openai.gpt-4.1-nano", {
+    config: withDefaultModel(openAiChatV1, "gpt-4.1-nano"),
+    message:
+      'Model "openai.gpt-4.1-nano" is deprecated and will shut down on 2026-10-23. Migrate to openai.gpt-5.6-luna.',
+  }),
+  // NOTE: the undated "gpt-4" alias resolves to the gpt-4-0613 snapshot, which
+  // is in OpenAI's 2026-10-23 shutdown batch. "gpt-4.1" and "gpt-4.1-mini" are
+  // not affected.
+  ...deprecateShorthand("openai.gpt-4", {
+    config: withDefaultModel(openAiChatV1, "gpt-4"),
+    message:
+      'Model "openai.gpt-4" is deprecated and will shut down on 2026-10-23. Migrate to openai.gpt-6-luna.',
+  }),
+  // NOTE: gpt-5-mini / gpt-5-nano / o3 resolve to undated aliases whose only
+  // shipped snapshots (gpt-5-mini-2025-08-07, gpt-5-nano-2025-08-07,
+  // o3-2025-04-16) shut down 2026-12-11. OpenAI's announcement lists the dated
+  // snapshots rather than the aliases, so these still resolve and call as
+  // before — the warning is notice, not a removal.
+  ...deprecateShorthand("openai.gpt-5-mini", {
+    config: withDefaultModel(openAiChatV1, "gpt-5-mini"),
+    message:
+      'Model "openai.gpt-5-mini" is deprecated and will shut down on 2026-12-11. Migrate to "openai.gpt-5.6-terra".',
+  }),
+  ...deprecateShorthand("openai.gpt-5-nano", {
+    config: withDefaultModel(openAiChatV1, "gpt-5-nano"),
+    message:
+      'Model "openai.gpt-5-nano" is deprecated and will shut down on 2026-12-11. Migrate to "openai.gpt-5.6-luna".',
+  }),
+  ...deprecateShorthand("openai.o3", {
+    config: withDefaultModel(openAiChatV1, "o3"),
+    message:
+      'Model "openai.o3" is deprecated and will shut down on 2026-12-11. Migrate to "openai.gpt-5.6".',
+  }),
   ...deprecateShorthand("openai.o4-mini", {
     config: withDefaultModel(openAiChatV1, "o4-mini"),
     message:

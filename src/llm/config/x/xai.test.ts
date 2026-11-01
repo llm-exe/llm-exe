@@ -1,4 +1,5 @@
 import { xai } from "@/llm/config/x";
+import { mapBody } from "@/llm/_utils.mapBody";
 import { Config } from "@/types";
 
 describe("openai configuration", () => {
@@ -69,6 +70,36 @@ describe("openai configuration", () => {
     });
   });
 
+  describe("xai.grok-4.6", () => {
+    const config = xai["xai.grok-4.6"] as Config;
+
+    it("should have the correct default model", () => {
+      expect(config.options.model.default).toBe("grok-4.6");
+    });
+
+    it("should have the correct key, provider, endpoint, and method", () => {
+      expect(config.key).toBe("xai.chat.v1");
+      expect(config.provider).toBe("xai.chat");
+      expect(config.endpoint).toBe("https://api.x.ai/v1/chat/completions");
+      expect(config.method).toBe("POST");
+    });
+  });
+
+  describe("xai.grok-4.7", () => {
+    const config = xai["xai.grok-4.7"] as Config;
+
+    it("should have the correct default model", () => {
+      expect(config.options.model.default).toBe("grok-4.7");
+    });
+
+    it("should have the correct key, provider, endpoint, and method", () => {
+      expect(config.key).toBe("xai.chat.v1");
+      expect(config.provider).toBe("xai.chat");
+      expect(config.endpoint).toBe("https://api.x.ai/v1/chat/completions");
+      expect(config.method).toBe("POST");
+    });
+  });
+
   describe("all shorthands resolve to expected default model", () => {
     it.each([
       ["xai.grok-2", "grok-2-latest"],
@@ -80,6 +111,9 @@ describe("openai configuration", () => {
       ["xai.grok-4.3", "grok-4.3"],
       ["xai.grok-4.20", "grok-4.20-0309-non-reasoning"],
       ["xai.grok-4.20-reasoning", "grok-4.20-0309-reasoning"],
+      ["xai.grok-4.5", "grok-4.5"],
+      ["xai.grok-4.6", "grok-4.6"],
+      ["xai.grok-4.7", "grok-4.7"],
     ] as const)(
       "%s should resolve to %s and share base config",
       (shorthand, expectedModel) => {
@@ -100,6 +134,60 @@ describe("openai configuration", () => {
     );
   });
 
+  describe("deprecated shorthands", () => {
+    const deprecated = [
+      "xai.grok-2",
+      "xai.grok-3",
+      "xai.grok-3-mini",
+      "xai.grok-4",
+      "xai.grok-4-fast",
+      "xai.grok-4-1-fast",
+    ] as const;
+
+    it.each(deprecated)("%s should be marked deprecated", (shorthand) => {
+      const cfg = xai[shorthand] as Config;
+      expect(cfg.deprecated).toBeDefined();
+      expect(cfg.deprecated?.shorthand).toBe(shorthand);
+      expect(cfg.deprecated?.message).toContain(shorthand);
+      expect(cfg.deprecated?.message).toContain("xai.grok-4.3");
+    });
+
+    it.each([
+      "xai.grok-4.3",
+      "xai.grok-4.20",
+      "xai.grok-4.20-reasoning",
+      "xai.grok-4.5",
+      "xai.grok-4.6",
+      "xai.grok-4.7",
+    ] as const)("%s should not be marked deprecated", (shorthand) => {
+      expect((xai[shorthand] as Config).deprecated).toBeUndefined();
+    });
+  });
+
+  // xAI reasoning models still accept max_tokens / temperature / top_p, so the
+  // OpenAI-only reasoning rules (max_completion_tokens, sampling drop) must not
+  // leak through the shared factory.
+  describe("reasoning models keep legacy params (OpenAI gpt-5 rules do not apply)", () => {
+    it.each(["grok-4.3", "grok-4.5", "grok-4.6", "grok-4.7"])(
+      "%s forwards max_tokens, temperature, and top_p alongside reasoning_effort",
+      (model) => {
+        const body = mapBody(xai["xai.chat.v1"].mapBody, {
+          prompt: [{ role: "user", content: "hi" }],
+          model,
+          temperature: 0,
+          topP: 0.9,
+          maxTokens: 256,
+          effort: "high",
+        });
+        expect(body.max_tokens).toBe(256);
+        expect(body.max_completion_tokens).toBeUndefined();
+        expect(body.temperature).toBe(0);
+        expect(body.top_p).toBe(0.9);
+        expect(body.reasoning_effort).toBe("high");
+      }
+    );
+  });
+
   describe("effort transform", () => {
     const transform = xai["xai.chat.v1"].mapBody.effort.transform as (
       v: any,
@@ -115,6 +203,7 @@ describe("openai configuration", () => {
         "grok-4-fast-non-reasoning",
         "grok-4-1-fast-non-reasoning",
         "grok-4.20-0309-non-reasoning",
+        // reasons, but xAI rejects reasoning_effort for it with a 400
         "grok-4.20-0309-reasoning",
       ]) {
         expect(transform("low", { model })).toBeUndefined();
@@ -122,21 +211,44 @@ describe("openai configuration", () => {
       }
     });
 
-    it("passes through valid effort values for grok-4.3", () => {
-      for (const value of ["low", "medium", "high"]) {
-        expect(transform(value, { model: "grok-4.3" })).toBe(value);
+    // Every value here returned 200 from each model (verified 2026-10-13).
+    // "none" is dropped because grok-4.5 and later reject it with a 400.
+    it.each(["grok-4.3", "grok-4.5", "grok-4.6", "grok-4.7"])(
+      "passes through every supported effort value for %s",
+      (model) => {
+        for (const value of ["minimal", "low", "medium", "high", "xhigh"]) {
+          expect(transform(value, { model })).toBe(value);
+        }
       }
+    );
+
+    it.each(["grok-4.3", "grok-4.5", "grok-4.6", "grok-4.7"])(
+      "drops unsupported effort values for %s",
+      (model) => {
+        expect(transform("none", { model })).toBeUndefined();
+        expect(transform("max", { model })).toBeUndefined();
+        expect(transform(123, { model })).toBeUndefined();
+      }
+    );
+
+    it("sends xhigh as reasoning_effort in the request body", () => {
+      const body = mapBody(xai["xai.grok-4.6"].mapBody, {
+        prompt: [{ role: "user", content: "hi" }],
+        model: "grok-4.6",
+        effort: "xhigh",
+      });
+      expect(body.reasoning_effort).toBe("xhigh");
     });
 
-    it("passes through minimal effort for grok-4.3", () => {
-      expect(transform("minimal", { model: "grok-4.3" })).toBe("minimal");
+    it("never sends reasoning_effort for the xai.grok-4.20-reasoning shorthand", () => {
+      const cfg = xai["xai.grok-4.20-reasoning"] as Config;
+      const body = mapBody(cfg.mapBody, {
+        prompt: [{ role: "user", content: "hi" }],
+        model: cfg.options.model.default,
+        effort: "high",
+      });
+      expect(body.model).toBe("grok-4.20-0309-reasoning");
+      expect(body.reasoning_effort).toBeUndefined();
     });
-
-    it("drops invalid effort values for grok-4.3", () => {
-      expect(transform("none", { model: "grok-4.3" })).toBeUndefined();
-      expect(transform("xhigh", { model: "grok-4.3" })).toBeUndefined();
-      expect(transform(123, { model: "grok-4.3" })).toBeUndefined();
-    });
-
   });
 });

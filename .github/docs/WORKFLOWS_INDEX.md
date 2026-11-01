@@ -41,6 +41,7 @@ flowchart LR
         H4["cache-cleanup"]:::hyg
         H5["update-prs-with-development"]:::hyg
         H6["test-github-action"]:::hyg
+        H7["a11y-docs"]:::hyg
     end
 
     A1 -- opens PR --> A4
@@ -76,7 +77,7 @@ flowchart LR
 | [agent-run.yml](../workflows/agent-run.yml) | 3 crons + dispatch | Task agents (docs, tester, scout) on a schedule | [AGENT_RUN_DEEP_DIVE.md](AGENT_RUN_DEEP_DIVE.md) |
 | [coder-run.yml](../workflows/coder-run.yml) | cron + dispatch | Fans the coder out across up to 5 unclaimed issues in a matrix | [CODER_RUN_DEEP_DIVE.md](CODER_RUN_DEEP_DIVE.md) |
 | [personas-run.yml](../workflows/personas-run.yml) | Sunday cron + dispatch | Persona agents (beginner, harsh-critic, speed-runner, enterprise) plus curator | [PERSONAS_RUN_DEEP_DIVE.md](PERSONAS_RUN_DEEP_DIVE.md) |
-| [agent-review-pr.yml](../workflows/agent-review-pr.yml) | PR opened/synchronize on development + workflow_dispatch | Tests (Node matrix) + reviewer agent + decide job: approve, request changes, or close | [AGENT_REVIEW_PR_DEEP_DIVE.md](AGENT_REVIEW_PR_DEEP_DIVE.md) |
+| [agent-review-pr.yml](../workflows/agent-review-pr.yml) | PR opened/synchronize on development + workflow_dispatch | Tests (Node matrix) + reviewer agent + decide job: approve, request changes, or close. Review and decide skip fork PRs unless a re-review is dispatched | [AGENT_REVIEW_PR_DEEP_DIVE.md](AGENT_REVIEW_PR_DEEP_DIVE.md) |
 | [agent-digest.yml](../workflows/agent-digest.yml) | Monday cron + dispatch | Weekly HTML email digest sent via Microsoft Graph | [AGENT_DIGEST_DEEP_DIVE.md](AGENT_DIGEST_DEEP_DIVE.md) |
 | [bot-respond.yml](../workflows/bot-respond.yml) | issue_comment mentioning @llm-exe-bot | Conversational responder; can dispatch review pipeline, answer questions, or revise PR branches on explicit ask | [BOT_RESPOND_DEEP_DIVE.md](BOT_RESPOND_DEEP_DIVE.md) |
 | [docs-sync-trigger.yml](../workflows/docs-sync-trigger.yml) | push to development on workflow/action/script paths | Push detector that dispatches `docs-sync.yml` with the changed file list (workaround for `claude-code-action@v1` not supporting push) | [DOCS_SYNC_DEEP_DIVE.md](DOCS_SYNC_DEEP_DIVE.md) |
@@ -98,13 +99,13 @@ flowchart LR
 
 | Workflow | Triggers | Purpose | Deep dive |
 |----------|----------|---------|-----------|
-| [tests.yml](../workflows/tests.yml) | PR on main + push to main + dispatch | Jest matrix on Node 18/20/22/24; coverage uploaded on Node 24 | [TESTS_DEEP_DIVE.md](TESTS_DEEP_DIVE.md) |
+| [tests.yml](../workflows/tests.yml) | PR on main + push to main + dispatch | Jest matrix on Node 18/20/22/24; typecheck and coverage on Node 24 | [TESTS_DEEP_DIVE.md](TESTS_DEEP_DIVE.md) |
 | [test-package.yml](../workflows/test-package.yml) | Dispatch only (gregreindel) | Runs examples/ against a packed tarball with real provider keys | [TEST_PACKAGE_DEEP_DIVE.md](TEST_PACKAGE_DEEP_DIVE.md) |
 | [pack-package.yml](../workflows/pack-package.yml) | PR closed to development + dispatch | Build + npm pack, uploads .tgz artifact (30-day retention) | [PACK_PACKAGE_DEEP_DIVE.md](PACK_PACKAGE_DEEP_DIVE.md) |
 | [cache-cleanup.yml](../workflows/cache-cleanup.yml) | PR closed + release published + dispatch | Deletes Actions caches scoped to the closed PR or release ref | [CACHE_CLEANUP_DEEP_DIVE.md](CACHE_CLEANUP_DEEP_DIVE.md) |
 | [update-prs-with-development.yml](../workflows/update-prs-with-development.yml) | Dispatch only | Rebases every non-draft open PR targeting development | [UPDATE_PRS_DEEP_DIVE.md](UPDATE_PRS_DEEP_DIVE.md) |
 | [test-github-action.yml](../workflows/test-github-action.yml) | Dispatch only | Smoke-tests the external llm-exe/github-action with a real LLM call | [TEST_GITHUB_ACTION_DEEP_DIVE.md](TEST_GITHUB_ACTION_DEEP_DIVE.md) |
-| [a11y-docs.yml](../workflows/a11y-docs.yml) | Dispatch only | Pa11y accessibility scan against the built VitePress docs site | [A11Y_DOCS_DEEP_DIVE.md](A11Y_DOCS_DEEP_DIVE.md) |
+| [a11y-docs.yml](../workflows/a11y-docs.yml) | PR on docs paths + dispatch | Pa11y accessibility scan against the built VitePress docs site | [A11Y_DOCS_DEEP_DIVE.md](A11Y_DOCS_DEEP_DIVE.md) |
 
 ---
 
@@ -115,32 +116,39 @@ flowchart LR
     classDef sm fill:#374151,color:#fff,stroke:#000
     classDef md fill:#1e3a8a,color:#fff,stroke:#000
     classDef lg fill:#581c87,color:#fff,stroke:#000
+    classDef xl fill:#701a75,color:#fff,stroke:#000
 
-    subgraph Small["5-8 diagrams"]
+    subgraph Small["7-10 diagrams"]
         S1["pack-package: 356 lines, 8"]:::sm
-        S2["tests: 377 lines, 9"]:::sm
-        S3["update-prs: 367 lines, 9"]:::sm
+        S2["tests: 399 lines, 9"]:::sm
+        S3["update-prs: 362 lines, 9"]:::sm
         S4["check-semver: 383 lines, 9"]:::sm
-        S5["test-github-action: 7 diagrams"]:::sm
+        S5["test-github-action: 238 lines, 7"]:::sm
+        S6["a11y-docs: 350 lines, 10"]:::sm
     end
 
     subgraph Medium["11-12 diagrams"]
-        M1["agent-review-pr: 566 lines, 12"]:::md
+        M1["agent-review-pr: 646 lines, 12"]:::md
         M2["cache-cleanup: 548 lines, 12"]:::md
-        M3["create-draft-release: 489 lines, 11"]:::md
-        M4["personas-run: 709 lines, 12"]:::md
-        M5["publish-release: 522 lines, 12"]:::md
+        M3["create-draft-release: 496 lines, 11"]:::md
+        M4["personas-run: 764 lines, 12"]:::md
+        M5["publish-release: 603 lines, 12"]:::md
         M6["test-package: 551 lines, 11"]:::md
     end
 
-    subgraph Large["13 diagrams"]
-        L1["agent-run: 653 lines, 13"]:::lg
-        L2["coder-run: 736 lines, 13"]:::lg
-        L3["draft-main-pr: 663 lines, 13"]:::lg
-        L4["deploy-docs: 579 lines, 13"]:::lg
-        L5["bot-respond: 581 lines, 13"]:::lg
+    subgraph Large["13-14 diagrams"]
+        L1["agent-run: 655 lines, 13"]:::lg
+        L2["coder-run: 737 lines, 13"]:::lg
+        L3["draft-main-pr: 677 lines, 13"]:::lg
+        L4["deploy-docs: 581 lines, 13"]:::lg
+        L5["bot-respond: 603 lines, 13"]:::lg
         L6["agent-digest: 591 lines, 13"]:::lg
         L7["auto-merge-main-pr: 567 lines, 13"]:::lg
+        L8["vitals: 454 lines, 14"]:::lg
+    end
+
+    subgraph XL["16 diagrams"]
+        X1["docs-sync: 640 lines, 16"]:::xl
     end
 ```
 

@@ -1,5 +1,57 @@
 import { IChatMessage, IChatMessages } from "@/types";
-import { anthropicPromptMessageCallback } from "./promptSanitizeMessageCallback";
+import {
+  anthropicPromptMessageCallback,
+  AnthropicPromptSanitizeOptions,
+} from "./promptSanitizeMessageCallback";
+import { canonicalAnthropicModel } from "./effort";
+
+// Models that 400 on a trailing assistant message (prefill): the 4.6+/5
+// generation. Issue #503 and Anthropic's migration guide name opus-4-6,
+// opus-4-7, and sonnet-4-6; opus-5, opus-4-8, sonnet-5, haiku-5-5, and fable-5
+// (which by the `${prefix}-` boundary below also covers fable-5-1) belong to
+// the same generation and are grouped here for the same reason the
+// sampling-param and adaptive-thinking lists in `anthropic/effort.ts` group this
+// generation (the Haiku 5.5 migration guide states prefills 400 even with
+// thinking off). The 4.5 generation (opus/sonnet/haiku 4.5) still supports
+// prefills and is excluded. Kept as its own list because prefill support is a
+// distinct model capability from adaptive thinking / sampling-param handling,
+// even though the membership currently coincides.
+const PREFILL_UNSUPPORTED_MODELS = [
+  "claude-opus-5",
+  "claude-opus-4-6",
+  "claude-opus-4-7",
+  "claude-opus-4-8",
+  "claude-sonnet-4-6",
+  "claude-sonnet-5",
+  "claude-haiku-5-5",
+  "claude-fable-5",
+];
+
+// `model` may be a Bedrock id ("us.anthropic.claude-opus-4-7-v1:0", an
+// inference-profile ARN, ...) since amazon:anthropic.chat shares this sanitizer,
+// so canonicalize to the bare "claude-..." name before matching (issue #861).
+function modelBlocksPrefill(model: string | undefined): boolean {
+  if (!model) return false;
+  const canonical = canonicalAnthropicModel(model);
+  return PREFILL_UNSUPPORTED_MODELS.some(
+    (prefix) => canonical === prefix || canonical.startsWith(`${prefix}-`)
+  );
+}
+
+function warnIfTrailingAssistantMessage(
+  messages: Record<string, any>[],
+  model: string | undefined
+): void {
+  if (messages.length === 0) return;
+  const last = messages[messages.length - 1];
+  if (last.role === "assistant" && modelBlocksPrefill(model)) {
+    console.warn(
+      `[llm-exe] The model "${model}" does not support assistant message prefills. ` +
+        `The last message in the messages array has role "assistant", which will cause a 400 error from the Anthropic API. ` +
+        `Remove the trailing assistant message or use a model that supports prefills.`
+    );
+  }
+}
 
 /**
  * Merge consecutive messages with the same role when both have array content.
@@ -35,12 +87,22 @@ function mergeConsecutiveSameRole(
 export function anthropicPromptSanitize(
   _messages: string | IChatMessages,
   _inputBodyObj: Record<string, any>,
-  _outputObj: Record<string, any>
+  _outputObj: Record<string, any>,
+  _options: AnthropicPromptSanitizeOptions = {}
 ) {
+  const toAnthropicMessage = (m: IChatMessage) =>
+    anthropicPromptMessageCallback(m, _options);
+
   if (typeof _messages === "string") {
     return [{ role: "user", content: _messages } as IChatMessage].map(
-      anthropicPromptMessageCallback
+      toAnthropicMessage
     );
+  }
+
+  // nothing to sanitize — leave the output object untouched and let the
+  // provider surface any error about an empty request
+  if (_messages.length === 0) {
+    return [];
   }
 
   const [first, ...messages] = [
@@ -53,7 +115,7 @@ export function anthropicPromptSanitize(
     return [
       { role: "user", content: first.content } as IChatMessage,
       ...messages,
-    ].map(anthropicPromptMessageCallback);
+    ].map(toAnthropicMessage);
   }
 
   // if more than one message is passed in, and the first is a system message:
@@ -61,28 +123,34 @@ export function anthropicPromptSanitize(
   //   - and return the rest of the messages
   if (first.role === "system" && messages.length > 0) {
     _outputObj.system = first.content;
-    const result = (
-      messages.map((m) => {
-        if (m.role === "system") {
-          return { ...m, role: "user" };
-        }
-        return m;
-      }) as IChatMessage[]
-    ).map(anthropicPromptMessageCallback);
-    return mergeConsecutiveSameRole(result);
+    const result = mergeConsecutiveSameRole(
+      (
+        messages.map((m) => {
+          if (m.role === "system") {
+            return { ...m, role: "user" };
+          }
+          return m;
+        }) as IChatMessage[]
+      ).map(toAnthropicMessage)
+    );
+    warnIfTrailingAssistantMessage(result, _inputBodyObj.model);
+    return result;
   }
 
   // otherwise, don't make assumptions?
-  const result = (
-    [
-      first,
-      ...messages.map((m) => {
-        if (m.role === "system") {
-          return { ...m, role: "user" };
-        }
-        return m;
-      }),
-    ] as IChatMessage[]
-  ).map(anthropicPromptMessageCallback);
-  return mergeConsecutiveSameRole(result);
+  const result = mergeConsecutiveSameRole(
+    (
+      [
+        first,
+        ...messages.map((m) => {
+          if (m.role === "system") {
+            return { ...m, role: "user" };
+          }
+          return m;
+        }),
+      ] as IChatMessage[]
+    ).map(toAnthropicMessage)
+  );
+  warnIfTrailingAssistantMessage(result, _inputBodyObj.model);
+  return result;
 }

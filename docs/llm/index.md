@@ -1,70 +1,30 @@
 ---
 title: LLMs | Connect and Configure Models in llm-exe
-description: "Use the same useLlm provider keys in prompt files or TypeScript. llm-exe supports OpenAI, Anthropic, Amazon, Google, xAI, Ollama, Deepseek, and custom providers."
+description: "Use any LLM with a consistent, composable API. llm-exe supports OpenAI, Anthropic, Amazon, and more—giving you full control over model config, retries, and usage patterns with minimal setup."
 ---
 
 # LLM
 
-An LLM is the model/provider part of an llm-exe run.
+LLM is a wrapper around various LLM providers, making your function implementations LLM-agnostic.
 
-In a prompt file, this is the `provider` field:
+In a prompt file, the same provider key goes in the `provider` field. See [Prompt Files](/config/).
 
-```yaml
-provider: openai.gpt-4o-mini
-message: "Answer briefly: {{question}}"
-data:
-  question: What is llm-exe?
-```
+Note: llm-exe utilizes the underlying API's from the various providers. This means that you must have an account (and usually an API key) with them if you want to call those models using llm-exe.
 
-Run it:
+**LLM Features:**
 
-```bash
-llm-exe ./answer.yml
-```
+- Built-in timeout mechanism for better control when a provider takes too long.
+- Automatic retry with configurable back-off for errors.
+- Use different LLM's with different configurations for different functions.
+Note: You can use and call methods on LLM's directly, but they are usually passed to an LLM executor and then called internally.
 
-`provider` is the same value you pass to [`useLlm`](#typescript). It can be a model shorthand or a generic provider key.
+## Using `useLlm`
 
-## Provider and Model
+The `useLlm` function creates an LLM instance. It takes a provider key and an optional options object.
 
-Use a model shorthand when llm-exe has one:
+### Provider Shorthand (by model)
 
-```yaml
-provider: openai.gpt-4o-mini
-message: "Summarize: {{text}}"
-```
-
-Or use a generic provider key with a model:
-
-```yaml
-provider: openai.chat.v1
-model: gpt-4o-mini
-message: "Summarize: {{text}}"
-```
-
-Use the generic form when you want the model to be easy to override:
-
-```bash
-llm-exe ./summarize.yml --model gpt-4.1
-```
-
-## LLM Options
-
-Provider options go under `llmOptions`.
-
-```yaml
-provider: openai.chat.v1
-model: gpt-4o-mini
-message: "Answer briefly: {{question}}"
-llmOptions:
-  temperature: 0
-  maxTokens: 200
-```
-
-All providers accept the [generic options](/llm/generic.html), such as timeout, retries, temperature, and max tokens. Each provider may also have provider-specific options.
-
-## TypeScript
-
-In TypeScript, use `useLlm`.
+Use a provider-specific model shorthand to get full type support for that model's options:
 
 ```ts
 import { useLlm } from "llm-exe";
@@ -72,62 +32,115 @@ import { useLlm } from "llm-exe";
 const llm = useLlm("openai.gpt-4o-mini");
 ```
 
-Generic provider key with model:
+### Provider Key + Model Option
+
+Use a generic provider key and specify the model in the options. This lets you use any model the provider supports without needing a dedicated shorthand:
 
 ```ts
 const llm = useLlm("openai.chat.v1", {
-  model: "gpt-4o-mini",
-  temperature: 0,
+  model: "gpt-4o",
 });
 ```
 
-You usually pass the LLM to an [executor](/executor/index.html), but you can also call it directly.
+### Options
+
+All providers accept the [generic options](/llm/generic) (timeout, retries, temperature, maxTokens, etc.). Each provider may also accept provider-specific options — see the individual provider pages below.
+
+### Deprecation Warnings
+
+Deprecated provider/model shorthands continue to resolve for compatibility, but emit a Node `DeprecationWarning` with code `LLM_EXE_DEPRECATED` on first use. See [Deprecation Warnings](/llm/deprecations).
+
+### Authentication
+
+Each provider requires an API key. You can provide it in three ways:
+
+1. **Environment variable** — set the provider's default env var (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`)
+2. **Setup options** — pass the key when creating the LLM (e.g., `{ openAiApiKey: "sk-..." }`)
+3. **Execute options** — pass the key at execution time
+
+See the individual provider pages for the exact option names and env var names.
+
+### Direct Usage
+
+While you'll typically pass the LLM instance to an [executor](/executor/), you can also call it directly:
 
 ```ts
+const llm = useLlm("openai.gpt-4o-mini");
 const response = await llm.call(prompt);
 console.log(response.getResultText());
 ```
 
-## Authentication
-
-Each provider requires its own account and API key.
-
-You can provide credentials through:
-
-1. Environment variables, such as `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
-2. Setup options when creating the LLM
-3. Execute options when running an executor
-
-The CLI uses the same environment variables as the TypeScript API.
-
-## Deprecation Warnings
-
-Deprecated provider/model shorthands continue to resolve for compatibility, but emit a Node `DeprecationWarning` with code `LLM_EXE_DEPRECATED` on first use.
-
-See [Deprecation Warnings](/llm/deprecations.html).
-
 ## Currently Supported Providers
 
-llm-exe supports:
+Currently, llm-exe supports calling LLM's from:
 
-- [OpenAI](/llm/openai.html)
-- [Anthropic](/llm/anthropic.html)
-- [xAI](/llm/xai.html)
-- [Google](/llm/gemini.html)
-- [AWS Bedrock](/llm/bedrock/index.html)
-- [Ollama](/llm/ollama.html)
-- [Deepseek](/llm/deepseek.html)
-- [Custom Providers](/llm/custom.html)
+- [OpenAi](/llm/openai)
+- [Anthropic](/llm/anthropic)
+- [xAI](/llm/xai)
+- [Google](/llm/gemini)
+- [AWS Bedrock](/llm/bedrock/)
+- [Ollama](/llm/ollama)
+- [Deepseek](/llm/deepseek)
+- [Custom Providers](/llm/custom)
 
-## Custom Providers
+## Adding Custom LLM's
 
-Custom provider configuration is TypeScript-only.
+You can create custom LLM configurations using `useLlmConfiguration`. This allows you to:
 
-Use `useLlmConfiguration` when you need to:
+- Connect to OpenAI-compatible APIs
+- Use local models
+- Work with corporate proxies
+- Add support for new providers
 
-- connect to an OpenAI-compatible API
-- use a local model
-- work with a corporate proxy
-- add support for a new provider
+See the [Custom Provider Configuration](/llm/custom) guide for details.
 
-See [Custom Provider Configuration](/llm/custom.html).
+## Token usage and prompt caching
+
+Read normalized usage from `response.getResult().usage` after `llm.call()`. In an
+executor hook, use `execution.handlerOutput?.getResult().usage`:
+
+```ts
+executor.on("onSuccess", (execution) => {
+  const usage = execution.handlerOutput?.getResult().usage;
+  if (!usage) return;
+  console.log({
+    input: usage.input_tokens,
+    output: usage.output_tokens,
+    total: usage.total_tokens,
+    cacheRead: usage.cache_read_input_tokens,
+    cacheWrite: usage.cache_creation_input_tokens,
+  });
+});
+```
+
+`input_tokens` includes cached input. The optional cache counts are a breakdown
+of that input, so **do not add them to `input_tokens` or `total_tokens` again**.
+An absent cache field means the provider did not report that count; an explicit
+zero means it reported no tokens in that category. These counts describe tokens,
+not prices, and reporting them does not enable caching.
+
+| Provider | Cache reads | Cache writes | Input accounting |
+| --- | --- | --- | --- |
+| Anthropic, including Anthropic-format Bedrock responses | `usage.cache_read_input_tokens` | `usage.cache_creation_input_tokens` | Add reads and writes to the provider's uncached `input_tokens`. |
+| OpenAI and compatible Chat Completions | `usage.prompt_tokens_details.cached_tokens` | `usage.prompt_tokens_details.cache_write_tokens`, when reported | Preserve the provider totals, which already include cached input. |
+| xAI | `usage.prompt_tokens_details.cached_tokens` | Only when reported in the compatible response | Preserve provider totals. |
+| DeepSeek | `usage.prompt_cache_hit_tokens`, falling back to `usage.prompt_tokens_details.cached_tokens` | Not inferred from cache misses | Preserve provider totals. |
+| Gemini | `usageMetadata.cachedContentTokenCount` | Not reported by this adapter | Preserve provider totals. |
+
+Anthropic's optional `usage.cache_creation` also preserves
+`ephemeral_5m_input_tokens` and `ephemeral_1h_input_tokens`. These subdivide cache
+writes and must not be counted again. Bedrock header-only usage keeps the existing
+fallback totals without inventing cache counts. Other adapters leave cache fields
+absent when they do not report them.
+
+For cached Anthropic requests, this corrects earlier llm-exe releases that
+reported only uncached input and consequently understated total tokens. OpenAI,
+xAI, DeepSeek, and Gemini totals are unchanged. Provider totals can include other
+categories (for example, Gemini thoughts); the adapter preserves those totals.
+
+Provider references:
+[Anthropic accounting](https://platform.claude.com/docs/en/build-with-claude/prompt-caching#tracking-cache-performance),
+[OpenAI usage fields](https://developers.openai.com/api/reference/resources/completions),
+[xAI cache usage](https://docs.x.ai/developers/advanced-api-usage/prompt-caching/usage-and-pricing),
+[DeepSeek usage fields](https://api-docs.deepseek.com/api/create-chat-completion/),
+and [Gemini UsageMetadata](https://ai.google.dev/api/generate-content#UsageMetadata).

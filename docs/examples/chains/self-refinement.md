@@ -1,3 +1,8 @@
+---
+title: "Build an LLM Self-Refinement Loop in TypeScript | llm-exe"
+description: "Implement a self-refinement loop in TypeScript: one LLM executor drafts an answer, another validates it, and a simple loop retries until criteria are met."
+---
+
 # Basic Self-Refinement Loop
 
 Sometimes an LLM’s first output isn’t correct or complete, and you want to iterate until a certain condition is met. With llm-exe, you can implement self-refinement loops where an LLM’s output is fed back into another step (or even back into itself with adjusted input) to improve the result. This pattern is akin to an LLM “thinking aloud” or checking its work, and it’s crucial for tasks that benefit from verification or stepwise correction. By using multiple LLM executors for generation and evaluation, you maintain modular clarity: one part generates a solution, another part evaluates it, and your code orchestrates the retry logic.

@@ -1,6 +1,20 @@
-## LLM Executor Hooks
+---
+title: "LLM Hooks: Log, Monitor, and Instrument LLM Calls | llm-exe"
+description: "LLM hooks are lifecycle callbacks that fire around LLM calls, so you can log, measure latency, and alert on failures without cluttering business logic."
+---
 
-Hooks are available mostly for logging purposes, but can have more advanced use-cases. Hooks are functions you can define which get called at certain stages of the execution. Hooks are optional, and you can register more than one function per hook (meaning there can be many functions listening on the same hook).
+## LLM Hooks
+
+**LLM hooks are lifecycle callbacks that fire at specific points around an LLM call** — before results are returned, when a call fails, and when execution finishes. Instead of wrapping every LLM call in try/catch blocks and timing code, you register a hook once and it runs on every execution. This keeps cross-cutting concerns — logging, metrics, alerting, auditing — out of your business logic.
+
+Typical things you'd use LLM hooks for:
+
+- **Logging** every prompt input and parsed output for debugging or audit trails
+- **Latency tracking** — measure how long each LLM call takes and send it to your metrics system
+- **Error monitoring** — capture failures (timeouts, parse errors, provider errors) and alert on them
+- **Usage analytics** — count executions per function to see which LLM features get used
+
+In llm-exe, every executor supports hooks. They are optional, and you can register more than one function per hook (meaning there can be many functions listening on the same hook).
 
 The following hooks are available:
 
@@ -8,9 +22,36 @@ The following hooks are available:
 - `onError` — runs when the executor throws, before the error is re-thrown
 - `onComplete` — runs after `onSuccess` or `onError`, regardless of outcome
 
+### Common Patterns
+
+Log the duration of every LLM call:
+
+```typescript:no-line-numbers
+const classifier = createLlmExecutor({ name: "classify-ticket", llm, prompt, parser });
+
+classifier.on("onComplete", (exec, meta) => {
+  logger.info(`${meta.name} finished in ${exec.end - exec.start}ms`, {
+    executions: meta.executions,
+  });
+});
+```
+
+Alert on failures without touching the call site:
+
+```typescript:no-line-numbers
+classifier.on("onError", (exec, meta) => {
+  alerting.notify(`LLM call ${meta.name} failed: ${exec.errorMessage}`, {
+    code: exec.errorCode,
+    input: exec.input,
+  });
+});
+```
+
+The executor still throws on failure — `onError` observes the error, it does not swallow it. Your calling code handles the failure; the hook handles the telemetry. For a complete production setup combining hooks with retries and timeouts, see [Add Retries and Timeouts to LLM Calls](/examples/concepts/retries-and-timeouts).
+
 ### Hook Signature
 
-Every hook receives the same two arguments:
+Every hook receives two arguments:
 
 ```typescript
 type Hook = (
@@ -21,27 +62,112 @@ type Hook = (
 
 `executionMetadata` contains information about this specific execution (input, output, timings, and — for `onError` — the thrown error). `executorMetadata` contains information about the executor instance itself (id, type, name, total executions).
 
-| Field                              | Available on              | Description                                      |
-| ---------------------------------- | ------------------------- | ------------------------------------------------ |
-| `executionMetadata.input`          | all hooks                 | The input passed to `.execute()`                 |
-| `executionMetadata.output`         | `onSuccess`, `onComplete` | The parsed output returned by the executor       |
-| `executionMetadata.handlerInput`   | all hooks                 | The transformed input passed to the internal handler |
-| `executionMetadata.handlerOutput`  | `onSuccess`, `onComplete` | The raw handler output before parsing            |
-| `executionMetadata.error`          | `onError`, `onComplete`   | The thrown `Error` instance                      |
-| `executionMetadata.errorMessage`   | `onError`, `onComplete`   | Shortcut for `error.message`                     |
-| `executionMetadata.errorCategory`  | `onError`, `onComplete`   | Structured category for `LlmExeError` failures  |
-| `executionMetadata.errorCode`      | `onError`, `onComplete`   | Structured code for `LlmExeError` failures      |
-| `executionMetadata.errorContext`   | `onError`, `onComplete`   | Structured context for `LlmExeError` failures   |
-| `executionMetadata.hookErrors`     | later hooks               | Failures captured from earlier hook callbacks   |
-| `executionMetadata.start`          | all hooks                 | Execution start time (ms since epoch)            |
-| `executionMetadata.end`            | `onComplete`              | Execution end time (ms since epoch)              |
-| `executorMetadata.id`              | all hooks                 | Stable id of the executor                        |
-| `executorMetadata.name`            | all hooks                 | Name of the executor, if set                     |
-| `executorMetadata.type`            | all hooks                 | Type of executor (e.g. `"llm-executor"`)         |
-| `executorMetadata.created`         | all hooks                 | Timestamp when the executor was created (ms since epoch) |
-| `executorMetadata.executions`      | all hooks                 | Number of times this executor has run            |
+The metadata type is narrowed per event. In `onSuccess`, `output` is always set and typed as the parser's output, with no `| undefined`. In `onError`, `error` is always set. `onComplete` fires on both paths, so its fields stay optional. `errorCode` and the other structured error fields stay optional in `onError` too, because they are only set when the thrown error is an `LlmExeError`.
+
+To type a callback you define separately, use `ExecutorEventHookFunction<Event, Input, Output>`:
+
+```typescript
+import type { ExecutorEventHookFunction } from "llm-exe";
+
+const executor = createLlmExecutor({
+  llm: useLlm("openai.gpt-4o-mini"),
+  prompt: createChatPrompt<{ text: string }>("Summarize: {{text}}"),
+  parser: createParser("string"),
+});
+
+const logSuccess: ExecutorEventHookFunction<"onSuccess", { text: string }, string> = (exec) => {
+  console.log(exec.output.length); // a string, no guard needed
+};
+
+executor.on("onSuccess", logSuccess);
+executor.on("onError", (exec) => console.error(exec.error.message));
+executor.on("onComplete", (exec) => console.log(exec.output ?? exec.error?.message));
+```
+
+| Field                              | Available on                         | Description                                      |
+| ---------------------------------- | ------------------------------------ | ------------------------------------------------ |
+| `executionMetadata.input`          | all hooks                            | The input passed to `.execute()`                 |
+| `executionMetadata.output`         | `onSuccess`, `onComplete`            | The parsed output returned by the executor       |
+| `executionMetadata.handlerInput`   | all hooks                            | The transformed input passed to the internal handler |
+| `executionMetadata.handlerOutput`  | `onSuccess`, `onError`, `onComplete` | The raw handler output before parsing — see [Reading usage after a parser failure](#reading-usage-after-a-parser-failure) |
+| `executionMetadata.error`          | `onError`, `onComplete`              | The thrown `Error` instance                      |
+| `executionMetadata.errorMessage`   | `onError`, `onComplete`              | Shortcut for `error.message`                     |
+| `executionMetadata.errorCategory`  | `onError`, `onComplete`              | Structured category for `LlmExeError` failures  |
+| `executionMetadata.errorCode`      | `onError`, `onComplete`              | Structured code for `LlmExeError` failures      |
+| `executionMetadata.errorContext`   | `onError`, `onComplete`              | Structured context for `LlmExeError` failures   |
+| `executionMetadata.hookErrors`     | later hooks                          | Failures captured from earlier hook callbacks   |
+| `executionMetadata.start`          | all hooks                            | Execution start time (ms since epoch)            |
+| `executionMetadata.end`            | `onComplete`                         | Execution end time (ms since epoch)              |
+| `executorMetadata.id`              | all hooks                            | Stable id of the executor                        |
+| `executorMetadata.name`            | all hooks                            | Name of the executor, if set                     |
+| `executorMetadata.type`            | all hooks                            | Type of executor (e.g. `"llm-executor"`)         |
+| `executorMetadata.created`         | all hooks                            | Timestamp when the executor was created (ms since epoch) |
+| `executorMetadata.executions`      | all hooks                            | Number of times this executor has run            |
 
 Hooks should be synchronous and lightweight. Errors thrown inside a hook are caught and collected by llm-exe. They do not affect the executor result.
+
+### Reading usage after a parser failure
+
+`handlerOutput` is recorded as soon as the handler resolves, *before* the parser
+runs. A parser failure therefore does not hide the response that the provider
+already billed you for — `onError` and `onComplete` still see it.
+
+This matters for cost accounting. If the model returns a billable response and
+your JSON parser then rejects it, the tokens were still spent, and
+`handlerOutput` is where you recover them:
+
+```typescript:no-line-numbers
+executor.on("onError", (exec) => {
+  // The provider call succeeded; only parsing failed.
+  const usage = exec.handlerOutput?.getResult().usage;
+  if (usage) {
+    metrics.recordTokens({
+      input: usage.input_tokens,
+      output: usage.output_tokens,
+      total: usage.total_tokens,
+      outcome: "parse-failed",
+    });
+  }
+});
+```
+
+Availability tracks how far the execution actually got, so `handlerOutput` is
+optional rather than guaranteed:
+
+| Execution reached                        | `handlerOutput` |
+| ---------------------------------------- | --------------- |
+| Prompt formatting threw                  | absent          |
+| Provider call threw (network, auth, 429) | absent          |
+| Provider responded, parser threw         | **present**     |
+| Provider responded, parser succeeded      | **present**     |
+
+Because a prompt or transport failure leaves it unset, it can be absent in
+`onComplete` too. Always guard with `?.` rather than assuming it is there.
+
+#### Prefer `onComplete` as a single accounting point
+
+`onComplete` runs on both the success and failure paths, which makes it the
+natural place to record usage exactly once:
+
+```typescript:no-line-numbers
+executor.on("onComplete", (exec, meta) => {
+  const usage = exec.handlerOutput?.getResult().usage;
+  if (!usage) return; // never reached the provider — nothing was billed
+
+  metrics.recordTokens({
+    executor: meta.name,
+    total: usage.total_tokens,
+    outcome: exec.error ? "failed" : "ok",
+  });
+});
+```
+
+Do not also record usage in `onSuccess` or `onError` if you are recording it in
+`onComplete`. All three fire for the same execution, so emitting from more than
+one hook double-counts the same response.
+
+Cache counts (`cache_read_input_tokens`, `cache_creation_input_tokens`) are
+included in `input_tokens` and are reported only by providers that return them.
 
 ### Hook Errors
 
@@ -60,6 +186,8 @@ executor.on("onComplete", (exec) => {
 Each hook error record includes the raw thrown value and `errorMessage`. If the thrown value is an `LlmExeError`, `errorCategory`, `errorCode`, `errorContext`, and `errorCause` are included.
 
 `onComplete` runs last. If an `onComplete` hook throws, there is no later hook where that failure can be surfaced in execution metadata.
+
+Async hooks are not awaited. If an `async` hook rejects, llm-exe catches the rejection so it cannot crash the process, but it does not appear in `hookErrors`, because the executor does not wait for the hook to settle. Set `LLM_EXE_DEBUG` to log these rejections, or catch errors inside the hook if you need to act on them.
 
 You can attach hooks:
 
@@ -114,6 +242,8 @@ await executor.execute({});
 await executor.execute({}); // the once handler no longer fires
 ```
 
+To cancel a pending `.once()` before it fires, pass the same function to `.off()`.
+
 ::: tip
 Default behavior is to not add the same handler to the same hook more than once. There is also a per-event hook limit to prevent unbounded memory growth — if you hit it, remove unused hooks with `.off()` rather than piling on new ones.
 :::
@@ -148,14 +278,16 @@ const counts = executor.getHookCount(); // { onSuccess: 0, onError: 0, onComplet
 
 #### Trace ID
 
-Use `.withTraceId()` to associate an executor with a trace identifier for observability. The trace ID is included in `executorMetadata` passed to hooks.
+Pass `traceId` when you call `execute()` to tag that call. The trace ID is included in the `executorMetadata` passed to hooks.
 
-```typescript{3}:no-line-numbers
+```typescript{7}:no-line-numbers
 const executor = createLlmExecutor({ llm, prompt });
-
-executor.withTraceId("req-abc-123");
 
 executor.on("onComplete", (exec, meta) => {
   console.log(meta.traceId); // "req-abc-123"
 });
+
+await executor.execute(input, { traceId: "req-abc-123" });
 ```
+
+`.withTraceId()` sets one trace ID for the whole executor instance. Don't rely on it for an executor shared across concurrent requests, because each call overwrites the others' ID. A per-call `traceId` takes precedence over it.

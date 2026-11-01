@@ -3,28 +3,15 @@ import { deprecateShorthand } from "@/llm/_utils.deprecationWarning";
 import { Config } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { anthropicPromptSanitize } from "./promptSanitize";
+import {
+  effortTransform,
+  dropIfModelRejectsSamplingParams,
+  topPTransform,
+} from "./effort";
+import { anthropicFunctionCall, anthropicFunctions } from "./mapOptions";
 import { OutputAnthropicClaude3Chat } from "@/llm/output/claude";
-import { cleanJsonSchemaFor } from "@/llm/output/_utils/cleanJsonSchemaFor";
 
 const ANTHROPIC_VERSION = "2023-06-01";
-
-// Models that 400 if temperature / top_p / top_k are set to non-default values.
-const MODELS_REJECTING_SAMPLING_PARAMS = ["claude-opus-4-7", "claude-opus-4-8"];
-
-// Claude 4.x rejects requests that set both temperature and top_p; keep temperature.
-const isClaude4x = (model: string) =>
-  /^claude-(opus|sonnet|haiku)-4-/.test(model);
-
-const dropIfModelRejectsSamplingParams = (
-  v: any,
-  body: Record<string, any>
-) => (MODELS_REJECTING_SAMPLING_PARAMS.includes(body.model) ? undefined : v);
-
-const topPTransform = (v: any, body: Record<string, any>) => {
-  if (MODELS_REJECTING_SAMPLING_PARAMS.includes(body.model)) return undefined;
-  if (isClaude4x(body.model) && body.temperature !== undefined) return undefined;
-  return v;
-};
 
 const anthropicChatV1: Config = {
   key: "anthropic.chat.v1",
@@ -35,10 +22,20 @@ const anthropicChatV1: Config = {
   options: {
     prompt: {},
     system: {},
+    effort: {},
     maxTokens: {
       required: [true, "maxTokens required"],
       default: 4096,
     },
+    // Every key mapped in mapBody must also be declared here:
+    // stateFromOptions picks only declared option keys, so an undeclared
+    // key never reaches mapBody (see issue #661).
+    temperature: {},
+    topP: {},
+    topK: {},
+    stopSequences: {},
+    metadata: {},
+    serviceTier: {},
     anthropicApiKey: {
       default: getEnvironmentVariable("ANTHROPIC_API_KEY"),
     },
@@ -72,43 +69,65 @@ const anthropicChatV1: Config = {
     stopSequences: {
       key: "stop_sequences",
     },
-    stream: {
-      key: "stream",
-    },
+    // No `stream` mapping: the request pipeline has no SSE support, so
+    // forwarding stream=true would return an unparseable response.
     metadata: {
       key: "metadata",
     },
     serviceTier: {
-      key: "service_tier", // Map camelCase to snake_case
+      key: "service_tier",
+    },
+    effort: {
+      key: "output_config.effort",
+      transform: effortTransform,
     },
   },
   mapOptions: {
-    functionCall: (call, _options) => {
-      // Anthropic handles "none" by clearing functions array
-      if (call === "none") return { _clearFunctions: true };
-      if (call === "auto" || call === "any") {
-        return { tool_choice: { type: call } };
-      }
-      return { tool_choice: call };
-    },
-
-    functions: (functions) => ({
-      tools: functions.map((f) => ({
-        name: f.name,
-        description: f.description,
-        input_schema: cleanJsonSchemaFor(f.parameters, "anthropic.chat"),
-      })),
-    }),
+    functionCall: anthropicFunctionCall,
+    functions: anthropicFunctions,
   },
   transformResponse: OutputAnthropicClaude3Chat,
 };
 
 export const anthropic = {
   "anthropic.chat.v1": anthropicChatV1,
+  // Claude Fable 5 models
+  "anthropic.claude-fable-5-1": withDefaultModel(
+    anthropicChatV1,
+    "claude-fable-5-1"
+  ),
+  "anthropic.claude-fable-5": withDefaultModel(
+    anthropicChatV1,
+    "claude-fable-5"
+  ),
+
+  // Claude 5.5 models
+  "anthropic.claude-opus-5-5": withDefaultModel(
+    anthropicChatV1,
+    "claude-opus-5-5"
+  ),
+  "anthropic.claude-sonnet-5-5": withDefaultModel(
+    anthropicChatV1,
+    "claude-sonnet-5-5"
+  ),
+  "anthropic.claude-haiku-5-5": withDefaultModel(
+    anthropicChatV1,
+    "claude-haiku-5-5"
+  ),
+
+  // Claude Opus 5 models
+  "anthropic.claude-opus-5": withDefaultModel(anthropicChatV1, "claude-opus-5"),
+
   // Claude 4.8 models
   "anthropic.claude-opus-4-8": withDefaultModel(
     anthropicChatV1,
     "claude-opus-4-8"
+  ),
+
+  // Claude Sonnet 5 models
+  "anthropic.claude-sonnet-5": withDefaultModel(
+    anthropicChatV1,
+    "claude-sonnet-5"
   ),
 
   // Claude 4.7 models
@@ -132,32 +151,29 @@ export const anthropic = {
     anthropicChatV1,
     "claude-haiku-4-5"
   ),
-  "anthropic.claude-sonnet-4-5": withDefaultModel(
-    anthropicChatV1,
-    "claude-sonnet-4-5"
-  ),
 
   // Deprecated
+  // Anthropic retires claude-sonnet-4-5 (claude-sonnet-4-5-20250929) on
+  // Nov 30, 2026. Remove this shorthand after that date.
+  ...deprecateShorthand("anthropic.claude-sonnet-4-5", {
+    config: withDefaultModel(anthropicChatV1, "claude-sonnet-4-5"),
+    message:
+      'Shorthand "anthropic.claude-sonnet-4-5" is deprecated: Anthropic retires claude-sonnet-4-5 on November 30, 2026, after which requests will fail. Migrate to "anthropic.claude-sonnet-5-5".',
+  }),
   ...deprecateShorthand("anthropic.claude-opus-4-6", {
     config: withDefaultModel(anthropicChatV1, "claude-opus-4-6"),
     message:
       'Shorthand "anthropic.claude-opus-4-6" is deprecated and may be removed in a future release.',
   }),
-  ...deprecateShorthand("anthropic.claude-opus-4-1", {
-    config: withDefaultModel(anthropicChatV1, "claude-opus-4-1-20250805"),
-    message:
-      'Shorthand "anthropic.claude-opus-4-1" is deprecated and may be removed in a future release.',
-  }),
-  ...deprecateShorthand("anthropic.claude-sonnet-4", {
-    config: withDefaultModel(anthropicChatV1, "claude-sonnet-4-0"),
-    message:
-      'Shorthand "anthropic.claude-sonnet-4" is deprecated and may be removed in a future release.',
-  }),
-  ...deprecateShorthand("anthropic.claude-opus-4", {
-    config: withDefaultModel(anthropicChatV1, "claude-opus-4-0"),
-    message:
-      'Shorthand "anthropic.claude-opus-4" is deprecated and may be removed in a future release.',
-  }),
+  // NOTE: "anthropic.claude-opus-4-1" (claude-opus-4-1-20250805) was removed —
+  // Anthropic retires that model on Aug 5, 2026. Migrate to
+  // anthropic.claude-opus-4-5/-6/-7/-8.
+  // NOTE: "anthropic.claude-sonnet-4" (claude-sonnet-4-0) and
+  // "anthropic.claude-opus-4" (claude-opus-4-0) were removed — Anthropic has
+  // retired both models. Both the base aliases and the dated snapshots
+  // (claude-opus-4-20250514 / claude-sonnet-4-20250514) now return HTTP 404,
+  // so these shorthands could only ever error. Migrate to
+  // anthropic.claude-opus-4-5/-6/-7/-8 or anthropic.claude-sonnet-4-6/-5/-5-5.
   ...deprecateShorthand("anthropic.claude-3-7-sonnet", {
     config: withDefaultModel(anthropicChatV1, "claude-3-7-sonnet-20250219"),
     message:

@@ -1,6 +1,8 @@
 import { anthropic } from "@/llm/config/anthropic";
 import { mapBody } from "@/llm/_utils.mapBody";
+import { PROVIDED_OPTION_KEYS } from "@/llm/_utils.stateFromOptions";
 import { anthropicPromptSanitize } from "./promptSanitize";
+import { useLlm } from "@/llm";
 
 describe("anthropic config", () => {
   const config = anthropic["anthropic.chat.v1"];
@@ -16,6 +18,7 @@ describe("anthropic config", () => {
         options: expect.objectContaining({
           prompt: expect.any(Object),
           system: expect.any(Object),
+          effort: expect.any(Object),
           maxTokens: expect.any(Object),
           anthropicApiKey: expect.any(Object),
         }),
@@ -23,6 +26,7 @@ describe("anthropic config", () => {
           model: expect.any(Object),
           maxTokens: expect.any(Object),
           system: expect.any(Object),
+          effort: expect.any(Object),
           prompt: expect.objectContaining({
             key: "messages",
             transform: anthropicPromptSanitize,
@@ -49,11 +53,368 @@ describe("anthropic config", () => {
     );
   });
 
+  describe("effort transform", () => {
+    const effortTransform = config.mapBody.effort.transform as (
+      v: any,
+      s: any,
+      output: any
+    ) => any;
+
+    describe("adaptive thinking (4.6+ models)", () => {
+      it.each([
+        ["claude-opus-4-6", "low", "low"],
+        ["claude-opus-4-6", "minimal", "low"],
+        ["claude-opus-4-6", "medium", "medium"],
+        ["claude-opus-4-6", "high", "high"],
+        ["claude-sonnet-4-6", "low", "low"],
+        ["claude-sonnet-4-6", "high", "high"],
+        // Newer adaptive models (opus 5, opus 4.8, sonnet 5, fable 5)
+        // Opus 5 keeps "high" (Anthropic recommends starting at high on Opus 5),
+        // unlike opus 4.7/4.8 which escalate to xhigh.
+        ["claude-opus-5", "high", "high"],
+        ["claude-opus-5", "minimal", "low"],
+        ["claude-opus-5", "medium", "medium"],
+        ["claude-opus-4-8", "high", "xhigh"],
+        ["claude-opus-4-8", "medium", "medium"],
+        ["claude-sonnet-5", "high", "high"],
+        ["claude-sonnet-5", "low", "low"],
+        ["claude-haiku-5-5", "high", "high"],
+        ["claude-haiku-5-5", "medium", "medium"],
+        ["claude-haiku-5-5", "low", "low"],
+        ["claude-haiku-5-5", "minimal", "low"],
+        ["claude-fable-5", "high", "high"],
+        ["claude-fable-5", "medium", "medium"],
+        ["claude-fable-5-1", "high", "high"],
+        ["claude-fable-5-1", "medium", "medium"],
+        ["claude-fable-5-1", "minimal", "low"],
+      ] as const)(
+        "%s with effort '%s' should return '%s'",
+        (model, effort, expected) => {
+          const output: Record<string, any> = {};
+          const result = effortTransform(effort, { model }, output);
+          expect(result).toBe(expected);
+          expect(output.thinking).toEqual({ type: "adaptive" });
+        }
+      );
+    });
+
+    describe("adaptive thinking maps high to xhigh for Opus 4.7/4.8 only", () => {
+      it.each(["claude-opus-4-7", "claude-opus-4-8"])(
+        "should map high to xhigh for %s",
+        (model) => {
+          const output: Record<string, any> = {};
+          const result = effortTransform("high", { model }, output);
+          expect(result).toBe("xhigh");
+          expect(output.thinking).toEqual({ type: "adaptive" });
+        }
+      );
+
+      it("keeps high for adaptive models without the xhigh escalation", () => {
+        // Opus 5 sits here on purpose: Anthropic's per-model guidance is to
+        // start with "high" on Opus 5 and warns against carrying the 4.x
+        // escalation over, so "high" must remain reachable. Do not add opus-5
+        // back to the xhigh list above.
+        for (const model of [
+          "claude-opus-5",
+          "claude-sonnet-5",
+          "claude-haiku-5-5",
+          "claude-fable-5",
+          "claude-fable-5-1",
+        ]) {
+          const output: Record<string, any> = {};
+          expect(effortTransform("high", { model }, output)).toBe("high");
+        }
+      });
+
+      it("should map medium normally for opus-4-7", () => {
+        const output: Record<string, any> = {};
+        const result = effortTransform("medium", { model: "claude-opus-4-7" }, output);
+        expect(result).toBe("medium");
+        expect(output.thinking).toEqual({ type: "adaptive" });
+      });
+    });
+
+    // issue #712: when llm-exe escalates the caller's "high" to "xhigh" for the
+    // Opus coding flagships, adaptive thinking needs more room than the 4096
+    // default or it truncates. The floor fires ONLY for that escalation and ONLY
+    // when the caller did not set maxTokens themselves (provenance comes from the
+    // PROVIDED_OPTION_KEYS marker on the state arg). A caller-set value is always
+    // honored, including 4096, and missing provenance is treated as caller-set.
+    describe("escalated-effort max_tokens floor (issue #712)", () => {
+      const stateWith = (model: string, provided: string[]) => ({
+        model,
+        [PROVIDED_OPTION_KEYS]: new Set(provided),
+      });
+
+      it("raises max_tokens to the floor when escalating high->xhigh and the caller did not set maxTokens", () => {
+        const output: Record<string, any> = { max_tokens: 4096 };
+        const result = effortTransform("high", stateWith("claude-opus-4-8", ["effort"]), output);
+        expect(result).toBe("xhigh");
+        expect(output.max_tokens).toBe(65536);
+      });
+
+      it("honors an explicit maxTokens of exactly 4096 when escalating high->xhigh", () => {
+        // The exact case that reproduced the original bug: an explicit 4096 is
+        // indistinguishable from the default unless provenance is tracked.
+        const output: Record<string, any> = { max_tokens: 4096 };
+        const result = effortTransform(
+          "high",
+          stateWith("claude-opus-4-8", ["effort", "maxTokens"]),
+          output
+        );
+        expect(result).toBe("xhigh");
+        expect(output.max_tokens).toBe(4096);
+      });
+
+      it("honors a caller-set maxTokens above the floor when escalating", () => {
+        const output: Record<string, any> = { max_tokens: 100000 };
+        const result = effortTransform(
+          "high",
+          stateWith("claude-opus-4-8", ["effort", "maxTokens"]),
+          output
+        );
+        expect(result).toBe("xhigh");
+        expect(output.max_tokens).toBe(100000);
+      });
+
+      it("does not lower an already-larger max_tokens when escalating without caller maxTokens provenance", () => {
+        // callerSetMaxTokens is false (only "effort" is provided), but max_tokens
+        // is already above the floor — e.g. a future config default, or a direct
+        // mapBody call. The floor must raise, never lower. Pins the
+        // `currentMax < ESCALATED_EFFORT_MIN_MAX_TOKENS` guard, which the config
+        // path can't reach (its default is always below 65536).
+        const output: Record<string, any> = { max_tokens: 100000 };
+        const result = effortTransform(
+          "high",
+          stateWith("claude-opus-4-8", ["effort"]),
+          output
+        );
+        expect(result).toBe("xhigh");
+        expect(output.max_tokens).toBe(100000);
+      });
+
+      it("fail-closed: without a provenance marker, treats maxTokens as caller-set and does not override", () => {
+        // e.g. a direct mapBody call that bypasses stateFromOptions.
+        const output: Record<string, any> = { max_tokens: 4096 };
+        const result = effortTransform("high", { model: "claude-opus-4-8" }, output);
+        expect(result).toBe("xhigh");
+        expect(output.max_tokens).toBe(4096);
+      });
+
+      it("does not apply the floor to non-escalated adaptive models (high stays high)", () => {
+        for (const model of ["claude-sonnet-5", "claude-haiku-5-5", "claude-fable-5"]) {
+          const output: Record<string, any> = { max_tokens: 4096 };
+          const result = effortTransform("high", stateWith(model, ["effort"]), output);
+          expect(result).toBe("high");
+          expect(output.max_tokens).toBe(4096);
+        }
+      });
+
+      it("does not apply the floor below xhigh (medium) even without maxTokens provenance", () => {
+        const output: Record<string, any> = { max_tokens: 4096 };
+        const result = effortTransform("medium", stateWith("claude-opus-4-8", ["effort"]), output);
+        expect(result).toBe("medium");
+        expect(output.max_tokens).toBe(4096);
+      });
+    });
+
+    describe("legacy thinking (4.5 models)", () => {
+      it.each([
+        ["claude-sonnet-4-5-20250929", "minimal", 1024],
+        ["claude-sonnet-4-5-20250929", "low", 4096],
+        ["claude-sonnet-4-5-20250929", "medium", 10240],
+        ["claude-sonnet-4-5-20250929", "high", 32768],
+        ["claude-haiku-4-5-20251001", "medium", 10240],
+        ["claude-opus-4-5-20251101", "high", 32768],
+      ] as const)(
+        "%s with effort '%s' should set budget_tokens to %d",
+        (model, effort, expectedBudget) => {
+          const output: Record<string, any> = {};
+          const result = effortTransform(effort, { model }, output);
+          expect(result).toBeUndefined();
+          expect(output.thinking).toEqual({
+            type: "enabled",
+            budget_tokens: expectedBudget,
+          });
+        }
+      );
+    });
+
+    describe("unsupported models (3.x)", () => {
+      it.each([
+        "claude-3-5-sonnet-latest",
+        "claude-3-5-haiku-latest",
+        "claude-3-opus-20240229",
+        "claude-3-7-sonnet-20250219",
+      ])("%s should return undefined and not set thinking", (model) => {
+        const output: Record<string, any> = {};
+        const result = effortTransform("high", { model }, output);
+        expect(result).toBeUndefined();
+        expect(output.thinking).toBeUndefined();
+      });
+    });
+
+    describe("invalid effort values", () => {
+      it("should return undefined for non-string value", () => {
+        const output: Record<string, any> = {};
+        expect(effortTransform(123, { model: "claude-opus-4-6" }, output)).toBeUndefined();
+        expect(output.thinking).toBeUndefined();
+      });
+
+      it("should return undefined for unsupported effort string", () => {
+        const output: Record<string, any> = {};
+        expect(effortTransform("max", { model: "claude-opus-4-6" }, output)).toBeUndefined();
+        expect(output.thinking).toBeUndefined();
+      });
+
+      it("should return undefined when effort is undefined", () => {
+        const output: Record<string, any> = {};
+        expect(effortTransform(undefined, { model: "claude-opus-4-6" }, output)).toBeUndefined();
+        expect(output.thinking).toBeUndefined();
+      });
+    });
+  });
+
+  describe("effort mapBody integration", () => {
+    const prompt = [{ role: "user", content: "Hello" }];
+
+    it("should produce adaptive thinking body for opus-4-6", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-opus-4-6",
+        maxTokens: 4096,
+        effort: "high",
+        prompt,
+      });
+      expect(body).toEqual(
+        expect.objectContaining({
+          model: "claude-opus-4-6",
+          thinking: { type: "adaptive" },
+          output_config: { effort: "high" },
+        })
+      );
+    });
+
+    it("should produce legacy thinking body for sonnet-4-5", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-4-5-20250929",
+        maxTokens: 4096,
+        effort: "medium",
+        prompt,
+      });
+      expect(body).toEqual(
+        expect.objectContaining({
+          model: "claude-sonnet-4-5-20250929",
+          thinking: { type: "enabled", budget_tokens: 10240 },
+        })
+      );
+      expect(body).not.toHaveProperty("output_config");
+    });
+
+    it("raises max_tokens above budget_tokens for legacy models (Anthropic requires max_tokens > budget)", () => {
+      // Default maxTokens (4096) <= medium budget (10240) would 400 without this.
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-4-5-20250929",
+        maxTokens: 4096,
+        effort: "medium",
+        prompt,
+      });
+      expect(body.thinking).toEqual({ type: "enabled", budget_tokens: 10240 });
+      expect(body.max_tokens).toBeGreaterThan(10240);
+    });
+
+    it("does not lower a caller's already-larger max_tokens for legacy models", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-4-5-20250929",
+        maxTokens: 50000,
+        effort: "medium",
+        prompt,
+      });
+      expect(body.max_tokens).toBe(50000);
+    });
+
+    it("produces adaptive body with xhigh for opus-4-8 (newer flagship)", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-opus-4-8",
+        maxTokens: 4096,
+        effort: "high",
+        prompt,
+      });
+      expect(body).toEqual(
+        expect.objectContaining({
+          thinking: { type: "adaptive" },
+          output_config: { effort: "xhigh" },
+        })
+      );
+    });
+
+    it("raises max_tokens to the floor via mapBody when escalating and maxTokens is not caller-provided (issue #712)", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-opus-4-8",
+        maxTokens: 4096, // present as the defaulted value...
+        effort: "high",
+        prompt,
+        [PROVIDED_OPTION_KEYS]: new Set(["effort"]), // ...but not caller-set
+      });
+      expect(body.output_config).toEqual({ effort: "xhigh" });
+      expect(body.max_tokens).toBe(65536);
+    });
+
+    it("honors a caller-set maxTokens via mapBody when escalating (issue #712)", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-opus-4-8",
+        maxTokens: 4096,
+        effort: "high",
+        prompt,
+        [PROVIDED_OPTION_KEYS]: new Set(["effort", "maxTokens"]),
+      });
+      expect(body.output_config).toEqual({ effort: "xhigh" });
+      expect(body.max_tokens).toBe(4096);
+    });
+
+    it("drops temperature/topP/topK when effort enables thinking on a non-reject adaptive model (issue #716)", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-4-6",
+        maxTokens: 4096,
+        effort: "high",
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+        prompt,
+      });
+      expect(body.thinking).toEqual({ type: "adaptive" });
+      expect(body.temperature).toBeUndefined();
+      expect(body.top_p).toBeUndefined();
+      expect(body.top_k).toBeUndefined();
+    });
+
+    it("keeps topP >= 0.95 when effort enables thinking (issue #716)", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-4-6",
+        maxTokens: 4096,
+        effort: "high",
+        topP: 0.97,
+        prompt,
+      });
+      expect(body.thinking).toEqual({ type: "adaptive" });
+      expect(body.top_p).toBe(0.97);
+    });
+
+    it("should not add thinking fields for claude-3 models", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-3-5-sonnet-latest",
+        maxTokens: 4096,
+        effort: "high",
+        prompt,
+      });
+      expect(body).not.toHaveProperty("thinking");
+      expect(body).not.toHaveProperty("output_config");
+    });
+  });
+
   describe("deprecated shorthands still resolve", () => {
     it.each([
       ["anthropic.claude-opus-4-6", "claude-opus-4-6"],
-      ["anthropic.claude-sonnet-4", "claude-sonnet-4-0"],
-      ["anthropic.claude-opus-4", "claude-opus-4-0"],
+      ["anthropic.claude-sonnet-4-5", "claude-sonnet-4-5"],
       ["anthropic.claude-3-7-sonnet", "claude-3-7-sonnet-20250219"],
       ["anthropic.claude-3-5-sonnet", "claude-3-5-sonnet-latest"],
       ["anthropic.claude-3-5-haiku", "claude-3-5-haiku-latest"],
@@ -68,15 +429,40 @@ describe("anthropic config", () => {
     );
   });
 
+  describe("anthropic.claude-sonnet-4-5 deprecation (retires Nov 30, 2026)", () => {
+    const cfg = anthropic["anthropic.claude-sonnet-4-5"];
+
+    it("is marked deprecated", () => {
+      expect(cfg.deprecated?.shorthand).toBe("anthropic.claude-sonnet-4-5");
+    });
+
+    it("message names the retirement date and Anthropic's named replacement", () => {
+      const message = cfg.deprecated?.message ?? "";
+      expect(message).toContain("November 30, 2026");
+      expect(message).toContain('"anthropic.claude-sonnet-5-5"');
+    });
+
+    it("points to a replacement shorthand that exists and is not deprecated", () => {
+      const replacement = anthropic["anthropic.claude-sonnet-5-5"];
+      expect(replacement).toBeDefined();
+      expect(replacement.deprecated).toBeUndefined();
+    });
+  });
+
   describe("active shorthands", () => {
     it.each([
+      ["anthropic.claude-fable-5-1", "claude-fable-5-1"],
+      ["anthropic.claude-fable-5", "claude-fable-5"],
+      ["anthropic.claude-opus-5-5", "claude-opus-5-5"],
+      ["anthropic.claude-sonnet-5-5", "claude-sonnet-5-5"],
+      ["anthropic.claude-haiku-5-5", "claude-haiku-5-5"],
+      ["anthropic.claude-opus-5", "claude-opus-5"],
       ["anthropic.claude-opus-4-8", "claude-opus-4-8"],
+      ["anthropic.claude-sonnet-5", "claude-sonnet-5"],
       ["anthropic.claude-opus-4-7", "claude-opus-4-7"],
       ["anthropic.claude-sonnet-4-6", "claude-sonnet-4-6"],
       ["anthropic.claude-opus-4-5", "claude-opus-4-5"],
       ["anthropic.claude-haiku-4-5", "claude-haiku-4-5"],
-      ["anthropic.claude-sonnet-4-5", "claude-sonnet-4-5"],
-      ["anthropic.claude-opus-4-1", "claude-opus-4-1-20250805"],
     ] as const)(
       "%s should resolve to %s",
       (shorthand, expectedModel) => {
@@ -85,6 +471,23 @@ describe("anthropic config", () => {
         expect(cfg.options.model.default).toBe(expectedModel);
       }
     );
+  });
+
+  describe("removed shorthands", () => {
+    it("no longer exposes anthropic.claude-opus-4-1 (model retired Aug 5, 2026)", () => {
+      expect(
+        (anthropic as Record<string, unknown>)["anthropic.claude-opus-4-1"]
+      ).toBeUndefined();
+    });
+
+    it.each([
+      "anthropic.claude-opus-4",
+      "anthropic.claude-sonnet-4",
+    ])("no longer exposes %s (model retired at Anthropic — HTTP 404)", (shorthand) => {
+      expect(
+        (anthropic as Record<string, unknown>)[shorthand]
+      ).toBeUndefined();
+    });
   });
 
   describe("sampling parameter guards", () => {
@@ -119,15 +522,86 @@ describe("anthropic config", () => {
       expect(body.top_k).toBeUndefined();
     });
 
+    it("drops temperature, top_p, and top_k for claude-opus-5", () => {
+      const body = buildBody({
+        model: "claude-opus-5",
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+      });
+      expect(body.temperature).toBeUndefined();
+      expect(body.top_p).toBeUndefined();
+      expect(body.top_k).toBeUndefined();
+    });
+
+    it("drops temperature, top_p, and top_k for claude-sonnet-5", () => {
+      const body = buildBody({
+        model: "claude-sonnet-5",
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+      });
+      expect(body.temperature).toBeUndefined();
+      expect(body.top_p).toBeUndefined();
+      expect(body.top_k).toBeUndefined();
+    });
+
+    it("drops temperature, top_p, and top_k for claude-fable-5", () => {
+      const body = buildBody({
+        model: "claude-fable-5",
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+      });
+      expect(body.temperature).toBeUndefined();
+      expect(body.top_p).toBeUndefined();
+      expect(body.top_k).toBeUndefined();
+    });
+
+    it("drops temperature, top_p, and top_k for claude-haiku-5-5", () => {
+      const body = buildBody({
+        model: "claude-haiku-5-5",
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+      });
+      expect(body.temperature).toBeUndefined();
+      expect(body.top_p).toBeUndefined();
+      expect(body.top_k).toBeUndefined();
+    });
+
+    it("drops sampling params for claude-fable-5-1 even with no effort set", () => {
+      // Fable 5.1's adaptive thinking is always on, so the sampling params are
+      // invalid regardless of `effort` — the drop must not be conditional on
+      // the effort gate.
+      const body = buildBody({
+        model: "claude-fable-5-1",
+        temperature: 0.7,
+        topP: 0.99,
+        topK: 10,
+      });
+      expect(body.output_config).toBeUndefined();
+      expect(body.temperature).toBeUndefined();
+      expect(body.top_p).toBeUndefined();
+      expect(body.top_k).toBeUndefined();
+    });
+
+    it("drops temperature 0 for claude-haiku-5-5 even without effort (any non-1 value is a 400)", () => {
+      // Regression: before haiku-5-5 was in the reject list, a deterministic
+      // `temperature: 0` was forwarded verbatim and the request 400'd. 0 is
+      // falsy, so this also guards against a truthiness check sneaking in.
+      const body = buildBody({ model: "claude-haiku-5-5", temperature: 0 });
+      expect(body.temperature).toBeUndefined();
+      expect(body.thinking).toBeUndefined();
+      expect(body.output_config).toBeUndefined();
+    });
+
     it("drops top_p but keeps temperature on Claude 4.x when both are set", () => {
       for (const model of [
         "claude-opus-4-6",
         "claude-sonnet-4-6",
         "claude-haiku-4-5",
         "claude-sonnet-4-5",
-        "claude-opus-4-1-20250805",
-        "claude-sonnet-4-0",
-        "claude-opus-4-0",
       ]) {
         const body = buildBody({ model, temperature: 0.5, topP: 0.9 });
         expect(body.temperature).toBe(0.5);
@@ -160,6 +634,248 @@ describe("anthropic config", () => {
     });
   });
 
+  // Regression tests for issue #661: the tests above call mapBody directly,
+  // which bypasses stateFromOptions. These go through the public useLlm path
+  // so an option key missing from config.options can't silently drop a param.
+  describe("options reach the outgoing request body via useLlm (issue #661)", () => {
+    const originalFetch = globalThis.fetch;
+    let outgoingBody: Record<string, any> = {};
+
+    beforeEach(() => {
+      outgoingBody = {};
+      globalThis.fetch = (async (_url: any, init: any) => {
+        outgoingBody = JSON.parse(init?.body);
+        return new Response(
+          JSON.stringify({
+            id: "msg_test",
+            type: "message",
+            role: "assistant",
+            model: "claude-test",
+            content: [{ type: "text", text: "ok" }],
+            stop_reason: "end_turn",
+            usage: { input_tokens: 1, output_tokens: 1 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }) as typeof fetch;
+    });
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    const messages = [{ role: "user" as const, content: "hi" }];
+
+    it("forwards temperature, top_k, stop_sequences, metadata, and service_tier", async () => {
+      const llm = useLlm("anthropic.claude-sonnet-4-6", {
+        temperature: 0.5,
+        topK: 40,
+        stopSequences: ["END"],
+        metadata: { user_id: "user-123" },
+        serviceTier: "auto",
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.temperature).toBe(0.5);
+      expect(outgoingBody.top_k).toBe(40);
+      expect(outgoingBody.stop_sequences).toEqual(["END"]);
+      expect(outgoingBody.metadata).toEqual({ user_id: "user-123" });
+      expect(outgoingBody.service_tier).toBe("auto");
+    });
+
+    it("forwards top_p when temperature is not set (Claude 4.x)", async () => {
+      const llm = useLlm("anthropic.claude-sonnet-4-6", {
+        topP: 0.9,
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.top_p).toBe(0.9);
+    });
+
+    it("drops top_p but keeps temperature when both are set (Claude 4.x)", async () => {
+      const llm = useLlm("anthropic.claude-sonnet-4-6", {
+        temperature: 0.5,
+        topP: 0.9,
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.temperature).toBe(0.5);
+      expect(outgoingBody.top_p).toBeUndefined();
+    });
+
+    it("forwards both temperature and top_p on Claude 3.x", async () => {
+      const llm = useLlm("anthropic.chat.v1", {
+        model: "claude-3-5-sonnet-latest",
+        temperature: 0.5,
+        topP: 0.9,
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.temperature).toBe(0.5);
+      expect(outgoingBody.top_p).toBe(0.9);
+    });
+
+    it("drops temperature 0 and maps effort for claude-haiku-5-5 via the options path", async () => {
+      // The platform fallback shape: options-based model with a deterministic
+      // temperature. Haiku 5.5 rejects any temperature other than 1, so it must
+      // be dropped, and effort must reach the body as adaptive thinking.
+      const llm = useLlm("anthropic.chat.v1", {
+        model: "claude-haiku-5-5",
+        temperature: 0,
+        topK: 40,
+        effort: "low",
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.model).toBe("claude-haiku-5-5");
+      expect(outgoingBody.temperature).toBeUndefined();
+      expect(outgoingBody.top_p).toBeUndefined();
+      expect(outgoingBody.top_k).toBeUndefined();
+      expect(outgoingBody.thinking).toEqual({ type: "adaptive" });
+      expect(outgoingBody.output_config).toEqual({ effort: "low" });
+    });
+
+    it.each([
+      ["anthropic.claude-opus-5-5", "claude-opus-5-5"],
+      ["anthropic.claude-sonnet-5-5", "claude-sonnet-5-5"],
+      ["anthropic.claude-haiku-5-5", "claude-haiku-5-5"],
+    ] as const)(
+      "%s sends model %s with adaptive thinking for effort",
+      async (shorthand, expectedModel) => {
+        const llm = useLlm(shorthand, {
+          effort: "medium",
+          anthropicApiKey: "sk-ant-test",
+        });
+        await llm.call(messages);
+
+        expect(outgoingBody.model).toBe(expectedModel);
+        expect(outgoingBody.thinking).toEqual({ type: "adaptive" });
+        expect(outgoingBody.output_config).toEqual({ effort: "medium" });
+      }
+    );
+
+    it.each([
+      ["anthropic.claude-opus-5-5"],
+      ["anthropic.claude-sonnet-5-5"],
+      ["anthropic.claude-haiku-5-5"],
+      ["anthropic.claude-opus-5"],
+      ["anthropic.claude-opus-4-7"],
+      ["anthropic.claude-opus-4-8"],
+      ["anthropic.claude-sonnet-5"],
+      ["anthropic.claude-fable-5"],
+      ["anthropic.claude-fable-5-1"],
+    ] as const)(
+      "%s drops all sampling params (model 400s if they are sent)",
+      async (shorthand) => {
+        const llm = useLlm(shorthand, {
+          temperature: 0.5,
+          topP: 0.9,
+          topK: 40,
+          anthropicApiKey: "sk-ant-test",
+        });
+        await llm.call(messages);
+
+        expect(outgoingBody.temperature).toBeUndefined();
+        expect(outgoingBody.top_p).toBeUndefined();
+        expect(outgoingBody.top_k).toBeUndefined();
+      }
+    );
+
+    it("never forwards stream (no SSE support in the request pipeline)", async () => {
+      const llm = useLlm("anthropic.claude-sonnet-4-6", {
+        stream: true,
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.stream).toBeUndefined();
+    });
+  });
+
+  // Regression tests for issue #712: the unit and mapBody tests above hand-build
+  // the PROVIDED_OPTION_KEYS marker. These go through the public useLlm path so a
+  // break in the stateFromOptions -> *.call.ts -> mapBody provenance plumbing is
+  // caught, not just the transform logic in isolation.
+  describe("escalated-effort max_tokens floor reaches the request via useLlm (issue #712)", () => {
+    const originalFetch = globalThis.fetch;
+    let outgoingBody: Record<string, any> = {};
+
+    beforeEach(() => {
+      outgoingBody = {};
+      globalThis.fetch = (async (_url: any, init: any) => {
+        outgoingBody = JSON.parse(init?.body);
+        return new Response(
+          JSON.stringify({
+            id: "msg_test",
+            type: "message",
+            role: "assistant",
+            model: "claude-test",
+            content: [{ type: "text", text: "ok" }],
+            stop_reason: "end_turn",
+            usage: { input_tokens: 1, output_tokens: 1 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }) as typeof fetch;
+    });
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    const messages = [{ role: "user" as const, content: "hi" }];
+
+    it("raises max_tokens for opus-4-8 at effort high when the caller does not set maxTokens", async () => {
+      const llm = useLlm("anthropic.claude-opus-4-8", {
+        effort: "high",
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.output_config).toEqual({ effort: "xhigh" });
+      expect(outgoingBody.max_tokens).toBe(65536);
+    });
+
+    it("honors an explicit maxTokens of 4096 for opus-4-8 at effort high (no silent override)", async () => {
+      const llm = useLlm("anthropic.claude-opus-4-8", {
+        effort: "high",
+        maxTokens: 4096,
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.output_config).toEqual({ effort: "xhigh" });
+      expect(outgoingBody.max_tokens).toBe(4096);
+    });
+
+    it("honors an explicit larger maxTokens for opus-4-8 at effort high", async () => {
+      const llm = useLlm("anthropic.claude-opus-4-8", {
+        effort: "high",
+        maxTokens: 8000,
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.max_tokens).toBe(8000);
+    });
+
+    it("does not raise max_tokens for a non-escalated adaptive model (sonnet-5 keeps high)", async () => {
+      const llm = useLlm("anthropic.claude-sonnet-5", {
+        effort: "high",
+        anthropicApiKey: "sk-ant-test",
+      });
+      await llm.call(messages);
+
+      expect(outgoingBody.output_config).toEqual({ effort: "high" });
+      expect(outgoingBody.max_tokens).toBe(4096);
+    });
+  });
+
   describe("mapOptions.functionCall", () => {
     const functionCall = config.mapOptions!.functionCall!;
 
@@ -179,10 +895,32 @@ describe("anthropic config", () => {
       });
     });
 
-    it("passes through specific function name unchanged", () => {
-      expect(functionCall("my_func" as any, {})).toEqual({
-        tool_choice: "my_func",
+    it("maps a named tool { name } to Anthropic's { type: 'tool', name } (issue #720)", () => {
+      expect(functionCall({ name: "my_func" } as any, {})).toEqual({
+        tool_choice: { type: "tool", name: "my_func" },
       });
+    });
+
+    it("throws when a forced tool_choice is combined with extended thinking (issue #720)", async () => {
+      // effort on a 4.5 model produces thinking:{type:"enabled"}, which Anthropic
+      // rejects together with a forced tool_choice. llm-exe fails fast.
+      const llm = useLlm("anthropic.claude-sonnet-4-5", {
+        effort: "high",
+        anthropicApiKey: "sk-ant-test",
+        numOfAttempts: 1,
+      });
+      await expect(
+        llm.call([{ role: "user", content: "hi" }], {
+          functions: [
+            {
+              name: "f",
+              description: "d",
+              parameters: { type: "object", properties: {} },
+            },
+          ],
+          functionCall: "any",
+        })
+      ).rejects.toThrow(/forced tool_choice/i);
     });
   });
 
@@ -242,6 +980,54 @@ describe("anthropic config", () => {
       expect(result.tools).toHaveLength(2);
       expect(result.tools[0].name).toBe("a");
       expect(result.tools[1].name).toBe("b");
+    });
+  });
+
+  describe("image content through mapBody", () => {
+    it("converts image_url blocks into anthropic image sources in the request body", () => {
+      const body = mapBody(config.mapBody, {
+        model: "claude-sonnet-5",
+        maxTokens: 1024,
+        prompt: [
+          { role: "system", content: "You are helpful" },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "What is in this image?" },
+              {
+                type: "image_url",
+                image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+              },
+              {
+                type: "image_url",
+                image_url: { url: "https://example.com/cat.png" },
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(body.system).toBe("You are helpful");
+      expect(body.messages).toEqual([
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "What is in this image?" },
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: "image/png",
+                data: "iVBORw0KGgo=",
+              },
+            },
+            {
+              type: "image",
+              source: { type: "url", url: "https://example.com/cat.png" },
+            },
+          ],
+        },
+      ]);
     });
   });
 });

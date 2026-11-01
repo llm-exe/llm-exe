@@ -2,6 +2,7 @@ import { CohereBedrockEmbedding } from "@/embedding/output/CohereBedrockEmbeddin
 import { BaseEmbeddingOutput } from "@/embedding/output/BaseEmbeddingOutput";
 import { CohereBedrockEmbeddingApiResponseOutput } from "@/types";
 import { deepClone } from "@/utils/modules/deepClone";
+import { LlmExeError } from "@/errors";
 
 jest.mock("@/utils/modules/deepClone", () => ({
   deepClone: jest.fn(),
@@ -185,5 +186,100 @@ describe("CohereBedrockEmbedding", () => {
       CohereBedrockEmbedding(mockResult, { model: "cohere.embed-v4:0" })
     ).toThrow(/Expected float embeddings.*received object with keys: \[something_new\]/);
     expect(BaseEmbeddingOutputMock).not.toHaveBeenCalled();
+  });
+
+  describe("multimodal responses", () => {
+    it("resolves a multimodal (inputs) response from embeddings.float", () => {
+      // A request that used the `inputs` field returns the same envelope as a
+      // `texts` request: response_type "embeddings_by_type" with a float key.
+      // `texts` is absent because the request carried no texts field.
+      const mockResult: CohereBedrockEmbeddingApiResponseOutput = {
+        id: "mm-1",
+        response_type: "embeddings_by_type",
+        embeddings: {
+          float: [[0.11, 0.22, 0.33]],
+        },
+      };
+
+      deepCloneMock.mockReturnValueOnce(mockResult);
+
+      CohereBedrockEmbedding(mockResult, { model: "cohere.embed-v4:0" });
+
+      expect(BaseEmbeddingOutputMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "mm-1",
+          model: "cohere.embed-v4:0",
+          embedding: [[0.11, 0.22, 0.33]],
+        })
+      );
+    });
+
+    it("keeps batch order across a multi-item multimodal batch", () => {
+      const mockResult: CohereBedrockEmbeddingApiResponseOutput = {
+        response_type: "embeddings_by_type",
+        embeddings: {
+          float: [
+            [1, 0],
+            [0, 1],
+            [1, 1],
+          ],
+        },
+      };
+
+      deepCloneMock.mockReturnValueOnce(mockResult);
+
+      CohereBedrockEmbedding(mockResult, { model: "cohere.embed-v4:0" });
+
+      expect(BaseEmbeddingOutputMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          embedding: [
+            [1, 0],
+            [0, 1],
+            [1, 1],
+          ],
+        })
+      );
+    });
+  });
+
+  describe("typed response-shape errors", () => {
+    it("throws LlmExeError with embedding.invalid_response_shape for an unrequested type", () => {
+      const mockResult = {
+        response_type: "embeddings_by_type",
+        embeddings: { int8: [[1, 2, 3]] },
+      } as unknown as CohereBedrockEmbeddingApiResponseOutput;
+
+      deepCloneMock.mockReturnValueOnce(mockResult);
+
+      try {
+        CohereBedrockEmbedding(mockResult, { model: "cohere.embed-v4:0" });
+        fail("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toBe("embedding.invalid_response_shape");
+        expect((e as LlmExeError).category).toBe("embedding");
+        const ctx = (e as LlmExeError).context as Record<string, unknown>;
+        expect(ctx.operation).toBe("CohereBedrockEmbedding.resolveEmbeddings");
+        expect(ctx.provider).toBe("amazon:cohere.embedding");
+        expect(ctx.model).toBe("cohere.embed-v4:0");
+        expect(ctx.received).toEqual(["int8"]);
+      }
+    });
+
+    it("throws LlmExeError with embedding.invalid_response_shape for a missing embeddings field", () => {
+      const mockResult = {} as CohereBedrockEmbeddingApiResponseOutput;
+
+      deepCloneMock.mockReturnValueOnce(mockResult);
+
+      try {
+        CohereBedrockEmbedding(mockResult, { model: "cohere.embed-v4:0" });
+        fail("Expected an error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(LlmExeError);
+        expect((e as LlmExeError).code).toBe("embedding.invalid_response_shape");
+        const ctx = (e as LlmExeError).context as Record<string, unknown>;
+        expect(ctx.received).toBe("undefined");
+      }
+    });
   });
 });

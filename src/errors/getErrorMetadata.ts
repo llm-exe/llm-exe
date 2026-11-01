@@ -18,6 +18,6 @@ export function getErrorMetadata(error: unknown): ErrorMetadataFields {
     errorCategory: error.category,
     errorCode: error.code,
     errorContext: error.context,
-    errorCause: (error as unknown as { cause?: unknown }).cause,
+    errorCause: error.cause,
   };
 }

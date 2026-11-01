@@ -1,7 +1,12 @@
+---
+title: "Create Text Prompts for LLMs in TypeScript | llm-exe"
+description: "Build simple text-based LLM prompts in TypeScript with llm-exe. Compose content, apply Handlebars template variables, and format prompts ready for any LLM."
+---
+
 # Text Prompt
 The text prompt returns a single formatted string, useful for simple completion-style prompts or when you need the prompt as a plain string rather than structured chat messages.
 
-You create a prompt using `createPrompt()`.
+You create a prompt using `createPrompt()`, which returns a `TextPrompt` instance. To pass [prompt options](/prompt/#prompt-options) to a text prompt, use `new TextPrompt(message, options)` for now ([#889](https://github.com/llm-exe/llm-exe/issues/889)).
 
 <GenericOutput example="prompt.text.exampleCreateTextPrompt">
 
@@ -47,7 +52,7 @@ By default, formatted text prompt messages are separated using 2 line breaks (\\
 <<< ../../examples/prompt/text.ts#exampleCreateTextPromptCustomDelimiter
 </GenericOutput>
 
-See [prompt templates](/prompt/advanced.html) for more advanced prompt usage.
+See [prompt templates](/prompt/advanced) for more advanced prompt usage.
 
 #### Text Prompt Methods
 

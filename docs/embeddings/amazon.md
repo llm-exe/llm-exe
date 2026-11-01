@@ -1,3 +1,7 @@
+---
+title: "Use Amazon Titan Embeddings on AWS Bedrock | llm-exe"
+description: "Generate Amazon Titan embeddings via AWS Bedrock in TypeScript with llm-exe. Covers model IDs, output dimensions, AWS regions, and credential setup."
+---
 
 # Amazon Embeddings
 
@@ -32,3 +36,7 @@ console.log(vector);
 // ...etc
 // ]
 ```
+
+## Notes
+
+- This provider targets Titan's text embedding request shape, which takes a single `inputText` string. Passing multimodal content items throws `embedding.unsupported_input`; use [Cohere via Bedrock](./cohere.md#multimodal-input-embed-v4) to embed images.

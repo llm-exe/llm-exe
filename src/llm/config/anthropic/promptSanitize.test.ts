@@ -102,6 +102,198 @@ describe("anthropicPromptSanitize", () => {
     ]);
   });
 
+  describe("trailing assistant message prefill warning", () => {
+    let warnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it("should warn when last message is assistant on claude-opus-4-6", () => {
+      const messages: IChatMessages = [
+        { role: "system", content: "You are helpful." },
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, { model: "claude-opus-4-6" }, {});
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("does not support assistant message prefills")
+      );
+    });
+
+    it("should warn when last message is assistant on claude-opus-4-7", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, { model: "claude-opus-4-7" }, {});
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("should warn when last message is assistant on claude-sonnet-4-6", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, { model: "claude-sonnet-4-6" }, {});
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      "claude-opus-5",
+      "claude-opus-5-5",
+      "claude-opus-4-8",
+      "claude-sonnet-5",
+      "claude-sonnet-5-5",
+      "claude-haiku-5-5",
+      "claude-fable-5",
+      "claude-fable-5-1",
+    ])(
+      "should warn on newer 4.6+/5-generation model %s",
+      (model) => {
+        const messages: IChatMessages = [
+          { role: "user", content: "What's 2+2?" },
+          { role: "assistant", content: "The answer is" },
+        ];
+        anthropicPromptSanitize(messages, { model }, {});
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("does not support assistant message prefills")
+        );
+      }
+    );
+
+    it("should not warn on 4.5-generation models that support prefills", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, { model: "claude-haiku-4-5" }, {});
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("should warn for dated model variants", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(
+        messages,
+        { model: "claude-opus-4-7-20260501" },
+        {}
+      );
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not warn on older models that support prefills", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(
+        messages,
+        { model: "claude-3-5-sonnet-latest" },
+        {}
+      );
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("should not warn when last message is not assistant", () => {
+      const messages: IChatMessages = [
+        { role: "system", content: "You are helpful." },
+        { role: "user", content: "What's 2+2?" },
+      ];
+      anthropicPromptSanitize(messages, { model: "claude-opus-4-7" }, {});
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("should not warn when model is not provided", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, {}, {});
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      "anthropic.claude-haiku-5-5-v1:0",
+      "us.anthropic.claude-sonnet-5-v1:0",
+      "global.anthropic.claude-opus-5",
+      "us-gov.anthropic.claude-opus-4-7-v1:0",
+      "arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-opus-4-7-v1:0",
+      "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-6",
+    ])("should warn on Bedrock model id %s", (model) => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, { model }, {});
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("does not support assistant message prefills")
+      );
+    });
+
+    it.each([
+      "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "anthropic.claude-haiku-4-5-20251001-v1:0",
+      "my-anthropic.claude-opus-5",
+    ])("should not warn on Bedrock model id %s", (model) => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      anthropicPromptSanitize(messages, { model }, {});
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("should not warn when a model id merely shares a prefix with an unsupported one", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "What's 2+2?" },
+        { role: "assistant", content: "The answer is" },
+      ];
+      // "claude-opus-50" must not be read as "claude-opus-5" plus a suffix —
+      // only an exact id or a `${prefix}-` dated snapshot should match.
+      anthropicPromptSanitize(messages, { model: "claude-opus-50" }, {});
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("should warn exactly once when consecutive assistant messages merge into one", () => {
+      const messages = [
+        { role: "user" as const, content: "Do something" },
+        {
+          role: "assistant" as const,
+          content: "response",
+          function_call: { id: "call-1", name: "fn1", arguments: "{}" },
+        },
+        {
+          role: "assistant" as const,
+          content: "response2",
+          function_call: { id: "call-2", name: "fn2", arguments: "{}" },
+        },
+      ] as any;
+
+      const result = anthropicPromptSanitize(
+        messages,
+        { model: "claude-opus-5" },
+        {}
+      );
+
+      // The warning is checked after mergeConsecutiveSameRole runs, so the two
+      // assistant messages are a single trailing assistant message by then —
+      // one warning, not two.
+      expect(result).toHaveLength(2);
+      expect(result[1].role).toBe("assistant");
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("mergeConsecutiveSameRole", () => {
     it("should merge consecutive tool_result messages with array content", () => {
       const messages: IChatMessages = [
@@ -208,6 +400,93 @@ describe("anthropicPromptSanitize", () => {
       const result = anthropicPromptSanitize(messages, {}, outputObj);
 
       expect(result).toHaveLength(3);
+    });
+
+    it("returns an empty array for an empty messages array", () => {
+      expect(
+        anthropicPromptSanitize([], { model: "claude-opus-4-5" }, {})
+      ).toEqual([]);
+    });
+
+    it("should leave the output object untouched for an empty messages array", () => {
+      const outputObj: Record<string, any> = {};
+      anthropicPromptSanitize([], {}, outputObj);
+
+      expect(outputObj).toEqual({});
+    });
+  });
+
+  // The sanitizer runs once per HTTP attempt, and llm-exe retries failed calls
+  // with the same prompt object. If sanitizing mutates the caller's messages,
+  // the second attempt sends a different (corrupted) body than the first —
+  // a bug that only shows up on retry, which is exactly when it hurts most.
+  describe("caller input is not mutated", () => {
+    it("should not mutate the caller's messages when merging array content", () => {
+      const messages: IChatMessages = [
+        { role: "user", content: "Question" },
+        {
+          role: "assistant",
+          content: [{ type: "text", text: "one" }],
+        } as any,
+        {
+          role: "assistant",
+          content: [{ type: "text", text: "two" }],
+        } as any,
+      ];
+      const snapshot = JSON.parse(JSON.stringify(messages));
+
+      const result = anthropicPromptSanitize(messages, {}, {});
+
+      // the merge happened...
+      expect(result).toHaveLength(2);
+      expect(result[1].content).toHaveLength(2);
+      // ...but the caller's array was left exactly as it was passed in
+      expect(messages).toEqual(snapshot);
+      expect((messages[1] as any).content).toHaveLength(1);
+      expect((messages[2] as any).content).toHaveLength(1);
+    });
+
+    it("should not mutate the caller's messages when hoisting a system message", () => {
+      const messages: IChatMessages = [
+        { role: "system", content: "You are helpful." },
+        { role: "user", content: "Question" },
+        { role: "system", content: "Mid-conversation system note" },
+      ];
+      const snapshot = JSON.parse(JSON.stringify(messages));
+      const outputObj: Record<string, any> = {};
+
+      const result = anthropicPromptSanitize(messages, {}, outputObj);
+
+      expect(outputObj.system).toBe("You are helpful.");
+      // the trailing system message is rewritten to user in the output...
+      expect(result[result.length - 1].role).toBe("user");
+      // ...but the caller still sees its original roles
+      expect(messages).toEqual(snapshot);
+      expect(messages[0].role).toBe("system");
+      expect(messages[2].role).toBe("system");
+    });
+
+    it("should produce identical output when called twice on the same messages", () => {
+      const messages: IChatMessages = [
+        { role: "system", content: "You are helpful." },
+        { role: "user", content: "Question" },
+        {
+          role: "assistant",
+          content: [{ type: "text", text: "one" }],
+        } as any,
+        {
+          role: "assistant",
+          content: [{ type: "text", text: "two" }],
+        } as any,
+      ];
+
+      const firstOut: Record<string, any> = {};
+      const first = anthropicPromptSanitize(messages, {}, firstOut);
+      const secondOut: Record<string, any> = {};
+      const second = anthropicPromptSanitize(messages, {}, secondOut);
+
+      expect(second).toEqual(first);
+      expect(secondOut).toEqual(firstOut);
     });
   });
 });

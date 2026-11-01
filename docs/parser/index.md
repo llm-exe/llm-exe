@@ -1,113 +1,67 @@
 ---
 title: "Parsers | Validate and Transform LLM Output with llm-exe"
-description: "Use parsers in prompt files or TypeScript to turn LLM text into strings, booleans, numbers, JSON, arrays, and schema-validated objects."
+description: "Parsers turn raw LLM output into structured, reliable data. Choose from built-in options or define custom parsers to enforce schemas, extract values, and shape responses for safe, predictable AI execution."
 ---
 
 # Parser
 
-Parsers turn LLM output into data your application can use.
+When calling LLM's the response is ultimately a string. While you can (and will) instruct the LLM to respond with a number, or formatted as JSON... the response will still be a string.
 
-In a prompt file, use `parser` and `parserOptions`.
+Prompt files select a parser with `parser` and `parserOptions`. See [Prompt Files](/config/).
 
-```yaml
-provider: openai.gpt-4o-mini
-message: "Extract sentiment from: {{text}}"
-parser: json
-parserOptions:
-  schema:
-    type: object
-    additionalProperties: false
-    properties:
-      sentiment:
-        type: string
-    required: [sentiment]
-data:
-  text: I love this.
-```
+Parsers are used to take the output from the LLM, and format it into a data type that is usable by your application.
 
-Run it:
+There are various default parsers included, and the parser class is easily extendable.
 
-```bash
-llm-exe ./sentiment.yml --json
-```
+When combined with an LLM executor, the parser is responsible for providing type hints to the Typescript compiler on the expected output for the LLM executor.
 
-The JSON parser parses the model response and validates it against the schema. For providers that support structured JSON output, llm-exe also sends the schema to the provider.
+**Note**: You can use and call methods on parsers directly, but they are usually passed to an [LLM executor](/executor/) and then called internally.
 
-## Built-In Parsers
+## Getting Started
 
-The default parser is `string`.
+### Working with Parsers
 
-```yaml
-provider: openai.gpt-4o-mini
-message: "Summarize: {{text}}"
-parser: string
-```
+When working with output parsers, you have two options:
 
-Other built-in parsers include:
+1. Use a [default parser](/parser/included-parsers).
+2. Create a [custom parser](/parser/custom) for full control over output transformation.
 
-- `json`
-- `boolean`
-- `number`
-- `listToArray`
-- `listToJson`
-- `listToKeyValue`
-- `stringExtract`
-- `markdownCodeBlock`
-- `markdownCodeBlocks`
-- `replaceStringTemplate`
-
-See [Included Parsers](/parser/included-parsers.html).
-
-## Parser Options
-
-Parser options go under `parserOptions`.
-
-```yaml
-parser: stringExtract
-parserOptions:
-  enum:
-    - approve
-    - reject
-```
-
-For JSON-style output, schema options are the most common use.
-
-```yaml
-parser: json
-parserOptions:
-  schema:
-    type: object
-    properties:
-      answer:
-        type: string
-      confidence:
-        type: integer
-    required: [answer, confidence]
-```
-
-## TypeScript
-
-In TypeScript, use `createParser`.
+#### Use a Default Parser
 
 ```ts
-import { createParser } from "llm-exe";
+const parser = createParser("listToArray"); // see list of included parsers
 
-const parser = createParser("listToArray");
+// example output string from LLM
+const exampleOutputFromLlm = `First, hover the services menu
+Wait for the dropdown menu to appear
+Click on the development link`;
 
-const parsed = parser.parse(`First step
-Second step
-Third step`);
+// listToArray will split a string on line breaks
+const parsed = parser.parse(exampleOutputFromLlm);
 
-console.log(parsed);
-// ["First step", "Second step", "Third step"]
+/**
+ *
+ * console.log(parsed);
+ *
+ * [
+ *   "First, hover the services menu",
+ *   "Wait for the dropdown menu to appear",
+ *   "Click on the development link"
+ * ]
+ *
+ */
 ```
 
-## JSON Schema Types
+#### Using a Parser with Schema
 
-Use `defineSchema` when you want TypeScript to infer the parsed output type from a JSON Schema.
+When instructing the LLM to respond with json or a format that can be parsed to json, it can be helpful to define schema. This allows you to validate, provide default values, and have a fully-typed response. In fact, the JSON Schema you define can be really useful (and re-used!) in your prompt. [See tips](/examples/concepts/working-with-json) for working with JSON.
+
+##### `defineSchema`
+
+The `defineSchema` helper narrows a JSON Schema definition to its literal type so TypeScript can infer the exact shape of the parsed output. It also sets `additionalProperties: false` to ensure strict validation. Use it whenever you define schemas for JSON parsers.
 
 ```ts
-import { createParser, defineSchema } from "llm-exe";
+import { defineSchema, createParser } from "llm-exe";
 
 const schema = defineSchema({
   type: "object",
@@ -120,27 +74,23 @@ const schema = defineSchema({
 });
 
 const parser = createParser("listToJson", { schema });
+
+const exampleOutputFromLlm = `Statement: The included document contains PII\nAnswer: No\nConfidence: 90`;
+
+const parsed = parser.parse(exampleOutputFromLlm);
+/**
+ *
+ * console.log(parsed);
+ *
+ * {
+ *   "statement": "The included document contains PII",
+ *   "answer": "No",
+ *   "confidence": 90
+ * }
+ *
+ */
 ```
 
-The same schema can live in a prompt file, but the TypeScript type inference only exists in code.
-
-```yaml
-parser: listToJson
-parserOptions:
-  schema:
-    type: object
-    properties:
-      statement:
-        type: string
-      answer:
-        type: string
-      confidence:
-        type: integer
-    required: [statement, answer, confidence]
-```
-
-## Custom Parsers
-
-Custom parsers are JavaScript functions, so they are TypeScript-only.
-
-Use a built-in parser from prompt files. Use [Custom Parsers](/parser/custom.html) when you need full control in code.
+::: warning Schema validation is on by default
+When you provide a `schema`, the parser enforces it on the LLM's output by default (`validateSchema` defaults to `true`). Missing `required` fields or constraint violations throw `parser.schema_validation_failed` instead of returning a partial object, and defaults are applied **after** validation. Pass `validateSchema: false` to opt into filter/default-only behavior. See the [JSON parser reference](/parser/included-parsers#json) for details.
+:::

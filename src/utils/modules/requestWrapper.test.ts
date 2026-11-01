@@ -4,6 +4,7 @@ import { asyncCallWithTimeout } from "@/utils/modules/asyncCallWithTimeout";
 import { backOff } from "exponential-backoff";
 import { Config } from "@/types";
 import { apiRequestWrapper } from "@/utils/modules/requestWrapper";
+import { LlmExeError } from "@/errors";
 
 
 jest.mock("exponential-backoff", () => ({
@@ -193,6 +194,120 @@ describe("apiRequestWrapper", () => {
     });
 
     expect(mockHandler).toHaveBeenCalledWith(deepFreeze(mockState), deepFreeze(mockMessages), deepFreeze({}));
+  });
+
+  it("does not retry deterministic LlmExeError categories (configuration/prompt/auth) (#723)", async () => {
+    const configError = new LlmExeError("maxTokens required", {
+      code: "configuration.missing_option",
+      context: { operation: "test" },
+    });
+    asyncCallWithTimeoutMock.mockRejectedValue(configError);
+    backOffMock.mockClear().mockImplementation(async (fn, options) => {
+      try {
+        return await fn();
+      } catch (err) {
+        const shouldRetry = options.retry(err, 1);
+        if (shouldRetry) {
+          return await fn();
+        } else {
+          throw err;
+        }
+      }
+    });
+
+    // No doNotRetryErrorMessages entry — the short-circuit is category-based.
+    const apiRequest = setupAPIRequestWrapper();
+    await expect(apiRequest.call(mockMessages)).rejects.toThrow(
+      "maxTokens required"
+    );
+
+    const metrics = apiRequest.getMetadata().metrics as any;
+    expect(metrics.total_call_retry).toBe(0);
+    expect(metrics.total_call_error).toBe(1);
+    // handler ran exactly once — the deterministic error was not retried
+    expect(mockHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it("still retries a non-LlmExeError (transient) error", async () => {
+    asyncCallWithTimeoutMock.mockRejectedValue(new Error("Transient"));
+    let retryDecision: boolean | undefined;
+    backOffMock.mockClear().mockImplementation(async (fn, options) => {
+      try {
+        return await fn();
+      } catch (err) {
+        retryDecision = options.retry(err, 1);
+        throw err;
+      }
+    });
+    const apiRequest = setupAPIRequestWrapper();
+    await expect(apiRequest.call(mockMessages)).rejects.toThrow("Transient");
+    expect(retryDecision).toBe(true);
+  });
+
+  // #726 — deterministic codes inside otherwise-mixed categories (llm.*, embedding.*)
+  // must not be retried, even though the category short-circuit alone can't reach them.
+  it.each([
+    "llm.provider_auth_failed",
+    "llm.provider_invalid_request",
+    "embedding.provider_auth_failed",
+    "embedding.provider_invalid_request",
+    "embedding.unsupported_input",
+    "embedding.unsupported_dimensions",
+  ] as const)(
+    "does not retry deterministic code %s (#726)",
+    async (code) => {
+      const error = new LlmExeError(`deterministic ${code}`, {
+        code,
+        context: { operation: "test" },
+      });
+      asyncCallWithTimeoutMock.mockRejectedValue(error);
+      backOffMock.mockClear().mockImplementation(async (fn, options) => {
+        try {
+          return await fn();
+        } catch (err) {
+          const shouldRetry = options.retry(err, 1);
+          if (shouldRetry) {
+            return await fn();
+          } else {
+            throw err;
+          }
+        }
+      });
+
+      const apiRequest = setupAPIRequestWrapper();
+      await expect(apiRequest.call(mockMessages)).rejects.toThrow(
+        `deterministic ${code}`
+      );
+
+      const metrics = apiRequest.getMetadata().metrics as any;
+      expect(metrics.total_call_retry).toBe(0);
+      expect(metrics.total_call_error).toBe(1);
+      // handler ran exactly once — the deterministic error was not retried
+      expect(mockHandler).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it("still retries a transient LlmExeError in a mixed category (embedding.provider_rate_limited) (#726)", async () => {
+    const error = new LlmExeError("rate limited", {
+      code: "embedding.provider_rate_limited",
+      context: { operation: "test" },
+    });
+    asyncCallWithTimeoutMock.mockRejectedValue(error);
+    let retryDecision: boolean | undefined;
+    backOffMock.mockClear().mockImplementation(async (fn, options) => {
+      try {
+        return await fn();
+      } catch (err) {
+        retryDecision = options.retry(err, 1);
+        throw err;
+      }
+    });
+
+    const apiRequest = setupAPIRequestWrapper();
+    await expect(apiRequest.call(mockMessages)).rejects.toThrow("rate limited");
+    // transient code shares the embedding category — must NOT be short-circuited
+    expect(retryDecision).toBe(true);
+    expect((apiRequest.getMetadata().metrics as any).total_call_retry).toBe(1);
   });
 
 });

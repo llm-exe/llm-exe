@@ -292,6 +292,25 @@ describe("llm-exe:parser/JsonParser", () => {
       );
       // '{' is at index 10 of the raw input; JSON.parse fails 8 chars later.
       expect(e.context).toMatchObject({ errorPosition: 18 });
+      // Exact mode already strips the fence, so extract would not help here.
+      expect((e.context as any).resolution).toBeUndefined();
+    });
+
+    it("hints at match: extract when prose follows the JSON", () => {
+      const input = '{"a":1} hope that helps';
+      const e = catchError(() => new JsonParser().parse(input));
+      expect((e.context as any).resolution).toContain('match: "extract"');
+      expect(new JsonParser({ match: "extract" }).parse(input)).toEqual({
+        a: 1,
+      });
+    });
+
+    it("does not hint at match: extract when the embedded JSON is malformed", () => {
+      const e = catchError(() =>
+        new JsonParser().parse('Here: {"a": 1,}'),
+      );
+      expect(e.context).toMatchObject({ reason: "invalid_json" });
+      expect((e.context as any).resolution).toBeUndefined();
     });
 
     it("never copies raw input text into the context", () => {

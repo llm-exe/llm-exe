@@ -135,12 +135,6 @@ function getJsonSyntaxErrorPosition(
   return match ? Number(match[1]) + offset : undefined;
 }
 
-/** True when the input starts with something other than JSON but contains `{` or `[`. */
-function hasJsonAfterPreamble(text: string): boolean {
-  const trimmed = text.trimStart();
-  return !/^[{[]/.test(trimmed) && /[{[]/.test(trimmed);
-}
-
 export class JsonParser<
   S extends JSONSchema | undefined = undefined,
 > extends BaseParserWithJson<S, JsonParserOutput<S>, JsonParserInput> {
@@ -238,7 +232,8 @@ export class JsonParser<
               expected: "JSON object or array",
               inputLength,
               ...(errorPosition !== undefined ? { errorPosition } : {}),
-              ...(hasJsonAfterPreamble(text)
+              // Only suggest extract mode when it would find exactly one JSON value here.
+              ...(extractJsonCandidates(text).length === 1
                 ? {
                     resolution:
                       'The input has text around the JSON. Use createParser("json", { match: "extract" }) to pull the JSON out of surrounding text.',

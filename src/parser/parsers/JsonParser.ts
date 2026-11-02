@@ -121,6 +121,28 @@ function extractJsonCandidates(input: string): JsonCandidate[] {
 }
 
 /**
+ * True when some `{` or `[` in the input never closes, which is what a
+ * response cut off at max_tokens looks like. Extract mode would then return a
+ * nested or partial value, so the error must not suggest it.
+ */
+function hasUnclosedJsonOpener(input: string): boolean {
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+    if (char !== "{" && char !== "[") {
+      continue;
+    }
+
+    const end = findBalancedJsonEnd(input, index);
+    if (end === undefined) {
+      return true;
+    }
+    index = end;
+  }
+
+  return false;
+}
+
+/**
  * Reads the numeric offset from a JSON.parse SyntaxError message, if present.
  * Only the number is kept: newer engines embed a snippet of the raw input in
  * the message, which must not leak into error context. `offset` maps the
@@ -232,8 +254,10 @@ export class JsonParser<
               expected: "JSON object or array",
               inputLength,
               ...(errorPosition !== undefined ? { errorPosition } : {}),
-              // Only suggest extract mode when it would find exactly one JSON value here.
-              ...(extractJsonCandidates(text).length === 1
+              // Only suggest extract mode when it would find exactly one JSON
+              // value here, and never for truncated input.
+              ...(!hasUnclosedJsonOpener(text) &&
+              extractJsonCandidates(text).length === 1
                 ? {
                     resolution:
                       'The input has text around the JSON. Use createParser("json", { match: "extract" }) to pull the JSON out of surrounding text.',

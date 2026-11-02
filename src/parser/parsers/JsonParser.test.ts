@@ -315,6 +315,18 @@ describe("llm-exe:parser/JsonParser", () => {
       expect((e.context as any).resolution).toBeUndefined();
     });
 
+    it.each([
+      '{"user": {"name":"A"}, "items": [1,2',
+      '{"a": {"b":1}',
+      'Sure: {"user": {"name":"A"}, "items": [1,2',
+      'Here: {"a":1} and {"b": ',
+      '[1, {"a":1}, 2',
+    ])("does not hint at match: extract for truncated JSON %j", (input) => {
+      const e = catchError(() => new JsonParser().parse(input));
+      expect(e.context).toMatchObject({ reason: "invalid_json" });
+      expect((e.context as any).resolution).toBeUndefined();
+    });
+
     it("never copies raw input text into the context", () => {
       const input = "Sure! Here is my secret answer {";
       const e = catchError(() => new JsonParser().parse(input));

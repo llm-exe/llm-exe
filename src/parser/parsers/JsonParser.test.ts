@@ -247,7 +247,8 @@ describe("llm-exe:parser/JsonParser", () => {
     } catch (e) {
       expect(e).toBeInstanceOf(LlmExeError);
       expect((e as LlmExeError).code).toEqual("parser.parse_failed");
-      const { errorPosition, ...context } = (e as LlmExeError).context as Record<string, unknown>;
+      const { errorPosition, ...context } = (e as LlmExeError)
+        .context as Record<string, unknown>;
       expect(context).toEqual({
         operation: "JsonParser.parse",
         parser: "json",
@@ -309,9 +310,7 @@ describe("llm-exe:parser/JsonParser", () => {
     });
 
     it("does not hint at match: extract when the embedded JSON is malformed", () => {
-      const e = catchError(() =>
-        new JsonParser().parse('Here: {"a": 1,}'),
-      );
+      const e = catchError(() => new JsonParser().parse('Here: {"a": 1,}'));
       expect(e.context).toMatchObject({ reason: "invalid_json" });
       expect((e.context as any).resolution).toBeUndefined();
     });

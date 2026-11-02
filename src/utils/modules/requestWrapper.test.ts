@@ -81,6 +81,16 @@ describe("apiRequestWrapper", () => {
     });
   });
 
+  it("should report the effective timeout when explicitly undefined", () => {
+    const apiRequest = apiRequestWrapper(
+      mockConfig,
+      { timeout: undefined },
+      mockHandler,
+    );
+
+    expect(apiRequest.getMetadata().timeout).toBe(30000);
+  });
+
   it("should return the correct traceId", () => {
     const apiRequest = setupAPIRequestWrapper();
     expect(apiRequest.getTraceId()).toBe("test-trace-id");

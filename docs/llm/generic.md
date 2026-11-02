@@ -13,9 +13,9 @@ For a worked example of `timeout`, `numOfAttempts`, and `maxDelay` in a producti
 
 | Option        | Type             | Default   | Description                                                                                                |
 | ------------- | ---------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
-| timeout       | number           | 30000     | Max execution time of API call to the LLM, in milliseconds.                                                |
-| maxDelay      | number           | 5000      | Used for retry back-off. Max time to wait between attempts when timeout has been reached, in milliseconds. |
-| numOfAttempts | number           | 2         | Used for retry. How many attempts should be made before throwing error. Client-side timeouts and deterministic `configuration`, `prompt`, and `auth` errors are not retried — see [Retry Behavior](/misc/errors#retry-behavior). |
+| timeout       | number           | 30000     | Max execution time of API call to the LLM, in milliseconds. Must be finite and positive.                   |
+| maxDelay      | number           | 5000      | Maximum retry back-off delay in milliseconds. Must be finite and non-negative.                             |
+| numOfAttempts | number           | 2         | Maximum retry attempts. Must be finite and positive. Client-side timeouts and deterministic `configuration`, `prompt`, and `auth` errors are not retried — see [Retry Behavior](/misc/errors#retry-behavior).                    |
 | jitter        | "none" \| "full" | none      | Used for retry back-off.                                                                                   |
 | temperature   | number           | undefined | Maps to provider-specific temperature parameter.                                                           |
 | maxTokens     | number           | undefined | Maps to provider-specific max tokens parameter.                                                            |

@@ -247,13 +247,16 @@ describe("llm-exe:parser/JsonParser", () => {
     } catch (e) {
       expect(e).toBeInstanceOf(LlmExeError);
       expect((e as LlmExeError).code).toEqual("parser.parse_failed");
-      expect((e as LlmExeError).context).toEqual({
+      const { errorPosition, ...context } = (e as LlmExeError).context as Record<string, unknown>;
+      expect(context).toEqual({
         operation: "JsonParser.parse",
         parser: "json",
         reason: "invalid_json",
         expected: "JSON object or array",
         inputLength: 23,
       });
+      // Node 18 reports "at position 0" for a bad first character; Node 20+ omits it.
+      expect([0, undefined]).toContain(errorPosition);
       expect((e as any).cause).toBeInstanceOf(SyntaxError);
     }
   });

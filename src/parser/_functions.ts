@@ -108,6 +108,22 @@ export type CreateParserReturn<A extends readonly unknown[]> =
                             ? StringExtractParser<E>
                             : never;
 
+// Record (not array) so the compiler flags a missing or misspelled parser type.
+const PARSER_TYPES: Record<CreateParserType, true> = {
+  json: true,
+  string: true,
+  boolean: true,
+  number: true,
+  stringExtract: true,
+  listToArray: true,
+  listToJson: true,
+  listToKeyValue: true,
+  replaceStringTemplate: true,
+  markdownCodeBlock: true,
+  markdownCodeBlocks: true,
+};
+const AVAILABLE_PARSER_TYPES = Object.keys(PARSER_TYPES) as CreateParserType[];
+
 export function createParser<const A extends CreateParserArgs>(
   ...args: A
 ): CreateParserReturn<A> {
@@ -137,28 +153,19 @@ export function createParser<const A extends CreateParserArgs>(
     case "string":
       return new StringParser() as CreateParserReturn<A>;
     default:
-      throw new LlmExeError(`Invalid parser type: "${type}"`, {
-        code: "parser.invalid_type",
-        context: {
-          operation: "createParser",
-          parser: type,
-          availableParsers: [
-            "json",
-            "string",
-            "boolean",
-            "number",
-            "stringExtract",
-            "listToArray",
-            "listToJson",
-            "listToKeyValue",
-            "replaceStringTemplate",
-            "markdownCodeBlock",
-            "markdownCodeBlocks",
-          ],
-          resolution:
-            "Use a registered parser type, or define a custom parser.",
+      throw new LlmExeError(
+        `Invalid parser type: "${type}". Expected one of: ${AVAILABLE_PARSER_TYPES.join(", ")}`,
+        {
+          code: "parser.invalid_type",
+          context: {
+            operation: "createParser",
+            parser: type,
+            availableParsers: [...AVAILABLE_PARSER_TYPES],
+            resolution:
+              "Use a registered parser type, or define a custom parser.",
+          },
         },
-      });
+      );
   }
 }
 

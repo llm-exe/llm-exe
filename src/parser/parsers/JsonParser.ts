@@ -120,6 +120,27 @@ function extractJsonCandidates(input: string): JsonCandidate[] {
   return candidates;
 }
 
+/**
+ * Reads the numeric offset from a JSON.parse SyntaxError message, if present.
+ * Only the number is kept: newer engines embed a snippet of the raw input in
+ * the message, which must not leak into error context. `offset` maps the
+ * position from the normalized (trimmed / unfenced) text back to the input.
+ */
+function getJsonSyntaxErrorPosition(
+  cause: unknown,
+  offset: number,
+): number | undefined {
+  if (!(cause instanceof Error)) return undefined;
+  const match = /\bposition (\d+)\b/.exec(cause.message);
+  return match ? Number(match[1]) + offset : undefined;
+}
+
+/** True when the input starts with something other than JSON but contains `{` or `[`. */
+function hasJsonAfterPreamble(text: string): boolean {
+  const trimmed = text.trimStart();
+  return !/^[{[]/.test(trimmed) && /[{[]/.test(trimmed);
+}
+
 export class JsonParser<
   S extends JSONSchema | undefined = undefined,
 > extends BaseParserWithJson<S, JsonParserOutput<S>, JsonParserInput> {
@@ -167,8 +188,9 @@ export class JsonParser<
         });
       }
 
+      const normalized = normalizeExactResponseJsonText(text);
       try {
-        parsed = JSON.parse(normalizeExactResponseJsonText(text));
+        parsed = JSON.parse(normalized);
       } catch (cause) {
         if (this.match === "extract") {
           const candidates = extractJsonCandidates(text);
@@ -203,6 +225,10 @@ export class JsonParser<
             });
           }
         } else {
+          const errorPosition = getJsonSyntaxErrorPosition(
+            cause,
+            Math.max(0, text.indexOf(normalized)),
+          );
           throw new LlmExeError(`Invalid JSON input.`, {
             code: "parser.parse_failed",
             context: {
@@ -211,6 +237,13 @@ export class JsonParser<
               reason: "invalid_json",
               expected: "JSON object or array",
               inputLength,
+              ...(errorPosition !== undefined ? { errorPosition } : {}),
+              ...(hasJsonAfterPreamble(text)
+                ? {
+                    resolution:
+                      'The input has text around the JSON. Use createParser("json", { match: "extract" }) to pull the JSON out of surrounding text.',
+                  }
+                : {}),
             },
             cause,
           });

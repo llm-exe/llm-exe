@@ -257,6 +257,50 @@ describe("llm-exe:parser/JsonParser", () => {
       expect((e as any).cause).toBeInstanceOf(SyntaxError);
     }
   });
+  describe("invalid_json diagnostics (#922)", () => {
+    function catchError(fn: () => unknown): LlmExeError {
+      try {
+        fn();
+      } catch (e) {
+        return e as LlmExeError;
+      }
+      throw new Error("Expected an error to be thrown");
+    }
+
+    it("hints at match: extract when JSON follows a prose preamble", () => {
+      const input = 'Sure! Here is the JSON: {"a":1}';
+      const e = catchError(() => new JsonParser().parse(input));
+      expect(e.message).toBe("Invalid JSON input.");
+      expect(e.context).toMatchObject({ reason: "invalid_json" });
+      expect((e.context as any).resolution).toContain('match: "extract"');
+      // The hinted option actually works on the same input.
+      expect(new JsonParser({ match: "extract" }).parse(input)).toEqual({
+        a: 1,
+      });
+    });
+
+    it("reports the syntax error position without a hint for malformed JSON", () => {
+      const e = catchError(() => new JsonParser().parse('{"a": 1,}'));
+      expect(e.message).toBe("Invalid JSON input.");
+      expect((e.context as any).resolution).toBeUndefined();
+      expect(e.context).toMatchObject({ errorPosition: 8 });
+    });
+
+    it("maps the position back to the original input past whitespace and fences", () => {
+      const e = catchError(() =>
+        new JsonParser().parse('  ```json\n{"a": 1,}\n```'),
+      );
+      // '{' is at index 10 of the raw input; JSON.parse fails 8 chars later.
+      expect(e.context).toMatchObject({ errorPosition: 18 });
+    });
+
+    it("never copies raw input text into the context", () => {
+      const input = "Sure! Here is my secret answer {";
+      const e = catchError(() => new JsonParser().parse(input));
+      expect(JSON.stringify(e.context)).not.toContain("Sure");
+      expect(JSON.stringify(e.context)).not.toContain("secret");
+    });
+  });
   it("throws parser.parse_failed for empty input", () => {
     const parser = new JsonParser();
     try {

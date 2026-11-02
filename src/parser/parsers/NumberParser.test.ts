@@ -32,14 +32,18 @@ describe("llm-exe:parser/NumberParser", () => {
     expect(parser.parse("1,000")).toEqual(1000);
     expect(parser.parse("1,234,567")).toEqual(1234567);
   });
-  it("reports comma-separated numbers as multiple values", () => {
+  it.each([
+    ["1,2,3", 3],
+    ["1, 2, 3", 3],
+    ["10,20,300", 3],
+    ["1,10,100", 3],
+    ["1.5,2.5", 2],
+    ["The answer is 42. Ref 12,34,567", 4],
+  ])("reports %j as multiple values", (input, matchCount) => {
     const parser = new NumberParser();
-    expect(() => parser.parse("1,2,3")).toThrow(LlmExeError);
-    expect(() => parser.parse("1, 2, 3")).toThrow(LlmExeError);
-
     let error: unknown;
     try {
-      parser.parse("1,2,3");
+      parser.parse(input);
     } catch (caught) {
       error = caught;
     }
@@ -47,8 +51,13 @@ describe("llm-exe:parser/NumberParser", () => {
     expect((error as LlmExeError).context).toMatchObject({
       reason: "ambiguous_number",
       match: "extract",
-      matchCount: 3,
+      matchCount,
     });
+  });
+  it("parses a number followed by a comma in prose", () => {
+    const parser = new NumberParser();
+    expect(parser.parse("Answer: 42, final")).toEqual(42);
+    expect(parser.parse("Total: 1,500, final.")).toEqual(1500);
   });
   it("parses scientific notation", () => {
     const parser = new NumberParser();
@@ -144,8 +153,9 @@ describe("llm-exe:parser/NumberParser", () => {
     } catch (e) {
       expect(e).toBeInstanceOf(LlmExeError);
       expect((e as LlmExeError).context).toMatchObject({
-        reason: "no_numeric_value",
+        reason: "ambiguous_number",
         match: "extract",
+        matchCount: 3,
       });
     }
   });
@@ -194,7 +204,7 @@ describe("llm-exe:parser/NumberParser", () => {
     it("throws for multiple integers instead of guessing which one to use", () => {
       const parser = new NumberParser();
       expect(() => parser.parse("first 7 then 12 then 99")).toThrow(
-        LlmExeError,
+        LlmExeError
       );
     });
 

@@ -218,6 +218,23 @@ describe("useLlm_call", () => {
     expect(result).toBe(mockBaseLlmOutputReturn);
   });
 
+  it("forwards an abort signal to apiRequest", async () => {
+    const signal = new AbortController().signal;
+
+    await useLlm_call(
+      mockStateOpenAi,
+      mockMessages,
+      mockOptions,
+      getLlmConfig(mockStateOpenAi.key),
+      signal,
+    );
+
+    expect(apiRequestMock).toHaveBeenCalledWith(
+      "http://api.test/endpoint",
+      expect.objectContaining({ signal }),
+    );
+  });
+
   it("should handle an error in apiRequest", async () => {
     parseHeadersMock.mockImplementationOnce(() => {
       throw new Error("API Request Failed");

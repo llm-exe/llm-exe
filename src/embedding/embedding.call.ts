@@ -24,7 +24,8 @@ export async function createEmbedding_call(
     key: EmbeddingProviderKey;
   },
   _input: EmbeddingInput,
-  _options?: LlmExecutorWithFunctionsOptions
+  _options?: LlmExecutorWithFunctionsOptions,
+  signal?: AbortSignal,
 ) {
   const config = getEmbeddingConfig(state.key);
 
@@ -52,6 +53,7 @@ export async function createEmbedding_call(
       method: config.method,
       body: body,
       headers: headers,
+      ...(signal ? { signal } : {}),
     });
     return getEmbeddingOutputParser(state, request.data, request.headers);
   } catch (e) {

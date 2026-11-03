@@ -105,6 +105,11 @@ describe("llm-exe:parser/createParser", () => {
       'Invalid parser type: "xml"'
     );
   })
+  it('invalid parser type error lists the valid parser types', () => {
+    expect(() => createParser("jsn" as any)).toThrow(
+      'Invalid parser type: "jsn". Expected one of: json, string, boolean, number, stringExtract, listToArray, listToJson, listToKeyValue, replaceStringTemplate, markdownCodeBlock, markdownCodeBlocks'
+    );
+  })
   it('throws error for typo in parser type', () => {
     expect(() => createParser("jsonn" as any)).toThrow(
       'Invalid parser type: "jsonn"'

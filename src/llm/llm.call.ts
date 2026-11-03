@@ -26,7 +26,8 @@ export async function useLlm_call(
   state: GenericLLm & { provider: LlmProvider; key: LlmProviderKey },
   messages: string | IChatMessages,
   _options: LlmExecutorWithFunctionsOptions<GenericFunctionCall> | undefined,
-  config: Config<any>
+  config: Config<any>,
+  signal?: AbortSignal,
 ) {
   const transformBody = mapBody(
     config.mapBody,
@@ -82,6 +83,7 @@ export async function useLlm_call(
       method: config.method,
       body: body,
       headers: headers,
+      ...(signal ? { signal } : {}),
     });
     return BaseLlmOutput(
       transformResponse(response.data, config, response.headers)

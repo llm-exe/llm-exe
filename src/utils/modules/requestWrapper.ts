@@ -1,14 +1,18 @@
-import { stateFromOptions } from "@/llm/_utils.stateFromOptions";
+import {
+  PROVIDED_OPTION_KEYS,
+  stateFromOptions,
+} from "@/llm/_utils.stateFromOptions";
 import {
   LlmExecutorWithFunctionsOptions,
   Config,
   ExecutionContext,
 } from "@/types";
 import { deepFreeze } from "@/utils/modules/deepFreeze";
+import { deepClone } from "@/utils/modules/deepClone";
 import { backOff } from "exponential-backoff";
 import { asyncCallWithTimeout } from "@/utils/modules/asyncCallWithTimeout";
 import { emitDeprecationWarning } from "@/llm/_utils.deprecationWarning";
-import { isLlmExeError } from "@/errors";
+import { isLlmExeError, LlmExeError } from "@/errors";
 import type { ErrorCategory, ErrorCodes } from "@/errors";
 
 // const doNotRetryErrorMessages: string[] = [];
@@ -46,7 +50,7 @@ const NON_RETRYABLE_CODES = new Set<ErrorCodes>([
 export function apiRequestWrapper<T extends Record<string, any>, I>(
   config: Config<any>,
   options: Record<string, any>,
-  handler: (_s: any, _i: I, o?: any) => Promise<T>,
+  handler: (_s: any, _i: I, o?: any, signal?: AbortSignal) => Promise<T>,
   doNotRetryErrorMessages: string[] = []
 ) {
   const state = stateFromOptions(options, config);
@@ -62,17 +66,35 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
   /**
    * The maximum time (in milliseconds) to wait for a response before timing out.
    */
-  const timeout: number = options.timeout || 30000;
+  const timeout: number = resolveRequestOption(
+    options.timeout,
+    30000,
+    "timeout",
+    (value) => value > 0,
+    "a finite number greater than 0"
+  );
 
   /**
    * The maximum delay (in milliseconds) between retries.
    */
-  const maxDelay: number = options.maxDelay || 5000;
+  const maxDelay: number = resolveRequestOption(
+    options.maxDelay,
+    5000,
+    "maxDelay",
+    (value) => value >= 0,
+    "a finite number greater than or equal to 0"
+  );
 
   /**
    * The maximum number of retries before giving up.
    */
-  const numOfAttempts: number = options.numOfAttempts || 2;
+  const numOfAttempts: number = resolveRequestOption(
+    options.numOfAttempts,
+    2,
+    "numOfAttempts",
+    (value) => value > 0,
+    "a finite number greater than 0"
+  );
 
   /**
    * The jitter strategy to use between retries. Options are "none" or "full".
@@ -92,16 +114,28 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
         traceId: context?.traceId ?? getTraceId() ?? undefined,
       });
       metrics.total_calls++;
+      const clonedState = deepClone(state);
+      const providedOptionKeys = Reflect.get(state, PROVIDED_OPTION_KEYS);
+      if (providedOptionKeys !== undefined) {
+        Reflect.set(clonedState, PROVIDED_OPTION_KEYS, providedOptionKeys);
+      }
+      const frozenState = deepFreeze(clonedState);
+      const frozenMessages = deepFreeze(deepClone(messages));
+      const frozenOptions = deepFreeze(deepClone(options));
       const result = await backOff<T>(
-        () =>
-          asyncCallWithTimeout(
+        () => {
+          const abortController = new AbortController();
+          return asyncCallWithTimeout(
             handler(
-              deepFreeze(state),
-              deepFreeze(messages),
-              deepFreeze(options)
+              frozenState,
+              frozenMessages,
+              frozenOptions,
+              abortController.signal,
             ),
-            timeout
-          ),
+            timeout,
+            abortController,
+          );
+        },
         {
           startingDelay: 0,
           maxDelay: maxDelay,
@@ -121,7 +155,7 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
             metrics.total_call_retry++;
             return true;
           },
-        }
+        },
       );
       metrics.total_call_success++;
       return result;
@@ -139,17 +173,15 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
       anthropicApiKey,
       ...rest
     } = options;
-    return Object.assign(
-      {
-        traceId: getTraceId(),
-        timeout: timeout,
-        jitter: jitter,
-        maxDelay: maxDelay,
-        numOfAttempts: numOfAttempts,
-        metrics: { ...metrics },
-      },
-      rest
-    );
+    return {
+      ...rest,
+      traceId: getTraceId(),
+      timeout,
+      jitter,
+      maxDelay,
+      numOfAttempts,
+      metrics: { ...metrics },
+    };
   }
 
   function getTraceId() {
@@ -166,4 +198,34 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
     withTraceId,
     getMetadata,
   };
+}
+
+function resolveRequestOption(
+  value: unknown,
+  defaultValue: number,
+  option: string,
+  isValid: (value: number) => boolean,
+  expected: string,
+): number {
+  const resolved = value ?? defaultValue;
+  if (
+    typeof resolved !== "number" ||
+    !Number.isFinite(resolved) ||
+    !isValid(resolved)
+  ) {
+    throw new LlmExeError(
+      `Invalid ${option}: expected ${expected}, received ${String(resolved)}`,
+      {
+        code: "configuration.incompatible_options",
+        context: {
+          operation: "apiRequestWrapper",
+          option,
+          received: resolved,
+          expected,
+          resolution: `Set ${option} to ${expected}.`,
+        }
+      }
+    );
+  }
+  return resolved;
 }

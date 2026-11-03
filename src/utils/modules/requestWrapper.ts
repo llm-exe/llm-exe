@@ -1,10 +1,14 @@
-import { stateFromOptions } from "@/llm/_utils.stateFromOptions";
+import {
+  PROVIDED_OPTION_KEYS,
+  stateFromOptions,
+} from "@/llm/_utils.stateFromOptions";
 import {
   LlmExecutorWithFunctionsOptions,
   Config,
   ExecutionContext,
 } from "@/types";
 import { deepFreeze } from "@/utils/modules/deepFreeze";
+import { deepClone } from "@/utils/modules/deepClone";
 import { backOff } from "exponential-backoff";
 import { asyncCallWithTimeout } from "@/utils/modules/asyncCallWithTimeout";
 import { emitDeprecationWarning } from "@/llm/_utils.deprecationWarning";
@@ -110,15 +114,19 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
         traceId: context?.traceId ?? getTraceId() ?? undefined,
       });
       metrics.total_calls++;
+      const clonedState = deepClone(state);
+      const providedOptionKeys = Reflect.get(state, PROVIDED_OPTION_KEYS);
+      if (providedOptionKeys !== undefined) {
+        Reflect.set(clonedState, PROVIDED_OPTION_KEYS, providedOptionKeys);
+      }
+      const frozenState = deepFreeze(clonedState);
+      const frozenMessages = deepFreeze(deepClone(messages));
+      const frozenOptions = deepFreeze(deepClone(options));
       const result = await backOff<T>(
         () =>
           asyncCallWithTimeout(
-            handler(
-              deepFreeze(state),
-              deepFreeze(messages),
-              deepFreeze(options)
-            ),
-            timeout
+            handler(frozenState, frozenMessages, frozenOptions),
+            timeout,
           ),
         {
           startingDelay: 0,

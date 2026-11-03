@@ -110,8 +110,9 @@ See [Add Retries and Timeouts to LLM Calls](/examples/concepts/retries-and-timeo
 for configuring `timeout`, `numOfAttempts`, and `maxDelay`.
 
 Client-side timeouts throw `request.timeout` with `context.timeout` in milliseconds
-and are not retried, including for embeddings. The underlying request may still
-be running and billed by the provider; timing out does not cancel generation.
+and are not retried, including for embeddings. When the timeout fires, llm-exe
+aborts the in-flight HTTP request (via `AbortController`). The provider may already
+have started generating, so an aborted request can still be billed.
 
 ## Provider Errors
 

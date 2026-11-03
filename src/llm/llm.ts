@@ -41,7 +41,11 @@ export function useLlmConfiguration<
     apiRequestWrapper(
       config,
       options ?? {},
-      (state, messages: Parameters<typeof useLlm_call>[1], callOptions) =>
-        useLlm_call(state, messages, callOptions, config),
+      (
+        state,
+        messages: Parameters<typeof useLlm_call>[1],
+        callOptions,
+        signal,
+      ) => useLlm_call(state, messages, callOptions, config, signal),
     );
 }

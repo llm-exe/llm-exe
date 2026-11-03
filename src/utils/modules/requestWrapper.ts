@@ -50,7 +50,7 @@ const NON_RETRYABLE_CODES = new Set<ErrorCodes>([
 export function apiRequestWrapper<T extends Record<string, any>, I>(
   config: Config<any>,
   options: Record<string, any>,
-  handler: (_s: any, _i: I, o?: any) => Promise<T>,
+  handler: (_s: any, _i: I, o?: any, signal?: AbortSignal) => Promise<T>,
   doNotRetryErrorMessages: string[] = []
 ) {
   const state = stateFromOptions(options, config);
@@ -123,11 +123,19 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
       const frozenMessages = deepFreeze(deepClone(messages));
       const frozenOptions = deepFreeze(deepClone(options));
       const result = await backOff<T>(
-        () =>
-          asyncCallWithTimeout(
-            handler(frozenState, frozenMessages, frozenOptions),
+        () => {
+          const abortController = new AbortController();
+          return asyncCallWithTimeout(
+            handler(
+              frozenState,
+              frozenMessages,
+              frozenOptions,
+              abortController.signal,
+            ),
             timeout,
-          ),
+            abortController,
+          );
+        },
         {
           startingDelay: 0,
           maxDelay: maxDelay,
@@ -147,7 +155,7 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
             metrics.total_call_retry++;
             return true;
           },
-        }
+        },
       );
       metrics.total_call_success++;
       return result;

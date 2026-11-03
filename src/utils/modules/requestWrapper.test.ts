@@ -230,6 +230,7 @@ describe("apiRequestWrapper", () => {
       expect.objectContaining(mockState),
       expect.objectContaining(mockMessages),
       undefined,
+      expect.any(AbortSignal),
     );
     expect(mockHandler.mock.calls[0][0]).not.toBe(mockState);
     expect(mockHandler.mock.calls[0][1]).not.toBe(mockMessages);
@@ -272,6 +273,7 @@ describe("apiRequestWrapper", () => {
       expect.objectContaining(mockState),
       expect.objectContaining(mockMessages),
       undefined,
+      expect.any(AbortSignal),
     );
     expect(mockHandler.mock.calls[0][0]).not.toBe(mockState);
     expect(mockHandler.mock.calls[0][1]).not.toBe(mockMessages);

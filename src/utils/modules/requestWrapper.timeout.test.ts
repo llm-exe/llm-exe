@@ -14,8 +14,17 @@ const config: Config = {
 it("does not retry an actual client timeout or launch another billed call", async () => {
   jest.useFakeTimers();
   try {
+    let requestSignal: AbortSignal | undefined;
     const handler = jest.fn(
-      () => new Promise<Record<string, unknown>>(() => {}),
+      (
+        _state: unknown,
+        _messages: unknown,
+        _options: unknown,
+        signal: AbortSignal | undefined,
+      ) => {
+        requestSignal = signal;
+        return new Promise<Record<string, unknown>>(() => {});
+      },
     );
     const llm = apiRequestWrapper(
       config,
@@ -30,6 +39,8 @@ it("does not retry an actual client timeout or launch another billed call", asyn
     await jest.advanceTimersByTimeAsync(100);
     await assertion;
     expect(handler).toHaveBeenCalledTimes(1);
+    expect(requestSignal).toBeInstanceOf(AbortSignal);
+    expect(requestSignal?.aborted).toBe(true);
     expect(llm.getMetadata().metrics).toMatchObject({
       total_call_retry: 0,
       total_call_error: 1,
@@ -45,7 +56,8 @@ it("still retries transient failures through the real backoff wrapper", async ()
     .fn()
     .mockRejectedValueOnce(new Error("Temporary failure"))
     .mockResolvedValue({ ok: true });
-  const llm = apiRequestWrapper(config, {}, handler);
+  const llm = apiRequestWrapper(config, { maxDelay: 0 }, handler);
   await expect(llm.call("Hi")).resolves.toEqual({ ok: true });
   expect(handler).toHaveBeenCalledTimes(2);
+  expect(llm.getMetadata().maxDelay).toBe(0);
 });

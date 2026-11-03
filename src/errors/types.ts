@@ -101,6 +101,10 @@ export type ParserParseFailedContext = BaseErrorContext &
     inputExcerpt?: string;
     inputExcerptTruncated?: boolean;
     inputLength?: number;
+    // 0-based line in the original input (blank lines counted).
+    lineIndex?: number;
+    // 0-based character offset in the input where JSON.parse failed (json parser only).
+    errorPosition?: number;
     matchCount?: number;
     match?: string;
     outputExcerpt?: string;

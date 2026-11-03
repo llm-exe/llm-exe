@@ -26,7 +26,8 @@ export async function useLlm_call(
   state: GenericLLm & { provider: LlmProvider; key: LlmProviderKey },
   messages: string | IChatMessages,
   _options: LlmExecutorWithFunctionsOptions<GenericFunctionCall> | undefined,
-  config: Config<any>
+  config: Config<any>,
+  signal?: AbortSignal,
 ) {
   const transformBody = mapBody(
     config.mapBody,
@@ -56,6 +57,7 @@ export async function useLlm_call(
   const { transformResponse = OutputDefault } = config;
 
   if (config.provider === "openai.chat-mock") {
+    const content = "mockResponse" in state ? state.mockResponse : undefined;
     const mockResponse = {
       id: "0123-45-6789",
       model: "model",
@@ -65,7 +67,10 @@ export async function useLlm_call(
         {
           message: {
             role: "assistant",
-            content: `Hello world from LLM! The input was ${JSON.stringify(messages)}`,
+            content:
+              typeof content === "string"
+                ? content
+                : `Hello world from LLM! The input was ${JSON.stringify(messages)}`,
           },
         },
       ],
@@ -78,6 +83,7 @@ export async function useLlm_call(
       method: config.method,
       body: body,
       headers: headers,
+      ...(signal ? { signal } : {}),
     });
     return BaseLlmOutput(
       transformResponse(response.data, config, response.headers)

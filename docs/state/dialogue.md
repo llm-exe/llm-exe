@@ -38,7 +38,8 @@ dialogue
 | `setFunctionCallMessage(input)` | Add a function call message (legacy format also supported). |
 | `setMessageTurn(user, assistant, system?)` | Add a complete turn (user + assistant + optional system). |
 | `setHistory(messages)` | Load an array of messages into the dialogue. |
-| `getHistory()` | Get all messages as an `IChatMessages` array. |
+| `getHistory()` | Get a copy of all messages as an `IChatMessages` array. Pushing to the copy doesn't change the dialogue. |
+| `resetValue()` | Clear the history back to empty, for example between requests when one dialogue is reused. |
 | `addFromOutput(output)` | Add messages from an LLM `OutputResult` or `BaseLlCall`. |
 
 ## Adding LLM output directly

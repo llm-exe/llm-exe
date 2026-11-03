@@ -77,7 +77,7 @@ flowchart LR
 | [agent-run.yml](../workflows/agent-run.yml) | 3 crons + dispatch | Task agents (docs, tester, scout) on a schedule | [AGENT_RUN_DEEP_DIVE.md](AGENT_RUN_DEEP_DIVE.md) |
 | [coder-run.yml](../workflows/coder-run.yml) | cron + dispatch | Fans the coder out across up to 5 unclaimed issues in a matrix | [CODER_RUN_DEEP_DIVE.md](CODER_RUN_DEEP_DIVE.md) |
 | [personas-run.yml](../workflows/personas-run.yml) | Sunday cron + dispatch | Persona agents (beginner, harsh-critic, speed-runner, enterprise) plus curator | [PERSONAS_RUN_DEEP_DIVE.md](PERSONAS_RUN_DEEP_DIVE.md) |
-| [agent-review-pr.yml](../workflows/agent-review-pr.yml) | PR opened/synchronize on development + workflow_dispatch | Tests (Node matrix) + reviewer agent + decide job: approve, request changes, or close | [AGENT_REVIEW_PR_DEEP_DIVE.md](AGENT_REVIEW_PR_DEEP_DIVE.md) |
+| [agent-review-pr.yml](../workflows/agent-review-pr.yml) | PR opened/synchronize on development + workflow_dispatch | Tests (Node matrix) + reviewer agent + decide job: approve, request changes, or close. Review and decide skip fork PRs unless a re-review is dispatched | [AGENT_REVIEW_PR_DEEP_DIVE.md](AGENT_REVIEW_PR_DEEP_DIVE.md) |
 | [agent-digest.yml](../workflows/agent-digest.yml) | Monday cron + dispatch | Weekly HTML email digest sent via Microsoft Graph | [AGENT_DIGEST_DEEP_DIVE.md](AGENT_DIGEST_DEEP_DIVE.md) |
 | [bot-respond.yml](../workflows/bot-respond.yml) | issue_comment mentioning @llm-exe-bot | Conversational responder; can dispatch review pipeline, answer questions, or revise PR branches on explicit ask | [BOT_RESPOND_DEEP_DIVE.md](BOT_RESPOND_DEEP_DIVE.md) |
 | [docs-sync-trigger.yml](../workflows/docs-sync-trigger.yml) | push to development on workflow/action/script paths | Push detector that dispatches `docs-sync.yml` with the changed file list (workaround for `claude-code-action@v1` not supporting push) | [DOCS_SYNC_DEEP_DIVE.md](DOCS_SYNC_DEEP_DIVE.md) |
@@ -128,17 +128,17 @@ flowchart LR
     end
 
     subgraph Medium["11-12 diagrams"]
-        M1["agent-review-pr: 628 lines, 12"]:::md
+        M1["agent-review-pr: 646 lines, 12"]:::md
         M2["cache-cleanup: 548 lines, 12"]:::md
         M3["create-draft-release: 496 lines, 11"]:::md
-        M4["personas-run: 713 lines, 12"]:::md
+        M4["personas-run: 764 lines, 12"]:::md
         M5["publish-release: 603 lines, 12"]:::md
         M6["test-package: 551 lines, 11"]:::md
     end
 
     subgraph Large["13-14 diagrams"]
-        L1["agent-run: 653 lines, 13"]:::lg
-        L2["coder-run: 736 lines, 13"]:::lg
+        L1["agent-run: 655 lines, 13"]:::lg
+        L2["coder-run: 737 lines, 13"]:::lg
         L3["draft-main-pr: 677 lines, 13"]:::lg
         L4["deploy-docs: 581 lines, 13"]:::lg
         L5["bot-respond: 603 lines, 13"]:::lg
@@ -148,7 +148,7 @@ flowchart LR
     end
 
     subgraph XL["16 diagrams"]
-        X1["docs-sync: 639 lines, 16"]:::xl
+        X1["docs-sync: 640 lines, 16"]:::xl
     end
 ```
 

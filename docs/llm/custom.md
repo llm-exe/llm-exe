@@ -69,10 +69,11 @@ const customLlm = useLlmConfiguration({
 });
 
 // Use it like any other LLM
+// apiKey and model are accepted because the config declares them under `options`
 const llm = customLlm({
   apiKey: process.env.CUSTOM_API_KEY,
   model: "gpt-4o",
-} as any); // Note: Use 'as any' for custom options that aren't in base types
+});
 
 const response = await llm.call("Hello, how are you?");
 console.log(response.getResultText());
@@ -414,11 +415,11 @@ Custom providers work seamlessly with executors:
 import { useLlmConfiguration, createLlmExecutor, createChatPrompt, createParser } from "llm-exe";
 
 const customLlm = useLlmConfiguration({
-  // ... your config
+  // ... your config, with `apiKey` declared under `options`
 });
 
 const executor = createLlmExecutor({
-  llm: customLlm({ apiKey: process.env.API_KEY } as any),
+  llm: customLlm({ apiKey: process.env.API_KEY }),
   prompt: createChatPrompt(`Analyze: {{text}}`),
   parser: createParser("json"),
 });
@@ -456,10 +457,15 @@ const mockLlm = useLlmConfiguration({
 
 ## Important Notes
 
-1. **Custom options require type assertion**: When passing custom options that aren't in the base types, use `as any`:
+1. **Custom options are typed from the config**: every key you declare under `options` is accepted by the returned factory without a cast. Keys that neither the config nor a built-in provider declares are rejected. The values are typed `unknown`.
    ```typescript
-   const llm = customLlm({ customOption: "value" } as any);
+   const customLlm = useLlmConfiguration({
+     // ...
+     options: { region: {} },
+   });
+   const llm = customLlm({ region: "us-east-1" }); // no cast needed
    ```
+   This inference needs TypeScript to infer the config type, so don't pass an explicit type argument (`useLlmConfiguration<"openai.chat.v1">(config)`). With one, custom keys are rejected again.
 
 2. **Transform functions are required**: You must implement your own `transformResponse` function to map the provider's response format to llm-exe's standard format.
 

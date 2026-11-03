@@ -52,6 +52,6 @@ Deprecated model shorthands still appear in generated provider model lists. Pref
 
 ```ts
 const llm = useLlm("openai.chat.v1", {
-  model: "gpt-4o-mini",
+  model: "gpt-6-luna",
 });
 ```

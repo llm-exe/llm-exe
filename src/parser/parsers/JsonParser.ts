@@ -109,13 +109,52 @@ function extractJsonCandidates(input: string): JsonCandidate[] {
       candidates.push({
         parsed: JSON.parse(candidate),
       });
-      index = end;
     } catch {
-      // Balanced braces can still contain non-JSON content.
+      // Balanced braces can still contain non-JSON content. Skip the whole
+      // span rather than descending into it, so a malformed outer object
+      // never yields one of its inner fragments.
     }
+    index = end;
   }
 
   return candidates;
+}
+
+/**
+ * True when some `{` or `[` in the input never closes, which is what a
+ * response cut off at max_tokens looks like. Extract mode would then return a
+ * nested or partial value, so the error must not suggest it.
+ */
+function hasUnclosedJsonOpener(input: string): boolean {
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+    if (char !== "{" && char !== "[") {
+      continue;
+    }
+
+    const end = findBalancedJsonEnd(input, index);
+    if (end === undefined) {
+      return true;
+    }
+    index = end;
+  }
+
+  return false;
+}
+
+/**
+ * Reads the numeric offset from a JSON.parse SyntaxError message, if present.
+ * Only the number is kept: newer engines embed a snippet of the raw input in
+ * the message, which must not leak into error context. `offset` maps the
+ * position from the normalized (trimmed / unfenced) text back to the input.
+ */
+function getJsonSyntaxErrorPosition(
+  cause: unknown,
+  offset: number,
+): number | undefined {
+  if (!(cause instanceof Error)) return undefined;
+  const match = /\bposition (\d+)\b/.exec(cause.message);
+  return match ? Number(match[1]) + offset : undefined;
 }
 
 export class JsonParser<
@@ -165,8 +204,9 @@ export class JsonParser<
         });
       }
 
+      const normalized = normalizeExactResponseJsonText(text);
       try {
-        parsed = JSON.parse(normalizeExactResponseJsonText(text));
+        parsed = JSON.parse(normalized);
       } catch (cause) {
         if (this.match === "extract") {
           const candidates = extractJsonCandidates(text);
@@ -201,6 +241,10 @@ export class JsonParser<
             });
           }
         } else {
+          const errorPosition = getJsonSyntaxErrorPosition(
+            cause,
+            Math.max(0, text.indexOf(normalized)),
+          );
           throw new LlmExeError(`Invalid JSON input.`, {
             code: "parser.parse_failed",
             context: {
@@ -209,6 +253,16 @@ export class JsonParser<
               reason: "invalid_json",
               expected: "JSON object or array",
               inputLength,
+              ...(errorPosition !== undefined ? { errorPosition } : {}),
+              // Only suggest extract mode when it would find exactly one JSON
+              // value here, and never for truncated input.
+              ...(!hasUnclosedJsonOpener(text) &&
+              extractJsonCandidates(text).length === 1
+                ? {
+                    resolution:
+                      'The input has text around the JSON. Use createParser("json", { match: "extract" }) to pull the JSON out of surrounding text.',
+                  }
+                : {}),
             },
             cause,
           });
@@ -250,12 +304,12 @@ export class JsonParser<
       if (this.shouldValidateSchema) {
         const valid = validateParserSchema(this.schema, parsed as any);
         if (valid && valid.length) {
-          throw new LlmExeError(valid[0].message, {
+          throw new LlmExeError(valid[0].stack, {
             code: "parser.schema_validation_failed",
             context: {
               operation: "JsonParser.parse",
               parser: "json",
-              schemaErrors: valid.map((error) => error.message),
+              schemaErrors: valid.map((error) => error.stack),
             },
           });
         }

@@ -3,17 +3,17 @@ import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { getAwsAuthorizationHeaders } from "@/utils/modules/getAwsAuthorizationHeaders";
 import { Config, EmbeddingProviderKey, LlmProviderKey } from "@/types";
 import { LlmExeError } from "@/errors";
+import { truncateString } from "@/errors/providerErrors";
 import { redactSecrets } from "@/utils/modules/redactSecrets";
 
 const REPLACED_HEADERS_EXCERPT_MAX = 500;
 
 function safeReplacedHeaders(value: string | undefined | null): string {
   if (!value) return "";
-  const truncated =
-    value.length > REPLACED_HEADERS_EXCERPT_MAX
-      ? value.slice(0, REPLACED_HEADERS_EXCERPT_MAX) + "…(truncated)"
-      : value;
-  return redactSecrets(truncated);
+  // Redact before truncating: a cut through a quoted header value leaves no
+  // closing quote for the JSON-field pattern, and a short token prefix slips
+  // past the token mask (#876).
+  return truncateString(redactSecrets(value), REPLACED_HEADERS_EXCERPT_MAX);
 }
 
 export async function parseHeaders(

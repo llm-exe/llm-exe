@@ -36,14 +36,14 @@ it("passes raw body fields through the public DeepSeek path after all mappings",
     response_format: { type: "text" },
     vendor: { enabled: false, values: [1, 2] },
   };
-  await useLlm("deepseek.v4-flash", {
+  await useLlm("deepseek.flash", {
     temperature: 0.8,
     extraBody,
     deepseekApiKey: "test-key",
   }).call("Return JSON", { jsonSchema: { type: "object" } });
   expect(requestBody()).toEqual(
     expect.objectContaining({
-      model: "deepseek-v4-flash",
+      model: "deepseek-flash",
       messages: [{ role: "user", content: "Return JSON" }],
       ...extraBody,
     }),
@@ -105,10 +105,8 @@ it.each(["low", "high", "max"] as const)(
 );
 
 it("sends effort for the current DeepSeek flash model id", async () => {
-  await useLlm("deepseek.chat", {
-    model: "deepseek-flash",
-    effort: "high",
-  }).call("Hi");
+  await useLlm("deepseek.flash", { effort: "high" }).call("Hi");
+  expect(requestBody().model).toBe("deepseek-flash");
   expect(requestBody().reasoning_effort).toBe("high");
 });
 
@@ -129,7 +127,7 @@ it("keeps OpenAI schema output unchanged", async () => {
 
 it("uses DeepSeek JSON mode while preserving typed parser output and local validation", async () => {
   const executor = createLlmExecutor({
-    llm: useLlm("deepseek.v4-flash"),
+    llm: useLlm("deepseek.flash"),
     prompt: createChatPrompt("Return JSON with a name string"),
     parser: createParser("json", {
       schema: {

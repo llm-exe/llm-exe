@@ -337,7 +337,7 @@ describe("apiRequest", () => {
         const ctx = (e as LlmExeError).context as Record<string, unknown>;
         expect(ctx.operation).toBe("apiRequest");
         expect(ctx.url).toBe(url);
-        expect((e as unknown as { cause?: unknown }).cause).toBe(fetchErr);
+        expect((e as LlmExeError).cause).toBe(fetchErr);
       }
     });
 

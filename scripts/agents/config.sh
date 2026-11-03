@@ -73,12 +73,42 @@ EOF
   echo "$log_file"
 }
 
+# The placeholder clock_in writes into every section of a fresh log
+LOG_PLACEHOLDER="_Pending — agent will fill this in._"
+
+# Helper: did the agent actually write anything into its log?
+# Returns 0 if at least one section was filled in, 1 if every section is still
+# the clock_in placeholder (or the file is missing entirely).
+log_has_content() {
+  local log_file="$1"
+  [[ -f "$log_file" ]] || return 1
+  local remaining
+  remaining="$(grep -c -F "$LOG_PLACEHOLDER" "$log_file" || true)"
+  [[ "$remaining" -lt 3 ]]
+}
+
 # Helper: clock out — stamp finish time and update status
+# Status reflects what actually happened:
+#   interrupted: the agent exited nonzero
+#   no-output:   the agent exited clean but left every section untouched
+#   completed:   the agent exited clean and wrote something
+# Always returns 0. clock_out is the last command of the "Clock out" step in six
+# workflows, which GitHub runs under `bash -e`, so a nonzero return would fail
+# the job with a bare exit code. In CI a no-output run is surfaced as a
+# ::warning:: annotation instead; local callers check log_has_content.
 clock_out() {
   local log_file="$1"
   local exit_code="${2:-0}"
   local status="completed"
-  [[ "$exit_code" -ne 0 ]] && status="interrupted"
+
+  if [[ "$exit_code" -ne 0 ]]; then
+    status="interrupted"
+  elif [[ -f "$log_file" ]] && ! log_has_content "$log_file"; then
+    status="no-output"
+    if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+      echo "::warning title=Agent wrote no output::$(basename "$log_file"): the agent exited clean but every log section is still the placeholder."
+    fi
+  fi
 
   if [[ -f "$log_file" ]]; then
     local tmp="${log_file}.tmp"
@@ -86,6 +116,8 @@ clock_out() {
       | sed "s|^\- \*\*Status\*\*: running|- **Status**: $status|" > "$tmp"
     mv "$tmp" "$log_file"
   fi
+
+  return 0
 }
 
 # Helper: get recent log files for an agent (last N, default 3)
@@ -96,6 +128,89 @@ recent_logs() {
   if [[ -d "$log_dir" ]]; then
     ls -1 "$log_dir"/*.md 2>/dev/null | sort | tail -"$count"
   fi
+}
+
+# Helper: build the "## Prior Runs" prompt section from an agent's last three
+# logs, excluding the current run's log. clock_in has already written that log,
+# so it is the newest file; it is filtered out before taking three, or a run
+# would see only two. Defined here rather than in maintain.sh because the CI
+# workflows source only this file.
+build_prior_context() {
+  local agent_key="$1"
+  local current_log="$2"
+  local logs
+  logs=$(recent_logs "$agent_key" 4 | { grep -v -x -F "$current_log" || true; } | tail -3)
+  local context=""
+
+  while IFS= read -r log; do
+    [[ -z "$log" ]] && continue
+    context="${context}
+
+---
+
+$(cat "$log")"
+  done <<< "$logs"
+
+  if [[ -n "$context" ]]; then
+    echo "
+
+## Prior Runs
+Recent logs from previous runs. Review these to understand where things stand:
+${context}"
+  fi
+}
+
+# Helper: stage a persona findings log as <dest_dir>/<persona>/<file>.md, the
+# layout the curator prompt describes. The persona defaults to the log's parent
+# directory name. CI stages each persona's log before uploading it, so the
+# curator sees the same layout whether one artifact downloads or several, and
+# maintain.sh stages the logs it hands to a local curator.
+stage_persona_log() {
+  local dest_dir="$1"
+  local log_file="$2"
+  local persona="${3:-}"
+  [[ -n "$persona" ]] || persona="$(basename "$(dirname "$log_file")")"
+  local target
+  target="$dest_dir/$persona/$(basename "$log_file")"
+
+  if [[ ! -f "$log_file" ]]; then
+    err "Persona log not found: $log_file"
+    return 1
+  fi
+  if [[ -e "$target" ]]; then
+    err "Two persona logs would both be staged as $target"
+    return 1
+  fi
+  mkdir -p "$dest_dir/$persona"
+  cp "$log_file" "$target"
+}
+
+# Helper: how many persona logs are staged under a directory (0 if it is missing)
+count_persona_logs() {
+  local persona_logs_dir="$1"
+  if [[ ! -d "$persona_logs_dir" ]]; then
+    echo 0
+    return 0
+  fi
+  find "$persona_logs_dir" -name '*.md' -type f | wc -l | tr -d ' '
+}
+
+# Helper: render the curator prompt for one batch of staged persona logs.
+# CI and maintain.sh both call this, so they can't fill in different
+# placeholders. ($PERSONA_LOGS can't match inside $PERSONA_LOG_COUNT: they
+# differ at the character after LOG.)
+render_curator_prompt() {
+  local branch="$1"
+  local log_file="$2"
+  local persona_logs_dir="$3"
+  local log_count
+  log_count="$(count_persona_logs "$persona_logs_dir")"
+  sed \
+    -e "s|\$BRANCH|$branch|g" \
+    -e "s|\$LOG_FILE|$log_file|g" \
+    -e "s|\$PERSONA_LOGS|$persona_logs_dir|g" \
+    -e "s|\$PERSONA_LOG_COUNT|$log_count|g" \
+    "$REPO_ROOT/scripts/agents/prompts/curator.md"
 }
 
 # Helper: run claude interactively (local) or non-interactively (CI)

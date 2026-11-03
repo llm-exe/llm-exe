@@ -555,7 +555,25 @@ export interface OpenAiRequest extends Omit<GenericLLm, "effort"> {
   useJson?: boolean;
 }
 
-export interface XAiRequest extends GenericLLm {
+export interface OpenAiMockRequest extends Omit<OpenAiRequest, "model"> {
+  /** The mock never sends a request, so the model is optional. */
+  model?: string;
+  /**
+   * Text the mock returns verbatim as the assistant message. Lets typed
+   * parsers (json, number, list*, ...) be exercised offline. When unset, the
+   * mock returns a fixed "Hello world from LLM! The input was ..." string.
+   */
+  mockResponse?: string;
+}
+
+export interface XAiRequest extends Omit<GenericLLm, "effort"> {
+  /**
+   * Maps to `reasoning_effort` on the xAI models that accept it: grok-4.3,
+   * grok-4.5, grok-4.6 and grok-4.7. Dropped for any other model, including
+   * grok-4.20-0309-reasoning, which rejects the parameter. `"xhigh"` is
+   * documented from grok-4.6 on and treated as `"high"` on grok-4.5.
+   */
+  effort?: "minimal" | "low" | "medium" | "high" | "xhigh";
   model: string;
   frequencyPenalty?: number;
   logitBias?: Record<string, any> | null;
@@ -614,7 +632,7 @@ export type AllLlm = {
     // output: OpenAiRequest;
   };
   "openai.chat-mock.v1": {
-    input: OpenAiRequest;
+    input: OpenAiMockRequest;
     // output: OpenAiRequest;
   };
   "anthropic.chat.v1": {
@@ -657,6 +675,12 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<OpenAiRequest, "model">;
   };
   "openai.gpt-6-astra": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-6.1-sol": {
+    input: Omit<OpenAiRequest, "model">;
+  };
+  "openai.gpt-6-luna": {
     input: Omit<OpenAiRequest, "model">;
   };
   // OpenAI - GPT-5 family
@@ -717,7 +741,21 @@ export type AllUseLlmOptions = AllLlm & {
   };
 
   // Anthropic - Claude Fable 5 models
+  "anthropic.claude-fable-5-1": {
+    input: Omit<AnthropicRequest, "model">;
+  };
   "anthropic.claude-fable-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+
+  // Anthropic - Claude 5.5 models
+  "anthropic.claude-opus-5-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+  "anthropic.claude-sonnet-5-5": {
+    input: Omit<AnthropicRequest, "model">;
+  };
+  "anthropic.claude-haiku-5-5": {
     input: Omit<AnthropicRequest, "model">;
   };
 
@@ -753,11 +791,11 @@ export type AllUseLlmOptions = AllLlm & {
   "anthropic.claude-haiku-4-5": {
     input: Omit<AnthropicRequest, "model">;
   };
+  
+  // Anthropic - Deprecated
   "anthropic.claude-sonnet-4-5": {
     input: Omit<AnthropicRequest, "model">;
   };
-  
-  // Anthropic - Deprecated
   "anthropic.claude-opus-4-6": {
     input: Omit<AnthropicRequest, "model">;
   };
@@ -799,6 +837,9 @@ export type AllUseLlmOptions = AllLlm & {
     input: Omit<GeminiRequest, "model">;
   };
   "google.gemini-3.7-flash": {
+    input: Omit<GeminiRequest, "model">;
+  };
+  "google.gemini-3.8-flash": {
     input: Omit<GeminiRequest, "model">;
   };
   // Google - Deprecated
@@ -846,6 +887,9 @@ export type AllUseLlmOptions = AllLlm & {
   "xai.grok-4.6": {
     input: Omit<XAiRequest, "model">;
   };
+  "xai.grok-4.7": {
+    input: Omit<XAiRequest, "model">;
+  };
 
   // Ollama
   "ollama.deepseek-r1": {
@@ -884,10 +928,19 @@ export type AllUseLlmOptions = AllLlm & {
   "ollama.gpt-oss": {
     input: GenericLLm;
   };
+  "ollama.glm-5.3": {
+    input: GenericLLm;
+  };
+  "ollama.glm-5.3-flash": {
+    input: GenericLLm;
+  };
 
   // Deepseek
   "deepseek.chat": {
     input: DeepseekRequest;
+  };
+  "deepseek.flash": {
+    input: Omit<DeepseekRequest, "model">;
   };
   "deepseek.v4-flash": {
     input: Omit<DeepseekRequest, "model">;

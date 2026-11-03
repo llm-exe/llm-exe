@@ -24,6 +24,7 @@ export class LlmExeError<
   declare readonly name: "LlmExeError";
   declare readonly isLlmExeError: true;
   declare readonly [LLM_EXE_ERROR_SYMBOL]: true;
+  declare readonly cause?: unknown;
   readonly category!: CategoryFor<C>;
   readonly code!: C;
   readonly context?: ErrorContextByCode[C];

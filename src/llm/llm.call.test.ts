@@ -218,6 +218,23 @@ describe("useLlm_call", () => {
     expect(result).toBe(mockBaseLlmOutputReturn);
   });
 
+  it("forwards an abort signal to apiRequest", async () => {
+    const signal = new AbortController().signal;
+
+    await useLlm_call(
+      mockStateOpenAi,
+      mockMessages,
+      mockOptions,
+      getLlmConfig(mockStateOpenAi.key),
+      signal,
+    );
+
+    expect(apiRequestMock).toHaveBeenCalledWith(
+      "http://api.test/endpoint",
+      expect.objectContaining({ signal }),
+    );
+  });
+
   it("should handle an error in apiRequest", async () => {
     parseHeadersMock.mockImplementationOnce(() => {
       throw new Error("API Request Failed");
@@ -1133,7 +1150,7 @@ describe("useLlm_call", () => {
           expect(ctx.provider).toBe("openai.chat");
           expect(ctx.status).toBe(status);
           expect(ctx.providerError).toEqual({ message: "provider says no" });
-          expect((e as unknown as { cause?: unknown }).cause).toBeDefined();
+          expect((e as InstanceType<typeof LlmExeError>).cause).toBeDefined();
         }
       }
     );

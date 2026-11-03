@@ -75,8 +75,12 @@ jobs:
 
   # Runs in parallel with tests. Exposes verdict as a job output for decide.
   # Gated to opened only — no point re-reviewing on synchronize (rebase) events.
+  # Fork PRs never receive repository secrets, so the review App token cannot be
+  # minted and the job would fail with a red X on every external contribution.
+  # Skip it instead: a maintainer reviews fork PRs directly. Do not loosen this to
+  # pull_request_target, which would hand secrets to a job reviewing untrusted code.
   review:
-    if: (github.base_ref == 'development' && github.event.action == 'opened') || (github.event_name == 'workflow_dispatch' && inputs.base_ref == 'development')
+    if: (github.base_ref == 'development' && github.event.action == 'opened' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && inputs.base_ref == 'development')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
@@ -171,9 +175,11 @@ jobs:
   #   so it can approve PRs authored by llm-exe-bot[bot].
   #   gh pr ready uses the regular bot App token because that is PR maintenance,
   #   not review work.
+  # Same fork guard as review: decide mints both App tokens, so on a fork PR it
+  # fails on every push (not just opened) without it.
   decide:
     needs: [tests, review]
-    if: always() && (github.base_ref == 'development' || (github.event_name == 'workflow_dispatch' && inputs.base_ref == 'development'))
+    if: always() && ((github.base_ref == 'development' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && inputs.base_ref == 'development'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
 

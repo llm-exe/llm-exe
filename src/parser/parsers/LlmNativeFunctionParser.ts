@@ -3,6 +3,7 @@ import {
   OutputResultContent,
   ParserOutput,
 } from "@/types";
+import { LlmExeError } from "@/errors";
 import { BaseParser } from "../_base";
 
 import { maybeParseJSON } from "@/utils";
@@ -32,12 +33,21 @@ export class LlmFunctionParser<T extends BaseParser<any, any>> extends BaseParse
     if (typeof text === "string") {
       return this.parser.parse(text, _options) as ParserOutput<T>;
     }
-    const { content } = text;
-    const functionUses =
-      content?.filter((a) => a.type === "function_use") || [];
+    const content = text.content ?? [];
+    const functionUses = content.filter((a) => a.type === "function_use");
 
     if (functionUses.length === 0) {
       const [item] = content;
+      if (!item) {
+        throw new LlmExeError("Response has no content blocks to parse.", {
+          code: "parser.parse_failed",
+          context: {
+            operation: "LlmFunctionParser.parse",
+            parser: "functionCall",
+            reason: "empty_content",
+          },
+        });
+      }
       return this.parser.parse(item.text!, _options) as ParserOutput<T>;
     }
 

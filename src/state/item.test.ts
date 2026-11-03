@@ -52,6 +52,22 @@ describe("llm-exe:state/BaseStateItem", () => {
         item.resetValue()
         expect(item.getValue()).toEqual("unknown");
       });
+      it("item.resetValue restores a non-primitive initial value after in-place mutation", () => {
+        const item = new MockStateItem<string[]>("list", []);
+        item.getValue().push("a");
+        expect(item.getValue()).toEqual(["a"]);
+        item.resetValue();
+        expect(item.getValue()).toEqual([]);
+        item.getValue().push("b");
+        item.resetValue();
+        expect(item.getValue()).toEqual([]);
+      });
+      it("item.resetValue restores a plain-object initial value after in-place mutation", () => {
+        const item = new MockStateItem<Record<string, string>>("obj", { a: "1" });
+        item.getValue().b = "2";
+        item.resetValue();
+        expect(item.getValue()).toEqual({ a: "1" });
+      });
       it("item.serializeValue", () => {
         const defaultValue = "unknown"
         const item = new MockStateItem("intent", defaultValue);

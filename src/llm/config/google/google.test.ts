@@ -139,6 +139,7 @@ describe("google configuration", () => {
       "gemini-3.5-flash-lite",
       "gemini-3.6-flash",
       "gemini-3.7-flash",
+      "gemini-3.8-flash",
     ])("should apply the thinking budget on %s", (model) => {
       expect(effortTransform("medium", { model })).toBe(8192);
       expect(effortTransform("high", { model })).toBe(24576);
@@ -369,6 +370,62 @@ describe("google configuration", () => {
     });
   });
 
+  describe("gemini-3.8-flash", () => {
+    const googleGemini38Flash = google["google.gemini-3.8-flash"] as Config;
+
+    it("should be based on googleChatV1 configuration", () => {
+      expect(googleGemini38Flash.endpoint).toEqual(googleChatV1.endpoint);
+      expect(googleGemini38Flash.method).toEqual(googleChatV1.method);
+      expect(googleGemini38Flash.headers).toEqual(googleChatV1.headers);
+    });
+
+    it("should override model in mapBody and options as gemini-3.8-flash", () => {
+      expect(googleGemini38Flash.mapBody.model).toEqual({
+        default: "gemini-3.8-flash",
+        key: "model",
+      });
+      expect(googleGemini38Flash.options.model).toEqual({
+        default: "gemini-3.8-flash",
+      });
+    });
+
+    it("should carry no deprecation warning", () => {
+      expect(googleGemini38Flash.deprecated).toBeUndefined();
+    });
+
+    it("should map effort to a thinking budget in the request body", () => {
+      // effort has been silently dropped on three new gemini-3.* shorthands
+      // (#772, #781, #846), so assert it through mapBody and not just the
+      // transform.
+      expect(
+        mapBody(googleGemini38Flash.mapBody, {
+          prompt: "Hello",
+          // the model the shorthand resolves to, as the llm passes it through
+          model: googleGemini38Flash.options.model.default,
+          effort: "high",
+        })
+      ).toMatchObject({
+        model: "gemini-3.8-flash",
+        generationConfig: { thinkingConfig: { thinkingBudget: 24576 } },
+      });
+    });
+  });
+
+  describe("3.x flash shorthands", () => {
+    it.each([
+      "google.gemini-3.5-flash",
+      "google.gemini-3.6-flash",
+      "google.gemini-3.7-flash",
+      "google.gemini-3.8-flash",
+    ] as const)("%s carries no deprecation warning", (shorthand) => {
+      // Google auto-routes 3.5 to 3.6 and 3.7 to 3.8, but has announced no
+      // shutdown date for any of them (checked 2026-10-15). Warning on a model
+      // Google still accepts requests for is the false claim issue #762 was
+      // filed for.
+      expect((google[shorthand] as Config).deprecated).toBeUndefined();
+    });
+  });
+
   describe("gemini-2.0-flash", () => {
     it("should be based on googleChatV1 configuration", () => {
       expect(googleGemini2Flash.endpoint).toEqual(googleChatV1.endpoint);
@@ -387,19 +444,54 @@ describe("google configuration", () => {
     });
   });
 
+  describe("gemini-2.5 shorthands", () => {
+    it.each([
+      ["google.gemini-2.5-flash", "gemini-2.5-flash"],
+      ["google.gemini-2.5-flash-lite", "gemini-2.5-flash-lite"],
+      ["google.gemini-2.5-pro", "gemini-2.5-pro"],
+    ] as const)("%s should resolve to %s", (shorthand, expectedModel) => {
+      const config = google[shorthand] as Config;
+      expect(config).toBeDefined();
+      expect(config.options.model).toEqual({ default: expectedModel });
+      expect(config.mapBody.model).toEqual({
+        default: expectedModel,
+        key: "model",
+      });
+    });
+
+    it.each([
+      "google.gemini-2.5-flash",
+      "google.gemini-2.5-flash-lite",
+      "google.gemini-2.5-pro",
+    ] as const)("%s carries no deprecation warning", (shorthand) => {
+      // Google limits the 2.5 line to projects with prior usage, but says the
+      // models "are not deprecated" and lists no shutdown date (checked
+      // 2026-10-12). Warning on a model Google still serves is the false claim
+      // issue #762 was filed for.
+      expect((google[shorthand] as Config).deprecated).toBeUndefined();
+    });
+
+    it("should be based on googleChatV1 configuration", () => {
+      const config = google["google.gemini-2.5-pro"] as Config;
+      expect(config.endpoint).toEqual(googleChatV1.endpoint);
+      expect(config.method).toEqual(googleChatV1.method);
+      expect(config.headers).toEqual(googleChatV1.headers);
+    });
+  });
+
   describe("retired shorthands", () => {
     it.each([
       [
         "google.gemini-2.0-flash",
         "gemini-2.0-flash",
-        "google.gemini-3.5-flash",
+        "google.gemini-3.8-flash",
       ],
       [
         "google.gemini-2.0-flash-lite",
         "gemini-2.0-flash-lite",
         "google.gemini-3.1-flash-lite",
       ],
-      ["google.gemini-1.5-pro", "gemini-1.5-pro", "google.gemini-3.5-flash"],
+      ["google.gemini-1.5-pro", "gemini-1.5-pro", "google.gemini-3.8-flash"],
     ] as const)(
       "%s should still resolve to %s but be marked deprecated",
       (shorthand, expectedModel, migrateTo) => {
@@ -414,6 +506,45 @@ describe("google configuration", () => {
         expect(config.deprecated?.message).toContain(migrateTo);
       }
     );
+  });
+
+  describe("deprecation messages", () => {
+    const deprecated = Object.values(google as Record<string, Config>).filter(
+      (config) => config.deprecated
+    );
+
+    it("only cites dates for shutdowns Google has already carried out", () => {
+      expect(deprecated.length).toBeGreaterThan(0);
+      for (const config of deprecated) {
+        const message = config.deprecated!.message;
+        // Google's deprecation table publishes "earliest possible" shutdown
+        // dates, not commitments. Never promise a future shutdown date on
+        // their behalf — a date in a message means it already happened.
+        expect(message).not.toMatch(/will shut down on/);
+        if (/\d{4}-\d{2}-\d{2}/.test(message)) {
+          expect(message).toMatch(
+            /was shut down by Google on \d{4}-\d{2}-\d{2}/
+          );
+        }
+      }
+    });
+
+    it("only points users at shorthands that exist and are not themselves deprecated", () => {
+      expect(deprecated.length).toBeGreaterThan(0);
+      for (const config of deprecated) {
+        const targets =
+          config.deprecated!.message.match(/google\.[\w.-]+?(?=")/g) ?? [];
+        const migrateTo = targets.filter(
+          (target) => target !== config.deprecated!.shorthand
+        );
+        expect(migrateTo.length).toBeGreaterThan(0);
+        for (const target of migrateTo) {
+          const replacement = (google as Record<string, Config>)[target];
+          expect(replacement).toBeDefined();
+          expect(replacement.deprecated).toBeUndefined();
+        }
+      }
+    });
   });
 
   describe("image content through mapBody", () => {

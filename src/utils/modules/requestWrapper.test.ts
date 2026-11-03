@@ -1,4 +1,7 @@
-import { stateFromOptions } from "@/llm/_utils.stateFromOptions";
+import {
+  PROVIDED_OPTION_KEYS,
+  stateFromOptions,
+} from "@/llm/_utils.stateFromOptions";
 import { deepFreeze } from "@/utils/modules/deepFreeze";
 import { asyncCallWithTimeout } from "@/utils/modules/asyncCallWithTimeout";
 import { backOff } from "exponential-backoff";
@@ -12,6 +15,7 @@ jest.mock("exponential-backoff", () => ({
 }));
 
 jest.mock("@/llm/_utils.stateFromOptions", () => ({
+  ...jest.requireActual("@/llm/_utils.stateFromOptions"),
   stateFromOptions: jest.fn(),
 }));
 
@@ -36,6 +40,9 @@ describe("apiRequestWrapper", () => {
     deepFreezeMock.mockReset()
     asyncCallWithTimeoutMock.mockReset()
     backOffMock.mockReset()
+    mockHandler.mockReset();
+    stateFromOptionsMock.mockReturnValue(mockState);
+    deepFreezeMock.mockImplementation((obj) => obj);
   });
 
   const mockConfig: Config<any> = {} as any;
@@ -49,9 +56,6 @@ describe("apiRequestWrapper", () => {
   const mockHandler = jest.fn<Promise<any>, any>();
   const mockState = {};
   const mockMessages = { messageContent: "test" }
-
-  stateFromOptionsMock.mockReturnValue(mockState);
-  deepFreezeMock.mockImplementation((obj) => obj);
 
   function setupAPIRequestWrapper(doNotRetryErrorMessages: string[] = []) {
     return apiRequestWrapper(mockConfig, mockOptions, mockHandler, doNotRetryErrorMessages);
@@ -81,6 +85,16 @@ describe("apiRequestWrapper", () => {
     });
   });
 
+  it("should report the effective timeout when explicitly undefined", () => {
+    const apiRequest = apiRequestWrapper(
+      mockConfig,
+      { timeout: undefined },
+      mockHandler,
+    );
+
+    expect(apiRequest.getMetadata().timeout).toBe(30000);
+  });
+
   it("should return the correct traceId", () => {
     const apiRequest = setupAPIRequestWrapper();
     expect(apiRequest.getTraceId()).toBe("test-trace-id");
@@ -90,6 +104,61 @@ describe("apiRequestWrapper", () => {
     const apiRequest = apiRequestWrapper(mockConfig, mockOptions, mockHandler, []);
     apiRequest.withTraceId("new-trace-id");
     expect(apiRequest.getTraceId()).toBe("new-trace-id");
+  });
+
+  it("should preserve maxDelay 0 in backoff and metadata", async () => {
+    const options = {
+      timeout: 1000,
+      maxDelay: 0,
+      numOfAttempts: 2,
+      jitter: "none" as const,
+    };
+    const result = { ok: true };
+    asyncCallWithTimeoutMock.mockResolvedValue(result);
+    backOffMock.mockImplementation(async (fn) => fn());
+
+    const apiRequest = apiRequestWrapper(mockConfig, options, mockHandler);
+    await expect(apiRequest.call(mockMessages)).resolves.toBe(result);
+
+    expect(apiRequest.getMetadata()).toEqual(
+      expect.objectContaining({
+        timeout: 1000,
+        maxDelay: 0,
+        numOfAttempts: 2,
+      })
+    );
+    expect(backOffMock).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ maxDelay: 0, numOfAttempts: 2 })
+    );
+  });
+
+  it.each([
+    ["timeout", 0],
+    ["numOfAttempts", 0],
+    ["maxDelay", -1],
+  ] as const)("should reject invalid %s", (option, value) => {
+    expect(() =>
+      apiRequestWrapper(mockConfig, { [option]: value }, mockHandler)
+    ).toThrow(
+      expect.objectContaining({
+        code: "configuration.incompatible_options",
+      })
+    );
+  });
+
+  it.each([
+    ["timeout", Number.NaN],
+    ["numOfAttempts", Number.POSITIVE_INFINITY],
+    ["maxDelay", Number.NEGATIVE_INFINITY],
+  ] as const)("should reject non-finite %s", (option, value) => {
+    expect(() =>
+      apiRequestWrapper(mockConfig, { [option]: value }, mockHandler)
+    ).toThrow(
+      expect.objectContaining({
+        code: "configuration.incompatible_options",
+      })
+    );
   });
 
 //   it("should call handler and backOff with correct parameters and handle success", async () => {
@@ -157,7 +226,14 @@ describe("apiRequestWrapper", () => {
       retry: expect.any(Function),
     });
 
-    expect(mockHandler).toHaveBeenCalledWith(deepFreeze(mockState), deepFreeze(mockMessages), deepFreeze({}));
+    expect(mockHandler).toHaveBeenCalledWith(
+      expect.objectContaining(mockState),
+      expect.objectContaining(mockMessages),
+      undefined,
+      expect.any(AbortSignal),
+    );
+    expect(mockHandler.mock.calls[0][0]).not.toBe(mockState);
+    expect(mockHandler.mock.calls[0][1]).not.toBe(mockMessages);
   });
 
   it("should not retry on certain errors", async () => {
@@ -193,7 +269,34 @@ describe("apiRequestWrapper", () => {
       retry: expect.any(Function),
     });
 
-    expect(mockHandler).toHaveBeenCalledWith(deepFreeze(mockState), deepFreeze(mockMessages), deepFreeze({}));
+    expect(mockHandler).toHaveBeenCalledWith(
+      expect.objectContaining(mockState),
+      expect.objectContaining(mockMessages),
+      undefined,
+      expect.any(AbortSignal),
+    );
+    expect(mockHandler.mock.calls[0][0]).not.toBe(mockState);
+    expect(mockHandler.mock.calls[0][1]).not.toBe(mockMessages);
+  });
+
+  it("preserves option provenance when cloning state before freezing", async () => {
+    const providedOptionKeys = new Set(["maxTokens"]);
+    const callerState = {
+      ...mockState,
+      [PROVIDED_OPTION_KEYS]: providedOptionKeys,
+    };
+    stateFromOptionsMock.mockReturnValueOnce(callerState);
+    asyncCallWithTimeoutMock.mockResolvedValue("result");
+    backOffMock.mockImplementation(async (fn) => fn());
+
+    const apiRequest = setupAPIRequestWrapper();
+    await apiRequest.call(mockMessages);
+
+    const receivedState = mockHandler.mock.calls[0][0];
+    expect(receivedState).not.toBe(callerState);
+    expect(Reflect.get(receivedState, PROVIDED_OPTION_KEYS)).toBe(
+      providedOptionKeys,
+    );
   });
 
   it("does not retry deterministic LlmExeError categories (configuration/prompt/auth) (#723)", async () => {

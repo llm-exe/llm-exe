@@ -3,11 +3,13 @@ import {
   anthropicPromptMessageCallback,
   AnthropicPromptSanitizeOptions,
 } from "./promptSanitizeMessageCallback";
+import { canonicalAnthropicModel } from "./effort";
 
 // Models that 400 on a trailing assistant message (prefill): the 4.6+/5
 // generation. Issue #503 and Anthropic's migration guide name opus-4-6,
 // opus-4-7, and sonnet-4-6; opus-5, opus-4-8, sonnet-5, haiku-5-5, and fable-5
-// belong to the same generation and are grouped here for the same reason the
+// (which by the `${prefix}-` boundary below also covers fable-5-1) belong to
+// the same generation and are grouped here for the same reason the
 // sampling-param and adaptive-thinking lists in `anthropic/effort.ts` group this
 // generation (the Haiku 5.5 migration guide states prefills 400 even with
 // thinking off). The 4.5 generation (opus/sonnet/haiku 4.5) still supports
@@ -25,10 +27,14 @@ const PREFILL_UNSUPPORTED_MODELS = [
   "claude-fable-5",
 ];
 
+// `model` may be a Bedrock id ("us.anthropic.claude-opus-4-7-v1:0", an
+// inference-profile ARN, ...) since amazon:anthropic.chat shares this sanitizer,
+// so canonicalize to the bare "claude-..." name before matching (issue #861).
 function modelBlocksPrefill(model: string | undefined): boolean {
   if (!model) return false;
+  const canonical = canonicalAnthropicModel(model);
   return PREFILL_UNSUPPORTED_MODELS.some(
-    (prefix) => model === prefix || model.startsWith(`${prefix}-`)
+    (prefix) => canonical === prefix || canonical.startsWith(`${prefix}-`)
   );
 }
 

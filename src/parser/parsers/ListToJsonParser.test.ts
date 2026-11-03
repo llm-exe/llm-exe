@@ -101,6 +101,27 @@ describe("llm-exe:parser/ListToJsonParser", () => {
       })
     }
   });
+  it('includes the failing field path in schema validation errors', () => {
+    const schema = defineSchema({
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        age: { type: "number" },
+      },
+      required: ["name", "age"],
+    });
+    const parser = new ListToJsonParser({ schema })
+    try {
+      parser.parse(`Name: Greg\nAge: old`)
+      throw new Error("Expected an error to be thrown")
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError)
+      expect((e as LlmExeError).message).toEqual("instance.age is not of a type(s) number")
+      expect((e as LlmExeError).context?.schemaErrors).toEqual([
+        "instance.age is not of a type(s) number",
+      ])
+    }
+  });
   it('throws by default when schema required fields are missing', () => {
     const schema = defineSchema({
       type: "object",
@@ -225,6 +246,32 @@ describe("llm-exe:parser/ListToJsonParser", () => {
       })
     }
   });
+  it('reports the 0-based lineIndex and 1-based line number of a malformed line', () => {
+    const parser = new ListToJsonParser()
+    let err: LlmExeError | undefined
+    try {
+      parser.parse("name: Bob\nage 42\nx: y")
+    } catch (e) {
+      err = e as LlmExeError
+    }
+    expect(err).toBeInstanceOf(LlmExeError)
+    expect(err?.message).toBe('Malformed key/value line at line 2: expected "key: value".')
+    expect(err?.context).toMatchObject({ reason: "malformed_line", lineIndex: 1 })
+  })
+  it('counts blank lines when reporting a malformed line position', () => {
+    const parser = new ListToJsonParser()
+    expect(() => parser.parse("name: Bob\n\n   \r\nage 42")).toThrow(
+      'Malformed key/value line at line 4: expected "key: value".'
+    )
+  })
+  it('does not include line content in the malformed line error', () => {
+    const parser = new ListToJsonParser()
+    expect(() => parser.parse("secret-value-xyz")).toThrow(
+      expect.objectContaining({
+        message: expect.not.stringContaining("secret-value-xyz"),
+      })
+    )
+  })
   it('throws parser.parse_failed for empty keys', () => {
     const parser = new ListToJsonParser()
     try {

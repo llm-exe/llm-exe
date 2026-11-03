@@ -154,7 +154,7 @@ Website: www.example.com`,
 ];
 
 // pass in `{ helpers, partials }` when creating prompt.
-const prompt = createPrompt("text", "You are a cowboy.", { helpers, partials });
+const prompt = createChatPrompt("You are a cowboy.", { helpers, partials });
 ```
 
 ### 2. Register them globally

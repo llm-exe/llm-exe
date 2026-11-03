@@ -44,24 +44,30 @@ export class ListToKeyValueParser extends BaseParser<
       );
     }
 
-    const { lines } = normalizeListLines(text, {
+    const { lines, lineIndexes } = normalizeListLines(text, {
       operation: "ListToKeyValueParser.parse",
       parser: "listToKeyValue",
     });
 
     let res: Array<{ key: string; value: string }> = [];
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       const colonIndex = line.indexOf(":");
       if (colonIndex === -1) {
-        throw new LlmExeError(`Malformed key/value line.`, {
-          code: "parser.parse_failed",
-          context: {
-            operation: "ListToKeyValueParser.parse",
-            parser: "listToKeyValue",
-            reason: "malformed_line",
-            inputLength: text.length,
-          },
-        });
+        const lineIndex = lineIndexes[i];
+        throw new LlmExeError(
+          `Malformed key/value line at line ${lineIndex + 1}: expected "key: value".`,
+          {
+            code: "parser.parse_failed",
+            context: {
+              operation: "ListToKeyValueParser.parse",
+              parser: "listToKeyValue",
+              reason: "malformed_line",
+              lineIndex,
+              inputLength: text.length,
+            },
+          }
+        );
       }
 
       const rawKey = line.slice(0, colonIndex).trim();

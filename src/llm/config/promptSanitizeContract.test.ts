@@ -425,47 +425,39 @@ const ollamaExpectations: Record<string, Expectation> = {
   "remote https image content block": {
     throws: "Image URLs are not supported by ollama",
   },
-  // `ollamaPromptSanitize` returns early for any message whose content is not an
-  // array, so the llm-exe tool shape (`function_call`, `role: "function"`) goes
-  // out on the wire unconverted. Ollama's /api/chat actually expects
-  // `tool_calls: [{ function: { name, arguments } }]` and `role: "tool"`, so the
-  // two rows below record current behavior — they are not a provider capability
-  // and not a guarantee. Tracked in #706.
+  // ollama's /api/chat takes `tool_calls: [{ function: { name, arguments } }]`
+  // with `arguments` as an object (not a JSON string, unlike openai), and tool
+  // results as `role: "tool"` messages named by `tool_name`.
   "assistant tool call": {
     prompt: [
       { role: "user", content: "weather?" },
       {
         role: "assistant",
-        content: null,
-        function_call: {
-          id: "call_1",
-          name: "get_weather",
-          arguments: '{"city":"Denver"}',
-        },
+        content: "",
+        tool_calls: [
+          {
+            function: { name: "get_weather", arguments: { city: "Denver" } },
+          },
+        ],
       },
     ],
   },
   "tool result": {
     prompt: [
       { role: "user", content: "weather?" },
-      {
-        role: "function",
-        id: "call_1",
-        name: "get_weather",
-        content: "72 and sunny",
-      },
+      { role: "tool", content: "72 and sunny", tool_name: "get_weather" },
     ],
   },
-  // `ollamaPromptSanitize` is role-agnostic, so a tool result with array
-  // content splits into text + `images` like any other message. Whether
-  // ollama honors `images` on a tool-role message is the open part of #706.
+  // A tool result with array content splits into text + `images` like any
+  // other message. Ollama passes `images` on a tool message to the model:
+  // verified live on ollama 0.34.2, a vision model named the color of a solid
+  // red, then blue, image sent only on the tool message.
   "image tool result": {
     prompt: [
       { role: "user", content: "what does the camera see?" },
       {
-        role: "function",
-        id: "call_1",
-        name: "get_snapshot",
+        role: "tool",
+        tool_name: "get_snapshot",
         content: "here is the snapshot",
         images: [PNG_BASE64],
       },

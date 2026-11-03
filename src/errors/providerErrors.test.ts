@@ -201,6 +201,65 @@ describe("parseRetryAfter", () => {
     expect(parseRetryAfter("not a date")).toBeUndefined();
     expect(parseRetryAfter(null)).toBeUndefined();
   });
+
+  it("returns undefined for whitespace-only input", () => {
+    expect(parseRetryAfter("   ")).toBeUndefined();
+    expect(parseRetryAfter("\t\n")).toBeUndefined();
+  });
+
+  it("trims surrounding whitespace before parsing seconds", () => {
+    // Without trimming, "  7  " falls through to Date.parse, which V8 reads
+    // as a (past) year-2001 date and clamps to 0.
+    expect(parseRetryAfter("  7  ")).toBe(7000);
+    expect(parseRetryAfter("\t30\n")).toBe(30000);
+  });
+
+  it("treats leading zeros as plain seconds, not a date", () => {
+    expect(parseRetryAfter("0001")).toBe(1000);
+    expect(parseRetryAfter("010")).toBe(10000);
+  });
+
+  it("rounds fractional seconds to the nearest millisecond", () => {
+    expect(parseRetryAfter("1.2345")).toBe(1235);
+    expect(parseRetryAfter("1.2344")).toBe(1234);
+    expect(parseRetryAfter("0.0004")).toBe(0);
+    expect(parseRetryAfter("1.5")).toBe(1500);
+  });
+
+  it("returns undefined when the numeric value overflows to Infinity", () => {
+    expect(parseRetryAfter("1".repeat(400))).toBeUndefined();
+  });
+
+  it("passes very large finite values through without clamping", () => {
+    // Documents current behavior: no upper cap is applied.
+    expect(parseRetryAfter("86400")).toBe(86_400_000);
+    expect(parseRetryAfter("99999999999999999999")).toBe(1e23);
+  });
+
+  it.each(["1e3", "5s", "0x10", "Infinity", "NaN"])(
+    "returns undefined for non-numeric, non-date value %p",
+    (value) => {
+      expect(parseRetryAfter(value)).toBeUndefined();
+    },
+  );
+
+  it.each(["-5", "-0.5", "+5", ".5", "1.", "1.5.2", "1,5"])(
+    "never returns a negative or NaN delay for malformed value %p",
+    (value) => {
+      const ms = parseRetryAfter(value);
+      if (ms !== undefined) {
+        expect(Number.isFinite(ms)).toBe(true);
+        expect(ms).toBeGreaterThanOrEqual(0);
+      }
+    },
+  );
+
+  it("returns a positive delay for a far-future HTTP-date", () => {
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toUTCString();
+    const ms = parseRetryAfter(future)!;
+    expect(ms).toBeGreaterThan(23 * 60 * 60 * 1000);
+    expect(ms).toBeLessThanOrEqual(24 * 60 * 60 * 1000);
+  });
 });
 
 describe("parseProviderErrorGeneric", () => {
@@ -225,6 +284,59 @@ describe("parseProviderErrorGeneric", () => {
     expect(result.statusText).toBe("Too Many Requests");
     expect(result.retryable).toBe(true);
     expect(result.retryAfterMs).toBe(10_000);
+  });
+
+  describe("retry-after header lookup", () => {
+    it("falls back to a Title-Case Retry-After key", () => {
+      const result = parseProviderErrorGeneric({
+        status: 429,
+        headers: { "Retry-After": "7" },
+      });
+      expect(result.retryAfterMs).toBe(7_000);
+    });
+
+    it("prefers the lowercase key when both casings are present", () => {
+      const result = parseProviderErrorGeneric({
+        status: 429,
+        headers: { "retry-after": "3", "Retry-After": "9" },
+      });
+      expect(result.retryAfterMs).toBe(3_000);
+    });
+
+    // The parser only reads two exact casings. Any other casing is lost
+    // unless the caller normalizes through safeResponseHeaders first. This
+    // pins that contract so a new caller passing raw headers is caught.
+    it("does not read other casings from raw headers", () => {
+      const result = parseProviderErrorGeneric({
+        status: 429,
+        headers: { "RETRY-AFTER": "5" },
+      });
+      expect(result.retryAfterMs).toBeUndefined();
+    });
+
+    it.each([
+      ["a Headers instance", () => new Headers({ "RETRY-AFTER": "5" })],
+      ["a plain object", () => ({ "RETRY-AFTER": "5" })],
+      ["a mixed-case plain object", () => ({ "rEtRy-AfTeR": "5" })],
+    ])(
+      "recovers any casing once %s goes through safeResponseHeaders",
+      (_label, makeHeaders) => {
+        const result = parseProviderErrorGeneric({
+          status: 429,
+          headers: safeResponseHeaders(makeHeaders()),
+        });
+        expect(result.retryAfterMs).toBe(5_000);
+      }
+    );
+
+    it("leaves retryAfterMs undefined for an unparseable value", () => {
+      const result = parseProviderErrorGeneric({
+        status: 503,
+        headers: { "retry-after": "soon" },
+      });
+      expect(result.retryAfterMs).toBeUndefined();
+      expect(result.retryable).toBe(true);
+    });
   });
 
   it("normalizes an Anthropic-style body", () => {
@@ -347,6 +459,41 @@ describe("statusToEmbeddingProviderCode", () => {
   });
 });
 
+describe("status code mapper boundaries", () => {
+  // [status, expected suffix] — neighbours of every special-cased status
+  // and both edges of the 5xx range, so off-by-one edits fail.
+  const table: Array<[number, string]> = [
+    [399, "http_error"],
+    [400, "invalid_request"],
+    [402, "http_error"],
+    [403, "auth_failed"],
+    [404, "http_error"],
+    [407, "http_error"],
+    [408, "unavailable"],
+    [409, "http_error"],
+    [421, "http_error"],
+    [422, "invalid_request"],
+    [423, "http_error"],
+    [428, "http_error"],
+    [430, "http_error"],
+    [499, "http_error"],
+    [500, "unavailable"],
+    [599, "unavailable"],
+    [600, "http_error"],
+    [200, "http_error"],
+  ];
+
+  it.each(table)("llm: %i -> provider_%s", (status, suffix) => {
+    expect(statusToLlmProviderCode(status)).toBe(`llm.provider_${suffix}`);
+  });
+
+  it.each(table)("embedding: %i -> provider_%s", (status, suffix) => {
+    expect(statusToEmbeddingProviderCode(status)).toBe(
+      `embedding.provider_${suffix}`
+    );
+  });
+});
+
 describe("secret-scrubbing fixtures end-to-end through serializeLlmExeError", () => {
   it("does not leak synthetic secrets when serializing an LlmExeError carrying provider data", () => {
     const scrubbedBody = safeProviderErrorBody({
@@ -402,6 +549,38 @@ describe("truncateString", () => {
 
   it("handles max of 0", () => {
     expect(truncateString("hello", 0)).toBe("…(truncated)");
+  });
+
+  it("does not split a surrogate pair at the cut", () => {
+    const out = truncateString("x".repeat(9) + "😀", 10);
+    expect(out).toBe("x".repeat(9) + "…(truncated)");
+    expect(out).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
+  });
+});
+
+describe("safeProviderErrorBody truncation order", () => {
+  const key = "sk-" + "A1b2C3d4E5".repeat(5);
+  const body = "x".repeat(90) + " " + key;
+
+  it("redacts a token that straddles the cut in a raw string body", () => {
+    const out = safeProviderErrorBody(body, { maxBodyBytes: 105 }) as string;
+    expect(out).not.toContain("A1b2C3d4E5");
+    expect(out).toBe(safeProviderString(body, 105));
+  });
+
+  it("redacts a token that straddles the cut in a nested string", () => {
+    const out = safeProviderErrorBody(
+      { m: body },
+      { maxStringLength: 105 }
+    ) as { m: string };
+    expect(out.m).not.toContain("A1b2C3d4E5");
+    expect(out.m).toBe(safeProviderString(body, 105));
+  });
+
+  it("still bounds the output length after redaction", () => {
+    const out = safeProviderErrorBody(body, { maxBodyBytes: 20 }) as string;
+    expect(out).toHaveLength(20 + "…(truncated)".length);
+    expect(out.endsWith("…(truncated)")).toBe(true);
   });
 });
 
@@ -595,5 +774,61 @@ describe("parseProviderErrorGeneric input shape fallbacks", () => {
       bodyJson: { error: 42 },
     });
     expect(out.message).toBeUndefined();
+  });
+});
+
+describe("parseProviderErrorGeneric retryable boundaries", () => {
+  it.each([
+    [399, false],
+    [400, false],
+    [407, false],
+    [408, true],
+    [428, false],
+    [429, true],
+    [430, false],
+    [499, false],
+    [500, true],
+    [599, true],
+    [600, false],
+  ])("status %i -> retryable %s", (status, expected) => {
+    expect(parseProviderErrorGeneric({ status }).retryable).toBe(expected);
+  });
+
+  it("leaves retryable undefined when no status is known", () => {
+    expect(parseProviderErrorGeneric({}).retryable).toBeUndefined();
+  });
+});
+
+describe("parseProviderErrorGeneric scrubs every extracted string", () => {
+  const SECRET = "sk-" + "Z".repeat(40);
+
+  it("redacts secrets echoed in message, type, and code", () => {
+    const result = parseProviderErrorGeneric({
+      status: 401,
+      bodyJson: {
+        error: {
+          message: `Invalid key ${SECRET}`,
+          type: `bad_key ${SECRET}`,
+          code: `invalid_api_key:${SECRET}`,
+        },
+      },
+    });
+    for (const field of [
+      result.message,
+      result.providerType,
+      result.providerCode,
+    ]) {
+      expect(field).toBeDefined();
+      expect(field).not.toContain(SECRET);
+    }
+  });
+
+  it("redacts secrets in a root-level code field", () => {
+    const result = parseProviderErrorGeneric({
+      status: 400,
+      bodyJson: { message: "bad", code: `token=${SECRET}` },
+    });
+    expect(result.providerCode).toBeDefined();
+    expect(result.providerCode).not.toContain(SECRET);
   });
 });

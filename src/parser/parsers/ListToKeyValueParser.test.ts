@@ -53,6 +53,32 @@ describe("llm-exe:parser/ListToKeyValueParser", () => {
       })
     }
   })
+  it('reports the 0-based lineIndex and 1-based line number of a malformed line', () => {
+    const parser = new ListToKeyValueParser()
+    let err: LlmExeError | undefined
+    try {
+      parser.parse("name: Bob\nage 42\nx: y")
+    } catch (e) {
+      err = e as LlmExeError
+    }
+    expect(err).toBeInstanceOf(LlmExeError)
+    expect(err?.message).toBe('Malformed key/value line at line 2: expected "key: value".')
+    expect(err?.context).toMatchObject({ reason: "malformed_line", lineIndex: 1 })
+  })
+  it('counts blank lines when reporting a malformed line position', () => {
+    const parser = new ListToKeyValueParser()
+    expect(() => parser.parse("name: Bob\n\n   \r\nage 42")).toThrow(
+      'Malformed key/value line at line 4: expected "key: value".'
+    )
+  })
+  it('does not include line content in the malformed line error', () => {
+    const parser = new ListToKeyValueParser()
+    expect(() => parser.parse("secret-value-xyz")).toThrow(
+      expect.objectContaining({
+        message: expect.not.stringContaining("secret-value-xyz"),
+      })
+    )
+  })
   it('throws parser.parse_failed for empty keys', () => {
     const parser = new ListToKeyValueParser()
     try {

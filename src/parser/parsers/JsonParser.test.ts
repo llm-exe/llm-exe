@@ -79,6 +79,34 @@ describe("llm-exe:parser/JsonParser", () => {
       "is not of a type(s) string",
     );
   });
+  it("includes the failing field path in schema validation errors", () => {
+    const schema = defineSchema({
+      type: "object",
+      properties: {
+        answer: { type: "string" },
+        n: { type: "number" },
+        meta: {
+          type: "object",
+          properties: { score: { type: "number" } },
+        },
+      },
+      required: ["answer", "n"],
+    });
+    const parser = new JsonParser({ schema });
+    try {
+      parser.parse('{"answer":"hi","n":"2","meta":{"score":"x"}}');
+      throw new Error("Expected an error to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      expect((e as LlmExeError).message).toEqual(
+        "instance.n is not of a type(s) number",
+      );
+      expect((e as LlmExeError).context?.schemaErrors).toEqual([
+        "instance.n is not of a type(s) number",
+        "instance.meta.score is not of a type(s) number",
+      ]);
+    }
+  });
   it("validates schema by default when schema is provided", () => {
     const schema = defineSchema({
       type: "object",
@@ -219,15 +247,92 @@ describe("llm-exe:parser/JsonParser", () => {
     } catch (e) {
       expect(e).toBeInstanceOf(LlmExeError);
       expect((e as LlmExeError).code).toEqual("parser.parse_failed");
-      expect((e as LlmExeError).context).toEqual({
+      const { errorPosition, ...context } = (e as LlmExeError)
+        .context as Record<string, unknown>;
+      expect(context).toEqual({
         operation: "JsonParser.parse",
         parser: "json",
         reason: "invalid_json",
         expected: "JSON object or array",
         inputLength: 23,
       });
+      // Node 18 reports "at position 0" for a bad first character; Node 20+ omits it.
+      expect([0, undefined]).toContain(errorPosition);
       expect((e as any).cause).toBeInstanceOf(SyntaxError);
     }
+  });
+  describe("invalid_json diagnostics (#922)", () => {
+    function catchError(fn: () => unknown): LlmExeError {
+      try {
+        fn();
+      } catch (e) {
+        return e as LlmExeError;
+      }
+      throw new Error("Expected an error to be thrown");
+    }
+
+    it("hints at match: extract when JSON follows a prose preamble", () => {
+      const input = 'Sure! Here is the JSON: {"a":1}';
+      const e = catchError(() => new JsonParser().parse(input));
+      expect(e.message).toBe("Invalid JSON input.");
+      expect(e.context).toMatchObject({ reason: "invalid_json" });
+      expect((e.context as any).resolution).toContain('match: "extract"');
+      // The hinted option actually works on the same input.
+      expect(new JsonParser({ match: "extract" }).parse(input)).toEqual({
+        a: 1,
+      });
+    });
+
+    it("reports the syntax error position without a hint for malformed JSON", () => {
+      const e = catchError(() => new JsonParser().parse('{"a": 1,}'));
+      expect(e.message).toBe("Invalid JSON input.");
+      expect((e.context as any).resolution).toBeUndefined();
+      expect(e.context).toMatchObject({ errorPosition: 8 });
+    });
+
+    it("maps the position back to the original input past whitespace and fences", () => {
+      const e = catchError(() =>
+        new JsonParser().parse('  ```json\n{"a": 1,}\n```'),
+      );
+      // '{' is at index 10 of the raw input; JSON.parse fails 8 chars later.
+      expect(e.context).toMatchObject({ errorPosition: 18 });
+      // Exact mode already strips the fence, so extract would not help here.
+      expect((e.context as any).resolution).toBeUndefined();
+    });
+
+    it("hints at match: extract when prose follows the JSON", () => {
+      const input = '{"a":1} hope that helps';
+      const e = catchError(() => new JsonParser().parse(input));
+      expect((e.context as any).resolution).toContain('match: "extract"');
+      expect(new JsonParser({ match: "extract" }).parse(input)).toEqual({
+        a: 1,
+      });
+    });
+
+    it("does not hint at match: extract when the embedded JSON is malformed", () => {
+      const e = catchError(() => new JsonParser().parse('Here: {"a": 1,}'));
+      expect(e.context).toMatchObject({ reason: "invalid_json" });
+      expect((e.context as any).resolution).toBeUndefined();
+    });
+
+    it.each([
+      '{"user": {"name":"A"}, "items": [1,2',
+      '{"a": {"b":1}',
+      'Sure: {"user": {"name":"A"}, "items": [1,2',
+      'Here: {"a":1} and {"b": ',
+      '[1, {"a":1}, 2',
+    ])("does not hint at match: extract for truncated JSON %j", (input) => {
+      const e = catchError(() => new JsonParser().parse(input));
+      expect(e.context).toMatchObject({ reason: "invalid_json" });
+      expect((e.context as any).resolution).toBeUndefined();
+    });
+
+    it("never copies raw input text into the context", () => {
+      const input = "Sure! Here is my secret answer {";
+      const e = catchError(() => new JsonParser().parse(input));
+      expect(JSON.stringify(e.context)).not.toContain("Sure");
+      expect(JSON.stringify(e.context)).not.toContain("secret");
+    });
   });
   it("throws parser.parse_failed for empty input", () => {
     const parser = new JsonParser();
@@ -549,6 +654,42 @@ describe("llm-exe:parser/JsonParser", () => {
       // The bare `{` near 'set' has no closer; the real object after that does.
       const parser = new JsonParser({ match: "extract" });
       expect(parser.parse('open { set then {"b":2} end')).toEqual({ b: 2 });
+    });
+
+    it.each([
+      ['Here: {name: "x", tags: ["a","b"]}'],
+      ['Result: {"user": {"id": 1}, "ok": true,}'],
+    ])(
+      "does not return an inner fragment of a malformed outer span: %s",
+      (input) => {
+        const parser = new JsonParser({ match: "extract" });
+        expect(() => parser.parse(input)).toThrow(
+          expect.objectContaining({
+            code: "parser.parse_failed",
+            context: expect.objectContaining({
+              reason: "no_json_value",
+              match: "extract",
+            }),
+          }),
+        );
+      },
+    );
+
+    it("does not let a matching inner fragment pass schema validation", () => {
+      const schema = defineSchema({
+        type: "object",
+        properties: { id: { type: "number" } },
+        required: ["id"],
+      });
+      const parser = new JsonParser({ schema, match: "extract" });
+      expect(() =>
+        parser.parse('Result: {"user": {"id": 1}, "ok": true,}'),
+      ).toThrow(LlmExeError);
+    });
+
+    it("still extracts valid JSON after a malformed balanced span", () => {
+      const parser = new JsonParser({ match: "extract" });
+      expect(parser.parse('Note [see below]: {"a":1}')).toEqual({ a: 1 });
     });
   });
 });

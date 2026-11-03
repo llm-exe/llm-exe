@@ -267,7 +267,8 @@ sequenceDiagram
     CCA->>API: gh pr create --base development
     CCA->>L: rewrite Summary, Files Changed, Next Steps
     J->>C: clock_out (if: always())
-    C->>L: stamp Finished UTC + Status
+    C->>L: stamp Finished UTC + Status completed, no-output, or interrupted
+    Note over C,L: a run that finds no drift must still rewrite its log sections, otherwise clock_out stamps no-output and warns
 ```
 
 [Back to top](#navigate)
@@ -365,7 +366,7 @@ flowchart TB
     classDef l4 fill:#581c87,color:#fff,stroke:#000
 
     A["LAYER 1: Role template\nscripts/agents/prompts/docs-sync.md\nwith $BRANCH and $LOG_FILE substituted"]:::l1
-    B["LAYER 2: Prior runs\nlast 3 logs from logs/docs-sync/\nunder ## Prior Runs header"]:::l2
+    B["LAYER 2: Prior runs\nlast 3 logs from logs/docs-sync/\nunder ## Prior Runs header\nbuild_prior_context in config.sh, current log excluded"]:::l2
     C["LAYER 3: Time Budget\nstart UTC + deadline UTC + 600s"]:::l3
     D["LAYER 4: Changed Source Files\nthe verbatim contents of /tmp/changed-files.txt\nunder ## Changed Source Files header"]:::l4
 
@@ -579,7 +580,7 @@ flowchart LR
     K1["File"]:::k --- V1[".github/workflows/docs-sync.yml"]:::v
     K2["Triggers"]:::k --- V2["workflow_dispatch only (push detection in separate trigger workflow)"]:::v
     K3["Inputs"]:::k --- V3["target (comma-separated paths), full_refresh (boolean)"]:::v
-    K4["Path filter"]:::k --- V4["workflows, actions, maintain.sh, config.sh, prompts, package.json"]:::v
+    K4["Path filter"]:::k --- V4["workflows, actions, vitals, maintain.sh, config.sh, prompts, package.json"]:::v
     K5["Permissions"]:::k --- V5["contents/PR/issues: write"]:::v
     K6["Timeout"]:::k --- V6["30 minutes"]:::v
     K7["Concurrency"]:::k --- V7["docs-sync, no cancel"]:::v

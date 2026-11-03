@@ -15,6 +15,11 @@ const FULL_REDACTION_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
     /(authorization|proxy-authorization|cookie|set-cookie|x-api-key|x-amz-security-token|x-amz-signature|api[-_]?key|access[-_]?token|token|secret|password)(\s*[:=]\s*)[^\r\n,;&]+/gi,
     "$1$2[redacted]",
   ],
+  // Bare query-style `key=` (Google Gemini's ?key=<API key>), for URLs that
+  // reach here unparsed. Kept to the `=`, unquoted-value shape so prose labels
+  // like "API key: sk-..." keep their token mask, and the lookbehind leaves
+  // `monkey=` alone.
+  [/(?<![A-Za-z0-9])(key)(\s*=\s*)(?!["'])[^\r\n,;&]+/gi, "$1$2[redacted]"],
   // JSON-shaped fields.
   [
     /"(authorization|x-api-key|api[-_]?key|secret[-_]?key|access[-_]?key|secret|token|password|cookie|x-amz[a-z-]*)"\s*:\s*"[^"]*"/gi,

@@ -45,7 +45,8 @@ it("still retries transient failures through the real backoff wrapper", async ()
     .fn()
     .mockRejectedValueOnce(new Error("Temporary failure"))
     .mockResolvedValue({ ok: true });
-  const llm = apiRequestWrapper(config, {}, handler);
+  const llm = apiRequestWrapper(config, { maxDelay: 0 }, handler);
   await expect(llm.call("Hi")).resolves.toEqual({ ok: true });
   expect(handler).toHaveBeenCalledTimes(2);
+  expect(llm.getMetadata().maxDelay).toBe(0);
 });

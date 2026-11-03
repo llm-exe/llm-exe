@@ -9,8 +9,10 @@ export interface NumberParserOptions {
   match?: NumberParserMatch;
 }
 
+// A thousands group can't start right after "<digit>," or "10,20,300" would
+// tokenize as 10 and 20,300 instead of three list items.
 const NUMERIC_TOKEN_PATTERN =
-  /(^|[^\w.,])([+-]?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)(?![\w,])/g;
+  /(^|[^\w.])([+-]?(?:(?:(?<!\d,)\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)(?![\w])/g;
 const EXACT_NUMERIC_PATTERN =
   /^[+-]?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?$/;
 

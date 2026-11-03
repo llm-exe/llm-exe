@@ -95,6 +95,7 @@ Welcome back!
 ```ts
 createParser("string");              // pass-through, returns string
 createParser("json", { schema });    // JSON with optional schema validation
+createParser("json", { match: "extract" }); // pulls one JSON value out of surrounding text
 createParser("boolean");             // whole response must be a boolean ("yes", "true"); "Yes." throws
 createParser("boolean", { match: "extract" }); // finds one boolean token in surrounding text
 createParser("number");              // extracts number from response (default match: "extract")

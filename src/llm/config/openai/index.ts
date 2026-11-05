@@ -105,19 +105,9 @@ export const openai = {
     message:
       'Model "openai.gpt-4o-mini" is deprecated and will shut down on 2027-01-14. Migrate to "openai.gpt-6-luna".',
   }),
-  ...deprecateShorthand("openai.gpt-4.1-nano", {
-    config: withDefaultModel(openAiChatV1, "gpt-4.1-nano"),
-    message:
-      'Model "openai.gpt-4.1-nano" is deprecated and will shut down on 2026-10-23. Migrate to openai.gpt-5.6-luna.',
-  }),
-  // NOTE: the undated "gpt-4" alias resolves to the gpt-4-0613 snapshot, which
-  // is in OpenAI's 2026-10-23 shutdown batch. "gpt-4.1" and "gpt-4.1-mini" are
-  // not affected.
-  ...deprecateShorthand("openai.gpt-4", {
-    config: withDefaultModel(openAiChatV1, "gpt-4"),
-    message:
-      'Model "openai.gpt-4" is deprecated and will shut down on 2026-10-23. Migrate to openai.gpt-6-luna.',
-  }),
+  // NOTE: openai.gpt-4.1-nano and openai.gpt-4 were removed after OpenAI shut
+  // down gpt-4.1-nano and gpt-4 (gpt-4-0613) on 2026-10-23. Use
+  // openai.gpt-6-luna, or useLlm("openai.chat.v1", { model }) for any model.
   // NOTE: gpt-5-mini / gpt-5-nano / o3 resolve to undated aliases whose only
   // shipped snapshots (gpt-5-mini-2025-08-07, gpt-5-nano-2025-08-07,
   // o3-2025-04-16) shut down 2026-12-11. OpenAI's announcement lists the dated

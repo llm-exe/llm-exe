@@ -417,24 +417,6 @@ describe("openai configuration", () => {
     });
   });
 
-  describe("openai.gpt-4", () => {
-    const openAiGpt4 = openai["openai.gpt-4"] as Config;
-
-    it("should be based on openAiChatV1 configuration", () => {
-      expect(openAiGpt4.endpoint).toEqual(openAiChatV1.endpoint);
-      expect(openAiGpt4.method).toEqual(openAiChatV1.method);
-      expect(openAiGpt4.headers).toEqual(openAiChatV1.headers);
-    });
-
-    it("should override model in mapBody and options as gpt-4", () => {
-      expect(openAiGpt4.mapBody.model).toEqual({
-        default: "gpt-4",
-        key: "model",
-      });
-      expect(openAiGpt4.options.model).toEqual({ default: "gpt-4" });
-    });
-  });
-
   describe("openai.gpt-6", () => {
     const openAiGpt6 = openai["openai.gpt-6"] as Config;
     const openAiGpt6Astra = openai["openai.gpt-6-astra"] as Config;
@@ -501,8 +483,6 @@ describe("openai configuration", () => {
 
   describe("deprecated shorthands still resolve", () => {
     it.each([
-      ["openai.gpt-4.1-nano", "gpt-4.1-nano"],
-      ["openai.gpt-4", "gpt-4"],
       ["openai.gpt-5-mini", "gpt-5-mini"],
       ["openai.gpt-5-nano", "gpt-5-nano"],
       ["openai.o3", "o3"],
@@ -516,7 +496,7 @@ describe("openai configuration", () => {
       }
     );
 
-    it.each(["openai.gpt-4.1-nano", "openai.gpt-4", "openai.o4-mini"] as const)(
+    it.each(["openai.o4-mini"] as const)(
       "%s should carry a deprecated payload stamped with its own shorthand",
       (shorthand) => {
         const cfg = openai[shorthand];
@@ -526,15 +506,11 @@ describe("openai configuration", () => {
       }
     );
 
-    it.each([
-      ["openai.gpt-4.1-nano", "openai.gpt-5.6-luna"],
-      ["openai.gpt-4", "openai.gpt-6-luna"],
-    ] as const)(
-      "%s should warn about the 2026-10-23 shutdown and point at %s",
-      (shorthand, replacement) => {
-        const message = openai[shorthand].deprecated!.message;
-        expect(message).toContain("2026-10-23");
-        expect(message).toContain(replacement);
+    // Models shut down 2026-10-23; their shorthands were removed (#907).
+    it.each(["openai.gpt-4.1-nano", "openai.gpt-4"])(
+      "%s is no longer a registered shorthand",
+      (shorthand) => {
+        expect(Object.keys(openai)).not.toContain(shorthand);
       }
     );
 
@@ -624,9 +600,7 @@ describe("openai configuration", () => {
       ["openai.gpt-5-nano", "gpt-5-nano"],
       ["openai.gpt-4.1", "gpt-4.1"],
       ["openai.gpt-4.1-mini", "gpt-4.1-mini"],
-      ["openai.gpt-4.1-nano", "gpt-4.1-nano"],
       ["openai.o3", "o3"],
-      ["openai.gpt-4", "gpt-4"],
       ["openai.gpt-4o", "gpt-4o"],
       ["openai.gpt-4o-mini", "gpt-4o-mini"],
       ["openai.o4-mini", "o4-mini"],
@@ -672,8 +646,6 @@ describe("openai configuration", () => {
       const nonReasoningShorthands = [
         "openai.gpt-4.1",
         "openai.gpt-4.1-mini",
-        "openai.gpt-4.1-nano",
-        "openai.gpt-4",
         "openai.gpt-4o",
         "openai.gpt-4o-mini",
       ] as const;

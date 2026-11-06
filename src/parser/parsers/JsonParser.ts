@@ -143,6 +143,41 @@ function hasUnclosedJsonOpener(input: string): boolean {
 }
 
 /**
+ * True when some `{` or `[` never closes and is followed by what looks like
+ * the start of JSON content (or the end of input), i.e. a JSON value cut off
+ * mid-way, typically by max_tokens. A stray bracket in prose (`{ but then`) is
+ * not counted, so extract mode can still skip it.
+ */
+function hasTruncatedJsonOpener(input: string): boolean {
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+    if (char !== "{" && char !== "[") {
+      continue;
+    }
+
+    const end = findBalancedJsonEnd(input, index);
+    if (end !== undefined) {
+      index = end;
+      continue;
+    }
+
+    const rest = input.slice(index + 1).trimStart();
+    if (rest === "") {
+      return true;
+    }
+    const looksLikeJson =
+      char === "{"
+        ? rest[0] === '"'
+        : /^(["{[\-0-9]|(true|false|null)\b)/.test(rest);
+    if (looksLikeJson) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Reads the numeric offset from a JSON.parse SyntaxError message, if present.
  * Only the number is kept: newer engines embed a snippet of the raw input in
  * the message, which must not leak into error context. `offset` maps the
@@ -209,6 +244,25 @@ export class JsonParser<
         parsed = JSON.parse(normalized);
       } catch (cause) {
         if (this.match === "extract") {
+          // A cut-off JSON value contains complete inner values; returning
+          // one of them would be silently wrong data (#933).
+          if (hasTruncatedJsonOpener(text)) {
+            throw new LlmExeError(
+              `JSON value in input appears to be truncated (unclosed { or [).`,
+              {
+                code: "parser.parse_failed",
+                context: {
+                  operation: "JsonParser.parse",
+                  parser: "json",
+                  reason: "truncated_json",
+                  expected: "JSON object or array",
+                  match: this.match,
+                  inputLength,
+                },
+                cause,
+              },
+            );
+          }
           const candidates = extractJsonCandidates(text);
 
           if (candidates.length === 1) {

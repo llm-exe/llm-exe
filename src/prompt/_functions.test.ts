@@ -32,6 +32,29 @@ describe("llm-exe:prompt/createPrompt", () => {
       role: "system",
     });
   });
+  it("forwards options to text prompt (validateInput)", () => {
+    const prompt = createPrompt<{ a: string }>("text", "Hi {{a}}", {
+      validateInput: "strict",
+    });
+    expect(prompt.validateInput).toEqual("strict");
+    expect(() => prompt.format({} as any)).toThrow();
+  });
+  it("forwards options to text prompt (helpers and partials)", () => {
+    const prompt = createPrompt<{ a: string }>("text", "{{shout a}} {{> sig}}", {
+      helpers: [
+        { name: "shout", handler: (v: string) => String(v).toUpperCase() },
+      ],
+      partials: [{ name: "sig", template: "- bot" }],
+    });
+    expect(prompt.format({ a: "hi" })).toEqual("HI - bot");
+  });
+  it("forwards options when type is omitted", () => {
+    const prompt = createPrompt<{ a: string }>(undefined, "Hi {{a}}", {
+      validateInput: "strict",
+    });
+    expect(prompt).toBeInstanceOf(TextPrompt);
+    expect(() => prompt.format({} as any)).toThrow();
+  });
   it("allows you to create chat prompt", () => {
     const prompt = createPrompt("chat");
     expect(prompt).toBeInstanceOf(BasePrompt);

@@ -47,6 +47,27 @@ const NON_RETRYABLE_CODES = new Set<ErrorCodes>([
   "embedding.unsupported_dimensions",
 ]);
 
+// Base delay (ms) before the first retry. exponential-backoff doubles it on
+// each subsequent retry and caps it at maxDelay. Must be non-zero: with 0,
+// every computed delay is 0 and maxDelay has no effect.
+const STARTING_DELAY_MS = 500;
+const TIME_MULTIPLE = 2;
+
+function readRetryAfterMs(error: unknown): number | undefined {
+  if (!isLlmExeError(error)) return undefined;
+  const providerError = (error.context as { providerError?: unknown })
+    ?.providerError;
+  if (!providerError || typeof providerError !== "object") return undefined;
+  const value = (providerError as { retryAfterMs?: unknown }).retryAfterMs;
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : undefined;
+}
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
 export function apiRequestWrapper<T extends Record<string, any>, I>(
   config: Config<any>,
   options: Record<string, any>,
@@ -101,6 +122,8 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
    */
   const jitter: "none" | "full" = options.jitter || "none";
 
+  const startingDelay = Math.min(STARTING_DELAY_MS, maxDelay);
+
   let traceId: null | string = options?.traceId || null;
 
   async function call(
@@ -137,11 +160,12 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
           );
         },
         {
-          startingDelay: 0,
+          startingDelay,
+          timeMultiple: TIME_MULTIPLE,
           maxDelay: maxDelay,
           numOfAttempts: numOfAttempts,
           jitter: jitter,
-          retry: (_error: any, _stepNumber: number) => {
+          retry: async (_error: any, _stepNumber: number) => {
             if (doNotRetryErrorMessages.includes(_error.message)) {
               return false;
             }
@@ -153,6 +177,26 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
               return false;
             }
             metrics.total_call_retry++;
+            // No retry happens once the attempt limit is reached, so don't
+            // wait for retry-after in that case.
+            if (_stepNumber >= numOfAttempts) {
+              return true;
+            }
+            // Follow the provider's retry-after (capped at maxDelay, so one
+            // header can't stall a call). backOff then applies its own delay
+            // for this retry, so only sleep for the part retry-after adds on
+            // top of it.
+            const retryAfterMs = readRetryAfterMs(_error);
+            if (retryAfterMs !== undefined) {
+              const backoffDelay = Math.min(
+                startingDelay * Math.pow(TIME_MULTIPLE, _stepNumber - 1),
+                maxDelay
+              );
+              const extra = Math.min(retryAfterMs, maxDelay) - backoffDelay;
+              if (extra > 0) {
+                await sleep(extra);
+              }
+            }
             return true;
           },
         },

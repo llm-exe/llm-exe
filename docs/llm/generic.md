@@ -25,6 +25,8 @@ For a worked example of `timeout`, `numOfAttempts`, and `maxDelay` in a producti
 | extraBody     | Record<string, unknown> | undefined | Raw LLM request body fields, shallow-merged after provider and executor mappings, before serialization/signing. Explicit fields win; nested objects replace mapped objects in full. |
 | stream        | boolean \| null  | null      | Note: Not supported yet.                                                                                   |
 
+`timeout`, `maxDelay`, and `numOfAttempts` are checked when you call `useLlm()`. An explicit `0`, a negative number, `NaN`, `Infinity`, or a non-number throws an `LlmExeError` with code `configuration.incompatible_options` (`context.option` names the bad option). Leave an option unset to get its default. When `timeout` is reached, the in-flight HTTP request is aborted.
+
 > [!NOTE]
 > Different vendors will allow (and may require) additional options.
 > - [OpenAI Chat Model Options](/llm/openai#openai-specific-options)

@@ -701,6 +701,11 @@ describe("llm-exe:parser/JsonParser", () => {
       ['[1, {"a":1}, 2'],
       ['Here: {"a":1} and {"b": '],
       ['Here: {"a":1} and {'],
+      ['{"a": {"b":1}, "c": "hel'],
+      ['{"a": {"b":1}, "c": "x\\'],
+      ['{"a": {"b":1}, "c": tr'],
+      ['{"a": {"b":1}, "c": -'],
+      ['{"a": {"b":1}, "c": 1.'],
     ])("throws truncated_json instead of returning a fragment: %s", (input) => {
       const parser = new JsonParser({ match: "extract" });
       expect(() => parser.parse(input)).toThrow(
@@ -736,6 +741,19 @@ describe("llm-exe:parser/JsonParser", () => {
       expect(parser.parse('Start: { but then {"a":1}')).toEqual({ a: 1 });
       expect(parser.parse('See [ note: {"a":1}')).toEqual({ a: 1 });
     });
+
+    it.each([
+      ['Values in [0,1): {"a":1}'],
+      ['Range [0, 10) gives {"a":1}'],
+      ['Scores [1, 2, then {"a":1}'],
+      ['Open { "quoted" text, see {"a":1}'],
+    ])(
+      "does not treat an unclosed bracket in prose as truncation: %s",
+      (input) => {
+        const parser = new JsonParser({ match: "extract" });
+        expect(parser.parse(input)).toEqual({ a: 1 });
+      },
+    );
 
     it("leaves exact mode unchanged (invalid_json)", () => {
       const parser = new JsonParser();

@@ -142,11 +142,39 @@ function hasUnclosedJsonOpener(input: string): boolean {
   return false;
 }
 
+// One complete JSON token (or whitespace). Numbers are matched loosely: the
+// question is only whether text could be JSON, not whether it is valid.
+const JSON_TOKEN =
+  /\s+|"(?:[^"\\]|\\.)*"|-?\d[\d.eE+-]*|true|false|null|[{}[\],:]/y;
+
+// A token cut off at the end of input: an open string, a lone minus sign, or
+// the start of true/false/null.
+const PARTIAL_JSON_TOKEN =
+  /^(?:"(?:[^"\\]|\\.)*\\?|-|t(?:r(?:u)?)?|f(?:a(?:l(?:s)?)?)?|n(?:u(?:l)?)?)$/;
+
 /**
- * True when some `{` or `[` never closes and is followed by what looks like
- * the start of JSON content (or the end of input), i.e. a JSON value cut off
- * mid-way, typically by max_tokens. A stray bracket in prose (`{ but then`) is
- * not counted, so extract mode can still skip it.
+ * True when `text` holds only JSON tokens up to the end of input, so it could
+ * be the start of a JSON value that was cut off. Prose such as `[0, 10) gives`
+ * or `{ but then` fails this check.
+ */
+function isJsonPrefix(text: string): boolean {
+  const token = new RegExp(JSON_TOKEN);
+  let position = 0;
+  while (position < text.length) {
+    token.lastIndex = position;
+    if (!token.exec(text)) {
+      return PARTIAL_JSON_TOKEN.test(text.slice(position));
+    }
+    position = token.lastIndex;
+  }
+  return true;
+}
+
+/**
+ * True when some `{` or `[` never closes and everything from it to the end of
+ * input is JSON, i.e. a JSON value cut off mid-way, typically by max_tokens.
+ * A bracket in prose (`{ but then`, `[0, 1)`) is not counted, so extract mode
+ * can still skip it.
  */
 function hasTruncatedJsonOpener(input: string): boolean {
   for (let index = 0; index < input.length; index += 1) {
@@ -161,15 +189,7 @@ function hasTruncatedJsonOpener(input: string): boolean {
       continue;
     }
 
-    const rest = input.slice(index + 1).trimStart();
-    if (rest === "") {
-      return true;
-    }
-    const looksLikeJson =
-      char === "{"
-        ? rest[0] === '"'
-        : /^(["{[\-0-9]|(true|false|null)\b)/.test(rest);
-    if (looksLikeJson) {
+    if (isJsonPrefix(input.slice(index))) {
       return true;
     }
   }

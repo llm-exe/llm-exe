@@ -68,6 +68,21 @@ function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
+// Option names that look like credentials. Catches keys that never appear in
+// the headers template (e.g. google's `?key={{geminiApiKey}}`, aws signing keys).
+// Deliberately excludes bare "token" so `maxTokens` is not dropped.
+const CREDENTIAL_OPTION_PATTERN = /api_?key|secret|access_?key|password/i;
+
+// Options interpolated into the headers template carry auth (Authorization,
+// x-api-key, ...), so any option name referenced there is treated as a secret.
+// This covers custom `apiKeyMapping` names that don't match the pattern above.
+function headerTemplateOptionKeys(config: Config<any>): Set<string> {
+  const headers = typeof config?.headers === "string" ? config.headers : "";
+  return new Set(
+    Array.from(headers.matchAll(/{{\s*([\w.]+)\s*}}/g), (m) => m[1])
+  );
+}
+
 export function apiRequestWrapper<T extends Record<string, any>, I>(
   config: Config<any>,
   options: Record<string, any>,
@@ -210,13 +225,12 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
   }
 
   function getMetadata() {
-    const {
-      awsSecretKey,
-      awsAccessKey,
-      openAiApiKey,
-      anthropicApiKey,
-      ...rest
-    } = options;
+    const headerKeys = headerTemplateOptionKeys(config);
+    const rest = Object.fromEntries(
+      Object.entries(options).filter(
+        ([key]) => !CREDENTIAL_OPTION_PATTERN.test(key) && !headerKeys.has(key)
+      )
+    );
     return {
       ...rest,
       traceId: getTraceId(),

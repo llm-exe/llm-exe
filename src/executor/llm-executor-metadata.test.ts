@@ -211,4 +211,44 @@ describe("llm-exe:executor metadata in hooks", () => {
       expect(captured.error).toBeInstanceOf(Error);
     });
   });
+  describe("credential redaction", () => {
+    const SECRET = "SECRET-123";
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it.each([
+      ["google.gemini-2.5-flash", "geminiApiKey"],
+      ["xai.grok-4.3", "xAiApiKey"],
+      ["deepseek.flash", "deepseekApiKey"],
+    ] as const)(
+      "%s does not leak %s into hook payloads or executor metadata",
+      async (provider, keyOption) => {
+        jest
+          .spyOn(global, "fetch")
+          .mockRejectedValue(new Error("network down"));
+        const hookArgs: unknown[] = [];
+        const executor = createLlmExecutor(
+          {
+            llm: useLlm(provider, { [keyOption]: SECRET, numOfAttempts: 1 }),
+            prompt: createChatPrompt("Hi"),
+          },
+          {
+            hooks: {
+              onError(...args) {
+                hookArgs.push(args);
+              },
+            },
+          }
+        );
+
+        await expect(executor.execute({})).rejects.toThrow();
+
+        expect(hookArgs).toHaveLength(1);
+        expect(JSON.stringify(hookArgs)).not.toContain(SECRET);
+        expect(JSON.stringify(executor.getMetadata())).not.toContain(SECRET);
+      }
+    );
+  });
 });

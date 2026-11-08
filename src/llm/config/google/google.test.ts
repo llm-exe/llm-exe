@@ -459,16 +459,37 @@ describe("google configuration", () => {
       });
     });
 
+    it("google.gemini-2.5-flash-lite carries no deprecation warning", () => {
+      // Google says gemini-2.5-flash-lite is not deprecated and is served
+      // "until further notice" (checked 2026-11-05). Warning on a model Google
+      // still serves is the false claim issue #762 was filed for.
+      expect(
+        (google["google.gemini-2.5-flash-lite"] as Config).deprecated
+      ).toBeUndefined();
+    });
+
     it.each([
-      "google.gemini-2.5-flash",
-      "google.gemini-2.5-flash-lite",
-      "google.gemini-2.5-pro",
-    ] as const)("%s carries no deprecation warning", (shorthand) => {
-      // Google limits the 2.5 line to projects with prior usage, but says the
-      // models "are not deprecated" and lists no shutdown date (checked
-      // 2026-10-12). Warning on a model Google still serves is the false claim
-      // issue #762 was filed for.
-      expect((google[shorthand] as Config).deprecated).toBeUndefined();
+      ["google.gemini-2.5-flash", "gemini-3.5-flash-lite"],
+      ["google.gemini-2.5-pro", "gemini-3.8-flash"],
+    ] as const)(
+      "%s is deprecated and warns about the 2026-12-01 re-route to %s",
+      (shorthand, reroutedTo) => {
+        // Google re-routes these from 2026-12-01 to a lower-tier model, so
+        // calls keep succeeding but silently downgrade. See issue #935.
+        const config = google[shorthand] as Config;
+        expect(config.deprecated?.shorthand).toEqual(shorthand);
+        expect(config.deprecated?.message).toContain("2026-12-01");
+        expect(config.deprecated?.message).toContain(reroutedTo);
+        expect(config.deprecated?.message).toContain(
+          '"google.gemini-3.8-flash"'
+        );
+      }
+    );
+
+    it("google.gemini-2.5-pro says plainly that its replacement is Flash-tier", () => {
+      expect(
+        (google["google.gemini-2.5-pro"] as Config).deprecated?.message
+      ).toMatch(/Migrate to "google\.gemini-3\.8-flash" \(also Flash-tier/);
     });
 
     it("should be based on googleChatV1 configuration", () => {
@@ -520,10 +541,12 @@ describe("google configuration", () => {
         // Google's deprecation table publishes "earliest possible" shutdown
         // dates, not commitments. Never promise a future shutdown date on
         // their behalf — a date in a message means it already happened.
+        // The one exception is a re-route date Google has announced
+        // (issue #935): requests keep succeeding, just on another model.
         expect(message).not.toMatch(/will shut down on/);
         if (/\d{4}-\d{2}-\d{2}/.test(message)) {
           expect(message).toMatch(
-            /was shut down by Google on \d{4}-\d{2}-\d{2}/
+            /was shut down by Google on \d{4}-\d{2}-\d{2}|From \d{4}-\d{2}-\d{2}, Google re-routes its requests to /
           );
         }
       }

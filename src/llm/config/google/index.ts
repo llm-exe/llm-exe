@@ -132,23 +132,26 @@ export const google = {
   ),
 
   // Google limits the 2.5 line to projects that have used it before (a new
-  // project gets a 404), but its deprecations page says these models "are not
-  // deprecated and will continue to be served until further notice" and lists
-  // no shutdown date (checked 2026-10-12). So none of them warn: the access
-  // limit applies to all three alike, and the "earliest possible" dates in
-  // that table are not commitments. See issue #762.
-  "google.gemini-2.5-flash": withDefaultModel(
-    googleGeminiChatV1,
-    "gemini-2.5-flash"
-  ),
+  // project gets a 404). Google has since deprecated gemini-2.5-pro and
+  // gemini-2.5-flash, and from 2026-12-01 it silently re-routes their API
+  // requests: 2.5-pro to gemini-3.8-flash, 2.5-flash to gemini-3.5-flash-lite.
+  // Calls keep succeeding, but on a lower-tier model, so these shorthands now
+  // warn. gemini-2.5-flash-lite is not deprecated and is served "until further
+  // notice", so it does not warn (checked 2026-11-05). See issues #762, #935.
   "google.gemini-2.5-flash-lite": withDefaultModel(
     googleGeminiChatV1,
     "gemini-2.5-flash-lite"
   ),
-  "google.gemini-2.5-pro": withDefaultModel(
-    googleGeminiChatV1,
-    "gemini-2.5-pro"
-  ),
+  ...deprecateShorthand("google.gemini-2.5-flash", {
+    config: withDefaultModel(googleGeminiChatV1, "gemini-2.5-flash"),
+    message:
+      'Model "google.gemini-2.5-flash" is deprecated by Google. From 2026-12-01, Google re-routes its requests to gemini-3.5-flash-lite, a Flash-Lite model. Migrate to "google.gemini-3.8-flash" to stay on the Flash tier.',
+  }),
+  ...deprecateShorthand("google.gemini-2.5-pro", {
+    config: withDefaultModel(googleGeminiChatV1, "gemini-2.5-pro"),
+    message:
+      'Model "google.gemini-2.5-pro" is deprecated by Google. From 2026-12-01, Google re-routes its requests to gemini-3.8-flash, a Flash-tier model. Migrate to "google.gemini-3.8-flash" (also Flash-tier; llm-exe has no Pro-tier Gemini shorthand yet).',
+  }),
 
   // Deprecated
   // Shut down by Google — kept only so existing code warns instead of

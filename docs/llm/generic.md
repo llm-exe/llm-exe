@@ -15,7 +15,7 @@ For a worked example of `timeout`, `numOfAttempts`, and `maxDelay` in a producti
 | ------------- | ---------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
 | timeout       | number           | 30000     | Max execution time of API call to the LLM, in milliseconds. Must be finite and positive.                   |
 | maxDelay      | number           | 5000      | Maximum retry back-off delay in milliseconds. Must be finite and non-negative.                             |
-| numOfAttempts | number           | 2         | Maximum retry attempts. Must be finite and positive. Client-side timeouts and deterministic `configuration`, `prompt`, and `auth` errors are not retried — see [Retry Behavior](/misc/errors#retry-behavior).                    |
+| numOfAttempts | number           | 2         | Total attempts, including the first call. Must be finite and positive. Client-side timeouts and deterministic `configuration`, `prompt`, and `auth` errors are not retried — see [Retry Behavior](/misc/errors#retry-behavior).                    |
 | jitter        | "none" \| "full" | none      | Used for retry back-off.                                                                                   |
 | temperature   | number           | undefined | Maps to provider-specific temperature parameter.                                                           |
 | maxTokens     | number           | undefined | Maps to provider-specific max tokens parameter.                                                            |
@@ -25,7 +25,7 @@ For a worked example of `timeout`, `numOfAttempts`, and `maxDelay` in a producti
 | extraBody     | Record<string, unknown> | undefined | Raw LLM request body fields, shallow-merged after provider and executor mappings, before serialization/signing. Explicit fields win; nested objects replace mapped objects in full. |
 | stream        | boolean \| null  | null      | Note: Not supported yet.                                                                                   |
 
-`timeout`, `maxDelay`, and `numOfAttempts` are checked when you call `useLlm()`. An explicit `0`, a negative number, `NaN`, `Infinity`, or a non-number throws an `LlmExeError` with code `configuration.incompatible_options` (`context.option` names the bad option). Leave an option unset to get its default. When `timeout` is reached, the in-flight HTTP request is aborted.
+`timeout`, `maxDelay`, and `numOfAttempts` are checked when you call `useLlm()`. A negative number, `NaN`, `Infinity`, or a non-number throws an `LlmExeError` with code `configuration.incompatible_options` (`context.option` names the bad option). `timeout` and `numOfAttempts` must also be greater than `0`; `maxDelay: 0` is allowed and means no wait between attempts. Leave an option unset (or `null`) to get its default. When `timeout` is reached, the in-flight HTTP request is aborted.
 
 > [!NOTE]
 > Different vendors will allow (and may require) additional options.

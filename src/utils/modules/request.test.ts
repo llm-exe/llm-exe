@@ -737,3 +737,147 @@ describe("apiRequest", () => {
   });
 
 });
+describe("apiRequest — JSON bodies that parse but are not plain error objects", () => {
+  const url = "https://api.example.com/data";
+
+  function setupErrorResponse(status: number, rawBody: string) {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status,
+      statusText: "Status Text",
+      text: jest.fn().mockResolvedValue(rawBody),
+      json: jest.fn(),
+      headers: new Headers({ "content-type": "application/json" }),
+    } as unknown as Response);
+  }
+
+  async function catchError(): Promise<LlmExeError> {
+    try {
+      await apiRequest(url);
+    } catch (e) {
+      expect(e).toBeInstanceOf(LlmExeError);
+      return e as LlmExeError;
+    }
+    throw new Error("expected apiRequest to throw");
+  }
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it("body 'null': uses raw text as the message and does not crash on property access", async () => {
+    setupErrorResponse(500, "null");
+    const err = await catchError();
+    expect(err.message).toBe(
+      `Request to ${url} failed: HTTP error. Status Code: 500. Error Message: null`
+    );
+    expect(err.code).toBe("request.http_error");
+    const ctx = err.context as Record<string, unknown>;
+    expect(ctx.status).toBe(500);
+    expect(ctx.providerErrorRaw).toBe("null");
+    expect((ctx.providerError as Record<string, unknown>).status).toBe(500);
+  });
+
+  it("body '0' (falsy number): uses raw text as the message", async () => {
+    setupErrorResponse(400, "0");
+    const err = await catchError();
+    expect(err.message).toContain("Status Code: 400. Error Message: 0");
+    expect((err.context as Record<string, unknown>).providerErrorRaw).toBe("0");
+  });
+
+  it("body is a JSON string literal: falls back to the raw (quoted) text", async () => {
+    setupErrorResponse(400, '"bad things happened"');
+    const err = await catchError();
+    expect(err.message).toContain(
+      'Status Code: 400. Error Message: "bad things happened"'
+    );
+  });
+
+  it("body is a JSON array: falls back to raw text and keeps the status", async () => {
+    setupErrorResponse(422, '[{"msg":"field required"}]');
+    const err = await catchError();
+    expect(err.message).toContain(
+      'Status Code: 422. Error Message: [{"msg":"field required"}]'
+    );
+    const ctx = err.context as Record<string, unknown>;
+    expect(ctx.status).toBe(422);
+    expect((ctx.providerError as Record<string, unknown>).status).toBe(422);
+  });
+
+  it("error.message is an empty string: falls through to the stringified error object", async () => {
+    setupErrorResponse(400, JSON.stringify({ error: { message: "", type: "x" } }));
+    const err = await catchError();
+    expect(err.message).toContain(
+      'Error Message: {"message":"","type":"x"}'
+    );
+  });
+
+  it("error is an empty object: message is '{}' rather than '[object Object]'", async () => {
+    setupErrorResponse(400, JSON.stringify({ error: {} }));
+    const err = await catchError();
+    expect(err.message).toContain("Error Message: {}");
+    expect(err.message).not.toContain("[object Object]");
+  });
+
+  it("stores the parsed body in providerErrorBody and the raw text in providerErrorRaw", async () => {
+    const body = { error: { message: "nope", code: "invalid" } };
+    setupErrorResponse(400, JSON.stringify(body));
+    const err = await catchError();
+    const ctx = err.context as Record<string, unknown>;
+    expect(ctx.providerErrorBody).toEqual(body);
+    expect(ctx.providerErrorRaw).toBe(JSON.stringify(body));
+  });
+
+  it("non-JSON body leaves providerErrorBody undefined but keeps providerErrorRaw", async () => {
+    setupErrorResponse(503, "<html>Service Unavailable</html>");
+    const err = await catchError();
+    const ctx = err.context as Record<string, unknown>;
+    expect(ctx.providerErrorBody).toBeUndefined();
+    expect(ctx.providerErrorRaw).toBe("<html>Service Unavailable</html>");
+    expect(err.message).toContain(
+      "Error Message: <html>Service Unavailable</html>"
+    );
+  });
+
+  it("empty body leaves both providerErrorBody and providerErrorRaw undefined", async () => {
+    setupErrorResponse(500, "");
+    const err = await catchError();
+    const ctx = err.context as Record<string, unknown>;
+    expect(ctx.providerErrorBody).toBeUndefined();
+    expect(ctx.providerErrorRaw).toBeUndefined();
+    expect(err.message).toContain("Status: 500. Error Message: Status Text");
+  });
+});
+
+describe("apiRequest — success content-type routing", () => {
+  const url = "https://api.example.com/data";
+  beforeEach(() => jest.clearAllMocks());
+
+  it("parses JSON when content-type carries a charset parameter", async () => {
+    const json = jest.fn().mockResolvedValue({ ok: 1 });
+    const text = jest.fn();
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json,
+      text,
+      headers: new Headers({ "content-type": "application/json; charset=utf-8" }),
+    } as unknown as Response);
+    const { data } = await apiRequest<{ ok: number }>(url);
+    expect(data).toEqual({ ok: 1 });
+    expect(json).toHaveBeenCalledTimes(1);
+    expect(text).not.toHaveBeenCalled();
+  });
+
+  it("returns text when content-type header is missing", async () => {
+    const json = jest.fn();
+    const text = jest.fn().mockResolvedValue("plain body");
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json,
+      text,
+      headers: new Headers(),
+    } as unknown as Response);
+    const { data, headers } = await apiRequest(url);
+    expect(data).toBe("plain body");
+    expect(json).not.toHaveBeenCalled();
+    expect(headers).toEqual({});
+  });
+});

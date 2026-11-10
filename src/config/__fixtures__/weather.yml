@@ -1,0 +1,18 @@
+provider: openai.chat-mock.v1
+system: You are a weather assistant.
+message: "What is the weather in {{city}}?"
+parser: string
+data:
+  city: Denver
+executorOptions:
+  functionCall: auto
+  functions:
+    - name: get_weather
+      description: Get the current weather for a city.
+      parameters:
+        type: object
+        properties:
+          city:
+            type: string
+            description: The city to look up.
+        required: [city]

@@ -68,6 +68,33 @@ export type InvalidHeadersContext = BaseErrorContext & {
   replacedHeadersExcerpt?: string;
 };
 
+export type ConfigParseContext = BaseErrorContext & {
+  format?: string;
+  position?: number;
+  snippet?: string;
+  source?: string;
+};
+
+export type ConfigInvalidContext = BaseErrorContext & {
+  field?: string;
+  expected?: unknown;
+  received?: unknown;
+  schemaErrors?: string[];
+  availableProviders?: string[];
+};
+
+export type ConfigFileContext = BaseErrorContext & {
+  path?: string;
+  syscall?: string;
+  errno?: string;
+};
+
+export type ConfigFormatContext = BaseErrorContext & {
+  format?: string;
+  path?: string;
+  supported?: string[];
+};
+
 export type ParserInvalidTypeContext = BaseErrorContext & {
   parser?: unknown;
   availableParsers?: string[];
@@ -222,6 +249,11 @@ export type ErrorContextByCode = {
   "configuration.missing_env": MissingConfigurationContext;
   "configuration.missing_option": MissingConfigurationContext;
   "configuration.invalid_headers": InvalidHeadersContext;
+  "configuration.parse_failed": ConfigParseContext;
+  "configuration.invalid_config": ConfigInvalidContext;
+  "configuration.file_not_found": ConfigFileContext;
+  "configuration.file_read_failed": ConfigFileContext;
+  "configuration.unsupported_format": ConfigFormatContext;
   "configuration.incompatible_options": IncompatibleOptionsContext;
   "parser.invalid_type": ParserInvalidTypeContext;
   "parser.invalid_input": ParserParseFailedContext;

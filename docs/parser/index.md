@@ -7,6 +7,8 @@ description: "Parsers turn raw LLM output into structured, reliable data. Choose
 
 When calling LLM's the response is ultimately a string. While you can (and will) instruct the LLM to respond with a number, or formatted as JSON... the response will still be a string.
 
+Prompt files select a parser with `parser` and `parserOptions`. See [Prompt Files](/config/).
+
 Parsers are used to take the output from the LLM, and format it into a data type that is usable by your application.
 
 There are various default parsers included, and the parser class is easily extendable.

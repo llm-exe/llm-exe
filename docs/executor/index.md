@@ -7,6 +7,8 @@ description: The core building block of llm-exe. Create modular, testable LLM fu
 
 The LLM executor takes an [llm](/llm/), a [prompt](/prompt/), optionally a [parser](/parser/), and wraps in a well-typed executor function. An LLM executor is a _container_ that can be used to call an LLM with a pre-defined input and output; with additional values provided at the time of execution. The executor is responsible for combining and calling the provided components, with added tracing, metadata, and extendable hooks.
 
+An executor can also be defined in a YAML, JSON, or Markdown prompt file and run with the `llm-exe` CLI or `runFile`. See [Prompt Files](/config/).
+
 An LLM executor's input and output types are determined by the prompt and parser respectively. These are inferred automatically when working with Typescript. See working with types in prompts and parsers.
 
 ## Llm Executor Input

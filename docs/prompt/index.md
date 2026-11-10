@@ -56,10 +56,6 @@ See [Prompt Validation](/prompt/validation).
 | `replaceTemplateString` | `(...args: any[]) => string` | built-in Handlebars renderer | Replaces the renderer `format()` uses. Advanced; you rarely need it. |
 | `allowUnsafeUserTemplate` | `boolean` | `true` | **Chat prompts only.** Set to `false` to send `user` messages as literal text instead of rendering them as templates. Turn this off when user messages contain untrusted input. |
 
-::: warning Text prompts via `createPrompt("text", ...)`
-`createPrompt("text", message, options)` currently ignores `options` ([#889](https://github.com/llm-exe/llm-exe/issues/889)). Until that is fixed, use `new TextPrompt(message, options)` when a text prompt needs options. Chat prompts are not affected.
-:::
-
 ## Prompt Classes
 
 The factory functions return instances of two exported classes. You can also construct the classes yourself, which is handy for `instanceof` checks or type annotations:

@@ -201,6 +201,65 @@ describe("parseRetryAfter", () => {
     expect(parseRetryAfter("not a date")).toBeUndefined();
     expect(parseRetryAfter(null)).toBeUndefined();
   });
+
+  it("returns undefined for whitespace-only input", () => {
+    expect(parseRetryAfter("   ")).toBeUndefined();
+    expect(parseRetryAfter("\t\n")).toBeUndefined();
+  });
+
+  it("trims surrounding whitespace before parsing seconds", () => {
+    // Without trimming, "  7  " falls through to Date.parse, which V8 reads
+    // as a (past) year-2001 date and clamps to 0.
+    expect(parseRetryAfter("  7  ")).toBe(7000);
+    expect(parseRetryAfter("\t30\n")).toBe(30000);
+  });
+
+  it("treats leading zeros as plain seconds, not a date", () => {
+    expect(parseRetryAfter("0001")).toBe(1000);
+    expect(parseRetryAfter("010")).toBe(10000);
+  });
+
+  it("rounds fractional seconds to the nearest millisecond", () => {
+    expect(parseRetryAfter("1.2345")).toBe(1235);
+    expect(parseRetryAfter("1.2344")).toBe(1234);
+    expect(parseRetryAfter("0.0004")).toBe(0);
+    expect(parseRetryAfter("1.5")).toBe(1500);
+  });
+
+  it("returns undefined when the numeric value overflows to Infinity", () => {
+    expect(parseRetryAfter("1".repeat(400))).toBeUndefined();
+  });
+
+  it("passes very large finite values through without clamping", () => {
+    // Documents current behavior: no upper cap is applied.
+    expect(parseRetryAfter("86400")).toBe(86_400_000);
+    expect(parseRetryAfter("99999999999999999999")).toBe(1e23);
+  });
+
+  it.each(["1e3", "5s", "0x10", "Infinity", "NaN"])(
+    "returns undefined for non-numeric, non-date value %p",
+    (value) => {
+      expect(parseRetryAfter(value)).toBeUndefined();
+    },
+  );
+
+  it.each(["-5", "-0.5", "+5", ".5", "1.", "1.5.2", "1,5"])(
+    "never returns a negative or NaN delay for malformed value %p",
+    (value) => {
+      const ms = parseRetryAfter(value);
+      if (ms !== undefined) {
+        expect(Number.isFinite(ms)).toBe(true);
+        expect(ms).toBeGreaterThanOrEqual(0);
+      }
+    },
+  );
+
+  it("returns a positive delay for a far-future HTTP-date", () => {
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toUTCString();
+    const ms = parseRetryAfter(future)!;
+    expect(ms).toBeGreaterThan(23 * 60 * 60 * 1000);
+    expect(ms).toBeLessThanOrEqual(24 * 60 * 60 * 1000);
+  });
 });
 
 describe("parseProviderErrorGeneric", () => {
@@ -771,5 +830,131 @@ describe("parseProviderErrorGeneric scrubs every extracted string", () => {
     });
     expect(result.providerCode).toBeDefined();
     expect(result.providerCode).not.toContain(SECRET);
+  });
+});
+
+// Pins the lookup order of parseProviderErrorGeneric's body fields. Each
+// provider shape relies on a specific fallback; reordering the chain would
+// silently change providerType/providerCode for some backends.
+describe("parseProviderErrorGeneric field precedence", () => {
+  const parse = (bodyJson: unknown) =>
+    parseProviderErrorGeneric({ status: 400, headers: {}, bodyJson });
+
+  describe("providerType", () => {
+    it("reads Bedrock's top-level __type", () => {
+      expect(
+        parse({ message: "x", __type: "ThrottlingException" }).providerType
+      ).toBe("ThrottlingException");
+    });
+
+    it("uses Gemini's error.status when nothing else is set", () => {
+      expect(parse({ error: { status: "INVALID_ARGUMENT" } }).providerType).toBe(
+        "INVALID_ARGUMENT"
+      );
+    });
+
+    it("prefers error.type over root type (Anthropic envelope)", () => {
+      expect(
+        parse({ type: "error", error: { type: "overloaded_error" } })
+          .providerType
+      ).toBe("overloaded_error");
+    });
+
+    it("prefers root type over __type", () => {
+      expect(parse({ type: "root", __type: "Bedrock" }).providerType).toBe(
+        "root"
+      );
+    });
+
+    it("prefers __type over error.status", () => {
+      expect(
+        parse({ __type: "Bedrock", error: { status: "GEMINI" } }).providerType
+      ).toBe("Bedrock");
+    });
+
+    it("skips non-string values and falls through", () => {
+      expect(
+        parse({ error: { type: 42, status: "UNAVAILABLE" }, type: null })
+          .providerType
+      ).toBe("UNAVAILABLE");
+    });
+  });
+
+  describe("providerCode", () => {
+    it("stringifies Gemini's numeric error.code", () => {
+      expect(
+        parse({ error: { code: 429, status: "RESOURCE_EXHAUSTED" } })
+          .providerCode
+      ).toBe("429");
+    });
+
+    it("prefers error.code over root code", () => {
+      expect(
+        parse({ code: "root_code", error: { code: "inner_code" } }).providerCode
+      ).toBe("inner_code");
+    });
+
+    it("falls back to root code, then error.status", () => {
+      expect(parse({ code: 7, error: { status: "S" } }).providerCode).toBe("7");
+      expect(parse({ error: { status: "S" } }).providerCode).toBe("S");
+    });
+
+    it("skips a non-finite numeric code", () => {
+      expect(
+        parse({ error: { code: NaN, status: "INTERNAL" } }).providerCode
+      ).toBe("INTERNAL");
+    });
+
+    it("does not use __type as a code", () => {
+      expect(parse({ __type: "ValidationException" }).providerCode).toBe(
+        undefined
+      );
+    });
+  });
+
+  describe("message", () => {
+    it("prefers error.message over root message", () => {
+      expect(
+        parse({ message: "outer", error: { message: "inner" } }).message
+      ).toBe("inner");
+    });
+
+    it("prefers root message over a string error", () => {
+      expect(parse({ message: "outer", error: "str" }).message).toBe("outer");
+    });
+
+    it("prefers a JSON message over bodyText", () => {
+      const result = parseProviderErrorGeneric({
+        status: 500,
+        bodyJson: { message: "json" },
+        bodyText: "text",
+      });
+      expect(result.message).toBe("json");
+    });
+
+    it("ignores an empty bodyText", () => {
+      expect(
+        parseProviderErrorGeneric({ status: 500, bodyText: "" }).message
+      ).toBeUndefined();
+    });
+  });
+
+  it("returns undefined fields for a non-object bodyJson", () => {
+    for (const bodyJson of [null, "oops", 42, ["x"]]) {
+      const result = parse(bodyJson);
+      expect(result.providerType).toBeUndefined();
+      expect(result.providerCode).toBeUndefined();
+      expect(result.message).toBeUndefined();
+    }
+  });
+
+  it("prefers top-level status over response.status", () => {
+    const result = parseProviderErrorGeneric({
+      status: 400,
+      response: { status: 503, statusText: "Service Unavailable" },
+    });
+    expect(result.status).toBe(400);
+    expect(result.retryable).toBe(false);
+    expect(result.statusText).toBe("Service Unavailable");
   });
 });

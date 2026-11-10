@@ -1,4 +1,5 @@
 import { useLlm } from "./llm";
+import { IChatMessages, LlmExecutorWithFunctionsOptions } from "@/interfaces";
 import { apiRequest } from "@/utils/modules/request";
 import { createLlmExecutor } from "@/executor";
 import { createChatPrompt } from "@/prompt";
@@ -38,6 +39,57 @@ describe("openai.chat-mock.v1 mockResponse (issue #866)", () => {
     });
     const out = await llm.call("hi");
     expect(out.getResultText()).toBe("");
+  });
+
+  it("keeps caller messages and per-call options mutable after llm.call", async () => {
+    const content = [{ type: "text", text: "hello" }];
+    const messages: IChatMessages = [{ role: "user", content }];
+    const functionDefinition = {
+      name: "lookup",
+      description: "Look up a value",
+      parameters: {
+        type: "object",
+        properties: { key: { type: "string" } },
+      },
+    };
+    const functions: NonNullable<LlmExecutorWithFunctionsOptions["functions"]> =
+      [functionDefinition];
+    const callOptions: LlmExecutorWithFunctionsOptions = {
+      functionCall: "auto",
+      functions,
+      jsonSchema: {
+        type: "object",
+        properties: { value: { type: "string" } },
+      },
+    };
+    const llm = useLlm("openai.chat-mock.v1", { model: "mock" });
+
+    const out = await llm.call(messages, callOptions);
+
+    expect(out.getResultText()).toContain("hello");
+    expect(Object.isFrozen(messages)).toBe(false);
+    expect(Object.isFrozen(messages[0])).toBe(false);
+    expect(Object.isFrozen(content)).toBe(false);
+    expect(Object.isFrozen(content[0])).toBe(false);
+    expect(Object.isFrozen(callOptions)).toBe(false);
+    expect(Object.isFrozen(functions)).toBe(false);
+    expect(Object.isFrozen(functionDefinition)).toBe(false);
+    expect(Object.isFrozen(functionDefinition.parameters)).toBe(false);
+
+    messages.push({ role: "assistant", content: "continued" });
+    content[0].text = "updated";
+    functions.push({
+      name: "search",
+      description: "Search values",
+      parameters: { type: "object" },
+    });
+    functionDefinition.parameters.properties.key.type = "number";
+    callOptions.jsonSchema!.properties.value.type = "number";
+
+    const nextOut = await llm.call(messages, callOptions);
+    expect(nextOut.getResultText()).toContain("continued");
+    expect(Object.isFrozen(messages)).toBe(false);
+    expect(Object.isFrozen(callOptions)).toBe(false);
   });
 
   it("does not require a model", async () => {

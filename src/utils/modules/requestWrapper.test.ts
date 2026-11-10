@@ -1,10 +1,15 @@
-import { stateFromOptions } from "@/llm/_utils.stateFromOptions";
+import {
+  PROVIDED_OPTION_KEYS,
+  stateFromOptions,
+} from "@/llm/_utils.stateFromOptions";
 import { deepFreeze } from "@/utils/modules/deepFreeze";
 import { asyncCallWithTimeout } from "@/utils/modules/asyncCallWithTimeout";
 import { backOff } from "exponential-backoff";
 import { Config } from "@/types";
 import { apiRequestWrapper } from "@/utils/modules/requestWrapper";
 import { LlmExeError } from "@/errors";
+import { getLlmConfig } from "@/llm/config";
+import { createOpenAiCompatibleConfiguration } from "@/llm/config/openai/compatible";
 
 
 jest.mock("exponential-backoff", () => ({
@@ -12,6 +17,7 @@ jest.mock("exponential-backoff", () => ({
 }));
 
 jest.mock("@/llm/_utils.stateFromOptions", () => ({
+  ...jest.requireActual("@/llm/_utils.stateFromOptions"),
   stateFromOptions: jest.fn(),
 }));
 
@@ -36,6 +42,9 @@ describe("apiRequestWrapper", () => {
     deepFreezeMock.mockReset()
     asyncCallWithTimeoutMock.mockReset()
     backOffMock.mockReset()
+    mockHandler.mockReset();
+    stateFromOptionsMock.mockReturnValue(mockState);
+    deepFreezeMock.mockImplementation((obj) => obj);
   });
 
   const mockConfig: Config<any> = {} as any;
@@ -49,9 +58,6 @@ describe("apiRequestWrapper", () => {
   const mockHandler = jest.fn<Promise<any>, any>();
   const mockState = {};
   const mockMessages = { messageContent: "test" }
-
-  stateFromOptionsMock.mockReturnValue(mockState);
-  deepFreezeMock.mockImplementation((obj) => obj);
 
   function setupAPIRequestWrapper(doNotRetryErrorMessages: string[] = []) {
     return apiRequestWrapper(mockConfig, mockOptions, mockHandler, doNotRetryErrorMessages);
@@ -81,6 +87,16 @@ describe("apiRequestWrapper", () => {
     });
   });
 
+  it("should report the effective timeout when explicitly undefined", () => {
+    const apiRequest = apiRequestWrapper(
+      mockConfig,
+      { timeout: undefined },
+      mockHandler,
+    );
+
+    expect(apiRequest.getMetadata().timeout).toBe(30000);
+  });
+
   it("should return the correct traceId", () => {
     const apiRequest = setupAPIRequestWrapper();
     expect(apiRequest.getTraceId()).toBe("test-trace-id");
@@ -90,6 +106,61 @@ describe("apiRequestWrapper", () => {
     const apiRequest = apiRequestWrapper(mockConfig, mockOptions, mockHandler, []);
     apiRequest.withTraceId("new-trace-id");
     expect(apiRequest.getTraceId()).toBe("new-trace-id");
+  });
+
+  it("should preserve maxDelay 0 in backoff and metadata", async () => {
+    const options = {
+      timeout: 1000,
+      maxDelay: 0,
+      numOfAttempts: 2,
+      jitter: "none" as const,
+    };
+    const result = { ok: true };
+    asyncCallWithTimeoutMock.mockResolvedValue(result);
+    backOffMock.mockImplementation(async (fn) => fn());
+
+    const apiRequest = apiRequestWrapper(mockConfig, options, mockHandler);
+    await expect(apiRequest.call(mockMessages)).resolves.toBe(result);
+
+    expect(apiRequest.getMetadata()).toEqual(
+      expect.objectContaining({
+        timeout: 1000,
+        maxDelay: 0,
+        numOfAttempts: 2,
+      })
+    );
+    expect(backOffMock).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ maxDelay: 0, numOfAttempts: 2 })
+    );
+  });
+
+  it.each([
+    ["timeout", 0],
+    ["numOfAttempts", 0],
+    ["maxDelay", -1],
+  ] as const)("should reject invalid %s", (option, value) => {
+    expect(() =>
+      apiRequestWrapper(mockConfig, { [option]: value }, mockHandler)
+    ).toThrow(
+      expect.objectContaining({
+        code: "configuration.incompatible_options",
+      })
+    );
+  });
+
+  it.each([
+    ["timeout", Number.NaN],
+    ["numOfAttempts", Number.POSITIVE_INFINITY],
+    ["maxDelay", Number.NEGATIVE_INFINITY],
+  ] as const)("should reject non-finite %s", (option, value) => {
+    expect(() =>
+      apiRequestWrapper(mockConfig, { [option]: value }, mockHandler)
+    ).toThrow(
+      expect.objectContaining({
+        code: "configuration.incompatible_options",
+      })
+    );
   });
 
 //   it("should call handler and backOff with correct parameters and handle success", async () => {
@@ -131,7 +202,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        const shouldRetry = options.retry(err, 1);
+        const shouldRetry = await options.retry(err, 1);
         if (shouldRetry) {
           return await fn();
         } else {
@@ -150,14 +221,22 @@ describe("apiRequestWrapper", () => {
     expect(metrics.total_call_error).toBe(1);
 
     expect(backOffMock).toHaveBeenCalledWith(expect.any(Function), {
-      startingDelay: 0,
+      startingDelay: 500,
+      timeMultiple: 2,
       maxDelay: mockOptions.maxDelay,
       numOfAttempts: mockOptions.numOfAttempts,
       jitter: mockOptions.jitter,
       retry: expect.any(Function),
     });
 
-    expect(mockHandler).toHaveBeenCalledWith(deepFreeze(mockState), deepFreeze(mockMessages), deepFreeze({}));
+    expect(mockHandler).toHaveBeenCalledWith(
+      expect.objectContaining(mockState),
+      expect.objectContaining(mockMessages),
+      undefined,
+      expect.any(AbortSignal),
+    );
+    expect(mockHandler.mock.calls[0][0]).not.toBe(mockState);
+    expect(mockHandler.mock.calls[0][1]).not.toBe(mockMessages);
   });
 
   it("should not retry on certain errors", async () => {
@@ -167,7 +246,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        const shouldRetry = options.retry(err, 1);
+        const shouldRetry = await options.retry(err, 1);
         if (shouldRetry) {
           return await fn();
         } else {
@@ -186,14 +265,42 @@ describe("apiRequestWrapper", () => {
     expect(metrics.total_call_error).toBe(1);
 
     expect(backOffMock).toHaveBeenCalledWith(expect.any(Function), {
-      startingDelay: 0,
+      startingDelay: 500,
+      timeMultiple: 2,
       maxDelay: mockOptions.maxDelay,
       numOfAttempts: mockOptions.numOfAttempts,
       jitter: mockOptions.jitter,
       retry: expect.any(Function),
     });
 
-    expect(mockHandler).toHaveBeenCalledWith(deepFreeze(mockState), deepFreeze(mockMessages), deepFreeze({}));
+    expect(mockHandler).toHaveBeenCalledWith(
+      expect.objectContaining(mockState),
+      expect.objectContaining(mockMessages),
+      undefined,
+      expect.any(AbortSignal),
+    );
+    expect(mockHandler.mock.calls[0][0]).not.toBe(mockState);
+    expect(mockHandler.mock.calls[0][1]).not.toBe(mockMessages);
+  });
+
+  it("preserves option provenance when cloning state before freezing", async () => {
+    const providedOptionKeys = new Set(["maxTokens"]);
+    const callerState = {
+      ...mockState,
+      [PROVIDED_OPTION_KEYS]: providedOptionKeys,
+    };
+    stateFromOptionsMock.mockReturnValueOnce(callerState);
+    asyncCallWithTimeoutMock.mockResolvedValue("result");
+    backOffMock.mockImplementation(async (fn) => fn());
+
+    const apiRequest = setupAPIRequestWrapper();
+    await apiRequest.call(mockMessages);
+
+    const receivedState = mockHandler.mock.calls[0][0];
+    expect(receivedState).not.toBe(callerState);
+    expect(Reflect.get(receivedState, PROVIDED_OPTION_KEYS)).toBe(
+      providedOptionKeys,
+    );
   });
 
   it("does not retry deterministic LlmExeError categories (configuration/prompt/auth) (#723)", async () => {
@@ -206,7 +313,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        const shouldRetry = options.retry(err, 1);
+        const shouldRetry = await options.retry(err, 1);
         if (shouldRetry) {
           return await fn();
         } else {
@@ -235,7 +342,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        retryDecision = options.retry(err, 1);
+        retryDecision = await options.retry(err, 1);
         throw err;
       }
     });
@@ -265,7 +372,7 @@ describe("apiRequestWrapper", () => {
         try {
           return await fn();
         } catch (err) {
-          const shouldRetry = options.retry(err, 1);
+          const shouldRetry = await options.retry(err, 1);
           if (shouldRetry) {
             return await fn();
           } else {
@@ -298,7 +405,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        retryDecision = options.retry(err, 1);
+        retryDecision = await options.retry(err, 1);
         throw err;
       }
     });
@@ -308,6 +415,50 @@ describe("apiRequestWrapper", () => {
     // transient code shares the embedding category — must NOT be short-circuited
     expect(retryDecision).toBe(true);
     expect((apiRequest.getMetadata().metrics as any).total_call_retry).toBe(1);
+  });
+
+  describe("getMetadata credential redaction", () => {
+    const SECRET = "SECRET-123";
+
+    it.each([
+      ["google.chat.v1", "geminiApiKey"],
+      ["xai.chat.v1", "xAiApiKey"],
+      ["deepseek.chat.v1", "deepseekApiKey"],
+      ["openai.chat.v1", "openAiApiKey"],
+      ["anthropic.chat.v1", "anthropicApiKey"],
+      ["amazon:anthropic.chat.v1", "awsSecretKey"],
+      ["amazon:anthropic.chat.v1", "awsAccessKey"],
+    ] as const)("redacts %s %s", (provider, keyOption) => {
+      const apiRequest = apiRequestWrapper(
+        getLlmConfig(provider),
+        { model: "m", maxTokens: 10, [keyOption]: SECRET },
+        mockHandler
+      );
+      const metadata = apiRequest.getMetadata();
+      expect(metadata).not.toHaveProperty(keyOption);
+      expect(JSON.stringify(metadata)).not.toContain(SECRET);
+      expect(metadata).toEqual(
+        expect.objectContaining({ model: "m", maxTokens: 10 })
+      );
+    });
+
+    it("redacts the apiKeyMapping option of a custom compatible config", () => {
+      const config = createOpenAiCompatibleConfiguration({
+        key: "local.chat.v1",
+        provider: "local.chat",
+        endpoint: "http://localhost:1234/v1/chat/completions",
+        apiKeyMapping: ["localKey", "LOCAL_KEY"],
+      });
+      const apiRequest = apiRequestWrapper(
+        config,
+        { model: "m", localKey: SECRET },
+        mockHandler
+      );
+      const metadata = apiRequest.getMetadata();
+      expect(metadata).not.toHaveProperty("localKey");
+      expect(JSON.stringify(metadata)).not.toContain(SECRET);
+      expect(metadata).toHaveProperty("model", "m");
+    });
   });
 
 });

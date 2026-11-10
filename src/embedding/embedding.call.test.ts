@@ -107,6 +107,18 @@ describe("createEmbedding_call", () => {
     });
   });
 
+  it("forwards an abort signal to apiRequest", async () => {
+    const signal = new AbortController().signal;
+    mapBodyMock.mockReturnValueOnce({});
+
+    await createEmbedding_call(mockState, "test input", undefined, signal);
+
+    expect(apiRequestMock).toHaveBeenCalledWith(
+      mockConfig.endpoint,
+      expect.objectContaining({ signal }),
+    );
+  });
+
   it("should handle array input correctly", async () => {
     const input = ["test input 1", "test input 2"];
     mapBodyMock.mockReturnValueOnce({})

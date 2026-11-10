@@ -70,7 +70,8 @@ describe("useLlm", () => {
       expect.anything(),
       mockMessages,
       undefined,
-      mockConfig
+      mockConfig,
+      expect.any(AbortSignal),
     );
   });
 
@@ -89,7 +90,8 @@ describe("useLlm", () => {
       expect.anything(),
       mockMessages,
       undefined,
-      mockConfig
+      mockConfig,
+      expect.any(AbortSignal),
     );
   });
 });
@@ -188,7 +190,8 @@ describe("useLlmConfiguration", () => {
       expect.anything(),
       mockMessages,
       undefined,
-      mockConfig
+      mockConfig,
+      expect.any(AbortSignal),
     );
   });
 

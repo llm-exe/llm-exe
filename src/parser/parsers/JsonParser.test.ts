@@ -247,15 +247,92 @@ describe("llm-exe:parser/JsonParser", () => {
     } catch (e) {
       expect(e).toBeInstanceOf(LlmExeError);
       expect((e as LlmExeError).code).toEqual("parser.parse_failed");
-      expect((e as LlmExeError).context).toEqual({
+      const { errorPosition, ...context } = (e as LlmExeError)
+        .context as Record<string, unknown>;
+      expect(context).toEqual({
         operation: "JsonParser.parse",
         parser: "json",
         reason: "invalid_json",
         expected: "JSON object or array",
         inputLength: 23,
       });
+      // Node 18 reports "at position 0" for a bad first character; Node 20+ omits it.
+      expect([0, undefined]).toContain(errorPosition);
       expect((e as any).cause).toBeInstanceOf(SyntaxError);
     }
+  });
+  describe("invalid_json diagnostics (#922)", () => {
+    function catchError(fn: () => unknown): LlmExeError {
+      try {
+        fn();
+      } catch (e) {
+        return e as LlmExeError;
+      }
+      throw new Error("Expected an error to be thrown");
+    }
+
+    it("hints at match: extract when JSON follows a prose preamble", () => {
+      const input = 'Sure! Here is the JSON: {"a":1}';
+      const e = catchError(() => new JsonParser().parse(input));
+      expect(e.message).toBe("Invalid JSON input.");
+      expect(e.context).toMatchObject({ reason: "invalid_json" });
+      expect((e.context as any).resolution).toContain('match: "extract"');
+      // The hinted option actually works on the same input.
+      expect(new JsonParser({ match: "extract" }).parse(input)).toEqual({
+        a: 1,
+      });
+    });
+
+    it("reports the syntax error position without a hint for malformed JSON", () => {
+      const e = catchError(() => new JsonParser().parse('{"a": 1,}'));
+      expect(e.message).toBe("Invalid JSON input.");
+      expect((e.context as any).resolution).toBeUndefined();
+      expect(e.context).toMatchObject({ errorPosition: 8 });
+    });
+
+    it("maps the position back to the original input past whitespace and fences", () => {
+      const e = catchError(() =>
+        new JsonParser().parse('  ```json\n{"a": 1,}\n```'),
+      );
+      // '{' is at index 10 of the raw input; JSON.parse fails 8 chars later.
+      expect(e.context).toMatchObject({ errorPosition: 18 });
+      // Exact mode already strips the fence, so extract would not help here.
+      expect((e.context as any).resolution).toBeUndefined();
+    });
+
+    it("hints at match: extract when prose follows the JSON", () => {
+      const input = '{"a":1} hope that helps';
+      const e = catchError(() => new JsonParser().parse(input));
+      expect((e.context as any).resolution).toContain('match: "extract"');
+      expect(new JsonParser({ match: "extract" }).parse(input)).toEqual({
+        a: 1,
+      });
+    });
+
+    it("does not hint at match: extract when the embedded JSON is malformed", () => {
+      const e = catchError(() => new JsonParser().parse('Here: {"a": 1,}'));
+      expect(e.context).toMatchObject({ reason: "invalid_json" });
+      expect((e.context as any).resolution).toBeUndefined();
+    });
+
+    it.each([
+      '{"user": {"name":"A"}, "items": [1,2',
+      '{"a": {"b":1}',
+      'Sure: {"user": {"name":"A"}, "items": [1,2',
+      'Here: {"a":1} and {"b": ',
+      '[1, {"a":1}, 2',
+    ])("does not hint at match: extract for truncated JSON %j", (input) => {
+      const e = catchError(() => new JsonParser().parse(input));
+      expect(e.context).toMatchObject({ reason: "invalid_json" });
+      expect((e.context as any).resolution).toBeUndefined();
+    });
+
+    it("never copies raw input text into the context", () => {
+      const input = "Sure! Here is my secret answer {";
+      const e = catchError(() => new JsonParser().parse(input));
+      expect(JSON.stringify(e.context)).not.toContain("Sure");
+      expect(JSON.stringify(e.context)).not.toContain("secret");
+    });
   });
   it("throws parser.parse_failed for empty input", () => {
     const parser = new JsonParser();
@@ -613,6 +690,78 @@ describe("llm-exe:parser/JsonParser", () => {
     it("still extracts valid JSON after a malformed balanced span", () => {
       const parser = new JsonParser({ match: "extract" });
       expect(parser.parse('Note [see below]: {"a":1}')).toEqual({ a: 1 });
+    });
+  });
+
+  describe("extract: truncated JSON (#933)", () => {
+    it.each([
+      ['{"user": {"name":"A"}, "items": [1,2'],
+      ['{"a": {"b":1}'],
+      ['Sure: {"order": {"id": 7}, "total": 12'],
+      ['[1, {"a":1}, 2'],
+      ['Here: {"a":1} and {"b": '],
+      ['Here: {"a":1} and {'],
+      ['{"a": {"b":1}, "c": "hel'],
+      ['{"a": {"b":1}, "c": "x\\'],
+      ['{"a": {"b":1}, "c": tr'],
+      ['{"a": {"b":1}, "c": -'],
+      ['{"a": {"b":1}, "c": 1.'],
+    ])("throws truncated_json instead of returning a fragment: %s", (input) => {
+      const parser = new JsonParser({ match: "extract" });
+      expect(() => parser.parse(input)).toThrow(
+        expect.objectContaining({
+          code: "parser.parse_failed",
+          context: expect.objectContaining({
+            reason: "truncated_json",
+            match: "extract",
+            inputLength: input.length,
+          }),
+        }),
+      );
+    });
+
+    it("does not let a schema-matching inner object through", () => {
+      const schema = defineSchema({
+        type: "object",
+        properties: { id: { type: "number" } },
+        required: ["id"],
+      });
+      const parser = new JsonParser({ schema, match: "extract" });
+      expect(() =>
+        parser.parse('Sure: {"order": {"id": 7}, "total": 12'),
+      ).toThrow(
+        expect.objectContaining({
+          context: expect.objectContaining({ reason: "truncated_json" }),
+        }),
+      );
+    });
+
+    it("still skips a stray bracket in prose that is not JSON", () => {
+      const parser = new JsonParser({ match: "extract" });
+      expect(parser.parse('Start: { but then {"a":1}')).toEqual({ a: 1 });
+      expect(parser.parse('See [ note: {"a":1}')).toEqual({ a: 1 });
+    });
+
+    it.each([
+      ['Values in [0,1): {"a":1}'],
+      ['Range [0, 10) gives {"a":1}'],
+      ['Scores [1, 2, then {"a":1}'],
+      ['Open { "quoted" text, see {"a":1}'],
+    ])(
+      "does not treat an unclosed bracket in prose as truncation: %s",
+      (input) => {
+        const parser = new JsonParser({ match: "extract" });
+        expect(parser.parse(input)).toEqual({ a: 1 });
+      },
+    );
+
+    it("leaves exact mode unchanged (invalid_json)", () => {
+      const parser = new JsonParser();
+      expect(() => parser.parse('{"a": {"b":1}')).toThrow(
+        expect.objectContaining({
+          context: expect.objectContaining({ reason: "invalid_json" }),
+        }),
+      );
     });
   });
 });

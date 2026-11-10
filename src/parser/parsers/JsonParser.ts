@@ -142,6 +142,61 @@ function hasUnclosedJsonOpener(input: string): boolean {
   return false;
 }
 
+// One complete JSON token (or whitespace). Numbers are matched loosely: the
+// question is only whether text could be JSON, not whether it is valid.
+const JSON_TOKEN =
+  /\s+|"(?:[^"\\]|\\.)*"|-?\d[\d.eE+-]*|true|false|null|[{}[\],:]/y;
+
+// A token cut off at the end of input: an open string, a lone minus sign, or
+// the start of true/false/null.
+const PARTIAL_JSON_TOKEN =
+  /^(?:"(?:[^"\\]|\\.)*\\?|-|t(?:r(?:u)?)?|f(?:a(?:l(?:s)?)?)?|n(?:u(?:l)?)?)$/;
+
+/**
+ * True when `text` holds only JSON tokens up to the end of input, so it could
+ * be the start of a JSON value that was cut off. Prose such as `[0, 10) gives`
+ * or `{ but then` fails this check.
+ */
+function isJsonPrefix(text: string): boolean {
+  const token = new RegExp(JSON_TOKEN);
+  let position = 0;
+  while (position < text.length) {
+    token.lastIndex = position;
+    if (!token.exec(text)) {
+      return PARTIAL_JSON_TOKEN.test(text.slice(position));
+    }
+    position = token.lastIndex;
+  }
+  return true;
+}
+
+/**
+ * True when some `{` or `[` never closes and everything from it to the end of
+ * input is JSON, i.e. a JSON value cut off mid-way, typically by max_tokens.
+ * A bracket in prose (`{ but then`, `[0, 1)`) is not counted, so extract mode
+ * can still skip it.
+ */
+function hasTruncatedJsonOpener(input: string): boolean {
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+    if (char !== "{" && char !== "[") {
+      continue;
+    }
+
+    const end = findBalancedJsonEnd(input, index);
+    if (end !== undefined) {
+      index = end;
+      continue;
+    }
+
+    if (isJsonPrefix(input.slice(index))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /**
  * Reads the numeric offset from a JSON.parse SyntaxError message, if present.
  * Only the number is kept: newer engines embed a snippet of the raw input in
@@ -209,6 +264,25 @@ export class JsonParser<
         parsed = JSON.parse(normalized);
       } catch (cause) {
         if (this.match === "extract") {
+          // A cut-off JSON value contains complete inner values; returning
+          // one of them would be silently wrong data (#933).
+          if (hasTruncatedJsonOpener(text)) {
+            throw new LlmExeError(
+              `JSON value in input appears to be truncated (unclosed { or [).`,
+              {
+                code: "parser.parse_failed",
+                context: {
+                  operation: "JsonParser.parse",
+                  parser: "json",
+                  reason: "truncated_json",
+                  expected: "JSON object or array",
+                  match: this.match,
+                  inputLength,
+                },
+                cause,
+              },
+            );
+          }
           const candidates = extractJsonCandidates(text);
 
           if (candidates.length === 1) {

@@ -202,7 +202,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        const shouldRetry = options.retry(err, 1);
+        const shouldRetry = await options.retry(err, 1);
         if (shouldRetry) {
           return await fn();
         } else {
@@ -221,7 +221,8 @@ describe("apiRequestWrapper", () => {
     expect(metrics.total_call_error).toBe(1);
 
     expect(backOffMock).toHaveBeenCalledWith(expect.any(Function), {
-      startingDelay: 0,
+      startingDelay: 500,
+      timeMultiple: 2,
       maxDelay: mockOptions.maxDelay,
       numOfAttempts: mockOptions.numOfAttempts,
       jitter: mockOptions.jitter,
@@ -245,7 +246,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        const shouldRetry = options.retry(err, 1);
+        const shouldRetry = await options.retry(err, 1);
         if (shouldRetry) {
           return await fn();
         } else {
@@ -264,7 +265,8 @@ describe("apiRequestWrapper", () => {
     expect(metrics.total_call_error).toBe(1);
 
     expect(backOffMock).toHaveBeenCalledWith(expect.any(Function), {
-      startingDelay: 0,
+      startingDelay: 500,
+      timeMultiple: 2,
       maxDelay: mockOptions.maxDelay,
       numOfAttempts: mockOptions.numOfAttempts,
       jitter: mockOptions.jitter,
@@ -311,7 +313,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        const shouldRetry = options.retry(err, 1);
+        const shouldRetry = await options.retry(err, 1);
         if (shouldRetry) {
           return await fn();
         } else {
@@ -340,7 +342,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        retryDecision = options.retry(err, 1);
+        retryDecision = await options.retry(err, 1);
         throw err;
       }
     });
@@ -370,7 +372,7 @@ describe("apiRequestWrapper", () => {
         try {
           return await fn();
         } catch (err) {
-          const shouldRetry = options.retry(err, 1);
+          const shouldRetry = await options.retry(err, 1);
           if (shouldRetry) {
             return await fn();
           } else {
@@ -403,7 +405,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        retryDecision = options.retry(err, 1);
+        retryDecision = await options.retry(err, 1);
         throw err;
       }
     });

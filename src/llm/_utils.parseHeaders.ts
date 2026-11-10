@@ -1,7 +1,12 @@
 import { replaceTemplateStringSimple } from "@/utils/modules/replaceTemplateStringSimple";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { getAwsAuthorizationHeaders } from "@/utils/modules/getAwsAuthorizationHeaders";
-import { Config, EmbeddingProviderKey, LlmProviderKey } from "@/types";
+import {
+  Config,
+  DecisionModelKey,
+  EmbeddingProviderKey,
+  LlmProviderKey,
+} from "@/types";
 import { LlmExeError } from "@/errors";
 import { truncateString } from "@/errors/providerErrors";
 import { redactSecrets } from "@/utils/modules/redactSecrets";
@@ -17,7 +22,7 @@ function safeReplacedHeaders(value: string | undefined | null): string {
 }
 
 export async function parseHeaders(
-  config: Config<EmbeddingProviderKey | LlmProviderKey>,
+  config: Config<EmbeddingProviderKey | LlmProviderKey | DecisionModelKey>,
   replacements: Record<string, any>,
   payload: { url: string; headers: Record<string, any>; body: string }
 ): Promise<Record<string, any>> {

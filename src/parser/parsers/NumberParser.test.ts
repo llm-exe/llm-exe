@@ -300,14 +300,65 @@ describe("match: exact", () => {
     } catch (e) {
       expect(e).toBeInstanceOf(LlmExeError);
       expect((e as LlmExeError).context).toMatchObject({
-        reason: "no_numeric_value",
+        reason: "not_exact",
         match: "exact",
+        matchCount: 1,
       });
+      expect((e as LlmExeError).context?.resolution).toContain(
+        'match: "extract"',
+      );
     }
+  });
+  it("uses reason not_exact with an extract hint for 'about 42'", () => {
+    const parser = new NumberParser({ match: "exact" });
+    let error: LlmExeError | undefined;
+    try {
+      parser.parse("about 42");
+    } catch (e) {
+      error = e as LlmExeError;
+    }
+    expect(error).toBeInstanceOf(LlmExeError);
+    expect(error?.code).toBe("parser.parse_failed");
+    expect(error?.context).toMatchObject({
+      reason: "not_exact",
+      matchCount: 1,
+    });
+    expect(error?.context?.resolution).toBe(
+      'The input has text around the number. Use createParser("number", { match: "extract" }) to pull the number out of surrounding text.',
+    );
+    // Extract mode does succeed on the same input.
+    expect(new NumberParser({ match: "extract" }).parse("about 42")).toBe(42);
+  });
+  it("keeps reason no_numeric_value when the input has no number", () => {
+    const parser = new NumberParser({ match: "exact" });
+    let error: LlmExeError | undefined;
+    try {
+      parser.parse("no idea");
+    } catch (e) {
+      error = e as LlmExeError;
+    }
+    expect(error).toBeInstanceOf(LlmExeError);
+    expect(error?.context?.reason).toBe("no_numeric_value");
+    expect(error?.context).not.toHaveProperty("matchCount");
+    expect(error?.context).not.toHaveProperty("resolution");
   });
   it("rejects multiple numbers", () => {
     const parser = new NumberParser({ match: "exact" });
     expect(() => parser.parse("1 2")).toThrow(LlmExeError);
+  });
+  it("uses not_exact without an extract hint when there are multiple numbers", () => {
+    const parser = new NumberParser({ match: "exact" });
+    let error: LlmExeError | undefined;
+    try {
+      parser.parse("between 1 and 2");
+    } catch (e) {
+      error = e as LlmExeError;
+    }
+    expect(error?.context).toMatchObject({
+      reason: "not_exact",
+      matchCount: 2,
+    });
+    expect(error?.context).not.toHaveProperty("resolution");
   });
   it("rejects currency and unit text", () => {
     const parser = new NumberParser({ match: "exact" });

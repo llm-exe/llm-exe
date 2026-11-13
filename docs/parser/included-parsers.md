@@ -364,6 +364,14 @@ Options:
 | `validateSchema` | `boolean` | `true` (when `schema` is set) | When a schema is provided, `required` fields and type/constraint checks are enforced by default — invalid or incomplete input throws `parser.schema_validation_failed`. Set to `false` to opt out into filter/default-only behavior (strips unknown keys and applies defaults, but does **not** check `required`). |
 | `match` | `"exact" \| "extract"` | `"exact"` | `"exact"` parses the entire response as JSON. `"extract"` finds one JSON object or array in surrounding text. A bracketed span that isn't valid JSON is skipped whole, so nothing nested inside it is returned: `{name: "x", tags: ["a"]}` throws instead of yielding `["a"]`. |
 
+::: warning Default is `match: "exact"`
+In `"exact"` mode the whole trimmed response must be JSON. A response that is **only** a fenced code block (tagged `` ```json `` or untagged) also works, because the fence is stripped first. Any text around the JSON, such as `` Sure! ```json {...}``` ``, throws `Invalid JSON input.` (`parser.parse_failed`). Pass `{ match: "extract" }` to pull the JSON out of surrounding text.
+
+The `Invalid JSON input.` error's `context` helps you debug it. `context.reason` is `"invalid_json"`. `context.errorPosition` is the character offset of the syntax error in the original response, when the runtime reports one. If the response holds exactly one complete JSON object or array inside other text, `context.resolution` suggests switching to `match: "extract"`. Truncated JSON never gets this hint.
+
+In `"extract"` mode, a response with more than one JSON object or array (`{"a":1} and {"b":2}`) throws `Multiple JSON values found in input.` rather than guessing. In both modes the root value must be an object or array, so a bare string or number such as `"hi"` throws.
+:::
+
 ::: warning
 Providing a `schema` enforces `required` fields by default. Input missing a required field throws rather than returning a partial object. Defaults are applied **after** validation, so a `default` does not satisfy a `required` field. Pass `validateSchema: false` only if you intentionally want the legacy strip-and-default behavior without `required` enforcement.
 :::

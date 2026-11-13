@@ -8,6 +8,8 @@ import { backOff } from "exponential-backoff";
 import { Config } from "@/types";
 import { apiRequestWrapper } from "@/utils/modules/requestWrapper";
 import { LlmExeError } from "@/errors";
+import { getLlmConfig } from "@/llm/config";
+import { createOpenAiCompatibleConfiguration } from "@/llm/config/openai/compatible";
 
 
 jest.mock("exponential-backoff", () => ({
@@ -200,7 +202,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        const shouldRetry = options.retry(err, 1);
+        const shouldRetry = await options.retry(err, 1);
         if (shouldRetry) {
           return await fn();
         } else {
@@ -219,7 +221,8 @@ describe("apiRequestWrapper", () => {
     expect(metrics.total_call_error).toBe(1);
 
     expect(backOffMock).toHaveBeenCalledWith(expect.any(Function), {
-      startingDelay: 0,
+      startingDelay: 500,
+      timeMultiple: 2,
       maxDelay: mockOptions.maxDelay,
       numOfAttempts: mockOptions.numOfAttempts,
       jitter: mockOptions.jitter,
@@ -243,7 +246,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        const shouldRetry = options.retry(err, 1);
+        const shouldRetry = await options.retry(err, 1);
         if (shouldRetry) {
           return await fn();
         } else {
@@ -262,7 +265,8 @@ describe("apiRequestWrapper", () => {
     expect(metrics.total_call_error).toBe(1);
 
     expect(backOffMock).toHaveBeenCalledWith(expect.any(Function), {
-      startingDelay: 0,
+      startingDelay: 500,
+      timeMultiple: 2,
       maxDelay: mockOptions.maxDelay,
       numOfAttempts: mockOptions.numOfAttempts,
       jitter: mockOptions.jitter,
@@ -309,7 +313,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        const shouldRetry = options.retry(err, 1);
+        const shouldRetry = await options.retry(err, 1);
         if (shouldRetry) {
           return await fn();
         } else {
@@ -338,7 +342,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        retryDecision = options.retry(err, 1);
+        retryDecision = await options.retry(err, 1);
         throw err;
       }
     });
@@ -368,7 +372,7 @@ describe("apiRequestWrapper", () => {
         try {
           return await fn();
         } catch (err) {
-          const shouldRetry = options.retry(err, 1);
+          const shouldRetry = await options.retry(err, 1);
           if (shouldRetry) {
             return await fn();
           } else {
@@ -401,7 +405,7 @@ describe("apiRequestWrapper", () => {
       try {
         return await fn();
       } catch (err) {
-        retryDecision = options.retry(err, 1);
+        retryDecision = await options.retry(err, 1);
         throw err;
       }
     });
@@ -411,6 +415,50 @@ describe("apiRequestWrapper", () => {
     // transient code shares the embedding category — must NOT be short-circuited
     expect(retryDecision).toBe(true);
     expect((apiRequest.getMetadata().metrics as any).total_call_retry).toBe(1);
+  });
+
+  describe("getMetadata credential redaction", () => {
+    const SECRET = "SECRET-123";
+
+    it.each([
+      ["google.chat.v1", "geminiApiKey"],
+      ["xai.chat.v1", "xAiApiKey"],
+      ["deepseek.chat.v1", "deepseekApiKey"],
+      ["openai.chat.v1", "openAiApiKey"],
+      ["anthropic.chat.v1", "anthropicApiKey"],
+      ["amazon:anthropic.chat.v1", "awsSecretKey"],
+      ["amazon:anthropic.chat.v1", "awsAccessKey"],
+    ] as const)("redacts %s %s", (provider, keyOption) => {
+      const apiRequest = apiRequestWrapper(
+        getLlmConfig(provider),
+        { model: "m", maxTokens: 10, [keyOption]: SECRET },
+        mockHandler
+      );
+      const metadata = apiRequest.getMetadata();
+      expect(metadata).not.toHaveProperty(keyOption);
+      expect(JSON.stringify(metadata)).not.toContain(SECRET);
+      expect(metadata).toEqual(
+        expect.objectContaining({ model: "m", maxTokens: 10 })
+      );
+    });
+
+    it("redacts the apiKeyMapping option of a custom compatible config", () => {
+      const config = createOpenAiCompatibleConfiguration({
+        key: "local.chat.v1",
+        provider: "local.chat",
+        endpoint: "http://localhost:1234/v1/chat/completions",
+        apiKeyMapping: ["localKey", "LOCAL_KEY"],
+      });
+      const apiRequest = apiRequestWrapper(
+        config,
+        { model: "m", localKey: SECRET },
+        mockHandler
+      );
+      const metadata = apiRequest.getMetadata();
+      expect(metadata).not.toHaveProperty("localKey");
+      expect(JSON.stringify(metadata)).not.toContain(SECRET);
+      expect(metadata).toHaveProperty("model", "m");
+    });
   });
 
 });

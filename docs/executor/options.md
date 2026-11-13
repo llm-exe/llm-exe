@@ -17,7 +17,7 @@ import { useLlm, createChatPrompt, createParser, createLlmExecutor } from "llm-e
 
 const executor = createLlmExecutor(
   {
-    llm: useLlm("openai.gpt-4o-mini"),
+    llm: useLlm("openai.gpt-6-luna"),
     prompt: createChatPrompt("Summarize: {{text}}"),
     parser: createParser("string"),
   },

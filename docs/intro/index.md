@@ -72,7 +72,7 @@ This example uses llm-exe to accomplish the same task.
 import * as llmExe from "llm-exe";
 
 export async function YesOrNoBot<I extends string>(input: I) {
-  const llm = llmExe.useLlm("openai.gpt-4o-mini");
+  const llm = llmExe.useLlm("openai.gpt-6-luna");
 
   const instruction = `You are not an assistant, I need you to reply with only 
   'yes' or 'no' as an answer to the question below. Do not explain yourself 

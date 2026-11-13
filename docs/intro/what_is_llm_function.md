@@ -51,7 +51,7 @@ email addresses: <true or false if this type of PII is included>
 social security number: <true or false if this type of PII is included>
 credit card number: <true or false if this type of PII is included>`;
 
-  const llm = useLlm("openai.gpt-4o-mini");
+  const llm = useLlm("openai.gpt-6-luna");
   const prompt = createChatPrompt(instruction).addUserMessage(input);
   const parser = createParser("listToJson");
 

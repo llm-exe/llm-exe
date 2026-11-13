@@ -70,7 +70,7 @@ To type a callback you define separately, use `ExecutorEventHookFunction<Event, 
 import type { ExecutorEventHookFunction } from "llm-exe";
 
 const executor = createLlmExecutor({
-  llm: useLlm("openai.gpt-4o-mini"),
+  llm: useLlm("openai.gpt-6-luna"),
   prompt: createChatPrompt<{ text: string }>("Summarize: {{text}}"),
   parser: createParser("string"),
 });

@@ -61,7 +61,7 @@ Yes — sentiment routing is the same classify-then-branch pattern. Have an exec
 
 ```typescript
 const sentiment = createLlmExecutor({
-  llm: useLlm("openai.gpt-4o-mini"),
+  llm: useLlm("openai.gpt-6-luna"),
   prompt: createChatPrompt<{ message: string }>(
     "Classify the sentiment of this message as positive, neutral, or negative: {{message}}"
   ),
@@ -92,7 +92,7 @@ Document routing is classification followed by a dispatch: classify the document
 
 ```typescript
 const classifyDocument = createLlmExecutor({
-  llm: useLlm("openai.gpt-4o-mini"),
+  llm: useLlm("openai.gpt-6-luna"),
   prompt: createChatPrompt<{ text: string }>(
     "Classify this document as an invoice, contract, or resume: {{text}}"
   ),

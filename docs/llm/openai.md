@@ -1,6 +1,6 @@
 ---
 title: "Use OpenAI Models in TypeScript with llm-exe"
-description: "Call OpenAI chat models like gpt-4o and gpt-4o-mini from TypeScript with llm-exe, with typed options, API key setup, retries, and JSON response mode."
+description: "Call OpenAI chat models like gpt-6-luna from TypeScript with llm-exe, with typed options, API key setup, retries, and JSON response mode."
 ---
 
 # OpenAI
@@ -13,18 +13,22 @@ When using OpenAi models, llm-exe will make POST requests to `https://api.openai
 
 ```ts
 const llm = useLlm("openai.chat.v1", {
-  model: "gpt-4o", // specify a model
+  model: "gpt-6-luna", // specify a model
 });
 ```
 
 ### OpenAi Chat By Model
 
 ```ts
-const llm = useLlm("openai.gpt-4o", {
+const llm = useLlm("openai.gpt-6-luna", {
   // other options,
-  // no model needed, using gpt-4o
+  // no model needed, using gpt-6-luna
 });
 ```
+
+::: warning Deprecated shorthands
+`openai.gpt-4o`, `openai.gpt-4o-mini`, `openai.gpt-4.1` and `openai.gpt-4.1-mini` are deprecated. OpenAI shuts these models down on **2027-01-14**. The shorthands still resolve, but the first use of each one emits a Node.js `DeprecationWarning` (code `LLM_EXE_DEPRECATED`). Switch to `openai.gpt-6-luna`. To keep calling one of these models until the shutdown, use `useLlm("openai.chat.v1", { model: "gpt-4o" })`.
+:::
 
 <ImportModelNames provider="openai" />
 

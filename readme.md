@@ -41,7 +41,7 @@ import { useLlm, createChatPrompt, createParser } from "llm-exe";
 const llmExe = require("llm-exe");
 ```
 
-Set your provider's API key in the environment (for example `OPENAI_API_KEY`), or pass it as an option (`useLlm("openai.gpt-4o-mini", { openAiApiKey: "..." })`). See [LLM providers](https://llm-exe.com/llm/) for each provider's key.
+Set your provider's API key in the environment (for example `OPENAI_API_KEY`), or pass it as an option (`useLlm("openai.gpt-6-luna", { openAiApiKey: "..." })`). See [LLM providers](https://llm-exe.com/llm/) for each provider's key.
 
 To try llm-exe without a key, use `useLlm("openai.chat-mock.v1")`. It makes no network call. By default it replies with the fixed text `Hello world from LLM! The input was [...]` (the prompt messages as JSON), which typed parsers can't reliably parse. Pass `mockResponse` to choose the reply, so typed parsers like `json`, `number`, or `boolean` work too: `useLlm("openai.chat-mock.v1", { mockResponse: '{"a":1}' })`.
 
@@ -57,7 +57,7 @@ const prompt = createChatPrompt<{ input: string }>(
 prompt.addUserMessage("{{input}}");
 
 // LLM
-const llm = useLlm("openai.gpt-4o");
+const llm = useLlm("openai.gpt-6-luna");
 
 // Parser — schema uses JSON Schema (via defineSchema)
 const schema = defineSchema({
@@ -187,7 +187,7 @@ import {
 } from "llm-exe";
 
 // 1. Use the model you want
-const llm = useLlm("openai.gpt-4o");
+const llm = useLlm("openai.gpt-6-luna");
 
 // 2. Create a parameterized prompt
 const instruction = `

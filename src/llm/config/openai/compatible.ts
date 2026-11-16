@@ -30,6 +30,14 @@ export function createOpenAiCompatibleConfiguration<
    * unchanged for every model.
    */
   reasoningSamplingAllowedEfforts?: readonly string[];
+  /**
+   * Effort to send as `reasoning_effort` when tools are attached and the
+   * caller did not set `effort`. Return `undefined` to send nothing. OpenAI's
+   * gpt-6-luna rejects function tools on /v1/chat/completions at its default
+   * effort and only accepts them under `reasoning_effort: "none"` (#964). An
+   * explicit caller `effort` is never overridden.
+   */
+  toolCallDefaultEffort?: (model: string) => string | undefined;
   mapOptions?: Config["mapOptions"];
   transformResponse?: any;
 }) {
@@ -39,6 +47,7 @@ export function createOpenAiCompatibleConfiguration<
   const reasoningMaxTokensKey = overrides.reasoningMaxTokensKey;
   const reasoningSamplingAllowedEfforts =
     overrides.reasoningSamplingAllowedEfforts;
+  const toolCallDefaultEffort = overrides.toolCallDefaultEffort;
 
   const isReasoningRequest = (state: Record<string, any>): boolean =>
     typeof state.model === "string" && isReasoningModel(state.model);
@@ -163,8 +172,8 @@ export function createOpenAiCompatibleConfiguration<
         return { tool_choice: call }; // specific function
       },
 
-      functions: (functions, options) => ({
-        tools: functions.map((f) => ({
+      functions: (functions, options, currentInput) => {
+        const tools = functions.map((f) => ({
           type: "function",
           function: {
             name: f.name,
@@ -172,8 +181,18 @@ export function createOpenAiCompatibleConfiguration<
             parameters: cleanJsonSchemaFor(f.parameters, "openai.chat"),
             strict: !!options?.functionCallStrictInput,
           },
-        })),
-      }),
+        }));
+        const model = currentInput?.model;
+        const defaultEffort =
+          toolCallDefaultEffort &&
+          typeof model === "string" &&
+          typeof currentInput?.reasoning_effort === "undefined"
+            ? toolCallDefaultEffort(model)
+            : undefined;
+        return typeof defaultEffort === "string"
+          ? { tools, reasoning_effort: defaultEffort }
+          : { tools };
+      },
       ...overrides.mapOptions,
     },
     transformResponse: overrides.transformResponse ?? OutputOpenAIChat,

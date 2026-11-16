@@ -13,8 +13,12 @@ To take advantage of tool calling with OpenAI, Anthropic, and other providers th
 
 ## Basic Example
 
+::: tip Tool calls on gpt-6-luna
+OpenAI's Chat Completions API rejects function tools on `gpt-6-luna` unless reasoning effort is `"none"` (HTTP 400: "Function tools with reasoning_effort are not supported"). Pass `effort: "none"` as in the example below. Other models don't need it.
+:::
+
 ```ts{13,14,15,16,17,18,19,20,21,26,27}
-const llm = useLlm("openai.gpt-6-luna");
+const llm = useLlm("openai.gpt-6-luna", { effort: "none" });
 const instruction = `You are walking through a maze.
 You must take one step at a time.
 Pick a direction to move.`;

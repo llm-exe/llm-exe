@@ -76,7 +76,8 @@ If you need tool/function calling support, use `createLlmFunctionExecutor`. It e
 ```typescript
 import { useLlm, createChatPrompt, createLlmFunctionExecutor } from "llm-exe";
 
-const llm = useLlm("openai.gpt-6-luna");
+// gpt-6-luna only accepts function tools with effort "none"
+const llm = useLlm("openai.gpt-6-luna", { effort: "none" });
 const prompt = createChatPrompt("You are a helpful assistant.");
 
 const executor = createLlmFunctionExecutor({

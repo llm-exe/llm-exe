@@ -76,7 +76,7 @@ const result = await executor.execute({ text: "..." });
 ```
 src/
   executor/    — BaseExecutor, LlmExecutor, CoreExecutor, LlmExecutorWithFunctions, DecisionExecutor
-  decision/    — Decision models: question checks, OpenAI and System One (Jev, Clef) adapters
+  decision/    (decision models: question checks, OpenAI and System One adapters for Jev and Clef)
   llm/         — Provider abstraction (OpenAI, Anthropic, Google, xAI, Deepseek, Bedrock, Ollama)
   prompt/      — Handlebars-based templating (ChatPrompt, TextPrompt)
   parser/      — Output parsing (JSON, String, Number, Boolean, List*, MarkdownCodeBlock, Custom)

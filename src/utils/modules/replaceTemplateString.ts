@@ -24,7 +24,10 @@ export function replaceTemplateString(
     tempPartials.push(...configuration.partials.map((a) => a.name));
   }
 
-  const template = hbs.handlebars.compile(templateString);
+  const template = hbs.handlebars.compile(
+    templateString,
+    configuration?.noEscape ? { noEscape: true } : undefined
+  );
   const res = template(substitutions, {
     allowedProtoMethods: {
       substring: true,

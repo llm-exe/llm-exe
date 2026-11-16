@@ -31,6 +31,8 @@ export abstract class BasePrompt<I extends Record<string, any>> {
 
   public validateInput: ValidateInputMode = false;
 
+  public noEscape = false;
+
   public replaceTemplateString = replaceTemplateString;
   public replaceTemplateStringAsync = replaceTemplateStringAsync;
 
@@ -66,6 +68,9 @@ export abstract class BasePrompt<I extends Record<string, any>> {
       }
       if (options.replaceTemplateString) {
         this.replaceTemplateString = options.replaceTemplateString;
+      }
+      if (options.noEscape !== undefined) {
+        this.noEscape = options.noEscape;
       }
       if (options.validateInput !== undefined) {
         this.validateInput = options.validateInput;
@@ -193,6 +198,7 @@ export abstract class BasePrompt<I extends Record<string, any>> {
               {
                 partials: this.partials,
                 helpers: this.helpers,
+                noEscape: this.noEscape,
               }
             )
           : "";
@@ -220,6 +226,7 @@ export abstract class BasePrompt<I extends Record<string, any>> {
               {
                 partials: this.partials,
                 helpers: this.helpers,
+                noEscape: this.noEscape,
               }
             )
           : ""

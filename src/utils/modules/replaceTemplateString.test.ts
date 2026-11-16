@@ -57,3 +57,24 @@ describe("replaceTemplateString", () => {
     ).toBe("hello from partial");
   });
 });
+
+describe("replaceTemplateString noEscape (#961)", () => {
+  const raw = `Tom & Jerry's "<b>code</b>" a < b`;
+  it("HTML-escapes {{var}} by default (unchanged behavior)", () => {
+    expect(replaceTemplateString("{{v}}", { v: raw })).toBe(
+      "Tom &amp; Jerry&#x27;s &quot;&lt;b&gt;code&lt;/b&gt;&quot; a &lt; b"
+    );
+  });
+  it("passes values through unchanged with noEscape: true", () => {
+    expect(replaceTemplateString("{{v}}", { v: raw }, { noEscape: true })).toBe(raw);
+  });
+  it("applies noEscape inside partials", () => {
+    expect(
+      replaceTemplateString(
+        "{{> p961}}",
+        { v: raw },
+        { noEscape: true, partials: [{ name: "p961", template: "[{{v}}]" }] }
+      )
+    ).toBe(`[${raw}]`);
+  });
+});

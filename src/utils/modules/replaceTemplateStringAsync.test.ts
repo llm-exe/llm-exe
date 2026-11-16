@@ -42,3 +42,17 @@ describe("replaceTemplateStringAsync", () => {
     ).resolves.toBe("hello from partial");
   });
 });
+
+describe("replaceTemplateStringAsync noEscape (#961)", () => {
+  const raw = `Tom & Jerry's "<b>code</b>" a < b`;
+  it("HTML-escapes {{var}} by default (unchanged behavior)", async () => {
+    await expect(replaceTemplateStringAsync("{{v}}", { v: raw })).resolves.toBe(
+      "Tom &amp; Jerry&#x27;s &quot;&lt;b&gt;code&lt;/b&gt;&quot; a &lt; b"
+    );
+  });
+  it("passes values through unchanged with noEscape: true", async () => {
+    await expect(
+      replaceTemplateStringAsync("{{v}}", { v: raw }, { noEscape: true })
+    ).resolves.toBe(raw);
+  });
+});

@@ -23,7 +23,10 @@ export async function replaceTemplateStringAsync(
     tempPartials.push(...configuration.partials.map((a) => a.name));
   }
 
-  const template = hbsAsync.handlebars.compile(templateString);
+  const template = hbsAsync.handlebars.compile(
+    templateString,
+    configuration?.noEscape ? { noEscape: true } : undefined
+  );
   const res = await (template(substitutions, {
     allowedProtoMethods: {
       substring: true,

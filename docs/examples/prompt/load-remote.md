@@ -53,7 +53,7 @@ const prompt = createChatPrompt<{
 
 // 3. Create an LLM executor with your LLM, prompt, and output parser
 const executor = createLlmExecutor({
-  llm: useLlm("openai.gpt-4o-mini"),
+  llm: useLlm("openai.gpt-6-luna"),
   parser: createParser("markdownCodeBlock"), // We expect a single code block back
   prompt,
 });

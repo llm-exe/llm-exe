@@ -367,6 +367,8 @@ Options:
 ::: warning Default is `match: "exact"`
 In `"exact"` mode the whole trimmed response must be JSON. A response that is **only** a fenced code block (tagged `` ```json `` or untagged) also works, because the fence is stripped first. Any text around the JSON, such as `` Sure! ```json {...}``` ``, throws `Invalid JSON input.` (`parser.parse_failed`). Pass `{ match: "extract" }` to pull the JSON out of surrounding text.
 
+The `Invalid JSON input.` error's `context` helps you debug it. `context.reason` is `"invalid_json"`. `context.errorPosition` is the character offset of the syntax error in the original response, when the runtime reports one. If the response holds exactly one complete JSON object or array inside other text, `context.resolution` suggests switching to `match: "extract"`. Truncated JSON never gets this hint.
+
 In `"extract"` mode, a response with more than one JSON object or array (`{"a":1} and {"b":2}`) throws `Multiple JSON values found in input.` rather than guessing. In both modes the root value must be an object or array, so a bare string or number such as `"hi"` throws.
 :::
 

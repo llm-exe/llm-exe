@@ -26,7 +26,10 @@ const EXACT_NUMERIC_PATTERN =
  * no surrounding prose.
  *
  * Throws LlmExeError(parser.parse_failed) for empty input, no numeric token,
- * multiple numeric tokens, invalid conversion. Invalid input type throws
+ * multiple numeric tokens, invalid conversion. In exact mode, input that
+ * contains a number plus other text throws with reason "not_exact" (with a
+ * resolution hint when extract mode would succeed); input with no number
+ * throws with reason "no_numeric_value". Invalid input type throws
  * LlmExeError(parser.invalid_input).
  */
 export class NumberParser extends BaseParser<number> {
@@ -75,15 +78,27 @@ export class NumberParser extends BaseParser<number> {
     if (this.match === "exact") {
       const trimmed = text.trim();
       if (!EXACT_NUMERIC_PATTERN.test(trimmed)) {
+        // Tell "a number surrounded by other text" apart from "no number".
+        const tokenCount = Array.from(
+          text.matchAll(NUMERIC_TOKEN_PATTERN),
+        ).length;
         throw new LlmExeError(`Input is not an exact numeric value.`, {
           code: "parser.parse_failed",
           context: {
             operation: "NumberParser.parse",
             parser: "number",
-            reason: "no_numeric_value",
+            reason: tokenCount > 0 ? "not_exact" : "no_numeric_value",
             expected: "exact number",
             match: this.match,
             inputLength: text.length,
+            ...(tokenCount > 0 ? { matchCount: tokenCount } : {}),
+            // Only suggest extract mode when it would find exactly one number.
+            ...(tokenCount === 1
+              ? {
+                  resolution:
+                    'The input has text around the number. Use createParser("number", { match: "extract" }) to pull the number out of surrounding text.',
+                }
+              : {}),
           },
         });
       }

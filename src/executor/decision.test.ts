@@ -402,6 +402,38 @@ describe("createDecisionExecutor with System One providers", () => {
     },
   );
 
+  it("reports a Cloudflare 422 as llm.provider_invalid_request without retrying", async () => {
+    // Body recorded from a real Workers AI call with a mismatched model.
+    fetchMock.mockImplementation(async () =>
+      jsonResponse(422, {
+        errors: [
+          {
+            message:
+              "AiError: AiError: Unsupported model 'clef-flash'. Use 'clef'. (21ea4dad-af30-463f-86ff-f9f9cc83dda7)",
+            code: 3030,
+          },
+        ],
+        success: false,
+        result: {},
+        messages: [],
+      }),
+    );
+    const executor = createDecisionExecutor(
+      useDecisionModel("cloudflare.clef", {
+        cloudflareApiToken: "cf-test-token",
+        cloudflareAccountId: "abc123",
+        numOfAttempts: 3,
+      }),
+      questions,
+    );
+    await expect(executor.execute({ input: "x" })).rejects.toMatchObject({
+      code: "llm.provider_invalid_request",
+      message: expect.stringContaining("Unsupported model"),
+      context: expect.objectContaining({ provider: "cloudflare.clef" }),
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("URL-encodes the Cloudflare account id in the path", async () => {
     fetchMock.mockResolvedValue(jsonResponse(200, systemOneBody));
     await createDecisionExecutor(

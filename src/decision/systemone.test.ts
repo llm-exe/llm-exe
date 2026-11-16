@@ -139,6 +139,69 @@ describe("fromSystemOneResponse", () => {
     );
   });
 
+  it("normalizes a recorded Cloudflare Clef response (wrapped in its envelope)", () => {
+    // Recorded from a real POST .../ai/run/@cf/cloudflare/clef call.
+    const recordedClefResponse = {
+      result: {
+        model: "clef",
+        answers: {
+          urgent: { type: "noul", noul: 0.8469 },
+          team: {
+            type: "choice",
+            choice: "billing",
+            confidence: 0.4094,
+            probabilities: { billing: 0.8199, technical: 0.1801 },
+          },
+          severity: {
+            type: "score",
+            score: 2.7709,
+            confidence: 0.5522,
+            probabilities: {
+              "0": 0.0049,
+              "1": 0.0112,
+              "2": 0.192,
+              "3": 0.7919,
+            },
+          },
+        },
+        usage: { input_tokens: 333, output_tokens: 0 },
+      },
+      success: true,
+      errors: [],
+      messages: [],
+    };
+    expect(
+      fromSystemOneResponse(recordedClefResponse, questions, {
+        provider: "cloudflare.clef",
+        model: "clef",
+      }),
+    ).toEqual({
+      model: "clef",
+      answers: {
+        urgent: { type: "boolean", probability: 0.8469 },
+        team: {
+          type: "choice",
+          choice: "billing",
+          confidence: 0.4094,
+          probabilities: { billing: 0.8199, technical: 0.1801 },
+        },
+        severity: {
+          type: "score",
+          score: 2.7709,
+          level: "Critical",
+          confidence: 0.5522,
+          probabilities: {
+            None: 0.0049,
+            Minor: 0.0112,
+            Major: 0.192,
+            Critical: 0.7919,
+          },
+        },
+      },
+      usage: { inputTokens: 333, outputTokens: 0 },
+    });
+  });
+
   it("matches score probabilities by level index, so the legend text doesn't matter", () => {
     const result = fromSystemOneResponse(
       withAnswer("severity", {

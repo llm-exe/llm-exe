@@ -1,4 +1,5 @@
 import { OutputOpenAIChat } from "./openai";
+import { BaseLlmOutput } from "./base";
 
 describe("OutputOpenAIChat", () => {
   const baseResponse = {
@@ -245,5 +246,194 @@ describe("OutputOpenAIChat", () => {
     const output = OutputOpenAIChat(baseResponse as any);
     expect(output.id).toBe("chatcmpl-123");
     expect(output.created).toBe(1700000000);
+  });
+  describe("malformed and edge-case choices", () => {
+    const withChoice = (choice: any, extra: any[] = []) =>
+      OutputOpenAIChat({ ...baseResponse, choices: [choice, ...extra] } as any);
+
+    it("keeps an empty-string content as a text block (not dropped)", () => {
+      const output = withChoice({
+        index: 0,
+        message: { role: "assistant", content: "" },
+        finish_reason: "stop",
+      });
+      expect(output.content).toEqual([{ type: "text", text: "" }]);
+    });
+
+    it("returns no content when message is missing entirely", () => {
+      const output = withChoice({ index: 0, finish_reason: "length" });
+      expect(output.content).toEqual([]);
+      expect(output.stopReason).toBe("length");
+    });
+
+    it("returns no content for null content and no tool calls (e.g. refusal)", () => {
+      const output = withChoice({
+        index: 0,
+        message: { role: "assistant", content: null, refusal: "I can't help" },
+        finish_reason: "stop",
+      });
+      expect(output.content).toEqual([]);
+    });
+
+    it("ignores non-string content values", () => {
+      const output = withChoice({
+        index: 0,
+        message: { role: "assistant", content: 42 },
+        finish_reason: "stop",
+      });
+      expect(output.content).toEqual([]);
+    });
+
+    it("handles an empty tool_calls array", () => {
+      const output = withChoice({
+        index: 0,
+        message: { role: "assistant", content: "hi", tool_calls: [] },
+        finish_reason: "stop",
+      });
+      expect(output.content).toEqual([{ type: "text", text: "hi" }]);
+    });
+
+    it("maps empty-string tool arguments to an empty object", () => {
+      const output = withChoice({
+        index: 0,
+        message: {
+          role: "assistant",
+          content: null,
+          tool_calls: [
+            { id: "c1", type: "function", function: { name: "noop", arguments: "" } },
+          ],
+        },
+        finish_reason: "tool_calls",
+      });
+      expect(output.content).toEqual([
+        { type: "function_use", functionId: "c1", name: "noop", input: {} },
+      ]);
+    });
+
+    it("parses nested JSON tool arguments", () => {
+      const output = withChoice({
+        index: 0,
+        message: {
+          role: "assistant",
+          content: null,
+          tool_calls: [
+            {
+              id: "c1",
+              type: "function",
+              function: {
+                name: "search",
+                arguments: '{"q":"x","filters":{"tags":["a","b"]},"limit":3}',
+              },
+            },
+          ],
+        },
+        finish_reason: "tool_calls",
+      });
+      expect(output.content[0]).toEqual({
+        type: "function_use",
+        functionId: "c1",
+        name: "search",
+        input: { q: "x", filters: { tags: ["a", "b"] }, limit: 3 },
+      });
+    });
+
+    it("preserves tool-call order and keeps text first", () => {
+      const output = withChoice({
+        index: 0,
+        message: {
+          role: "assistant",
+          content: "thinking",
+          tool_calls: [
+            { id: "b", type: "function", function: { name: "two", arguments: "{}" } },
+            { id: "a", type: "function", function: { name: "one", arguments: "{}" } },
+          ],
+        },
+        finish_reason: "tool_calls",
+      });
+      expect(output.content.map((c: any) => c.type)).toEqual([
+        "text",
+        "function_use",
+        "function_use",
+      ]);
+      expect(output.content.slice(1).map((c: any) => c.functionId)).toEqual([
+        "b",
+        "a",
+      ]);
+    });
+
+    // BUG: formatOptions wraps formatResult's array in another array, so each
+    // option is OutputResultContent[][] at runtime despite the declared type.
+    it.failing("normalizes tool calls inside alternate choices (options)", () => {
+      const output = withChoice(
+        {
+          index: 0,
+          message: { role: "assistant", content: "first" },
+          finish_reason: "stop",
+        },
+        [
+          {
+            index: 1,
+            message: {
+              role: "assistant",
+              content: null,
+              tool_calls: [
+                { id: "o1", type: "function", function: { name: "alt", arguments: '{"n":1}' } },
+              ],
+            },
+            finish_reason: "tool_calls",
+          },
+        ]
+      );
+      expect(output.content).toEqual([{ type: "text", text: "first" }]);
+      expect(output.options).toEqual([
+        [{ type: "function_use", functionId: "o1", name: "alt", input: { n: 1 } }],
+      ]);
+    });
+
+    it("takes stopReason from the first choice only", () => {
+      const output = withChoice(
+        { index: 0, message: { role: "assistant", content: "a" }, finish_reason: "length" },
+        [{ index: 1, message: { role: "assistant", content: "b" }, finish_reason: "stop" }]
+      );
+      expect(output.stopReason).toBe("length");
+    });
+  });
+
+  describe("alternate choices via BaseLlmOutput accessors", () => {
+    const threeChoices = {
+      ...baseResponse,
+      choices: ["A", "B", "C"].map((text, index) => ({
+        index,
+        message: { role: "assistant", content: text },
+        finish_reason: "stop",
+      })),
+    };
+
+    it("getResultText(0) returns the first choice", () => {
+      const out = BaseLlmOutput(OutputOpenAIChat(threeChoices as any));
+      expect(out.getResultText(0)).toBe("A");
+      expect(out.getResultText()).toBe("A");
+    });
+
+    // BUG: options are double-nested and getResultText/getResultContent index
+    // options[i] instead of options[i - 1], so alternates are unreachable.
+    it.failing("getResultText(n) returns the nth alternate choice", () => {
+      const out = BaseLlmOutput(OutputOpenAIChat(threeChoices as any));
+      expect(out.getResultText(1)).toBe("B");
+      expect(out.getResultText(2)).toBe("C");
+    });
+
+    it.failing("getResultContent(1) returns the second choice's content blocks", () => {
+      const out = BaseLlmOutput(OutputOpenAIChat(threeChoices as any));
+      expect(out.getResultContent(1)).toEqual([{ type: "text", text: "B" }]);
+    });
+
+    it.failing("each option is a flat OutputResultContent[]", () => {
+      const raw = OutputOpenAIChat(threeChoices as any);
+      expect(raw.options).toEqual([
+        [{ type: "text", text: "B" }],
+        [{ type: "text", text: "C" }],
+      ]);
+    });
   });
 });

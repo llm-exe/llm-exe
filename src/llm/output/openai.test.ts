@@ -361,9 +361,7 @@ describe("OutputOpenAIChat", () => {
       ]);
     });
 
-    // BUG: formatOptions wraps formatResult's array in another array, so each
-    // option is OutputResultContent[][] at runtime despite the declared type.
-    it.failing("normalizes tool calls inside alternate choices (options)", () => {
+    it("normalizes tool calls inside alternate choices (options)", () => {
       const output = withChoice(
         {
           index: 0,
@@ -415,20 +413,18 @@ describe("OutputOpenAIChat", () => {
       expect(out.getResultText()).toBe("A");
     });
 
-    // BUG: options are double-nested and getResultText/getResultContent index
-    // options[i] instead of options[i - 1], so alternates are unreachable.
-    it.failing("getResultText(n) returns the nth alternate choice", () => {
+    it("getResultText(n) returns the nth alternate choice", () => {
       const out = BaseLlmOutput(OutputOpenAIChat(threeChoices as any));
       expect(out.getResultText(1)).toBe("B");
       expect(out.getResultText(2)).toBe("C");
     });
 
-    it.failing("getResultContent(1) returns the second choice's content blocks", () => {
+    it("getResultContent(1) returns the second choice's content blocks", () => {
       const out = BaseLlmOutput(OutputOpenAIChat(threeChoices as any));
       expect(out.getResultContent(1)).toEqual([{ type: "text", text: "B" }]);
     });
 
-    it.failing("each option is a flat OutputResultContent[]", () => {
+    it("each option is a flat OutputResultContent[]", () => {
       const raw = OutputOpenAIChat(threeChoices as any);
       expect(raw.options).toEqual([
         [{ type: "text", text: "B" }],

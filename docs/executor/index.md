@@ -104,6 +104,10 @@ const response = await executor.execute(
 
 See [Tool Calling Executor](/executor/openai-functions) for full documentation and examples.
 
+## Decision Executor
+
+For classification (yes/no, pick one, rate on a scale), `createDecisionExecutor` asks a decision model typed questions and returns probabilities, with no prompt or parser. It works with OpenAI, TypeSafe Jev, and Cloudflare Clef. See [Decision Executor](/decision/).
+
 ## Core Executor
 
 If you need a typed executor that wraps a plain function (no LLM involved), use `createCoreExecutor`. This is useful for composing non-LLM steps alongside LLM executors in a pipeline — the core executor provides the same `execute` interface, tracing, and hooks as an LLM executor.

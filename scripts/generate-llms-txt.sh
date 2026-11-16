@@ -35,6 +35,7 @@ mkdir -p "$OUTPUT_DIR"
     "State|state/index|state/dialogue"
     "Executor|executor/index|executor/openai-functions|executor/hooks"
     "Embeddings|embeddings/index|embeddings/openai|embeddings/amazon"
+    "Decision Executor|decision/index|decision/providers"
     "Examples|examples/FunctionSyntax|examples/concepts/working-with-json|examples/concepts/replicating-lex"
   )
 

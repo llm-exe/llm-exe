@@ -51,6 +51,10 @@
 - [OpenAI Embeddings](https://llm-exe.com/embeddings/openai.html)
 - [Amazon Embeddings](https://llm-exe.com/embeddings/amazon.html)
 
+### Decision Executor
+- [Decision Executor](https://llm-exe.com/decision/index.html)
+- [Decision Model Providers](https://llm-exe.com/decision/providers.html)
+
 ### Examples
 - [LLM Executor Function Syntax](https://llm-exe.com/examples/FunctionSyntax.html)
 - [Tips: Working with JSON](https://llm-exe.com/examples/concepts/working-with-json.html)

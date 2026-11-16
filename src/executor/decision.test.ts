@@ -158,6 +158,8 @@ describe("createDecisionExecutor", () => {
   it.each([
     ["a number", 42],
     ["null", null],
+    ["a Date", new Date(0)],
+    ["a Map", new Map([["a", 1]])],
   ])(
     "rejects %s as input without calling the provider",
     async (_label, input) => {
@@ -236,8 +238,8 @@ describe("createDecisionExecutor", () => {
     await expect(executor.execute({ input: "x" })).rejects.toMatchObject({
       code: "llm.invalid_response_shape",
     });
-    // Retried like a chat call's invalid_response_shape (default 2 attempts).
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // Not retried: the same questions get the same bad answer, billed again.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("runs hooks and keeps the API key out of metadata", async () => {
@@ -390,7 +392,7 @@ describe("createDecisionExecutor with System One providers", () => {
       expect(result.answers).toEqual(expectedAnswers);
       const [url, init] = fetchMock.mock.calls[0];
       expect(url).toBe(
-        "https://api.cloudflare.com/client/v4/accounts/abc123/ai/run/@cf/cloudflare/clef",
+        `https://api.cloudflare.com/client/v4/accounts/abc123/ai/run/@cf/cloudflare/${model}`,
       );
       expect(init.headers.Authorization).toBe("Bearer cf-test-token");
       expect(JSON.parse(init.body).model).toBe(model);

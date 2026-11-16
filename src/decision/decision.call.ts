@@ -37,7 +37,7 @@ export async function createDecision_call(
   const model = typeof state.model === "string" ? state.model : "";
   const body = JSON.stringify(adapter.toBody(model, request));
   const url = replaceTemplateStringSimple(config.endpoint, state, {
-    encodeKeys: ["cloudflareAccountId"],
+    encodeKeys: ["cloudflareAccountId", "model"],
   });
   const headers = await parseHeaders(config, state, {
     url,

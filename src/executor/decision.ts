@@ -15,10 +15,12 @@ export type DecisionExecutorOptions<Q extends DecisionQuestionMap> =
     name?: string;
   };
 
+/** Text, an array, or a plain object. Dates, Maps and class instances don't serialize as JSON the caller expects. */
 function isDecisionInput(value: unknown): boolean {
-  return (
-    typeof value === "string" || (typeof value === "object" && value !== null)
-  );
+  if (typeof value === "string" || Array.isArray(value)) return true;
+  if (typeof value !== "object" || value === null) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 /**

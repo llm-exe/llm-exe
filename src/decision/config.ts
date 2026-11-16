@@ -62,7 +62,11 @@ function cloudflareClef(
   return {
     key,
     provider: "cloudflare.clef",
-    endpoint: `https://api.cloudflare.com/client/v4/accounts/{{cloudflareAccountId}}/ai/run/@cf/cloudflare/clef`,
+    // Workers AI picks the model from the path, and Clef's `model` body field
+    // must name the same one ("clef" for @cf/cloudflare/clef, "clef-flash" for
+    // @cf/cloudflare/clef-flash), so both come from the same option.
+    // https://developers.cloudflare.com/workers-ai/models/clef/
+    endpoint: `https://api.cloudflare.com/client/v4/accounts/{{cloudflareAccountId}}/ai/run/@cf/cloudflare/{{model}}`,
     method: "POST",
     headers: `{"Authorization":"Bearer {{cloudflareApiToken}}", "Content-Type": "application/json" }`,
     options: {

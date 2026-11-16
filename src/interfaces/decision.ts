@@ -123,12 +123,39 @@ export interface OpenAiDecisionModelOptions extends DecisionRequestOptions {
   baseUrl?: string;
 }
 
+export interface TypeSafeDecisionModelOptions extends DecisionRequestOptions {
+  model?: string;
+  /** Defaults to the TYPESAFE_API_KEY environment variable. */
+  typesafeApiKey?: string;
+  /** Defaults to https://api.typesafe.ai/v1. Point it at a self-hosted System One server. */
+  baseUrl?: string;
+}
+
+export interface CloudflareDecisionModelOptions extends DecisionRequestOptions {
+  /** Defaults to the CLOUDFLARE_API_TOKEN environment variable. */
+  cloudflareApiToken?: string;
+  /** Defaults to the CLOUDFLARE_ACCOUNT_ID environment variable. */
+  cloudflareAccountId?: string;
+}
+
 export type AllDecisionModels = {
   "openai.decisions.v1": {
     input: OpenAiDecisionModelOptions & { model: string };
   };
   "openai.gpt-6-luna": {
     input: Omit<OpenAiDecisionModelOptions, "model">;
+  };
+  "typesafe.systemone.v1": {
+    input: TypeSafeDecisionModelOptions & { model: string };
+  };
+  "typesafe.jev": {
+    input: Omit<TypeSafeDecisionModelOptions, "model">;
+  };
+  "cloudflare.clef": {
+    input: CloudflareDecisionModelOptions;
+  };
+  "cloudflare.clef-flash": {
+    input: CloudflareDecisionModelOptions;
   };
 };
 

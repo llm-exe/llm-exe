@@ -265,9 +265,199 @@ describe("createDecisionExecutor", () => {
       expect.objectContaining({
         code: "configuration.invalid_provider",
         context: expect.objectContaining({
-          availableProviders: ["openai.decisions.v1", "openai.gpt-6-luna"],
+          availableProviders: [
+            "openai.decisions.v1",
+            "openai.gpt-6-luna",
+            "typesafe.systemone.v1",
+            "typesafe.jev",
+            "cloudflare.clef",
+            "cloudflare.clef-flash",
+          ],
         }),
       }),
     );
+  });
+});
+
+describe("createDecisionExecutor with System One providers", () => {
+  const originalFetch = globalThis.fetch;
+  let fetchMock: jest.Mock;
+
+  const systemOneBody = {
+    model: "jev-1.14.0",
+    answers: {
+      urgent: { type: "noul", noul: 0.9 },
+      team: {
+        type: "choice",
+        choice: "technical",
+        confidence: 0.6,
+        probabilities: { billing: 0.2, technical: 0.8 },
+      },
+    },
+    usage: { input_tokens: 30, output_tokens: 5 },
+  };
+
+  const expectedAnswers = {
+    urgent: { type: "boolean", probability: 0.9 },
+    team: {
+      type: "choice",
+      choice: "technical",
+      confidence: 0.6,
+      probabilities: { billing: 0.2, technical: 0.8 },
+    },
+  };
+
+  beforeEach(() => {
+    fetchMock = jest.fn();
+    globalThis.fetch = fetchMock;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it("calls TypeSafe Jev and returns the same answer shape as OpenAI", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, systemOneBody));
+    const executor = createDecisionExecutor(
+      useDecisionModel("typesafe.jev", { typesafeApiKey: "ts-test-key" }),
+      questions,
+    );
+
+    const result = await executor.execute({ input: { body: "Site down" } });
+
+    expect(result).toEqual({
+      model: "jev-1.14.0",
+      answers: expectedAnswers,
+      usage: { inputTokens: 30, outputTokens: 5 },
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.typesafe.ai/v1/systemone");
+    expect(init.headers.Authorization).toBe("Bearer ts-test-key");
+    expect(JSON.parse(init.body)).toEqual({
+      model: "jev-latest",
+      state: { body: "Site down" },
+      questions: {
+        urgent: { type: "noul", instructions: "Is it urgent?" },
+        team: {
+          type: "choice",
+          instructions: "Which team?",
+          criteria: { billing: "Payments", technical: "Outages" },
+        },
+      },
+    });
+    expect(JSON.stringify(executor.getMetadata())).not.toContain("ts-test-key");
+  });
+
+  it("points typesafe.systemone.v1 at a self-hosted server", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, systemOneBody));
+    await createDecisionExecutor(
+      useDecisionModel("typesafe.systemone.v1", {
+        model: "my-jev",
+        baseUrl: "https://s1.internal.example/v1",
+        typesafeApiKey: "ts-test-key",
+      }),
+      questions,
+    ).execute({ input: "x" });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://s1.internal.example/v1/systemone");
+    expect(JSON.parse(init.body).model).toBe("my-jev");
+  });
+
+  it.each([
+    ["cloudflare.clef", "clef"],
+    ["cloudflare.clef-flash", "clef-flash"],
+  ] as const)(
+    "calls Workers AI for %s and unwraps the result envelope",
+    async (key, model) => {
+      fetchMock.mockResolvedValue(
+        jsonResponse(200, {
+          result: systemOneBody,
+          success: true,
+          errors: [],
+          messages: [],
+        }),
+      );
+      const executor = createDecisionExecutor(
+        useDecisionModel(key, {
+          cloudflareApiToken: "cf-test-token",
+          cloudflareAccountId: "abc123",
+        }),
+        questions,
+      );
+
+      const result = await executor.execute({ input: "x" });
+
+      expect(result.answers).toEqual(expectedAnswers);
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toBe(
+        "https://api.cloudflare.com/client/v4/accounts/abc123/ai/run/@cf/cloudflare/clef",
+      );
+      expect(init.headers.Authorization).toBe("Bearer cf-test-token");
+      expect(JSON.parse(init.body).model).toBe(model);
+      expect(JSON.stringify(executor.getMetadata())).not.toContain(
+        "cf-test-token",
+      );
+    },
+  );
+
+  it("URL-encodes the Cloudflare account id in the path", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, systemOneBody));
+    await createDecisionExecutor(
+      useDecisionModel("cloudflare.clef", {
+        cloudflareApiToken: "cf-test-token",
+        cloudflareAccountId: "a/../b",
+      }),
+      questions,
+    ).execute({ input: "x" });
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://api.cloudflare.com/client/v4/accounts/a%2F..%2Fb/ai/run/@cf/cloudflare/clef",
+    );
+  });
+
+  it("requires a Cloudflare account id", () => {
+    // The env default is read when the config module loads, so load a fresh
+    // copy with CLOUDFLARE_ACCOUNT_ID unset.
+    const saved = process.env.CLOUDFLARE_ACCOUNT_ID;
+    delete process.env.CLOUDFLARE_ACCOUNT_ID;
+    try {
+      jest.isolateModules(() => {
+        const fresh: typeof import("@/decision/decision") = jest.requireActual(
+          "@/decision/decision",
+        );
+        expect(() =>
+          fresh.useDecisionModel("cloudflare.clef", {
+            cloudflareApiToken: "cf-test-token",
+          }),
+        ).toThrow(
+          expect.objectContaining({
+            code: "configuration.missing_option",
+            context: expect.objectContaining({ option: "cloudflareAccountId" }),
+          }),
+        );
+      });
+    } finally {
+      if (saved !== undefined) process.env.CLOUDFLARE_ACCOUNT_ID = saved;
+    }
+  });
+
+  it("enforces Clef's 64-question limit when the executor is created", () => {
+    const sixtyFive = Object.fromEntries(
+      Array.from({ length: 65 }, (_, i) => [
+        `q${i}`,
+        { type: "boolean" as const, instructions: "x" },
+      ]),
+    );
+    const clef = useDecisionModel("cloudflare.clef", {
+      cloudflareApiToken: "cf-test-token",
+      cloudflareAccountId: "abc123",
+    });
+    expect(clef.maxQuestions).toBe(64);
+    expect(() => createDecisionExecutor(clef, sixtyFive)).toThrow(
+      expect.objectContaining({ code: "configuration.incompatible_options" }),
+    );
+    const jev = useDecisionModel("typesafe.jev", {
+      typesafeApiKey: "ts-test-key",
+    });
+    expect(() => createDecisionExecutor(jev, sixtyFive)).not.toThrow();
   });
 });

@@ -2,7 +2,18 @@ import type { Config, DecisionModelKey } from "@/types";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 import { LlmExeError } from "@/errors";
 
-function openAiDecisionsConfig(
+type ModelOption = Config["options"][string];
+
+function modelOption(
+  key: DecisionModelKey,
+  defaultModel?: string,
+): ModelOption {
+  return defaultModel
+    ? { default: defaultModel }
+    : { required: [true, `model is required for ${key}`] };
+}
+
+function openAiDecisions(
   key: DecisionModelKey,
   defaultModel?: string,
 ): Config<DecisionModelKey> {
@@ -14,18 +25,59 @@ function openAiDecisionsConfig(
     method: "POST",
     headers: `{"Authorization":"Bearer {{openAiApiKey}}", "Content-Type": "application/json" }`,
     options: {
-      model: defaultModel
-        ? { default: defaultModel }
-        : { required: [true, "model is required for openai.decisions.v1"] },
-      openAiApiKey: {
-        default: getEnvironmentVariable("OPENAI_API_KEY"),
+      model: modelOption(key, defaultModel),
+      openAiApiKey: { default: getEnvironmentVariable("OPENAI_API_KEY") },
+      baseUrl: { default: "https://api.openai.com/v1" },
+    },
+    // The request body is built from the question map by the adapter, not
+    // from options, so there is nothing to map here.
+    mapBody: {},
+  };
+}
+
+function typeSafeSystemOne(
+  key: DecisionModelKey,
+  defaultModel?: string,
+): Config<DecisionModelKey> {
+  return {
+    key,
+    provider: "typesafe.systemone",
+    // Templated host so a self-hosted System One server can be used.
+    endpoint: `{{baseUrl}}/systemone`,
+    method: "POST",
+    headers: `{"Authorization":"Bearer {{typesafeApiKey}}", "Content-Type": "application/json" }`,
+    options: {
+      model: modelOption(key, defaultModel),
+      typesafeApiKey: { default: getEnvironmentVariable("TYPESAFE_API_KEY") },
+      baseUrl: { default: "https://api.typesafe.ai/v1" },
+    },
+    mapBody: {},
+  };
+}
+
+function cloudflareClef(
+  key: DecisionModelKey,
+  model: "clef" | "clef-flash",
+): Config<DecisionModelKey> {
+  return {
+    key,
+    provider: "cloudflare.clef",
+    endpoint: `https://api.cloudflare.com/client/v4/accounts/{{cloudflareAccountId}}/ai/run/@cf/cloudflare/clef`,
+    method: "POST",
+    headers: `{"Authorization":"Bearer {{cloudflareApiToken}}", "Content-Type": "application/json" }`,
+    options: {
+      model: { default: model },
+      cloudflareApiToken: {
+        default: getEnvironmentVariable("CLOUDFLARE_API_TOKEN"),
       },
-      baseUrl: {
-        default: "https://api.openai.com/v1",
+      cloudflareAccountId: {
+        default: getEnvironmentVariable("CLOUDFLARE_ACCOUNT_ID"),
+        required: [
+          true,
+          "cloudflareAccountId is required (or set CLOUDFLARE_ACCOUNT_ID)",
+        ],
       },
     },
-    // The request body is built from the question map in decision.call.ts,
-    // not from options, so there is nothing to map here.
     mapBody: {},
   };
 }
@@ -33,8 +85,15 @@ function openAiDecisionsConfig(
 export const decisionConfigs: {
   [key in DecisionModelKey]: Config<DecisionModelKey>;
 } = {
-  "openai.decisions.v1": openAiDecisionsConfig("openai.decisions.v1"),
-  "openai.gpt-6-luna": openAiDecisionsConfig("openai.gpt-6-luna", "gpt-6-luna"),
+  "openai.decisions.v1": openAiDecisions("openai.decisions.v1"),
+  "openai.gpt-6-luna": openAiDecisions("openai.gpt-6-luna", "gpt-6-luna"),
+  "typesafe.systemone.v1": typeSafeSystemOne("typesafe.systemone.v1"),
+  "typesafe.jev": typeSafeSystemOne("typesafe.jev", "jev-latest"),
+  "cloudflare.clef": cloudflareClef("cloudflare.clef", "clef"),
+  "cloudflare.clef-flash": cloudflareClef(
+    "cloudflare.clef-flash",
+    "clef-flash",
+  ),
 };
 
 function isDecisionModelKey(key: unknown): key is DecisionModelKey {

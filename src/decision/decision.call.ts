@@ -11,11 +11,7 @@ import type {
 } from "@/types";
 import { getDecisionConfig } from "./config";
 import { assertValidDecisionQuestions } from "./questions";
-import {
-  OPENAI_MAX_QUESTIONS,
-  fromOpenAiDecisionResponse,
-  toOpenAiDecisionBody,
-} from "./openai";
+import { getDecisionAdapter } from "./adapters";
 
 export type DecisionCallState = Record<string, unknown> & {
   provider: LlmProvider;
@@ -30,16 +26,19 @@ export async function createDecision_call(
   signal?: AbortSignal,
 ): Promise<DecisionResult<DecisionQuestionMap>> {
   const config = getDecisionConfig(state.key);
+  const adapter = getDecisionAdapter(config.provider);
   // Also checked when the executor is created. Checking again here covers
   // calling the model directly, and costs nothing next to the request.
   assertValidDecisionQuestions(request.questions, {
-    maxQuestions: OPENAI_MAX_QUESTIONS,
+    maxQuestions: adapter.maxQuestions,
     operation: "useDecisionModel_call",
   });
 
   const model = typeof state.model === "string" ? state.model : "";
-  const body = JSON.stringify(toOpenAiDecisionBody(model, request));
-  const url = replaceTemplateStringSimple(config.endpoint, state);
+  const body = JSON.stringify(adapter.toBody(model, request));
+  const url = replaceTemplateStringSimple(config.endpoint, state, {
+    encodeKeys: ["cloudflareAccountId"],
+  });
   const headers = await parseHeaders(config, state, {
     url,
     headers: {},
@@ -76,7 +75,7 @@ export async function createDecision_call(
     });
   }
 
-  return fromOpenAiDecisionResponse(data, request.questions, {
+  return adapter.fromResponse(data, request.questions, {
     provider: state.provider,
     model,
   });

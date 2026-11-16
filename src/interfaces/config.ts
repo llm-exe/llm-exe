@@ -15,7 +15,9 @@ export type LlmProvider =
   | "google.chat"
   | "ollama.chat"
   | "deepseek.chat"
-  | "openai.decisions";
+  | "openai.decisions"
+  | "typesafe.systemone"
+  | "cloudflare.clef";
 
 export interface Config<Pk = LlmProviderKey> {
   /**

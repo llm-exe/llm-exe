@@ -109,6 +109,8 @@ export type {
   DecisionExecutorInput,
   DecisionModelKey,
   OpenAiDecisionModelOptions,
+  TypeSafeDecisionModelOptions,
+  CloudflareDecisionModelOptions,
 } from "./interfaces";
 
 export type {

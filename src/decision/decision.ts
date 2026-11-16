@@ -8,7 +8,7 @@ import type {
 import { apiRequestWrapper } from "@/utils/modules/requestWrapper";
 import { getDecisionConfig } from "./config";
 import { createDecision_call } from "./decision.call";
-import { OPENAI_MAX_QUESTIONS } from "./openai";
+import { getDecisionAdapter } from "./adapters";
 
 /**
  * A decision model: takes an input plus typed questions and returns
@@ -22,6 +22,7 @@ export function useDecisionModel<K extends DecisionModelKey>(
   options?: AllDecisionModels[K]["input"],
 ) {
   const config = getDecisionConfig(key);
+  const { maxQuestions } = getDecisionAdapter(config.provider);
   const wrapper = apiRequestWrapper<
     DecisionResult<DecisionQuestionMap>,
     DecisionRequest
@@ -30,7 +31,7 @@ export function useDecisionModel<K extends DecisionModelKey>(
     ...wrapper,
     key: config.key,
     /** Most questions this model accepts in one request. */
-    maxQuestions: OPENAI_MAX_QUESTIONS,
+    maxQuestions,
   };
 }
 

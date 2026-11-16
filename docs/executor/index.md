@@ -26,7 +26,7 @@ An LLM executor's input and output types are determined by the prompt and parser
 ```typescript
 import { useLlm, createChatPrompt, createLlmExecutor } from "llm-exe";
 
-const llm = useLlm("openai.gpt-4o-mini");
+const llm = useLlm("openai.gpt-6-luna");
 const instruction = `You are a customer support agent. Reply to the user's message.\n{{input}}`;
 const prompt = createChatPrompt<{ input: string }>(instruction);
 
@@ -43,7 +43,7 @@ const response = await executor.execute({ input: "Hello!" });
 ```typescript
 import { useLlm, createChatPrompt, createParser, createLlmExecutor } from "llm-exe";
 
-const llm = useLlm("openai.gpt-4o-mini");
+const llm = useLlm("openai.gpt-6-luna");
 const instruction = `You are a customer support agent. Reply to the user's message as JSON.\n{{input}}`;
 const prompt = createChatPrompt<{ input: string }>(instruction);
 const parser = createParser("json");
@@ -78,7 +78,8 @@ If you need tool/function calling support, use `createLlmFunctionExecutor`. It e
 ```typescript
 import { useLlm, createChatPrompt, createLlmFunctionExecutor } from "llm-exe";
 
-const llm = useLlm("openai.gpt-4o-mini");
+// gpt-6-luna only accepts function tools with effort "none"
+const llm = useLlm("openai.gpt-6-luna", { effort: "none" });
 const prompt = createChatPrompt("You are a helpful assistant.");
 
 const executor = createLlmFunctionExecutor({

@@ -30,9 +30,12 @@ Log the duration of every LLM call:
 const classifier = createLlmExecutor({ name: "classify-ticket", llm, prompt, parser });
 
 classifier.on("onComplete", (exec, meta) => {
-  logger.info(`${meta.name} finished in ${exec.end - exec.start}ms`, {
-    executions: meta.executions,
-  });
+  // start and end are typed number | null, so guard before subtracting
+  if (exec.start !== null && exec.end !== null) {
+    logger.info(`${meta.name} finished in ${exec.end - exec.start}ms`, {
+      executions: meta.executions,
+    });
+  }
 });
 ```
 
@@ -235,7 +238,9 @@ Use `.once()` to add a hook that fires on the next execution only and then detac
 const executor = createLlmExecutor({ llm, prompt });
 
 executor.once("onComplete", (exec) => {
-  console.log(`first run took ${exec.end - exec.start}ms`);
+  if (exec.start !== null && exec.end !== null) {
+    console.log(`first run took ${exec.end - exec.start}ms`);
+  }
 });
 
 await executor.execute({});

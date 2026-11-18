@@ -78,6 +78,19 @@ describe("makeHandlebarsInstanceAsync", () => {
     );
   });
 
+  it("compiles every template with noEscape when created with { noEscape: true }", async () => {
+    const raw = `a & b's <c>`;
+    const noEscape = makeHandlebarsInstanceAsync(Handlebars, {
+      noEscape: true,
+    });
+    noEscape.registerHelper("asyncRaw", () => Promise.resolve(raw));
+    await expect(noEscape.compile("{{v}}")({ v: raw })).resolves.toBe(raw);
+    await expect(noEscape.compile("{{asyncRaw}}")({})).resolves.toBe(raw);
+    await expect(hbs.compile("{{v}}")({ v: raw })).resolves.toBe(
+      "a &amp; b&#x27;s &lt;c&gt;"
+    );
+  });
+
   it("resolves multiple async helpers in one template", async () => {
     hbs.registerHelper("d", (v: number) =>
       Promise.resolve(String(v * 2))

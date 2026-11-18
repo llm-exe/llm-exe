@@ -1,5 +1,5 @@
 import { PromptTemplateOptions } from "@/types";
-import { hbsAsync } from "./handlebars";
+import { hbsAsync, hbsAsyncNoEscape } from "./handlebars";
 
 export async function replaceTemplateStringAsync(
   templateString?: string,
@@ -10,23 +10,21 @@ export async function replaceTemplateStringAsync(
   }
 ) {
   if (!templateString) return Promise.resolve(templateString || "");
+  const instance = configuration?.noEscape ? hbsAsyncNoEscape : hbsAsync;
   const tempHelpers = [];
   const tempPartials = [];
 
   if (Array.isArray(configuration.helpers)) {
-    hbsAsync.registerHelpers(configuration.helpers);
+    instance.registerHelpers(configuration.helpers);
     tempHelpers.push(...configuration.helpers.map((a) => a.name));
   }
 
   if (Array.isArray(configuration.partials)) {
-    hbsAsync.registerPartials(configuration.partials);
+    instance.registerPartials(configuration.partials);
     tempPartials.push(...configuration.partials.map((a) => a.name));
   }
 
-  const template = hbsAsync.handlebars.compile(
-    templateString,
-    configuration?.noEscape ? { noEscape: true } : undefined
-  );
+  const template = instance.handlebars.compile(templateString);
   const res = await (template(substitutions, {
     allowedProtoMethods: {
       substring: true,
@@ -34,11 +32,11 @@ export async function replaceTemplateStringAsync(
   }) as unknown as Promise<string>);
 
   tempHelpers.forEach(function (n) {
-    hbsAsync.handlebars.unregisterHelper(n);
+    instance.handlebars.unregisterHelper(n);
   });
 
   tempPartials.forEach(function (n) {
-    hbsAsync.handlebars.unregisterPartial(n);
+    instance.handlebars.unregisterPartial(n);
   });
 
   return res;

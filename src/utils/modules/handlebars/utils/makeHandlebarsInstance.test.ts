@@ -53,6 +53,15 @@ describe("makeHandlebarsInstance", () => {
     ).toBeDefined();
   });
 
+  it("compiles every template with noEscape when created with { noEscape: true }", () => {
+    const raw = `a & b's <c>`;
+    const noEscape = makeHandlebarsInstance(Handlebars, { noEscape: true });
+    expect(noEscape.compile("{{v}}")({ v: raw })).toBe(raw);
+    expect(makeHandlebarsInstance(Handlebars).compile("{{v}}")({ v: raw })).toBe(
+      "a &amp; b&#x27;s &lt;c&gt;"
+    );
+  });
+
   it("should register context partials", () => {
     (contextPartials as any).partials = { partial1: "<div>Partial 1</div>" };
     handlebarsInstance = makeHandlebarsInstance(Handlebars);

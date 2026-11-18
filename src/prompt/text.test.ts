@@ -230,6 +230,7 @@ describe("llm-exe:prompt/TextPrompt", () => {
     }
   });
 });
+
 describe("TextPrompt noEscape option (#961)", () => {
   const raw = `What's "<b>a</b>" & b < c`;
   it("escapes by default", () => {

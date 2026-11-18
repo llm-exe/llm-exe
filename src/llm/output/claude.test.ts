@@ -138,7 +138,10 @@ describe("llm-exe:output/OutputAnthropicClaude3Chat", () => {
         },
       },
     };
-    const output = OutputAnthropicClaude3Chat(mockWithoutModel as any, config as any);
+    const output = OutputAnthropicClaude3Chat(
+      mockWithoutModel as any,
+      config as any,
+    );
     expect(output.name).toBe("claude-from-config");
   });
 
@@ -159,11 +162,151 @@ describe("llm-exe:output/OutputAnthropicClaude3Chat", () => {
   });
 
   it("returns zero usage instead of NaN when body and headers carry no counts", () => {
-    const output = OutputAnthropicClaude3Chat({ ...mock, usage: undefined } as any);
+    const output = OutputAnthropicClaude3Chat({
+      ...mock,
+      usage: undefined,
+    } as any);
     expect(output.usage).toEqual({
       input_tokens: 0,
       output_tokens: 0,
       total_tokens: 0,
+    });
+  });
+
+  describe("malformed and mixed responses", () => {
+    it("skips unknown block types (thinking, server_tool_use) and keeps order", () => {
+      const output = OutputAnthropicClaude3Chat({
+        ...mock,
+        content: [
+          { type: "thinking", thinking: "hmm", signature: "sig" },
+          { type: "text", text: "first" },
+          {
+            type: "server_tool_use",
+            id: "srv_1",
+            name: "web_search",
+            input: {},
+          },
+          { type: "tool_use", id: "tu_1", name: "fn", input: { a: 1 } },
+          { type: "text", text: "last" },
+        ],
+      } as any);
+      expect(output.content).toEqual([
+        { type: "text", text: "first" },
+        {
+          type: "function_use",
+          functionId: "tu_1",
+          name: "fn",
+          input: { a: 1 },
+        },
+        { type: "text", text: "last" },
+      ]);
+    });
+
+    it("treats null content as empty content", () => {
+      expect(
+        OutputAnthropicClaude3Chat({ ...mock, content: null } as any).content,
+      ).toEqual([]);
+    });
+
+    it("keeps empty-string text blocks rather than dropping them", () => {
+      const output = OutputAnthropicClaude3Chat({
+        ...mock,
+        content: [{ type: "text", text: "" }],
+      } as any);
+      expect(output.content).toEqual([{ type: "text", text: "" }]);
+    });
+
+    it("maps tool_use with empty input", () => {
+      const output = OutputAnthropicClaude3Chat({
+        ...mock,
+        content: [{ type: "tool_use", id: "tu_2", name: "noargs", input: {} }],
+      } as any);
+      expect(output.content).toEqual([
+        { type: "function_use", functionId: "tu_2", name: "noargs", input: {} },
+      ]);
+    });
+
+    it("prefers body usage over Bedrock headers when both are present", () => {
+      const output = OutputAnthropicClaude3Chat(mock as any, undefined, {
+        "x-amzn-bedrock-input-token-count": "999",
+        "x-amzn-bedrock-output-token-count": "999",
+      });
+      expect(output.usage).toEqual({
+        input_tokens: 427,
+        output_tokens: 1,
+        total_tokens: 428,
+      });
+    });
+
+    it("fills a missing body output count from headers but keeps body input", () => {
+      const output = OutputAnthropicClaude3Chat(
+        { ...mock, usage: { input_tokens: 10 } } as any,
+        undefined,
+        { "x-amzn-bedrock-output-token-count": "7" },
+      );
+      expect(output.usage).toEqual({
+        input_tokens: 10,
+        output_tokens: 7,
+        total_tokens: 17,
+      });
+    });
+
+    it("does not add body cache counts to a header-derived input count", () => {
+      const output = OutputAnthropicClaude3Chat(
+        {
+          ...mock,
+          usage: { output_tokens: 2, cache_read_input_tokens: 50 },
+        } as any,
+        undefined,
+        { "x-amzn-bedrock-input-token-count": "100" },
+      );
+      expect(output.usage.input_tokens).toBe(100);
+      expect(output.usage.cache_read_input_tokens).toBe(50);
+      expect(output.usage.total_tokens).toBe(102);
+    });
+
+    it("treats input_tokens: 0 as present (adds cache counts, ignores headers)", () => {
+      const output = OutputAnthropicClaude3Chat(
+        {
+          ...mock,
+          usage: {
+            input_tokens: 0,
+            output_tokens: 3,
+            cache_read_input_tokens: 20,
+            cache_creation_input_tokens: 5,
+          },
+        } as any,
+        undefined,
+        { "x-amzn-bedrock-input-token-count": "999" },
+      );
+      expect(output.usage).toEqual({
+        input_tokens: 25,
+        output_tokens: 3,
+        total_tokens: 28,
+        cache_read_input_tokens: 20,
+        cache_creation_input_tokens: 5,
+      });
+    });
+
+    it("copies cache_creation instead of aliasing the response object", () => {
+      const cache_creation = { ephemeral_5m_input_tokens: 4 };
+      const output = OutputAnthropicClaude3Chat({
+        ...mock,
+        usage: { input_tokens: 1, output_tokens: 1, cache_creation },
+      } as any);
+      expect(output.usage.cache_creation).toEqual(cache_creation);
+      expect(output.usage.cache_creation).not.toBe(cache_creation);
+    });
+
+    it("passes stop_reason through, including tool_use and null", () => {
+      expect(
+        OutputAnthropicClaude3Chat({ ...mock, stop_reason: "tool_use" } as any)
+          .stopReason,
+      ).toBe("tool_use");
+      expect(
+        OutputAnthropicClaude3Chat({ ...mock, stop_reason: null } as any)
+          .stopReason,
+      ).toBeNull();
     });
   });
 });

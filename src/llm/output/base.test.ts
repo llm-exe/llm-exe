@@ -113,11 +113,10 @@ describe("llm-exe:output/BaseLlmOutput", () => {
     expect(output.getResultText()).toBe("Test content");
   });
 
-  it("getResultText with index > 0 returns text from options[index][0]", () => {
+  it("getResultText with index > 0 returns text from options[index - 1][0]", () => {
     const mockWithOptions = {
       ...mockResult,
       options: [
-        [{ type: "text", text: "primary" }] as OutputResultContent[],
         [{ type: "text", text: "alternative-1" }] as OutputResultContent[],
         [{ type: "text", text: "alternative-2" }] as OutputResultContent[],
       ],

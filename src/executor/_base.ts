@@ -337,7 +337,7 @@ export abstract class BaseExecutor<
             if (this.hooks[hookKey].length >= this.maxHooksPerEvent) {
               throw new LlmExeError(
                 `Maximum number of hooks (${this.maxHooksPerEvent}) reached for event "${String(hookKey)}". ` +
-                  `Consider removing unused hooks or increasing the limit.`,
+                  `This limit is fixed. Remove unused hooks with off() or clearHooks(), and avoid registering hooks on every request.`,
                 {
                   code: "executor.hook_limit_reached",
                   context: {
@@ -414,7 +414,7 @@ export abstract class BaseExecutor<
     ) {
       throw new LlmExeError(
         `Maximum number of hooks (${this.maxHooksPerEvent}) reached for event "${String(eventName)}". ` +
-          `Consider removing unused hooks or increasing the limit.`,
+          `This limit is fixed. Remove unused hooks with off() or clearHooks(), and avoid registering hooks on every request.`,
         {
           code: "executor.hook_limit_reached",
           context: {

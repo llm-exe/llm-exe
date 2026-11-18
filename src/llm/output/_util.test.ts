@@ -43,12 +43,19 @@ describe("normalizeFinishReason", () => {
 });
 
 describe("formatOptions", () => {
-  const handler = (i: any) => (i % 2 === 0 ? { content: i } : null);
+  // Handlers (each provider's formatResult) already return OutputResultContent[].
+  const handler = (i: any) => (i % 2 === 0 ? [{ content: i }] : null);
 
   it("should format response items that pass handler check", () => {
     const response = [1, 2, 3, 4];
     const result = formatOptions(response, handler);
     expect(result).toEqual([[{ content: 2 }], [{ content: 4 }]]);
+  });
+
+  it("does not wrap the handler's array in another array", () => {
+    const result = formatOptions([2], handler);
+    expect(result[0]).toEqual([{ content: 2 }]);
+    expect(Array.isArray(result[0][0])).toBe(false);
   });
 
   it("should return empty array if none of the items pass handler check", () => {

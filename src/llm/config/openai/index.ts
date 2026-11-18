@@ -29,6 +29,13 @@ const openAiChatV1: Config = createOpenAiCompatibleConfiguration({
   // the live API 2026-10-08), so that is the only effort under which they are
   // forwarded.
   reasoningSamplingAllowedEfforts: ["none"],
+  // gpt-6-luna 400s on function tools in /v1/chat/completions unless
+  // reasoning_effort is "none" ("Function tools with reasoning_effort are not
+  // supported"), and its default effort is not "none". It is the migration
+  // target for the gpt-4o / gpt-4.1 shorthands, so default to "none" when tools
+  // are sent and the caller left `effort` unset (#964).
+  toolCallDefaultEffort: (model) =>
+    model.startsWith("gpt-6-luna") ? "none" : undefined,
 });
 
 const openAiChatMockV1: Config = {

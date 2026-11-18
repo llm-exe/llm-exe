@@ -380,6 +380,51 @@ describe("createOpenAiCompatibleConfiguration", () => {
     });
   });
 
+  describe("toolCallDefaultEffort", () => {
+    const base = {
+      key: "custom.chat.v1",
+      provider: "custom.chat",
+      endpoint: "https://api.custom.com/v1/chat/completions",
+      apiKeyMapping: ["customApiKey", "CUSTOM_API_KEY"] as [string, string],
+    };
+    const fns = [{ name: "lookup", description: "d" }];
+
+    it("adds the default effort when tools are sent and reasoning_effort is unset", () => {
+      const config = createOpenAiCompatibleConfiguration({
+        ...base,
+        toolCallDefaultEffort: (m) => (m === "m1" ? "none" : undefined),
+      });
+      const out = config.mapOptions!.functions!(fns, {}, { model: "m1" });
+      expect(out.reasoning_effort).toBe("none");
+      expect(out.tools).toHaveLength(1);
+    });
+
+    it("keeps an existing reasoning_effort", () => {
+      const config = createOpenAiCompatibleConfiguration({
+        ...base,
+        toolCallDefaultEffort: () => "none",
+      });
+      const out = config.mapOptions!.functions!(
+        fns,
+        {},
+        { model: "m1", reasoning_effort: "high" }
+      );
+      expect(out).not.toHaveProperty("reasoning_effort");
+    });
+
+    it("adds nothing when the hook returns undefined or is not set", () => {
+      const withHook = createOpenAiCompatibleConfiguration({
+        ...base,
+        toolCallDefaultEffort: () => undefined,
+      });
+      const without = createOpenAiCompatibleConfiguration(base);
+      for (const config of [withHook, without]) {
+        const out = config.mapOptions!.functions!(fns, {}, { model: "m1" });
+        expect(out).not.toHaveProperty("reasoning_effort");
+      }
+    });
+  });
+
   describe("mapOptions", () => {
     it("replaces only the overridden mappings when mapOptions is provided", () => {
       const jsonSchema = jest.fn(() => ({

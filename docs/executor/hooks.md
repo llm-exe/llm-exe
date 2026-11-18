@@ -245,7 +245,7 @@ await executor.execute({}); // the once handler no longer fires
 To cancel a pending `.once()` before it fires, pass the same function to `.off()`.
 
 ::: tip
-Default behavior is to not add the same handler to the same hook more than once. There is also a per-event hook limit to prevent unbounded memory growth — if you hit it, remove unused hooks with `.off()` rather than piling on new ones.
+Default behavior is to not add the same handler to the same hook more than once. Each event also has a fixed limit of 100 hooks per executor, which catches code that registers a new hook on every request. Going past it throws an `LlmExeError` with code `executor.hook_limit_reached`. The limit can't be changed, so remove unused hooks with `.off()` or `.clearHooks()` instead.
 :::
 
 #### Clearing hooks

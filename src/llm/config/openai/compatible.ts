@@ -34,8 +34,9 @@ export function createOpenAiCompatibleConfiguration<
    * Effort to send as `reasoning_effort` when tools are attached and the
    * caller did not set `effort`. Return `undefined` to send nothing. OpenAI's
    * gpt-6-luna rejects function tools on /v1/chat/completions at its default
-   * effort and only accepts them under `reasoning_effort: "none"` (#964). An
-   * explicit caller `effort` is never overridden.
+   * effort and only accepts them under `reasoning_effort: "none"` (#964). A
+   * caller `effort` from `reasoningEfforts` is never overridden. One outside
+   * that list is dropped by the effort transform, so this default applies.
    */
   toolCallDefaultEffort?: (model: string) => string | undefined;
   mapOptions?: Config["mapOptions"];

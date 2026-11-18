@@ -1,5 +1,5 @@
 import { PromptTemplateOptions } from "@/types";
-import { hbs } from "@/utils/modules/handlebars";
+import { hbs, hbsNoEscape } from "@/utils/modules/handlebars";
 
 export function replaceTemplateString(
   templateString?: string,
@@ -11,20 +11,21 @@ export function replaceTemplateString(
 ): string {
   if (!templateString) return templateString || "";
 
+  const instance = configuration?.noEscape ? hbsNoEscape : hbs;
   const tempHelpers = [];
   const tempPartials = [];
 
   if (Array.isArray(configuration.helpers)) {
-    hbs.registerHelpers(configuration.helpers);
+    instance.registerHelpers(configuration.helpers);
     tempHelpers.push(...configuration.helpers.map((a) => a.name));
   }
 
   if (Array.isArray(configuration.partials)) {
-    hbs.registerPartials(configuration.partials);
+    instance.registerPartials(configuration.partials);
     tempPartials.push(...configuration.partials.map((a) => a.name));
   }
 
-  const template = hbs.handlebars.compile(templateString);
+  const template = instance.handlebars.compile(templateString);
   const res = template(substitutions, {
     allowedProtoMethods: {
       substring: true,
@@ -32,13 +33,12 @@ export function replaceTemplateString(
   });
 
   tempHelpers.forEach(function (n) {
-    hbs.handlebars.unregisterHelper(n);
+    instance.handlebars.unregisterHelper(n);
   });
 
   tempPartials.forEach(function (n) {
-    hbs.handlebars.unregisterPartial(n);
+    instance.handlebars.unregisterPartial(n);
   });
 
   return res;
 }
-

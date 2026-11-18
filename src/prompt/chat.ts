@@ -372,6 +372,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
                 content: this.replaceTemplateString(content, replacements, {
                   partials: this.partials,
                   helpers: this.helpers,
+                  noEscape: this.noEscape,
                 }),
               };
 
@@ -396,6 +397,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
                     text: this.replaceTemplateString(m.text, replacements, {
                       partials: this.partials,
                       helpers: this.helpers,
+                      noEscape: this.noEscape,
                     }),
                   }
                 : m
@@ -403,6 +405,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
           : this.replaceTemplateString(message.content, replacements, {
               partials: this.partials,
               helpers: this.helpers,
+              noEscape: this.noEscape,
             });
         messagesOut.push(Object.assign({}, message, { content }));
       } else {
@@ -419,6 +422,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
                         {
                           partials: this.partials,
                           helpers: this.helpers,
+                          noEscape: this.noEscape,
                         }
                       ),
                       this.filters.post,
@@ -436,6 +440,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
                 {
                   partials: this.partials,
                   helpers: this.helpers,
+                  noEscape: this.noEscape,
                 }
               ),
               this.filters.post,
@@ -568,6 +573,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
                   {
                     partials: this.partials,
                     helpers: this.helpers,
+                    noEscape: this.noEscape,
                   }
                 ),
               };
@@ -595,6 +601,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
                       {
                         partials: this.partials,
                         helpers: this.helpers,
+                        noEscape: this.noEscape,
                       }
                     ),
                   }
@@ -609,6 +616,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
             {
               partials: this.partials,
               helpers: this.helpers,
+              noEscape: this.noEscape,
             }
           );
         }
@@ -630,6 +638,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
                       {
                         partials: this.partials,
                         helpers: this.helpers,
+                        noEscape: this.noEscape,
                       }
                     ),
                     this.filters.post,
@@ -650,6 +659,7 @@ export class ChatPrompt<I extends Record<string, any>> extends BasePrompt<I> {
                 {
                   partials: this.partials,
                   helpers: this.helpers,
+                  noEscape: this.noEscape,
                 }
               ),
               this.filters.post,

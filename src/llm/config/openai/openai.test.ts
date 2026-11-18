@@ -291,6 +291,106 @@ describe("openai configuration", () => {
     });
   });
 
+  describe("gpt-6-luna tool calls default reasoning_effort to none (#964)", () => {
+    const originalFetch = globalThis.fetch;
+    let outgoingBody: Record<string, any> = {};
+    const getWeather = {
+      name: "get_weather",
+      description: "Get the weather",
+      parameters: {
+        type: "object",
+        properties: { city: { type: "string" } },
+        required: ["city"],
+      },
+    };
+    const messages = [{ role: "user" as const, content: "Weather in Paris?" }];
+
+    beforeEach(() => {
+      outgoingBody = {};
+      globalThis.fetch = (async (_url: any, init: any) => {
+        outgoingBody = JSON.parse(init?.body);
+        return new Response(
+          JSON.stringify({
+            id: "chatcmpl-test",
+            object: "chat.completion",
+            created: 0,
+            model: "gpt-test",
+            choices: [
+              {
+                index: 0,
+                message: { role: "assistant", content: "ok" },
+                finish_reason: "stop",
+              },
+            ],
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }) as typeof fetch;
+    });
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    it("shorthand: sends reasoning_effort none when tools are present and effort is unset", async () => {
+      const llm = useLlm("openai.gpt-6-luna", { openAiApiKey: "sk-test" });
+      await llm.call(messages, {
+        functionCall: "auto",
+        functions: [getWeather],
+      });
+      expect(outgoingBody.model).toBe("gpt-6-luna");
+      expect(outgoingBody.tools).toHaveLength(1);
+      expect(outgoingBody.tool_choice).toBe("auto");
+      expect(outgoingBody.reasoning_effort).toBe("none");
+    });
+
+    it("options path: applies to openai.chat.v1 with model gpt-6-luna", async () => {
+      const llm = useLlm("openai.chat.v1", {
+        model: "gpt-6-luna",
+        openAiApiKey: "sk-test",
+      });
+      await llm.call(messages, { functions: [getWeather] });
+      expect(outgoingBody.reasoning_effort).toBe("none");
+    });
+
+    it("does not override an explicit effort", async () => {
+      const llm = useLlm("openai.gpt-6-luna", {
+        effort: "low",
+        openAiApiKey: "sk-test",
+      });
+      await llm.call(messages, { functions: [getWeather] });
+      expect(outgoingBody.reasoning_effort).toBe("low");
+    });
+
+    it("does not send reasoning_effort without tools", async () => {
+      const llm = useLlm("openai.gpt-6-luna", { openAiApiKey: "sk-test" });
+      await llm.call(messages);
+      expect(outgoingBody.reasoning_effort).toBeUndefined();
+    });
+
+    it("does not affect other models with tools", async () => {
+      for (const model of ["gpt-6-astra", "gpt-5.6-sol", "gpt-4o-mini"]) {
+        const llm = useLlm("openai.chat.v1", {
+          model,
+          openAiApiKey: "sk-test",
+        });
+        await llm.call(messages, { functions: [getWeather] });
+        expect(outgoingBody.model).toBe(model);
+        expect(outgoingBody.reasoning_effort).toBeUndefined();
+      }
+    });
+
+    it("extraBody still wins over the default", async () => {
+      const llm = useLlm("openai.gpt-6-luna", {
+        openAiApiKey: "sk-test",
+        extraBody: { reasoning_effort: "medium" },
+      });
+      await llm.call(messages, { functions: [getWeather] });
+      expect(outgoingBody.reasoning_effort).toBe("medium");
+    });
+  });
+
   describe("openai.chat.v1 mapOptions", () => {
     it("should transform functionCall 'any' to 'required'", () => {
       const result = openAiChatV1.mapOptions!.functionCall!("any", {});

@@ -1,23 +1,23 @@
-import { _hbs, _hbsAsync } from "./hbs";
+import type Handlebars from "handlebars";
+import { _hbs, _hbsAsync, _hbsAsyncNoEscape, _hbsNoEscape } from "./hbs";
 import { _registerHelpers } from "./utils/registerHelpers";
 import { _registerPartials } from "./utils/registerPartials";
 
-export const hbs = {
-  handlebars: _hbs,
-  registerHelpers: (helpers: any[]) => {
-    _registerHelpers(helpers, _hbs);
-  },
-  registerPartials: (partials: any[]) => {
-    _registerPartials(partials, _hbs);
-  },
-};
+function withRegistration<H extends typeof Handlebars>(handlebars: H) {
+  return {
+    handlebars,
+    registerHelpers: (helpers: any[]) => {
+      _registerHelpers(helpers, handlebars);
+    },
+    registerPartials: (partials: any[]) => {
+      _registerPartials(partials, handlebars);
+    },
+  };
+}
 
-export const hbsAsync = {
-  handlebars: _hbsAsync,
-  registerHelpers: (helpers: any[]) => {
-    _registerHelpers(helpers, _hbsAsync);
-  },
-  registerPartials: (partials: any[]) => {
-    _registerPartials(partials, _hbsAsync);
-  },
-};
+export const hbs = withRegistration(_hbs);
+export const hbsAsync = withRegistration(_hbsAsync);
+
+/** Every template compiled on these skips HTML escaping. See hbs.ts. */
+export const hbsNoEscape = withRegistration(_hbsNoEscape);
+export const hbsAsyncNoEscape = withRegistration(_hbsAsyncNoEscape);

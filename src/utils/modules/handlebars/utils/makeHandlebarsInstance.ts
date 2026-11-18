@@ -5,8 +5,19 @@ import { _registerHelpers } from "@/utils/modules/handlebars/utils/registerHelpe
 import * as contextPartials from "@/utils/modules/handlebars/templates";
 import * as helpers from "@/utils/modules/handlebars/helpers";
 
-export function makeHandlebarsInstance(hbs: typeof Handlebars) {
+export function makeHandlebarsInstance(
+  hbs: typeof Handlebars,
+  { noEscape = false }: { noEscape?: boolean } = {}
+) {
   const handlebars = hbs.create();
+
+  if (noEscape) {
+    // Set on the instance, not per call, so the partials Handlebars compiles
+    // lazily and the hbsInTemplate helper below get it too.
+    const compile = handlebars.compile;
+    handlebars.compile = (input, options) =>
+      compile.call(handlebars, input, { ...options, noEscape: true });
+  }
 
   const helperKeys = Object.keys(helpers) as (keyof typeof helpers)[];
   _registerHelpers(

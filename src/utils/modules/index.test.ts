@@ -1,5 +1,5 @@
 import * as utils from "./index"
-import { hbs, hbsAsync } from "./handlebars";
+import { hbs, hbsAsync, hbsAsyncNoEscape, hbsNoEscape } from "./handlebars";
 
 jest.mock("./handlebars", () => ({
   hbs: {
@@ -7,6 +7,14 @@ jest.mock("./handlebars", () => ({
     registerPartials: jest.fn(),
   },
   hbsAsync: {
+    registerHelpers: jest.fn(),
+    registerPartials: jest.fn(),
+  },
+  hbsNoEscape: {
+    registerHelpers: jest.fn(),
+    registerPartials: jest.fn(),
+  },
+  hbsAsyncNoEscape: {
     registerHelpers: jest.fn(),
     registerPartials: jest.fn(),
   },
@@ -32,22 +40,24 @@ describe("exports correct utils", () => {
   });
 
   describe("registerHelpers", () => {
-    it("calls both hbs and hbsAsync registerHelpers", () => {
+    it("registers on every instance, including the noEscape ones", () => {
       const helpers = [{ name: "test", fn: () => {} }];
       utils.registerHelpers(helpers);
-      
-      expect(hbs.registerHelpers).toHaveBeenCalledWith(helpers);
-      expect(hbsAsync.registerHelpers).toHaveBeenCalledWith(helpers);
+
+      for (const instance of [hbs, hbsAsync, hbsNoEscape, hbsAsyncNoEscape]) {
+        expect(instance.registerHelpers).toHaveBeenCalledWith(helpers);
+      }
     });
   });
 
   describe("registerPartials", () => {
-    it("calls both hbs and hbsAsync registerPartials", () => {
+    it("registers on every instance, including the noEscape ones", () => {
       const partials = [{ name: "test", template: "{{test}}" }];
       utils.registerPartials(partials);
-      
-      expect(hbs.registerPartials).toHaveBeenCalledWith(partials);
-      expect(hbsAsync.registerPartials).toHaveBeenCalledWith(partials);
+
+      for (const instance of [hbs, hbsAsync, hbsNoEscape, hbsAsyncNoEscape]) {
+        expect(instance.registerPartials).toHaveBeenCalledWith(partials);
+      }
     });
   });
 })

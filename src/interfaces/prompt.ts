@@ -8,6 +8,12 @@ export type ValidateInputMode = false | "strict" | "warn";
 export interface PromptTemplateOptions {
   partials?: PromptPartial[];
   helpers?: PromptHelper[];
+  /**
+   * When `true`, `{{var}}` inserts values as-is instead of HTML-escaping them
+   * (Handlebars' `noEscape` compile option). Defaults to `false`, so
+   * `"What's"` renders as `"What&#x27;s"` unless you opt in or use `{{{var}}}`.
+   */
+  noEscape?: boolean;
 }
 
 export interface PromptOptions extends PromptTemplateOptions {

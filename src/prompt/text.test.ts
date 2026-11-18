@@ -230,3 +230,17 @@ describe("llm-exe:prompt/TextPrompt", () => {
     }
   });
 });
+
+describe("TextPrompt noEscape option (#961)", () => {
+  const raw = `What's "<b>a</b>" & b < c`;
+  it("escapes by default", () => {
+    expect(new TextPrompt<{ q: string }>("{{q}}").format({ q: raw })).toBe(
+      "What&#x27;s &quot;&lt;b&gt;a&lt;/b&gt;&quot; &amp; b &lt; c"
+    );
+  });
+  it("passes values through with noEscape: true (sync and async)", async () => {
+    const p = new TextPrompt<{ q: string }>("{{q}}", { noEscape: true });
+    expect(p.format({ q: raw })).toBe(raw);
+    await expect(p.formatAsync({ q: raw })).resolves.toBe(raw);
+  });
+});

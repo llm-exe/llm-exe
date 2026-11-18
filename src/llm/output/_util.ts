@@ -35,7 +35,7 @@ export function formatOptions(response: any[], handler: (i: any) => any) {
   for (const item of response) {
     const result = handler(item);
     if (result) {
-      out.push([result]);
+      out.push(result);
     }
   }
   return out;

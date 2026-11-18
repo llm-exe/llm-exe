@@ -13,7 +13,10 @@ export type HandlebarsAsync = typeof Handlebars & {
 };
 
 /** From: https://github.com/gastonrobledo/handlebars-async-helpers/blob/main/index.js */
-export function makeHandlebarsInstanceAsync(hbs: any) {
+export function makeHandlebarsInstanceAsync(
+  hbs: any,
+  { noEscape = false }: { noEscape?: boolean } = {}
+) {
   const handlebars: typeof Handlebars = hbs.create();
   const asyncCompiler = class extends hbs.JavaScriptCompiler {
     constructor() {
@@ -115,7 +118,11 @@ export function makeHandlebarsInstanceAsync(hbs: any) {
   };
 
   handlebars.compile = function (template: any, options: any) {
-    const compiled = _compile.apply(handlebars, [template, { ...options }]);
+    // Partials compiled lazily come through here too, so they get noEscape.
+    const compiled = _compile.apply(handlebars, [
+      template,
+      noEscape ? { ...options, noEscape: true } : { ...options },
+    ]);
 
     return function (context: any, execOptions: any) {
       /* istanbul ignore next */

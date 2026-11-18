@@ -17,14 +17,16 @@ export {
   isObjectStringified,
 } from "./json";
 
-import { hbs, hbsAsync } from "./handlebars";
+import { hbs, hbsAsync, hbsAsyncNoEscape, hbsNoEscape } from "./handlebars";
+
+// Global helpers and partials go on every instance, so prompts can use them
+// with or without noEscape.
+const allInstances = [hbs, hbsAsync, hbsNoEscape, hbsAsyncNoEscape];
 
 export function registerHelpers(helpers: any[]) {
-  hbs.registerHelpers(helpers);
-  hbsAsync.registerHelpers(helpers);
+  for (const instance of allInstances) instance.registerHelpers(helpers);
 }
 
 export function registerPartials(partials: any[]) {
-  hbs.registerPartials(partials);
-  hbsAsync.registerPartials(partials);
+  for (const instance of allInstances) instance.registerPartials(partials);
 }

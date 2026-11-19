@@ -1,3 +1,4 @@
+import { BaseLlmOutput } from "@/llm/output/base";
 import { OpenAiResponse } from "@/interfaces";
 import { OutputDeepSeekChat } from "@/llm/output/deepseek";
 
@@ -70,7 +71,6 @@ describe("llm-exe:output/OutputDeepSeekChat", () => {
     });
   });
 
-
   it("handles tool_calls when content is null", () => {
     const output = OutputDeepSeekChat({
       id: "chatcmpl-7KfsdfdsfZj1waHPfsdEZ",
@@ -103,9 +103,14 @@ describe("llm-exe:output/OutputDeepSeekChat", () => {
         },
       ],
     } as unknown as OpenAiResponse);
-    expect(output.content).toEqual(
-      [{"functionId": "call_123", "input": {}, "name": "test_fn", "type": "function_use"}]
-    );
+    expect(output.content).toEqual([
+      {
+        functionId: "call_123",
+        input: {},
+        name: "test_fn",
+        type: "function_use",
+      },
+    ]);
   });
 
   it("uses default model name when model is undefined and no config", () => {
@@ -153,5 +158,87 @@ describe("llm-exe:output/OutputDeepSeekChat", () => {
     expect(output.content).toEqual([]);
     expect(output.options).toEqual([]);
     expect(output.stopReason).toBeUndefined();
+  });
+
+  describe("alternate choices via BaseLlmOutput accessors", () => {
+    const threeChoices = {
+      ...mock,
+      choices: ["A", "B", "C"].map((text, index) => ({
+        index,
+        message: { role: "assistant", content: text },
+        finish_reason: "stop",
+      })),
+    };
+
+    it("getResultText(n) returns the nth choice", () => {
+      const out = BaseLlmOutput(OutputDeepSeekChat(threeChoices as any));
+      expect(out.getResultText()).toBe("A");
+      expect(out.getResultText(0)).toBe("A");
+      expect(out.getResultText(1)).toBe("B");
+      expect(out.getResultText(2)).toBe("C");
+    });
+
+    it("getResultContent(n) returns the nth choice's content blocks", () => {
+      const out = BaseLlmOutput(OutputDeepSeekChat(threeChoices as any));
+      expect(out.getResultContent(0)).toEqual([{ type: "text", text: "A" }]);
+      expect(out.getResultContent(2)).toEqual([{ type: "text", text: "C" }]);
+    });
+
+    it("each option is a flat OutputResultContent[]", () => {
+      const raw = OutputDeepSeekChat(threeChoices as any);
+      expect(raw.options).toEqual([
+        [{ type: "text", text: "B" }],
+        [{ type: "text", text: "C" }],
+      ]);
+    });
+
+    it("normalizes tool calls in an alternate choice", () => {
+      const raw = OutputDeepSeekChat({
+        ...mock,
+        choices: [
+          threeChoices.choices[0],
+          {
+            index: 1,
+            message: {
+              role: "assistant",
+              content: null,
+              tool_calls: [
+                {
+                  id: "call_1",
+                  type: "function",
+                  function: { name: "lookup", arguments: '{"q":"x"}' },
+                },
+              ],
+            },
+            finish_reason: "tool_calls",
+          },
+        ],
+      } as any);
+      expect(raw.stopReason).toBe("stop");
+      expect(BaseLlmOutput(raw).getResultContent(1)).toEqual([
+        {
+          type: "function_use",
+          functionId: "call_1",
+          name: "lookup",
+          input: { q: "x" },
+        },
+      ]);
+    });
+  });
+
+  it("an empty-content alternate keeps later choices at their index", () => {
+    const out = BaseLlmOutput(
+      OutputDeepSeekChat({
+        ...mock,
+        choices: ["A", "", "C"].map((text, index) => ({
+          index,
+          message: { role: "assistant", content: text },
+          finish_reason: "stop",
+        })),
+      } as any),
+    );
+    expect(out.getResultContent(1)).toEqual([]);
+    expect(out.getResultText(1)).toBe("");
+    expect(out.getResultText(2)).toBe("C");
   });
 });

@@ -291,6 +291,106 @@ describe("openai configuration", () => {
     });
   });
 
+  describe("gpt-6-luna tool calls default reasoning_effort to none (#964)", () => {
+    const originalFetch = globalThis.fetch;
+    let outgoingBody: Record<string, any> = {};
+    const getWeather = {
+      name: "get_weather",
+      description: "Get the weather",
+      parameters: {
+        type: "object",
+        properties: { city: { type: "string" } },
+        required: ["city"],
+      },
+    };
+    const messages = [{ role: "user" as const, content: "Weather in Paris?" }];
+
+    beforeEach(() => {
+      outgoingBody = {};
+      globalThis.fetch = (async (_url: any, init: any) => {
+        outgoingBody = JSON.parse(init?.body);
+        return new Response(
+          JSON.stringify({
+            id: "chatcmpl-test",
+            object: "chat.completion",
+            created: 0,
+            model: "gpt-test",
+            choices: [
+              {
+                index: 0,
+                message: { role: "assistant", content: "ok" },
+                finish_reason: "stop",
+              },
+            ],
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }) as typeof fetch;
+    });
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    it("shorthand: sends reasoning_effort none when tools are present and effort is unset", async () => {
+      const llm = useLlm("openai.gpt-6-luna", { openAiApiKey: "sk-test" });
+      await llm.call(messages, {
+        functionCall: "auto",
+        functions: [getWeather],
+      });
+      expect(outgoingBody.model).toBe("gpt-6-luna");
+      expect(outgoingBody.tools).toHaveLength(1);
+      expect(outgoingBody.tool_choice).toBe("auto");
+      expect(outgoingBody.reasoning_effort).toBe("none");
+    });
+
+    it("options path: applies to openai.chat.v1 with model gpt-6-luna", async () => {
+      const llm = useLlm("openai.chat.v1", {
+        model: "gpt-6-luna",
+        openAiApiKey: "sk-test",
+      });
+      await llm.call(messages, { functions: [getWeather] });
+      expect(outgoingBody.reasoning_effort).toBe("none");
+    });
+
+    it("does not override an explicit effort", async () => {
+      const llm = useLlm("openai.gpt-6-luna", {
+        effort: "low",
+        openAiApiKey: "sk-test",
+      });
+      await llm.call(messages, { functions: [getWeather] });
+      expect(outgoingBody.reasoning_effort).toBe("low");
+    });
+
+    it("does not send reasoning_effort without tools", async () => {
+      const llm = useLlm("openai.gpt-6-luna", { openAiApiKey: "sk-test" });
+      await llm.call(messages);
+      expect(outgoingBody.reasoning_effort).toBeUndefined();
+    });
+
+    it("does not affect other models with tools", async () => {
+      for (const model of ["gpt-6-astra", "gpt-5.6-sol", "gpt-4o-mini"]) {
+        const llm = useLlm("openai.chat.v1", {
+          model,
+          openAiApiKey: "sk-test",
+        });
+        await llm.call(messages, { functions: [getWeather] });
+        expect(outgoingBody.model).toBe(model);
+        expect(outgoingBody.reasoning_effort).toBeUndefined();
+      }
+    });
+
+    it("extraBody still wins over the default", async () => {
+      const llm = useLlm("openai.gpt-6-luna", {
+        openAiApiKey: "sk-test",
+        extraBody: { reasoning_effort: "medium" },
+      });
+      await llm.call(messages, { functions: [getWeather] });
+      expect(outgoingBody.reasoning_effort).toBe("medium");
+    });
+  });
+
   describe("openai.chat.v1 mapOptions", () => {
     it("should transform functionCall 'any' to 'required'", () => {
       const result = openAiChatV1.mapOptions!.functionCall!("any", {});
@@ -417,24 +517,6 @@ describe("openai configuration", () => {
     });
   });
 
-  describe("openai.gpt-4", () => {
-    const openAiGpt4 = openai["openai.gpt-4"] as Config;
-
-    it("should be based on openAiChatV1 configuration", () => {
-      expect(openAiGpt4.endpoint).toEqual(openAiChatV1.endpoint);
-      expect(openAiGpt4.method).toEqual(openAiChatV1.method);
-      expect(openAiGpt4.headers).toEqual(openAiChatV1.headers);
-    });
-
-    it("should override model in mapBody and options as gpt-4", () => {
-      expect(openAiGpt4.mapBody.model).toEqual({
-        default: "gpt-4",
-        key: "model",
-      });
-      expect(openAiGpt4.options.model).toEqual({ default: "gpt-4" });
-    });
-  });
-
   describe("openai.gpt-6", () => {
     const openAiGpt6 = openai["openai.gpt-6"] as Config;
     const openAiGpt6Astra = openai["openai.gpt-6-astra"] as Config;
@@ -501,8 +583,6 @@ describe("openai configuration", () => {
 
   describe("deprecated shorthands still resolve", () => {
     it.each([
-      ["openai.gpt-4.1-nano", "gpt-4.1-nano"],
-      ["openai.gpt-4", "gpt-4"],
       ["openai.gpt-5-mini", "gpt-5-mini"],
       ["openai.gpt-5-nano", "gpt-5-nano"],
       ["openai.o3", "o3"],
@@ -516,7 +596,7 @@ describe("openai configuration", () => {
       }
     );
 
-    it.each(["openai.gpt-4.1-nano", "openai.gpt-4", "openai.o4-mini"] as const)(
+    it.each(["openai.o4-mini"] as const)(
       "%s should carry a deprecated payload stamped with its own shorthand",
       (shorthand) => {
         const cfg = openai[shorthand];
@@ -526,15 +606,11 @@ describe("openai configuration", () => {
       }
     );
 
-    it.each([
-      ["openai.gpt-4.1-nano", "openai.gpt-5.6-luna"],
-      ["openai.gpt-4", "openai.gpt-6-luna"],
-    ] as const)(
-      "%s should warn about the 2026-10-23 shutdown and point at %s",
-      (shorthand, replacement) => {
-        const message = openai[shorthand].deprecated!.message;
-        expect(message).toContain("2026-10-23");
-        expect(message).toContain(replacement);
+    // Models shut down 2026-10-23; their shorthands were removed (#907).
+    it.each(["openai.gpt-4.1-nano", "openai.gpt-4"])(
+      "%s is no longer a registered shorthand",
+      (shorthand) => {
+        expect(Object.keys(openai)).not.toContain(shorthand);
       }
     );
 
@@ -624,9 +700,7 @@ describe("openai configuration", () => {
       ["openai.gpt-5-nano", "gpt-5-nano"],
       ["openai.gpt-4.1", "gpt-4.1"],
       ["openai.gpt-4.1-mini", "gpt-4.1-mini"],
-      ["openai.gpt-4.1-nano", "gpt-4.1-nano"],
       ["openai.o3", "o3"],
-      ["openai.gpt-4", "gpt-4"],
       ["openai.gpt-4o", "gpt-4o"],
       ["openai.gpt-4o-mini", "gpt-4o-mini"],
       ["openai.o4-mini", "o4-mini"],
@@ -672,8 +746,6 @@ describe("openai configuration", () => {
       const nonReasoningShorthands = [
         "openai.gpt-4.1",
         "openai.gpt-4.1-mini",
-        "openai.gpt-4.1-nano",
-        "openai.gpt-4",
         "openai.gpt-4o",
         "openai.gpt-4o-mini",
       ] as const;

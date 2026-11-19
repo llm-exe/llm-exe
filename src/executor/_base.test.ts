@@ -286,6 +286,32 @@ describe("llm-exe:executor/BaseExecutor", () => {
       }
     });
 
+    it("hook_limit_reached message does not suggest raising the fixed limit", () => {
+      const executor = new MockExecutor();
+      for (let i = 0; i < executor.maxHooksPerEvent; i++) {
+        executor.on("onComplete", () => {});
+        executor.once("onSuccess", () => {});
+      }
+      const messages: string[] = [];
+      for (const register of [
+        () => executor.on("onComplete", () => {}),
+        () => executor.once("onSuccess", () => {}),
+      ]) {
+        try {
+          register();
+        } catch (e) {
+          messages.push((e as LlmExeError).message);
+        }
+      }
+      expect(messages).toHaveLength(2);
+      for (const message of messages) {
+        expect(message).not.toMatch(/increas/i);
+        expect(message).toContain("This limit is fixed.");
+        expect(message).toContain("off()");
+        expect(message).toContain("clearHooks()");
+      }
+    });
+
     it("should enforce maximum hooks for once method", () => {
       const executor = new MockExecutor();
 

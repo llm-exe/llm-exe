@@ -895,3 +895,47 @@ describe("llm-exe:prompt/ChatPrompt", () => {
     });
   });
 });
+
+describe("ChatPrompt noEscape option (#961)", () => {
+  const raw = `What's "<b>a</b>" & b < c`;
+  const escaped = "What&#x27;s &quot;&lt;b&gt;a&lt;/b&gt;&quot; &amp; b &lt; c";
+
+  it("defaults to HTML-escaping {{var}} (backwards compatible)", () => {
+    const prompt = new ChatPrompt<{ q: string }>("Sys: {{q}}");
+    prompt.addUserMessage("{{q}}");
+    expect(prompt.noEscape).toBe(false);
+    expect(prompt.format({ q: raw })).toEqual([
+      { role: "system", content: `Sys: ${escaped}` },
+      { role: "user", content: escaped },
+    ]);
+  });
+
+  it("sends values unchanged in system, user, assistant and history messages", () => {
+    const prompt = new ChatPrompt<{ q: string; h: any[] }>("Sys: {{q}}", {
+      noEscape: true,
+    });
+    prompt.addUserMessage("{{q}}");
+    prompt.addAssistantMessage("A: {{q}}");
+    prompt.addChatHistoryPlaceholder("h");
+    expect(prompt.noEscape).toBe(true);
+    expect(
+      prompt.format({ q: raw, h: [{ role: "user", content: `H: ${raw}` }] })
+    ).toEqual([
+      { role: "system", content: `Sys: ${raw}` },
+      { role: "user", content: raw },
+      { role: "assistant", content: `A: ${raw}` },
+      { role: "user", content: `H: ${raw}` },
+    ]);
+  });
+
+  it("formatAsync also respects noEscape", async () => {
+    const prompt = new ChatPrompt<{ q: string }>("Sys: {{q}}", {
+      noEscape: true,
+    });
+    prompt.addUserMessage("{{q}}");
+    await expect(prompt.formatAsync({ q: raw })).resolves.toEqual([
+      { role: "system", content: `Sys: ${raw}` },
+      { role: "user", content: raw },
+    ]);
+  });
+});

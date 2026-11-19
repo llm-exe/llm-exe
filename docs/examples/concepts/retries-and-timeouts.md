@@ -21,7 +21,8 @@ All three options are [generic options](/llm/generic) — they work the same for
 
 `numOfAttempts` applies to failures a second attempt could plausibly fix — provider
 rate limits and 5xx responses, and network errors. Client-side timeouts are not
-retried: the provider may still generate and bill the original request. They throw
+retried: llm-exe aborts the in-flight request, but the provider may already have
+started generating and can still bill for it. They throw
 `request.timeout` with the timeout duration in `context.timeout`. Deterministic
 client-side failures are not retried: an `LlmExeError` in the `configuration`,
 `prompt`, or `auth` category is thrown on the first attempt, because the same bad

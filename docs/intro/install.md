@@ -27,7 +27,7 @@ import {
   createLlmExecutor
 } from "llm-exe";
 
-const llm = useLlm("openai.gpt-4o-mini");
+const llm = useLlm("openai.gpt-6-luna");
 
 // The first argument is the system message.
 // Add a user message that references your input variable.

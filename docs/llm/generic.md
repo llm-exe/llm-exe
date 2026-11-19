@@ -15,7 +15,7 @@ For a worked example of `timeout`, `numOfAttempts`, and `maxDelay` in a producti
 | ------------- | ---------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
 | timeout       | number           | 30000     | Max execution time of API call to the LLM, in milliseconds. Must be finite and positive.                   |
 | maxDelay      | number           | 5000      | Maximum retry back-off delay in milliseconds. Must be finite and non-negative.                             |
-| numOfAttempts | number           | 2         | Maximum retry attempts. Must be finite and positive. Client-side timeouts and deterministic `configuration`, `prompt`, and `auth` errors are not retried — see [Retry Behavior](/misc/errors#retry-behavior).                    |
+| numOfAttempts | number           | 2         | Total attempts, including the first call. Must be finite and positive. Client-side timeouts and deterministic `configuration`, `prompt`, and `auth` errors are not retried — see [Retry Behavior](/misc/errors#retry-behavior).                    |
 | jitter        | "none" \| "full" | none      | Used for retry back-off.                                                                                   |
 | temperature   | number           | undefined | Maps to provider-specific temperature parameter.                                                           |
 | maxTokens     | number           | undefined | Maps to provider-specific max tokens parameter.                                                            |
@@ -24,6 +24,8 @@ For a worked example of `timeout`, `numOfAttempts`, and `maxDelay` in a producti
 | effort        | string           | undefined | Maps to reasoning effort. Valid values: `"minimal"`, `"low"`, `"medium"`, `"high"`; OpenAI additionally accepts `"none"` (gpt-5.1+), and DeepSeek V4 accepts `"low"`, `"high"`, `"max"`. Only sent for models that support reasoning effort; it is silently dropped elsewhere, and what it maps to differs per provider — see [OpenAI](/llm/openai#openai-specific-options), [Anthropic](/llm/anthropic#anthropic-specific-options), [Gemini](/llm/gemini#gemini-specific-options), [xAI](/llm/xai#xai-specific-options), and [Anthropic on Bedrock](/llm/bedrock/anthropic#bedrock-anthropic-options) (where the raised `max_tokens` ceiling can outrun the default `timeout`). |
 | extraBody     | Record<string, unknown> | undefined | Raw LLM request body fields, shallow-merged after provider and executor mappings, before serialization/signing. Explicit fields win; nested objects replace mapped objects in full. |
 | stream        | boolean \| null  | null      | Note: Not supported yet.                                                                                   |
+
+`timeout`, `maxDelay`, and `numOfAttempts` are checked when you call `useLlm()`. A negative number, `NaN`, `Infinity`, or a non-number throws an `LlmExeError` with code `configuration.incompatible_options` (`context.option` names the bad option). `timeout` and `numOfAttempts` must also be greater than `0`; `maxDelay: 0` is allowed and means no wait between attempts. Leave an option unset (or `null`) to get its default. When `timeout` is reached, the in-flight HTTP request is aborted.
 
 > [!NOTE]
 > Different vendors will allow (and may require) additional options.

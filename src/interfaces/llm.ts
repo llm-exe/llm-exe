@@ -718,17 +718,11 @@ export type AllUseLlmOptions = AllLlm & {
   "openai.gpt-4.1-mini": {
     input: Omit<OpenAiRequest, "model">;
   };
-  "openai.gpt-4.1-nano": {
-    input: Omit<OpenAiRequest, "model">;
-  };
   // OpenAI - Reasoning models
   "openai.o3": {
     input: Omit<OpenAiRequest, "model">;
   };
   // OpenAI - GPT-4o family
-  "openai.gpt-4": {
-    input: Omit<OpenAiRequest, "model">;
-  };
   "openai.gpt-4o": {
     input: Omit<OpenAiRequest, "model">;
   };

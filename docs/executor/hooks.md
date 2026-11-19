@@ -30,9 +30,12 @@ Log the duration of every LLM call:
 const classifier = createLlmExecutor({ name: "classify-ticket", llm, prompt, parser });
 
 classifier.on("onComplete", (exec, meta) => {
-  logger.info(`${meta.name} finished in ${exec.end - exec.start}ms`, {
-    executions: meta.executions,
-  });
+  // start and end are typed number | null, so guard before subtracting
+  if (exec.start !== null && exec.end !== null) {
+    logger.info(`${meta.name} finished in ${exec.end - exec.start}ms`, {
+      executions: meta.executions,
+    });
+  }
 });
 ```
 
@@ -70,7 +73,7 @@ To type a callback you define separately, use `ExecutorEventHookFunction<Event, 
 import type { ExecutorEventHookFunction } from "llm-exe";
 
 const executor = createLlmExecutor({
-  llm: useLlm("openai.gpt-4o-mini"),
+  llm: useLlm("openai.gpt-6-luna"),
   prompt: createChatPrompt<{ text: string }>("Summarize: {{text}}"),
   parser: createParser("string"),
 });
@@ -235,7 +238,9 @@ Use `.once()` to add a hook that fires on the next execution only and then detac
 const executor = createLlmExecutor({ llm, prompt });
 
 executor.once("onComplete", (exec) => {
-  console.log(`first run took ${exec.end - exec.start}ms`);
+  if (exec.start !== null && exec.end !== null) {
+    console.log(`first run took ${exec.end - exec.start}ms`);
+  }
 });
 
 await executor.execute({});
@@ -245,7 +250,7 @@ await executor.execute({}); // the once handler no longer fires
 To cancel a pending `.once()` before it fires, pass the same function to `.off()`.
 
 ::: tip
-Default behavior is to not add the same handler to the same hook more than once. There is also a per-event hook limit to prevent unbounded memory growth — if you hit it, remove unused hooks with `.off()` rather than piling on new ones.
+Default behavior is to not add the same handler to the same hook more than once. Each event also has a fixed limit of 100 hooks per executor, which catches code that registers a new hook on every request. Going past it throws an `LlmExeError` with code `executor.hook_limit_reached`. The limit can't be changed, so remove unused hooks with `.off()` or `.clearHooks()` instead.
 :::
 
 #### Clearing hooks

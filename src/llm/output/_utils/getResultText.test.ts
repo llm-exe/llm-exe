@@ -46,14 +46,15 @@ describe("getResultText", () => {
         { type: "text", text: "main content" },
       ];
       const options: OutputResultContent[][] = [
-        [{ type: "text", text: "option 0" }],
-        [{ type: "text", text: "option 1" }],
-        [{ type: "text", text: "option 2" }],
+        [{ type: "text", text: "choice 1" }],
+        [{ type: "text", text: "choice 2" }],
       ];
 
       const result = mockOutputResultObject(content, options);
-      expect(getResultText(result, 1)).toBe("option 1");
-      expect(getResultText(result, 2)).toBe("option 2");
+      // options holds only alternates: choice N is options[N - 1]
+      expect(getResultText(result, 1)).toBe("choice 1");
+      expect(getResultText(result, 2)).toBe("choice 2");
+      expect(getResultText(result, 3)).toBe("");
     });
 
     it("should return empty string when index is out of bounds", () => {
@@ -83,7 +84,6 @@ describe("getResultText", () => {
         { type: "text", text: "main content" },
       ];
       const options: OutputResultContent[][] = [
-        [{ type: "text", text: "option 0" }],
         [{ type: "function_use", name: "test", input: {} } as any],
       ];
 
@@ -96,8 +96,7 @@ describe("getResultText", () => {
         { type: "text", text: "main content" },
       ];
       const options: OutputResultContent[][] = [
-        [{ type: "text", text: "option 0" }],
-        [], // empty array at index 1
+        [], // empty array for choice 1
       ];
 
       const result = mockOutputResultObject(content, options);

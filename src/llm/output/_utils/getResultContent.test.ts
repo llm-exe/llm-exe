@@ -76,9 +76,9 @@ describe("getResultContent", () => {
       ]
     };
 
-    const output = getResultContent(result, 2);
-
-    expect(output).toEqual([{ text: "textOpt3", type: "text" }]);
+    // options holds only alternates: choice N is options[N - 1]
+    expect(getResultContent(result, 1)).toEqual([{ text: "textOpt1", type: "text" }]);
+    expect(getResultContent(result, 3)).toEqual([{ text: "textOpt3", type: "text" }]);
   });
 
   it("should return an empty array if the index provided is out of bounds", () => {

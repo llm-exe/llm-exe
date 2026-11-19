@@ -17,7 +17,7 @@ import { useLlm, createChatPrompt, createParser, createLlmExecutor } from "llm-e
 
 const executor = createLlmExecutor(
   {
-    llm: useLlm("openai.gpt-4o-mini"),
+    llm: useLlm("openai.gpt-6-luna"),
     prompt: createChatPrompt("Summarize: {{text}}"),
     parser: createParser("string"),
   },
@@ -25,7 +25,11 @@ const executor = createLlmExecutor(
     hooks: {
       onSuccess: (exec) => console.log("Result:", exec.output),
       onError: (exec) => console.error("Error:", exec.errorMessage),
-      onComplete: (exec) => console.log(`Done in ${exec.end - exec.start}ms`),
+      onComplete: (exec) => {
+        if (exec.start !== null && exec.end !== null) {
+          console.log(`Done in ${exec.end - exec.start}ms`);
+        }
+      },
     },
   }
 );

@@ -34,7 +34,7 @@ export function createPrompt<I extends Record<string, any>>(
     case "chat":
       return new ChatPrompt<I>(initialPromptMessage, options);
     default:
-      return new TextPrompt<I>(initialPromptMessage);
+      return new TextPrompt<I>(initialPromptMessage, options);
   }
 }
 

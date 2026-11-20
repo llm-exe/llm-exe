@@ -1,3 +1,4 @@
+import { BaseLlmOutput } from "@/llm/output/base";
 import { GoogleGeminiResponse } from "@/interfaces";
 import { OutputGoogleGeminiChat } from ".";
 
@@ -108,7 +109,10 @@ describe("llm-exe:output/OutputGoogleGeminiChat", () => {
         },
       },
     };
-    const output = OutputGoogleGeminiChat(mockWithoutModel as any, config as any);
+    const output = OutputGoogleGeminiChat(
+      mockWithoutModel as any,
+      config as any,
+    );
     expect(output.name).toBe("gemini-from-config");
   });
 
@@ -132,5 +136,56 @@ describe("llm-exe:output/OutputGoogleGeminiChat", () => {
     expect(output.content).toEqual([]);
     expect(output.options).toEqual([]);
     expect(output.stopReason).toBeUndefined();
+  });
+
+  describe("alternate candidates via BaseLlmOutput accessors", () => {
+    const candidate = (text: string) => ({
+      content: { parts: [{ text }], role: "model" },
+      finishReason: "STOP",
+      index: 0,
+    });
+    const threeCandidates = {
+      ...mock,
+      candidates: [candidate("A"), candidate("B"), candidate("C")],
+    };
+
+    it("getResultText(n) returns the nth candidate", () => {
+      const out = BaseLlmOutput(OutputGoogleGeminiChat(threeCandidates as any));
+      expect(out.getResultText()).toBe("A");
+      expect(out.getResultText(1)).toBe("B");
+      expect(out.getResultText(2)).toBe("C");
+    });
+
+    it("each option is a flat OutputResultContent[]", () => {
+      const raw = OutputGoogleGeminiChat(threeCandidates as any);
+      expect(raw.options).toEqual([
+        [{ type: "text", text: "B" }],
+        [{ type: "text", text: "C" }],
+      ]);
+    });
+
+    it("normalizes function calls in an alternate candidate", () => {
+      const raw = OutputGoogleGeminiChat({
+        ...mock,
+        candidates: [
+          candidate("A"),
+          {
+            content: {
+              parts: [{ functionCall: { name: "lookup", args: { q: "x" } } }],
+              role: "model",
+            },
+            finishReason: "STOP",
+            index: 1,
+          },
+        ],
+      } as any);
+      const [block] = BaseLlmOutput(raw).getResultContent(1);
+      expect(block).toMatchObject({
+        type: "function_use",
+        name: "lookup",
+        input: { q: "x" },
+      });
+      expect(typeof (block as any).functionId).toBe("string");
+    });
   });
 });

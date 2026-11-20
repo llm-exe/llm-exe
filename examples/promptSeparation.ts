@@ -28,7 +28,7 @@ export interface DraftSupportReplyInput {
 }
 
 export async function draftSupportReply(input: DraftSupportReplyInput) {
-  const llm = useLlm("openai.gpt-4o-mini");
+  const llm = useLlm("openai.gpt-6-luna");
   const prompt = createChatPrompt<DraftSupportReplyInput>(SUPPORT_REPLY_PROMPT);
   const parser = createParser("string");
 

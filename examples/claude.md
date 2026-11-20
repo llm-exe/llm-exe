@@ -31,7 +31,7 @@ const executor = createLlmExecutor({ llm, prompt, parser });
 
 ```typescript
 // Design for easy provider switching
-const llm = useLlm("openai.gpt-4o-mini");
+const llm = useLlm("openai.gpt-6-luna");
 // const llm = useLlm("anthropic.claude-3-5-sonnet");
 // Code should work identically with any provider
 ```
@@ -45,7 +45,7 @@ When creating executors:
 ```typescript
 // ✅ GOOD: Clear, single responsibility
 const classifyExecutor = createLlmExecutor({
-  llm: useLlm("openai.gpt-4o-mini"),
+  llm: useLlm("openai.gpt-6-luna"),
   prompt: createChatPrompt<{ text: string; categories: string[] }>(`
     Classify the following text into one of these categories:
     {{#each categories}}- {{this}}{{/each}}
@@ -234,8 +234,8 @@ const results = await Promise.all(
 // Use appropriate models for tasks
 const llm =
   complexity === "high"
-    ? useLlm("openai.gpt-4o")
-    : useLlm("openai.gpt-4o-mini");
+    ? useLlm("openai.gpt-6-luna")
+    : useLlm("openai.gpt-6-luna");
 ```
 
 ## Security Patterns
@@ -331,7 +331,7 @@ const prompt = createChatPrompt<{ userInput: string }>(`
 ```typescript
 // Begin with basic executor
 const simple = createLlmExecutor({
-  llm: useLlm("openai.gpt-4o-mini"),
+  llm: useLlm("openai.gpt-6-luna"),
   prompt: createChatPrompt(`Summarize: {{text}}`),
   parser: createParser("string"),
 });

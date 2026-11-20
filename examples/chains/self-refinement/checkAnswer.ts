@@ -45,7 +45,7 @@ Respond with a JSON object, e.g. {"hasWord": true, "underLimit": false}.`;
   // #endregion parser
 
   return createLlmExecutor({
-    llm: useLlm("openai.gpt-4o"),
+    llm: useLlm("openai.gpt-6-luna"),
     prompt: checkPrompt,
     parser: checkParser,
   }).execute(input);

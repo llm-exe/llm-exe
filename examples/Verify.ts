@@ -78,7 +78,7 @@ export async function checkPolicy(input: {
   input: string; // the most recent user message
 }) {
   const llm = useLlm("openai.chat.v1", {
-    model: "gpt-4o-mini",
+    model: "gpt-6-luna",
     openAiApiKey: process.env.OPENAI_API_KEY,
   });
 

@@ -13,6 +13,13 @@ export {
   createOpenAiCompatibleConfiguration,
 } from "./llm";
 export { createEmbedding } from "./embedding/embedding";
+export { useDecisionModel } from "./decision/decision";
+export type { DecisionModel } from "./decision/decision";
+export {
+  DecisionExecutor,
+  createDecisionExecutor,
+} from "./executor/decision";
+export type { DecisionExecutorOptions } from "./executor/decision";
 
 export {
   BasePrompt,
@@ -85,6 +92,25 @@ export type {
   UseLlmKey,
   JsonParserMatch,
   JsonParserOptions,
+  DecisionQuestion,
+  DecisionQuestionMap,
+  DecisionBooleanQuestion,
+  DecisionChoiceQuestion,
+  DecisionScoreQuestion,
+  DecisionScoreLevel,
+  DecisionAnswer,
+  DecisionBooleanAnswer,
+  DecisionChoiceAnswer,
+  DecisionScoreAnswer,
+  DecisionRefusal,
+  DecisionResult,
+  DecisionUsage,
+  DecisionInput,
+  DecisionExecutorInput,
+  DecisionModelKey,
+  OpenAiDecisionModelOptions,
+  TypeSafeDecisionModelOptions,
+  CloudflareDecisionModelOptions,
 } from "./interfaces";
 
 export type {

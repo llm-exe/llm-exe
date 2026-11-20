@@ -70,7 +70,7 @@ export function createProxiedProvider() {
         required: [true, "Company proxy token is required"],
       },
       model: {
-        default: "gpt-4o-mini",
+        default: "gpt-6-luna",
       },
       temperature: {
         default: 0.7,

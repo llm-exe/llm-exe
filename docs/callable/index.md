@@ -45,7 +45,7 @@ const searchCallable = createCallableExecutor({
 
 // Or wrap an existing LlmExecutor
 const summarizeExecutor = createLlmExecutor({
-  llm: useLlm("openai.chat.v1", { model: "gpt-4o-mini" }),
+  llm: useLlm("openai.chat.v1", { model: "gpt-6-luna" }),
   prompt: createChatPrompt("Summarize: {{input}}"),
   parser: createParser("string"),
 });

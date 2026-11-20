@@ -38,7 +38,7 @@ export async function extractInformation<
   const parser = createParser("json", { schema });
 
   const llm = useLlm("openai.chat.v1", {
-    model: "gpt-4o-mini",
+    model: "gpt-6-luna",
     openAiApiKey: process.env.OPENAI_API_KEY,
   });
 

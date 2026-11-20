@@ -19,7 +19,7 @@ Question: {{question}}`;
 
 // #region function
 export async function yesNo(question: string): Promise<boolean> {
-  const llm = useLlm("openai.gpt-4o-mini");
+  const llm = useLlm("openai.gpt-6-luna");
   const prompt = createChatPrompt<{ question: string }>(PROMPT);
   const parser = createParser("boolean", { match: "extract" });
 

@@ -7,6 +7,8 @@ description: "Use any LLM with a consistent, composable API. llm-exe supports Op
 
 LLM is a wrapper around various LLM providers, making your function implementations LLM-agnostic.
 
+In a prompt file, the same provider key goes in the `provider` field. See [Prompt Files](/config/).
+
 Note: llm-exe utilizes the underlying API's from the various providers. This means that you must have an account (and usually an API key) with them if you want to call those models using llm-exe.
 
 **LLM Features:**

@@ -39,6 +39,8 @@ const NON_RETRYABLE_CATEGORIES = new Set<ErrorCategory>([
 const NON_RETRYABLE_CODES = new Set<ErrorCodes>([
   // A client timeout does not stop provider generation; retrying can bill twice.
   "request.timeout",
+  // A missing API key will not appear on retry (#981).
+  "configuration.missing_option",
   "llm.provider_auth_failed",
   "llm.provider_invalid_request",
   "embedding.provider_auth_failed",

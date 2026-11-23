@@ -61,6 +61,7 @@ describe("useLlm_call", () => {
   const mockState = {
     key: "openai.chat-mock.v1",
     provider: "openai.chat-mock",
+    openAiApiKey: "test-key",
   } as unknown as GenericLLm & {
     key: LlmProviderKey;
     provider: LlmProvider;
@@ -69,6 +70,7 @@ describe("useLlm_call", () => {
   const mockStateAnthropic = {
     key: "anthropic.chat.v1",
     provider: "anthropic.chat",
+    openAiApiKey: "test-key",
   } as unknown as GenericLLm & {
     key: LlmProviderKey;
     provider: LlmProvider;
@@ -77,6 +79,7 @@ describe("useLlm_call", () => {
   const mockStateOpenAi = {
     key: "openai.chat.v1",
     provider: "openai.chat",
+    openAiApiKey: "test-key",
   } as unknown as GenericLLm & {
     key: LlmProviderKey;
     provider: LlmProvider;
@@ -557,6 +560,7 @@ describe("useLlm_call", () => {
     const mockStateMock = {
       key: "openai.chat-mock.v1",
       provider: "openai.chat-mock",
+      openAiApiKey: "test-key",
     } as unknown as GenericLLm & {
       key: LlmProviderKey;
       provider: LlmProvider;
@@ -1213,5 +1217,54 @@ describe("useLlm_call", () => {
         );
       }
     });
+  });
+});
+
+describe("useLlm_call missing API key (#981)", () => {
+  const config = createOpenAiCompatibleConfiguration({
+    key: "openai.chat.v1",
+    provider: "openai.chat",
+    endpoint: "https://api.openai.com/v1/chat/completions",
+    apiKeyMapping: ["openAiApiKey", "OPENAI_API_KEY"],
+  });
+  const messages = [{ role: "user", content: "Hi" }] as IChatMessages;
+
+  beforeEach(() => {
+    (apiRequest as jest.Mock).mockClear();
+  });
+
+  it.each([undefined, "", "   "])(
+    "throws configuration.missing_option before any request when key is %p",
+    async (openAiApiKey) => {
+      const state = {
+        key: "openai.chat.v1",
+        provider: "openai.chat",
+        model: "gpt-4o",
+        openAiApiKey,
+      } as unknown as GenericLLm & { key: LlmProviderKey; provider: LlmProvider };
+
+      const err = await useLlm_call(state, messages, undefined, config).catch(
+        (e) => e
+      );
+      expect(err).toBeInstanceOf(LlmExeError);
+      expect(err.code).toBe("configuration.missing_option");
+      expect(err.message).toBe("OPENAI_API_KEY is not set (or pass openAiApiKey)");
+      expect(err.context).toMatchObject({ option: "openAiApiKey" });
+      expect(apiRequest).not.toHaveBeenCalled();
+    }
+  );
+
+  it("does not check configs without an apiKey requirement", async () => {
+    const { apiKey: _omit, ...keyless } = config;
+    void _omit;
+    const state = {
+      key: "openai.chat.v1",
+      provider: "openai.chat",
+      model: "gpt-4o",
+    } as unknown as GenericLLm & { key: LlmProviderKey; provider: LlmProvider };
+    await useLlm_call(state, messages, undefined, keyless as typeof config).catch(
+      () => undefined
+    );
+    expect(apiRequest).toHaveBeenCalled();
   });
 });

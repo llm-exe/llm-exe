@@ -89,6 +89,7 @@ export function createOpenAiCompatibleConfiguration<
     key: overrides.key as K,
     provider: overrides.provider as Config["provider"],
     endpoint: overrides.endpoint,
+    apiKey: { option: apiKeyPropertyKey, env: apiKeyPropertyValue },
     options: {
       prompt: {},
       effort: {},

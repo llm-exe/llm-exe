@@ -1,3 +1,4 @@
+import { get } from "@/utils/modules/get";
 import { apiRequest } from "@/utils/modules/request";
 import { replaceTemplateStringSimple } from "@/utils/modules/replaceTemplateStringSimple";
 import { mapBody } from "@/llm/_utils.mapBody";
@@ -29,6 +30,25 @@ export async function useLlm_call(
   config: Config<any>,
   signal?: AbortSignal,
 ) {
+  // Fail fast on a missing API key instead of a provider 401 after a network
+  // round trip (#981). Only configs that declare `apiKey` are checked.
+  if (config.apiKey) {
+    const { option, env } = config.apiKey;
+    const value: unknown = get(state, option);
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new LlmExeError(`${env} is not set (or pass ${option})`, {
+        code: "configuration.missing_option",
+        context: {
+          operation: "useLlm_call",
+          provider: config.provider,
+          key: config.key,
+          option,
+          resolution: `Set the ${env} environment variable or pass "${option}" in the useLlm options.`,
+        },
+      });
+    }
+  }
+
   const transformBody = mapBody(
     config.mapBody,
     Object.assign({}, state, {

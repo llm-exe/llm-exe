@@ -319,7 +319,18 @@ export class JsonParser<
             cause,
             Math.max(0, text.indexOf(normalized)),
           );
-          throw new LlmExeError(`Invalid JSON input.`, {
+          // Only suggest extract mode when it would find exactly one JSON
+          // value here, and never for truncated input.
+          const resolution =
+            !hasUnclosedJsonOpener(text) &&
+            extractJsonCandidates(text).length === 1
+              ? 'The input has text around the JSON. Use createParser("json", { match: "extract" }) to pull the JSON out of surrounding text.'
+              : undefined;
+          // Surface the hint in the message too; most users only read e.message.
+          const message = resolution
+            ? `Invalid JSON input. ${resolution}`
+            : `Invalid JSON input.`;
+          throw new LlmExeError(message, {
             code: "parser.parse_failed",
             context: {
               operation: "JsonParser.parse",
@@ -328,15 +339,7 @@ export class JsonParser<
               expected: "JSON object or array",
               inputLength,
               ...(errorPosition !== undefined ? { errorPosition } : {}),
-              // Only suggest extract mode when it would find exactly one JSON
-              // value here, and never for truncated input.
-              ...(!hasUnclosedJsonOpener(text) &&
-              extractJsonCandidates(text).length === 1
-                ? {
-                    resolution:
-                      'The input has text around the JSON. Use createParser("json", { match: "extract" }) to pull the JSON out of surrounding text.',
-                  }
-                : {}),
+              ...(resolution !== undefined ? { resolution } : {}),
             },
             cause,
           });

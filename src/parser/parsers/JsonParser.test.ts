@@ -274,7 +274,10 @@ describe("llm-exe:parser/JsonParser", () => {
     it("hints at match: extract when JSON follows a prose preamble", () => {
       const input = 'Sure! Here is the JSON: {"a":1}';
       const e = catchError(() => new JsonParser().parse(input));
-      expect(e.message).toBe("Invalid JSON input.");
+      // The hint is surfaced in the message as well as context (#979).
+      expect(e.message).toBe(
+        `Invalid JSON input. ${(e.context as any).resolution}`,
+      );
       expect(e.context).toMatchObject({ reason: "invalid_json" });
       expect((e.context as any).resolution).toContain('match: "extract"');
       // The hinted option actually works on the same input.

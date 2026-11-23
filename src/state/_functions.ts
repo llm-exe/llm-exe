@@ -9,8 +9,11 @@ export function createDialogue(name: string) {
   return new Dialogue(name);
 }
 
-export function createStateItem<T>(name: string, defaultValue: T) {
-  return new DefaultStateItem(name, defaultValue);
+export function createStateItem<T>(
+  name: string,
+  defaultValue: T
+): DefaultStateItem<T> {
+  return new DefaultStateItem<T>(name, defaultValue);
 }
 
 export function createStateFrom(savedState?: any) {

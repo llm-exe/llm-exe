@@ -45,7 +45,7 @@ describe("basicExampleUsingLlm", () => {
 
         await basicExampleUsingLlm();
 
-        expect(useLlm).toHaveBeenCalledWith("openai.gpt-4o-mini");
+        expect(useLlm).toHaveBeenCalledWith("openai.gpt-6-luna");
         expect(callMock).toHaveBeenCalledWith("Hello, how are you?");
         expect(console.log).toHaveBeenCalledWith("I'm good, how are you?");
     });
@@ -77,7 +77,7 @@ describe("basicExamplePromptAndLlm", () => {
         expect(addUserMessageMock).toHaveBeenCalledWith("Hello, how are you?");
         expect(addAssistantMessageMock).toHaveBeenCalledWith("I'm good, how are you?");
         expect(formatMock).toHaveBeenCalledWith({});
-        expect(useLlm).toHaveBeenCalledWith("openai.gpt-4o-mini");
+        expect(useLlm).toHaveBeenCalledWith("openai.gpt-6-luna");
         expect(callMock).toHaveBeenCalledWith("formatted prompt");
         expect(console.log).toHaveBeenCalledWith("I'm good, how are you?");
     });
@@ -114,7 +114,7 @@ describe("basicExamplePromptAndLlmAndParser", () => {
         expect(addUserMessageMock).toHaveBeenCalledWith("Hello, how are you?");
         expect(addAssistantMessageMock).toHaveBeenCalledWith("I'm good, how are you?");
         expect(formatMock).toHaveBeenCalledWith({});
-        expect(useLlm).toHaveBeenCalledWith("openai.gpt-4o-mini");
+        expect(useLlm).toHaveBeenCalledWith("openai.gpt-6-luna");
         expect(callMock).toHaveBeenCalledWith("formatted prompt");
         expect(createParser).toHaveBeenCalledWith("listToArray");
         expect(parseMock).toHaveBeenCalledWith("I'm good, how are you?");

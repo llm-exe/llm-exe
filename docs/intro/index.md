@@ -27,7 +27,7 @@ const openai = new OpenAI({
 export async function YesOrNoBot(
   question: string
 ): Promise<{ response: string }> {
-  const model = "gpt-4o-mini";
+  const model = "gpt-6-luna";
 
   const messages: OpenAI.ChatCompletionMessageParam[] = [
     {

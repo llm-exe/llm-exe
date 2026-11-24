@@ -16,7 +16,7 @@ Respond only with a bullet list of the main plot points.`
   const outlineParser = createParser("listToArray");
 
   return createLlmExecutor({
-    llm: useLlm("openai.gpt-4o"),
+    llm: useLlm("openai.gpt-6-luna"),
     prompt: outlinePrompt,
     parser: outlineParser,
   }).execute(input);

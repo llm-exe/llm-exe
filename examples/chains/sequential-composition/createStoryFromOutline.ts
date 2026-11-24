@@ -22,7 +22,7 @@ Begin the story now:`
   );
 
   return createLlmExecutor({
-    llm: useLlm("openai.gpt-4o"),
+    llm: useLlm("openai.gpt-6-luna"),
     parser: createParser("string"),
     prompt: storyPrompt,
   }).execute(input);

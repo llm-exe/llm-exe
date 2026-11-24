@@ -37,6 +37,7 @@ const ALL_CODES = [
   "embedding.unsupported_input",
   "embedding.invalid_response_shape",
   "executor.missing_prompt",
+  "executor.invalid_input",
   "executor.hook_limit_reached",
   "executor.hook_failed",
   "callable.invalid_handler",

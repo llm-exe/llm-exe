@@ -280,6 +280,7 @@ export type ErrorContextByCode = {
   "embedding.unsupported_input": EmbeddingInputContext;
   "embedding.invalid_response_shape": ProviderResponseContext;
   "executor.missing_prompt": ExecutorErrorContext;
+  "executor.invalid_input": ExecutorErrorContext;
   "executor.hook_limit_reached": ExecutorHookContext;
   "executor.hook_failed": ExecutorHookContext;
   "callable.invalid_handler": CallableErrorContext;

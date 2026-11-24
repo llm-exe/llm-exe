@@ -29,7 +29,7 @@ Use a provider-specific model shorthand to get full type support for that model'
 ```ts
 import { useLlm } from "llm-exe";
 
-const llm = useLlm("openai.gpt-4o-mini");
+const llm = useLlm("openai.gpt-6-luna");
 ```
 
 ### Provider Key + Model Option
@@ -38,7 +38,7 @@ Use a generic provider key and specify the model in the options. This lets you u
 
 ```ts
 const llm = useLlm("openai.chat.v1", {
-  model: "gpt-4o",
+  model: "gpt-6-luna",
 });
 ```
 
@@ -65,7 +65,7 @@ See the individual provider pages for the exact option names and env var names.
 While you'll typically pass the LLM instance to an [executor](/executor/), you can also call it directly:
 
 ```ts
-const llm = useLlm("openai.gpt-4o-mini");
+const llm = useLlm("openai.gpt-6-luna");
 const response = await llm.call(prompt);
 console.log(response.getResultText());
 ```

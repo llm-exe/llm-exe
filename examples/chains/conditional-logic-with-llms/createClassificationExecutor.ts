@@ -19,6 +19,6 @@ export function createClassificationExecutor<I extends { question: string }>(
   const parser = createParser("stringExtract", {
     enum: ["technical", "creative"],
   });
-  const llm = useLlm("openai.gpt-4o");
+  const llm = useLlm("openai.gpt-6-luna");
   return createLlmExecutor({ llm, prompt, parser }).execute(input);
 }

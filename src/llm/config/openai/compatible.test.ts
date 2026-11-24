@@ -1,4 +1,5 @@
 import { createOpenAiCompatibleConfiguration } from "./compatible";
+import { getLlmConfig } from "@/llm/config";
 import { mapBody } from "@/llm/_utils.mapBody";
 import { getEnvironmentVariable } from "@/utils/modules/getEnvironmentVariable";
 
@@ -377,6 +378,45 @@ describe("createOpenAiCompatibleConfiguration", () => {
         expect(body.top_p).toBe(0.8);
         expect(body.max_tokens).toBe(10);
       });
+    });
+  });
+
+  describe("requireApiKey (#981)", () => {
+    const base = {
+      key: "custom.chat.v1",
+      provider: "custom.chat",
+      endpoint: "https://api.custom.com/v1/chat/completions",
+      apiKeyMapping: ["customApiKey", "CUSTOM_API_KEY"] as [string, string],
+    };
+
+    it("declares no apiKey by default, so keyless servers keep working", () => {
+      expect(createOpenAiCompatibleConfiguration(base)).not.toHaveProperty(
+        "apiKey"
+      );
+    });
+
+    it("declares the key option and env variable when true", () => {
+      expect(
+        createOpenAiCompatibleConfiguration({ ...base, requireApiKey: true })
+          .apiKey
+      ).toEqual({ option: "customApiKey", env: "CUSTOM_API_KEY" });
+    });
+
+    it("is on for the built-in OpenAI, xAI and DeepSeek configs only", () => {
+      expect(getLlmConfig("openai.chat.v1").apiKey).toEqual({
+        option: "openAiApiKey",
+        env: "OPENAI_API_KEY",
+      });
+      expect(getLlmConfig("xai.chat.v1").apiKey).toEqual({
+        option: "xAiApiKey",
+        env: "XAI_API_KEY",
+      });
+      expect(getLlmConfig("deepseek.chat.v1").apiKey).toEqual({
+        option: "deepseekApiKey",
+        env: "DEEPSEEK_API_KEY",
+      });
+      expect(getLlmConfig("ollama.chat.v1")).not.toHaveProperty("apiKey");
+      expect(getLlmConfig("openai.chat-mock.v1")).not.toHaveProperty("apiKey");
     });
   });
 

@@ -100,4 +100,105 @@ it("creates output with expected properties", () => {
     const output = OutputOllamaChat(mockWithoutDoneReason);
     expect(output.stopReason).toBe("stop");
   });
+
+  describe("malformed and edge-case responses", () => {
+    it("throws llm.invalid_jsonl_response for a non-JSON line", () => {
+      const bad = `{"model":"m","created_at":"${created_at}","message":{"role":"assistant","content":"Hi"},"done":false}
+not json
+{"model":"m","created_at":"${created_at}","message":{"role":"assistant","content":""},"done":true}`;
+      expect(() => OutputOllamaChat(bad)).toThrow(
+        expect.objectContaining({ code: "llm.invalid_jsonl_response" })
+      );
+    });
+
+    it("throws llm.invalid_jsonl_response for an empty response body", () => {
+      expect(() => OutputOllamaChat("   \n  \n")).toThrow(
+        expect.objectContaining({ code: "llm.invalid_jsonl_response" })
+      );
+    });
+
+    it("throws when the stream never reaches a done line (truncated stream)", () => {
+      const truncated = `{"model":"m","created_at":"${created_at}","message":{"role":"assistant","content":"Hel"},"done":false}
+{"model":"m","created_at":"${created_at}","message":{"role":"assistant","content":"lo"},"done":false}`;
+      expect(() => OutputOllamaChat(truncated)).toThrow(
+        "No line found where done = true."
+      );
+    });
+
+    it("handles a single non-streamed response line", () => {
+      const single = `{"model":"llama3","created_at":"${created_at}","message":{"role":"assistant","content":"Full answer"},"done_reason":"stop","done":true}`;
+      const output = OutputOllamaChat(single);
+      expect(output.content).toEqual([{ type: "text", text: "Full answer" }]);
+      expect(output.id).toBe(`llama3.${created_at}`);
+      expect(output.stopReason).toBe("stop");
+    });
+
+    it("reassembles chunks in created_at order even when lines arrive out of order", () => {
+      const shuffled = `{"model":"m","created_at":"2025-03-08T16:58:03.900Z","message":{"role":"assistant","content":" world"},"done":false}
+{"model":"m","created_at":"2025-03-08T16:58:04.000Z","message":{"role":"assistant","content":""},"done_reason":"stop","done":true}
+{"model":"m","created_at":"2025-03-08T16:58:03.800Z","message":{"role":"assistant","content":"Hello"},"done":false}`;
+      const output = OutputOllamaChat(shuffled);
+      expect(output.content).toEqual([{ type: "text", text: "Hello world" }]);
+      expect(output.id).toBe("m.2025-03-08T16:58:04.000Z");
+    });
+
+    it("tolerates CRLF line endings and blank lines between chunks", () => {
+      const crlf = [
+        `{"model":"m","created_at":"2025-03-08T16:58:03.800Z","message":{"role":"assistant","content":"A"},"done":false}`,
+        ``,
+        `{"model":"m","created_at":"2025-03-08T16:58:03.900Z","message":{"role":"assistant","content":"B"},"done":false}`,
+        `{"model":"m","created_at":"2025-03-08T16:58:04.000Z","message":{"role":"assistant","content":""},"done":true}`,
+      ].join("\r\n");
+      const output = OutputOllamaChat(crlf);
+      expect(output.content).toEqual([{ type: "text", text: "AB" }]);
+    });
+
+    it("treats chunks with a missing message or null content as empty text", () => {
+      const sparse = `{"model":"m","created_at":"2025-03-08T16:58:03.800Z","message":{"role":"assistant","content":"A"},"done":false}
+{"model":"m","created_at":"2025-03-08T16:58:03.850Z","done":false}
+{"model":"m","created_at":"2025-03-08T16:58:03.900Z","message":{"role":"assistant","content":null},"done":false}
+{"model":"m","created_at":"2025-03-08T16:58:04.000Z","message":{"role":"assistant","content":"B"},"done":true}`;
+      const output = OutputOllamaChat(sparse);
+      expect(output.content).toEqual([{ type: "text", text: "AB" }]);
+    });
+
+    it("returns an empty text block when the model produced no content", () => {
+      const empty = `{"model":"m","created_at":"${created_at}","message":{"role":"assistant","content":""},"done_reason":"stop","done":true}`;
+      const output = OutputOllamaChat(empty);
+      expect(output.content).toEqual([{ type: "text", text: "" }]);
+    });
+
+    it("passes through non-stop done_reason values (e.g. length)", () => {
+      const truncatedByLength = `{"model":"m","created_at":"${created_at}","message":{"role":"assistant","content":"cut"},"done_reason":"length","done":true}`;
+      expect(OutputOllamaChat(truncatedByLength).stopReason).toBe("length");
+    });
+
+    it("decodes literal \\u003c / \\u003e escape sequences left in content", () => {
+      // JSON "\\u003c" parses to the literal 6-char string "\u003c"
+      const escaped = `{"model":"m","created_at":"${created_at}","message":{"role":"assistant","content":"\\\\u003cb\\\\u003e"},"done":true}`;
+      const output = OutputOllamaChat(escaped);
+      expect(output.content).toEqual([{ type: "text", text: "<b>" }]);
+    });
+
+    it("(current behavior, known gap #989) yields NaN created and an id ending in .undefined when created_at is missing", () => {
+      // Pins current behavior: there is no fallback when created_at is
+      // missing (#989). Update this test when that is fixed.
+      const noDate = `{"model":"m","message":{"role":"assistant","content":"x"},"done":true}`;
+      const output = OutputOllamaChat(noDate);
+      expect(output.created).toBeNaN();
+      expect(output.id).toBe("m.undefined");
+    });
+
+    it("(current behavior, known gap #988) reports zero usage even when eval counts are present", () => {
+      // Pins current behavior: prompt_eval_count / eval_count are not mapped
+      // to usage (#988). Update this test when that is fixed.
+      const output = OutputOllamaChat(mock);
+      expect(output.usage).toEqual({
+        input_tokens: 0,
+        output_tokens: 0,
+        total_tokens: 0,
+      });
+      expect(output.options).toEqual([]);
+    });
+  });
 });

@@ -234,7 +234,7 @@ const results = await Promise.all(
 // Use appropriate models for tasks
 const llm =
   complexity === "high"
-    ? useLlm("openai.gpt-6-luna")
+    ? useLlm("openai.gpt-6-astra")
     : useLlm("openai.gpt-6-luna");
 ```
 

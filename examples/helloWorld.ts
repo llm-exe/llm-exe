@@ -19,7 +19,7 @@ Hello World, you said Hello.`;
 
 // #region function
 export async function helloWorld(input: string) {
-  const llm = useLlm("openai.gpt-4o-mini");
+  const llm = useLlm("openai.gpt-6-luna");
   const prompt = createPrompt("chat", PROMPT);
   const parser = createParser("string");
 

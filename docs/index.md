@@ -53,7 +53,7 @@ features:
 ```typescript
 // Every LLM project starts like this...
 const response = await openai.chat.completions.create({
-  model: "gpt-4o",
+  model: "gpt-6-luna",
   messages: [{ role: "user", content: makePrompt(data) }],
   response_format: { type: "json_object" },
 });
@@ -102,7 +102,7 @@ import {
 // Define once, use everywhere
 async function llmClassifier(text: string) {
   return createLlmExecutor({
-    llm: useLlm("openai.gpt-4o-mini"),
+    llm: useLlm("openai.gpt-6-luna"),
     prompt: createChatPrompt<{ text: string }>(
       "Classify this as 'bug', 'feature', or 'question': {{text}}"
     ),
@@ -138,7 +138,7 @@ const category = await llmClassifier(userInput);
 ```typescript
 // Each piece does one thing well
 const summarizer = createLlmExecutor({
-  llm: useLlm("openai.gpt-4o-mini"),
+  llm: useLlm("openai.gpt-6-luna"),
   prompt: createChatPrompt("Summarize: {{text}}"),
   parser: createParser("string"),
 });
@@ -178,7 +178,7 @@ const spanish = await translator.execute({
 ```typescript
 const analyst = createLlmExecutor(
   {
-    llm: useLlm("openai.gpt-4o", {
+    llm: useLlm("openai.gpt-6-luna", {
       numOfAttempts: 3,
       timeout: 30000,
     }),
@@ -258,7 +258,7 @@ const sendEmail = createCallableExecutor({
 
 // Let the LLM use your tools
 const assistant = createLlmExecutor({
-  llm: useLlm("openai.gpt-4o"),
+  llm: useLlm("openai.gpt-6-luna"),
   prompt: createChatPrompt(`Help the user with their request.
 You can query the database and send emails.`),
   parser: createParser("json"),
@@ -290,7 +290,7 @@ const result = await tools.callFunction(plan.action, plan.input);
 
 ```typescript
 // Change ONE line to switch providers
-const llm = useLlm("openai.gpt-4o");
+const llm = useLlm("openai.gpt-6-luna");
 // const llm = useLlm("anthropic.claude-sonnet-4-6");
 // const llm = useLlm("google.gemini-2.0-flash");
 // const llm = useLlm("xai.grok-2");

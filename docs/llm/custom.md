@@ -30,7 +30,7 @@ const customLlm = useLlmConfiguration({
       required: [true, "API key is required"],
     },
     model: {
-      default: "gpt-4o-mini",
+      default: "gpt-6-luna",
     },
     temperature: {
       default: 0.7,
@@ -72,7 +72,7 @@ const customLlm = useLlmConfiguration({
 // apiKey and model are accepted because the config declares them under `options`
 const llm = customLlm({
   apiKey: process.env.CUSTOM_API_KEY,
-  model: "gpt-4o",
+  model: "gpt-6-luna",
 });
 
 const response = await llm.call("Hello, how are you?");
@@ -153,7 +153,7 @@ const proxiedLlm = useLlmConfiguration({
       default: () => crypto.randomUUID(),
     },
     model: {
-      default: "gpt-4o-mini",
+      default: "gpt-6-luna",
     },
   },
   

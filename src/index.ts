@@ -39,6 +39,7 @@ export {
   createState,
   createStateItem,
   createDialogue,
+  createStateFrom,
 } from "./state";
 
 export {

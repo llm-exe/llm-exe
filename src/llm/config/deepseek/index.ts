@@ -8,6 +8,7 @@ const deepseekChatV1: Config = createOpenAiCompatibleConfiguration({
   provider: "deepseek.chat",
   endpoint: `https://api.deepseek.com/v1/chat/completions`,
   apiKeyMapping: ["deepseekApiKey", "DEEPSEEK_API_KEY"],
+  requireApiKey: true,
   isReasoningModel: (model) => /^deepseek-(flash|v4)/.test(model),
   reasoningEfforts: ["low", "high", "max"],
   mapOptions: {

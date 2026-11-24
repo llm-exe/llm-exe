@@ -1215,3 +1215,87 @@ describe("useLlm_call", () => {
     });
   });
 });
+
+describe("useLlm_call missing API key (#981)", () => {
+  const config = createOpenAiCompatibleConfiguration({
+    key: "openai.chat.v1",
+    provider: "openai.chat",
+    endpoint: "https://api.openai.com/v1/chat/completions",
+    apiKeyMapping: ["openAiApiKey", "OPENAI_API_KEY"],
+    requireApiKey: true,
+  });
+  const messages = [{ role: "user", content: "Hi" }] as IChatMessages;
+
+  beforeEach(() => {
+    (apiRequest as jest.Mock).mockClear();
+  });
+
+  it.each([undefined, "", "   "])(
+    "throws configuration.missing_option before any request when key is %p",
+    async (openAiApiKey) => {
+      const state = {
+        key: "openai.chat.v1",
+        provider: "openai.chat",
+        model: "gpt-4o",
+        openAiApiKey,
+      } as unknown as GenericLLm & { key: LlmProviderKey; provider: LlmProvider };
+
+      const err = await useLlm_call(state, messages, undefined, config).catch(
+        (e) => e
+      );
+      expect(err).toBeInstanceOf(LlmExeError);
+      expect(err.code).toBe("configuration.missing_option");
+      expect(err.message).toBe("OPENAI_API_KEY is not set (or pass openAiApiKey)");
+      expect(err.context).toMatchObject({ option: "openAiApiKey" });
+      expect(apiRequest).not.toHaveBeenCalled();
+    }
+  );
+
+  it("names only the option when the config has no env variable", async () => {
+    const noEnv = createOpenAiCompatibleConfiguration({
+      key: "custom.chat.v1",
+      provider: "custom.chat",
+      endpoint: "https://api.custom.example/v1/chat/completions",
+      apiKeyMapping: ["customApiKey", ""],
+      requireApiKey: true,
+    });
+    const state = {
+      key: "custom.chat.v1",
+      provider: "custom.chat",
+      model: "m",
+    } as unknown as GenericLLm & { key: LlmProviderKey; provider: LlmProvider };
+    const err = await useLlm_call(state, messages, undefined, noEnv).catch(
+      (e) => e
+    );
+    expect(err.code).toBe("configuration.missing_option");
+    expect(err.message).toBe("customApiKey is not set");
+    expect(err.context.resolution).toBe('Pass "customApiKey" in the useLlm options.');
+    expect(apiRequest).not.toHaveBeenCalled();
+  });
+
+  // docs/llm/custom.md documents keyless local servers built on the factory.
+  it.each([
+    ["no env variable", ["apiKey", ""]],
+    ["an unset env variable", ["apiKey", "LOCAL_API_KEY_981_UNSET"]],
+  ] as const)(
+    "sends the request for a factory config with %s and no key",
+    async (_label, apiKeyMapping) => {
+      const keyless = createOpenAiCompatibleConfiguration({
+        key: "ollama-local",
+        provider: "ollama.local",
+        endpoint: "http://localhost:11434/v1/chat/completions",
+        apiKeyMapping: [...apiKeyMapping],
+      });
+      expect(keyless).not.toHaveProperty("apiKey");
+      const state = {
+        key: "ollama-local",
+        provider: "ollama.local",
+        model: "llama3",
+      } as unknown as GenericLLm & { key: LlmProviderKey; provider: LlmProvider };
+      await useLlm_call(state, messages, undefined, keyless).catch(
+        () => undefined
+      );
+      expect(apiRequest).toHaveBeenCalled();
+    }
+  );
+});

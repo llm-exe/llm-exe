@@ -48,6 +48,15 @@ export interface Config<Pk = LlmProviderKey> {
    * // TODO: make this also accept object and function
    */
   headers: string;
+
+  /**
+   * Optional API key requirement. When set, a call fails fast with
+   * `configuration.missing_option` before any request is sent if the
+   * `option` value (defaulted from the `env` variable) is missing or empty.
+   * Leave unset for keyless providers (Ollama, Bedrock IAM, mocks).
+   * @example { option: "openAiApiKey", env: "OPENAI_API_KEY" }
+   */
+  apiKey?: { option: string; env: string };
   options: {
     [key in string]: {
       /**

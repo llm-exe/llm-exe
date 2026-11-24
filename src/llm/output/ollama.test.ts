@@ -180,15 +180,18 @@ not json
       expect(output.content).toEqual([{ type: "text", text: "<b>" }]);
     });
 
-    it("returns NaN for created when created_at is missing", () => {
+    it("(current behavior, known gap #989) yields NaN created and an id ending in .undefined when created_at is missing", () => {
+      // Pins current behavior: there is no fallback when created_at is
+      // missing (#989). Update this test when that is fixed.
       const noDate = `{"model":"m","message":{"role":"assistant","content":"x"},"done":true}`;
       const output = OutputOllamaChat(noDate);
       expect(output.created).toBeNaN();
       expect(output.id).toBe("m.undefined");
     });
 
-    it("currently reports zero usage even when eval counts are present", () => {
-      // Pins current behavior: prompt_eval_count / eval_count are not mapped to usage.
+    it("(current behavior, known gap #988) reports zero usage even when eval counts are present", () => {
+      // Pins current behavior: prompt_eval_count / eval_count are not mapped
+      // to usage (#988). Update this test when that is fixed.
       const output = OutputOllamaChat(mock);
       expect(output.usage).toEqual({
         input_tokens: 0,

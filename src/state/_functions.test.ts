@@ -49,12 +49,15 @@ describe("llm-exe:state/createStateFrom", () => {
     const chat = state.createDialogue("chat");
     chat.setUserMessage("Hello");
     chat.setAssistantMessage("Hello There!!");
-    state.createContextItem(createStateItem("userIntent", "none"));
-    state.getContext<string>("userIntent").setValue("booking");
-    state.createContextItem(createStateItem("count", 0));
-    state.getContext<number>("count").setValue(3);
-    state.createContextItem(createStateItem("tags", [] as string[]));
-    state.getContext<string[]>("tags").setValue(["a", "b"]);
+    // Set values through the item references, so this doesn't depend on
+    // whether getContext() is typed as possibly undefined (#976).
+    const intent = createStateItem("userIntent", "none");
+    const count = createStateItem("count", 0);
+    const tags = createStateItem<string[]>("tags", []);
+    for (const item of [intent, count, tags]) state.createContextItem(item);
+    intent.setValue("booking");
+    count.setValue(3);
+    tags.setValue(["a", "b"]);
 
     const saved = JSON.parse(JSON.stringify(state.serialize()));
     const restored = createStateFrom(saved);

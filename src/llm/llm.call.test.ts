@@ -61,7 +61,6 @@ describe("useLlm_call", () => {
   const mockState = {
     key: "openai.chat-mock.v1",
     provider: "openai.chat-mock",
-    openAiApiKey: "test-key",
   } as unknown as GenericLLm & {
     key: LlmProviderKey;
     provider: LlmProvider;
@@ -70,7 +69,6 @@ describe("useLlm_call", () => {
   const mockStateAnthropic = {
     key: "anthropic.chat.v1",
     provider: "anthropic.chat",
-    openAiApiKey: "test-key",
   } as unknown as GenericLLm & {
     key: LlmProviderKey;
     provider: LlmProvider;
@@ -79,7 +77,6 @@ describe("useLlm_call", () => {
   const mockStateOpenAi = {
     key: "openai.chat.v1",
     provider: "openai.chat",
-    openAiApiKey: "test-key",
   } as unknown as GenericLLm & {
     key: LlmProviderKey;
     provider: LlmProvider;
@@ -560,7 +557,6 @@ describe("useLlm_call", () => {
     const mockStateMock = {
       key: "openai.chat-mock.v1",
       provider: "openai.chat-mock",
-      openAiApiKey: "test-key",
     } as unknown as GenericLLm & {
       key: LlmProviderKey;
       provider: LlmProvider;
@@ -1226,6 +1222,7 @@ describe("useLlm_call missing API key (#981)", () => {
     provider: "openai.chat",
     endpoint: "https://api.openai.com/v1/chat/completions",
     apiKeyMapping: ["openAiApiKey", "OPENAI_API_KEY"],
+    requireApiKey: true,
   });
   const messages = [{ role: "user", content: "Hi" }] as IChatMessages;
 
@@ -1254,17 +1251,51 @@ describe("useLlm_call missing API key (#981)", () => {
     }
   );
 
-  it("does not check configs without an apiKey requirement", async () => {
-    const { apiKey: _omit, ...keyless } = config;
-    void _omit;
+  it("names only the option when the config has no env variable", async () => {
+    const noEnv = createOpenAiCompatibleConfiguration({
+      key: "custom.chat.v1",
+      provider: "custom.chat",
+      endpoint: "https://api.custom.example/v1/chat/completions",
+      apiKeyMapping: ["customApiKey", ""],
+      requireApiKey: true,
+    });
     const state = {
-      key: "openai.chat.v1",
-      provider: "openai.chat",
-      model: "gpt-4o",
+      key: "custom.chat.v1",
+      provider: "custom.chat",
+      model: "m",
     } as unknown as GenericLLm & { key: LlmProviderKey; provider: LlmProvider };
-    await useLlm_call(state, messages, undefined, keyless as typeof config).catch(
-      () => undefined
+    const err = await useLlm_call(state, messages, undefined, noEnv).catch(
+      (e) => e
     );
-    expect(apiRequest).toHaveBeenCalled();
+    expect(err.code).toBe("configuration.missing_option");
+    expect(err.message).toBe("customApiKey is not set");
+    expect(err.context.resolution).toBe('Pass "customApiKey" in the useLlm options.');
+    expect(apiRequest).not.toHaveBeenCalled();
   });
+
+  // docs/llm/custom.md documents keyless local servers built on the factory.
+  it.each([
+    ["no env variable", ["apiKey", ""]],
+    ["an unset env variable", ["apiKey", "LOCAL_API_KEY_981_UNSET"]],
+  ] as const)(
+    "sends the request for a factory config with %s and no key",
+    async (_label, apiKeyMapping) => {
+      const keyless = createOpenAiCompatibleConfiguration({
+        key: "ollama-local",
+        provider: "ollama.local",
+        endpoint: "http://localhost:11434/v1/chat/completions",
+        apiKeyMapping: [...apiKeyMapping],
+      });
+      expect(keyless).not.toHaveProperty("apiKey");
+      const state = {
+        key: "ollama-local",
+        provider: "ollama.local",
+        model: "llama3",
+      } as unknown as GenericLLm & { key: LlmProviderKey; provider: LlmProvider };
+      await useLlm_call(state, messages, undefined, keyless).catch(
+        () => undefined
+      );
+      expect(apiRequest).toHaveBeenCalled();
+    }
+  );
 });

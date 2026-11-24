@@ -36,14 +36,19 @@ export async function useLlm_call(
     const { option, env } = config.apiKey;
     const value: unknown = get(state, option);
     if (typeof value !== "string" || value.trim() === "") {
-      throw new LlmExeError(`${env} is not set (or pass ${option})`, {
+      const message = env
+        ? `${env} is not set (or pass ${option})`
+        : `${option} is not set`;
+      throw new LlmExeError(message, {
         code: "configuration.missing_option",
         context: {
           operation: "useLlm_call",
           provider: config.provider,
           key: config.key,
           option,
-          resolution: `Set the ${env} environment variable or pass "${option}" in the useLlm options.`,
+          resolution: env
+            ? `Set the ${env} environment variable or pass "${option}" in the useLlm options.`
+            : `Pass "${option}" in the useLlm options.`,
         },
       });
     }

@@ -1,3 +1,10 @@
+// Keys are read from env when configs are imported; give the
+// key-requiring providers a dummy key so calls reach the mocked request (#981).
+jest.mock("@/utils/modules/getEnvironmentVariable", () => ({
+  getEnvironmentVariable: (name: string) =>
+    /_API_KEY$/.test(name) ? (process.env[name] ?? "test-key") : process.env[name],
+}));
+
 import { useLlm, useLlmConfiguration } from "./llm";
 import { createOpenAiCompatibleConfiguration } from "./config/openai/compatible";
 import { apiRequest } from "@/utils/modules/request";

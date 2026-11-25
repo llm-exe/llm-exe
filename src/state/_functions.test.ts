@@ -1,6 +1,13 @@
-import { BaseState, DefaultState, createState } from "@/state";
-import { createStateFrom, createStateItem } from "@/state/_functions";
-import { DefaultStateItem } from "@/state/item";
+import {
+  BaseState,
+  BaseStateItem,
+  DefaultState,
+  DefaultStateItem,
+  createState,
+  createStateItem,
+} from "@/state";
+import * as pkg from "@/index";
+import { createStateFrom } from "@/state/_functions";
 
 /**
  * Tests the TextPrompt class
@@ -35,6 +42,47 @@ describe("llm-exe:state/createStateFrom", () => {
     expect(newState).toHaveProperty("attributes");
     expect(newState.attributes).toHaveProperty("something");
     expect(newState.attributes.something).toEqual("someValue");
+  });
+
+  it("round-trips dialogues, context and attributes through JSON", () => {
+    const state = createState();
+    state.setAttribute("something", "someValue");
+    const chat = state.createDialogue("chat");
+    chat.setUserMessage("Hello");
+    chat.setAssistantMessage("Hello There!!");
+    // Set values through the item references, so this doesn't depend on
+    // whether getContext() is typed as possibly undefined (#976).
+    const intent = createStateItem("userIntent", "none");
+    const count = createStateItem("count", 0);
+    const tags = createStateItem<string[]>("tags", []);
+    for (const item of [intent, count, tags]) state.createContextItem(item);
+    intent.setValue("booking");
+    count.setValue(3);
+    tags.setValue(["a", "b"]);
+
+    const saved = JSON.parse(JSON.stringify(state.serialize()));
+    const restored = createStateFrom(saved);
+
+    expect(restored.getContext("userIntent")).toBeInstanceOf(BaseStateItem);
+    expect(restored.getContextValue("userIntent")).toEqual("booking");
+    expect(restored.getContextValue("count")).toEqual(3);
+    expect(restored.getContextValue("tags")).toEqual(["a", "b"]);
+    expect(restored.getDialogue("chat").getHistory()).toEqual(
+      chat.getHistory()
+    );
+    expect(restored.attributes).toEqual({ something: "someValue" });
+    expect(restored.serialize()).toEqual(saved);
+  });
+
+  it("accepts a raw (unwrapped) context value", () => {
+    const restored = createStateFrom({
+      context: { userIntent: { name: "userIntent", value: "booking" } },
+    });
+    expect(restored.getContextValue("userIntent")).toEqual("booking");
+  });
+
+  it("is exported from the package entry", () => {
+    expect(pkg.createStateFrom).toBe(createStateFrom);
   });
 });
 

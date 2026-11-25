@@ -17,7 +17,7 @@ export function createCreativeExecutor<I extends { question: string }>(
          Answer:`
   );
   return createLlmExecutor({
-    llm: useLlm("openai.gpt-4o"),
+    llm: useLlm("openai.gpt-6-luna"),
     parser: createParser("string"),
     prompt,
   }).execute(input);

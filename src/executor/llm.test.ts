@@ -289,20 +289,32 @@ describe("llm-exe:executor/LlmExecutor", () => {
     expect(result).toEqual(["formatted"]);
   });
 
-  it("throws TypeError when execute is called with null (issue #410)", async () => {
-    const executor = new LlmExecutor({ llm, prompt });
-    await expect(executor.execute(null as any)).rejects.toThrow(TypeError);
-    await expect(executor.execute(null as any)).rejects.toThrow(
-      /received null or undefined as input/
-    );
-  });
+  it.each([null, undefined])(
+    "throws LlmExeError executor.invalid_input when execute is called with %p (issues #410, #978)",
+    async (bad) => {
+      const executor = new LlmExecutor({ llm, prompt });
+      const err = (await executor
+        .execute(bad as any)
+        .catch((e: unknown) => e)) as LlmExeError;
+      expect(err).toBeInstanceOf(LlmExeError);
+      expect(err.code).toBe("executor.invalid_input");
+      expect(err.message).toMatch(/received null or undefined as input/);
+    }
+  );
 
-  it("throws TypeError when execute is called with undefined (issue #410)", async () => {
-    const executor = new LlmExecutor({ llm, prompt });
-    await expect(executor.execute(undefined as any)).rejects.toThrow(TypeError);
-    await expect(executor.execute(undefined as any)).rejects.toThrow(
-      /received null or undefined as input/
+  it("fires onError and onComplete when execute is called with null (issue #978)", async () => {
+    const onError = jest.fn();
+    const onComplete = jest.fn();
+    const executor = new LlmExecutor(
+      { llm, prompt },
+      { hooks: { onError, onComplete } }
     );
+    await expect(executor.execute(null as any)).rejects.toMatchObject({
+      code: "executor.invalid_input",
+    });
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0].errorCode).toBe("executor.invalid_input");
   });
 
   it("getHandlerOutput uses getResult when parser target is function_call", async () => {

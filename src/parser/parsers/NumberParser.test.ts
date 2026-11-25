@@ -326,6 +326,10 @@ describe("match: exact", () => {
     expect(error?.context?.resolution).toBe(
       'The input has text around the number. Use createParser("number", { match: "extract" }) to pull the number out of surrounding text.',
     );
+    // The hint is surfaced in the message as well as context (#979).
+    expect(error?.message).toBe(
+      'Input is not an exact numeric value. The input has text around the number. Use createParser("number", { match: "extract" }) to pull the number out of surrounding text.',
+    );
     // Extract mode does succeed on the same input.
     expect(new NumberParser({ match: "extract" }).parse("about 42")).toBe(42);
   });
@@ -341,6 +345,7 @@ describe("match: exact", () => {
     expect(error?.context?.reason).toBe("no_numeric_value");
     expect(error?.context).not.toHaveProperty("matchCount");
     expect(error?.context).not.toHaveProperty("resolution");
+    expect(error?.message).toBe("Input is not an exact numeric value.");
   });
   it("rejects multiple numbers", () => {
     const parser = new NumberParser({ match: "exact" });
@@ -359,6 +364,7 @@ describe("match: exact", () => {
       matchCount: 2,
     });
     expect(error?.context).not.toHaveProperty("resolution");
+    expect(error?.message).toBe("Input is not an exact numeric value.");
   });
   it("rejects currency and unit text", () => {
     const parser = new NumberParser({ match: "exact" });

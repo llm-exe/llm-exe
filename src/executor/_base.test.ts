@@ -71,16 +71,19 @@ describe("llm-exe:executor/BaseExecutor", () => {
     expect(response).toEqual({ result: "Success" });
   });
 
-  it("execute throws TypeError when input is null or undefined (issue #410)", async () => {
+  it("execute throws LlmExeError executor.invalid_input when input is null or undefined (issues #410, #978)", async () => {
     const executor = new MockExecutor("named-executor");
-    await expect(executor.execute(null as any)).rejects.toThrow(TypeError);
-    await expect(executor.execute(null as any)).rejects.toThrow(
-      /"named-executor" received null or undefined as input/
-    );
-    await expect(executor.execute(undefined as any)).rejects.toThrow(TypeError);
-    await expect(executor.execute(undefined as any)).rejects.toThrow(
-      /"named-executor" received null or undefined as input/
-    );
+    for (const bad of [null, undefined]) {
+      const err = (await executor
+        .execute(bad as any)
+        .catch((e: unknown) => e)) as LlmExeError;
+      expect(err).toBeInstanceOf(LlmExeError);
+      expect(err.code).toBe("executor.invalid_input");
+      expect(err.message).toMatch(
+        /"named-executor" received null or undefined as input/
+      );
+      expect(err.context?.executorName).toBe("named-executor");
+    }
   });
 
   it("execute still coerces non-null primitives via ensureInputIsObject", async () => {

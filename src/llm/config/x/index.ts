@@ -20,6 +20,7 @@ const xaiChatV1: Config = createOpenAiCompatibleConfiguration({
   provider: "xai.chat",
   endpoint: `https://api.x.ai/v1/chat/completions`,
   apiKeyMapping: ["xAiApiKey", "XAI_API_KEY"],
+  requireApiKey: true,
   isReasoningModel: (model) => XAI_REASONING_MODELS.includes(model),
   // Every model in XAI_REASONING_MODELS accepted all of these (verified
   // 2026-10-13); "minimal" is missing from xAI's guide but still works. xAI

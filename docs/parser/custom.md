@@ -37,7 +37,7 @@ const emails = customParser.parse("Contact us at help@example.com", {} as any);
 
 // Or use it in an executor — the executor infers the return type
 const executor = createLlmExecutor({
-  llm: useLlm("openai.chat.v1", { model: "gpt-4o-mini" }),
+  llm: useLlm("openai.chat.v1", { model: "gpt-6-luna" }),
   prompt: createChatPrompt(`Extract all email addresses from: {{text}}`),
   parser: customParser,
 });
@@ -69,7 +69,7 @@ const sentimentParser = createCustomParser(
 );
 
 const executor = createLlmExecutor({
-  llm: useLlm("openai.chat.v1", { model: "gpt-4o-mini" }),
+  llm: useLlm("openai.chat.v1", { model: "gpt-6-luna" }),
   prompt: createChatPrompt(`Analyze sentiment of: {{text}}`),
   parser: sentimentParser,
 });

@@ -10,7 +10,7 @@ import {
 // Created once at module scope, so warm Lambda invocations reuse it.
 const classifyFeedback = createLlmExecutor({
   name: "classify-feedback",
-  llm: useLlm("openai.gpt-4o-mini", {
+  llm: useLlm("openai.gpt-6-luna", {
     openAiApiKey: process.env.OPENAI_API_KEY,
     timeout: 20000, // stay well below your Lambda's own timeout
     numOfAttempts: 2,

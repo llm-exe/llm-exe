@@ -7,13 +7,13 @@ export function basicExampleUsingPrompt(){
 }
 
 export async function basicExampleUsingLlm(){
-    const llm = useLlm("openai.gpt-4o-mini");
+    const llm = useLlm("openai.gpt-6-luna");
     const response = await llm.call("Hello, how are you?");
     console.log(response.getResultText()); // "I'm good, how are you?"
 }
 
 export async function basicExamplePromptAndLlm(){
-    const llm = useLlm("openai.gpt-4o-mini");
+    const llm = useLlm("openai.gpt-6-luna");
     const prompt = createChatPrompt();
     prompt.addUserMessage("Hello, how are you?");
     prompt.addAssistantMessage("I'm good, how are you?");
@@ -22,7 +22,7 @@ export async function basicExamplePromptAndLlm(){
 }
 
 export async function basicExamplePromptAndLlmAndParser(){
-    const llm = useLlm("openai.gpt-4o-mini");
+    const llm = useLlm("openai.gpt-6-luna");
     const prompt = createChatPrompt();
     const parser = createParser("listToArray");
     prompt.addUserMessage("Hello, how are you?");
@@ -34,7 +34,7 @@ export async function basicExamplePromptAndLlmAndParser(){
 }
 
 export async function basicExampleUsingLlmExecutor(){
-    const llm = useLlm("openai.gpt-4o-mini");
+    const llm = useLlm("openai.gpt-6-luna");
     const prompt = createChatPrompt();
     const parser = createParser("listToArray");
     prompt.addUserMessage("Hello, how are you?");

@@ -11,7 +11,7 @@ import {
 
 // #region function
 export function createSummarizer() {
-  const llm = useLlm("openai.gpt-4o-mini", {
+  const llm = useLlm("openai.gpt-6-luna", {
     timeout: 15000, // fail any single API call after 15 seconds
     numOfAttempts: 3, // make up to 3 attempts before throwing
     maxDelay: 5000, // cap the backoff wait between attempts at 5 seconds

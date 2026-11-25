@@ -39,6 +39,14 @@ export function createOpenAiCompatibleConfiguration<
    * that list is dropped by the effort transform, so this default applies.
    */
   toolCallDefaultEffort?: (model: string) => string | undefined;
+  /**
+   * When `true`, a call fails fast with `configuration.missing_option` before
+   * any request is sent if no API key resolves (#981). Off by default, because
+   * custom configs built on this factory often point at keyless servers
+   * (Ollama, LM Studio, vLLM, proxies). The built-in OpenAI, xAI and DeepSeek
+   * configs turn it on.
+   */
+  requireApiKey?: boolean;
   mapOptions?: Config["mapOptions"];
   transformResponse?: any;
 }) {
@@ -89,6 +97,9 @@ export function createOpenAiCompatibleConfiguration<
     key: overrides.key as K,
     provider: overrides.provider as Config["provider"],
     endpoint: overrides.endpoint,
+    ...(overrides.requireApiKey
+      ? { apiKey: { option: apiKeyPropertyKey, env: apiKeyPropertyValue } }
+      : {}),
     options: {
       prompt: {},
       effort: {},

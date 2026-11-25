@@ -23,7 +23,7 @@ export async function generateAnswer<
 
   return createLlmExecutor({
     prompt: answerPrompt,
-    llm: useLlm("openai.gpt-4o"),
+    llm: useLlm("openai.gpt-6-luna"),
     parser: createParser("string"),
   }).execute(input);
 }

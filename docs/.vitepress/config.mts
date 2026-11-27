@@ -129,6 +129,10 @@ export default defineConfig({
             text: "Embeddings",
             link: "/embeddings/",
           },
+          {
+            text: "Decision Executor",
+            link: "/decision/",
+          },
         ],
       },
       { text: "Examples", link: "/examples/" },
@@ -350,6 +354,20 @@ export default defineConfig({
           {
             text: "Cohere (via Bedrock)",
             link: "/embeddings/cohere",
+          },
+        ],
+      },
+      {
+        text: "Decision Executor",
+        collapsed: true,
+        items: [
+          {
+            text: "Getting Started",
+            link: "/decision/",
+          },
+          {
+            text: "Providers",
+            link: "/decision/providers",
           },
         ],
       },

@@ -89,7 +89,9 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
   config: Config<any>,
   options: Record<string, any>,
   handler: (_s: any, _i: I, o?: any, signal?: AbortSignal) => Promise<T>,
-  doNotRetryErrorMessages: string[] = []
+  doNotRetryErrorMessages: string[] = [],
+  // Codes that are retryable for chat but not for this caller.
+  doNotRetryErrorCodes: readonly ErrorCodes[] = []
 ) {
   const state = stateFromOptions(options, config);
 
@@ -189,7 +191,8 @@ export function apiRequestWrapper<T extends Record<string, any>, I>(
             if (
               isLlmExeError(_error) &&
               (NON_RETRYABLE_CATEGORIES.has(_error.category) ||
-                NON_RETRYABLE_CODES.has(_error.code))
+                NON_RETRYABLE_CODES.has(_error.code) ||
+                doNotRetryErrorCodes.includes(_error.code))
             ) {
               return false;
             }

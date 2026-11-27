@@ -81,9 +81,9 @@ export class LlmExecutor<
     _options?: LlmExecutorExecuteOptions
   ): Promise<ParserOutput<Parser>> {
     if (this?.parser instanceof JsonParser && this.parser.schema) {
-      _options = Object.assign(_options || {}, {
-        jsonSchema: this.parser.schema,
-      });
+      // Copy rather than mutate: callers may share one options object
+      // across executors (see #975).
+      _options = { ..._options, jsonSchema: this.parser.schema };
     }
     return super.execute(_input, _options);
   }

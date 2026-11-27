@@ -38,9 +38,9 @@ it("creates output with expected properties", () => {
     expect(output.name).toEqual(model);
     expect(output.created).toEqual(new Date(created_at).getTime());
     expect(output.usage).toEqual({
-      input_tokens: 0,
-      output_tokens: 0,
-      total_tokens: 0,
+      input_tokens: 5,
+      output_tokens: 16,
+      total_tokens: 21,
     });
   });
 
@@ -180,23 +180,36 @@ not json
       expect(output.content).toEqual([{ type: "text", text: "<b>" }]);
     });
 
-    it("(current behavior, known gap #989) yields NaN created and an id ending in .undefined when created_at is missing", () => {
-      // Pins current behavior: there is no fallback when created_at is
-      // missing (#989). Update this test when that is fixed.
-      const noDate = `{"model":"m","message":{"role":"assistant","content":"x"},"done":true}`;
-      const output = OutputOllamaChat(noDate);
-      expect(output.created).toBeNaN();
-      expect(output.id).toBe("m.undefined");
-    });
+    it.each([undefined, "not a timestamp"])(
+      "uses the current time when created_at is %s",
+      (timestamp) => {
+        const now = Date.parse("2026-01-02T03:04:05.000Z");
+        const clock = jest.spyOn(Date, "now").mockReturnValue(now);
+        try {
+          const output = OutputOllamaChat(JSON.stringify({
+            model: "m",
+            created_at: timestamp,
+            message: { role: "assistant", content: "x" },
+            done: true,
+          }));
+          expect(output.created).toBe(now);
+          expect(output.id).toBe("m.2026-01-02T03:04:05.000Z");
+        } finally {
+          clock.mockRestore();
+        }
+      }
+    );
 
-    it("(current behavior, known gap #988) reports zero usage even when eval counts are present", () => {
-      // Pins current behavior: prompt_eval_count / eval_count are not mapped
-      // to usage (#988). Update this test when that is fixed.
-      const output = OutputOllamaChat(mock);
+    it.each([
+      [{ eval_count: 16 }, 0, 16],
+      [{ prompt_eval_count: 5 }, 5, 0],
+      [{}, 0, 0],
+    ] as const)("defaults only the missing token counts in %j", (counts, input, generated) => {
+      const output = OutputOllamaChat(JSON.stringify({ done: true, ...counts }));
       expect(output.usage).toEqual({
-        input_tokens: 0,
-        output_tokens: 0,
-        total_tokens: 0,
+        input_tokens: input,
+        output_tokens: generated,
+        total_tokens: input + generated,
       });
       expect(output.options).toEqual([]);
     });

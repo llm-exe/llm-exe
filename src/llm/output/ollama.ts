@@ -4,12 +4,15 @@ import { Config, OllamaResponse } from "@/types";
 export function OutputOllamaChat(result: string, _config?: Config<any>) {
   const combined = combineJsonl<OllamaResponse>(result);
 
-  const id = `${combined.result.model}.${combined.result.created_at}`;
   const name =
     combined.result.model ||
     _config?.options.model?.default ||
     "ollama.unknown";
-  const created = new Date(`${combined.result.created_at}`).getTime();
+  const timestamp = combined.result.created_at;
+  const providerTime = Date.parse(timestamp ?? "");
+  const hasProviderTime = Number.isFinite(providerTime);
+  const created = hasProviderTime ? providerTime : Date.now();
+  const id = `${name}.${hasProviderTime ? timestamp : new Date(created).toISOString()}`;
 
   const stopReason = `${combined?.result?.done_reason || "stop"}`;
   const content = [combined.content];

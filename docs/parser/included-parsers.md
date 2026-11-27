@@ -67,6 +67,13 @@ The answer is 42.
 
 :::
 
+The parser throws an `LlmExeError` (code `parser.parse_failed`) instead of guessing when the response doesn't contain exactly one number:
+
+- No number found (`"I don't know"`) → `No numeric value found in input.` (`context.reason: "no_numeric_value"`)
+- More than one number (`"Between 3 and 5"`, or a comma list like `"1,2,3"` or `"1, 2, 3"`) → `Multiple numeric values found in input.` (`context.reason: "ambiguous_number"`, with `context.matchCount`)
+
+Thousands separators are understood: `"1,234"` parses to `1234`. If you expect several numbers, use [`listToArray`](#list-to-array) or [`json`](#json) instead.
+
 ## Boolean Parser
 
 `boolean`

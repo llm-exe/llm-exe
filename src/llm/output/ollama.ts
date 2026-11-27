@@ -14,10 +14,12 @@ export function OutputOllamaChat(result: string, _config?: Config<any>) {
   const stopReason = `${combined?.result?.done_reason || "stop"}`;
   const content = [combined.content];
 
+  const inputTokens = combined.result.prompt_eval_count ?? 0;
+  const outputTokens = combined.result.eval_count ?? 0;
   const usage = {
-    output_tokens: 0,
-    input_tokens: 0,
-    total_tokens: 0,
+    output_tokens: outputTokens,
+    input_tokens: inputTokens,
+    total_tokens: inputTokens + outputTokens,
   };
 
   return {

@@ -38,9 +38,9 @@ it("creates output with expected properties", () => {
     expect(output.name).toEqual(model);
     expect(output.created).toEqual(new Date(created_at).getTime());
     expect(output.usage).toEqual({
-      input_tokens: 0,
-      output_tokens: 0,
-      total_tokens: 0,
+      input_tokens: 5,
+      output_tokens: 16,
+      total_tokens: 21,
     });
   });
 
@@ -189,14 +189,16 @@ not json
       expect(output.id).toBe("m.undefined");
     });
 
-    it("(current behavior, known gap #988) reports zero usage even when eval counts are present", () => {
-      // Pins current behavior: prompt_eval_count / eval_count are not mapped
-      // to usage (#988). Update this test when that is fixed.
-      const output = OutputOllamaChat(mock);
+    it.each([
+      [{ eval_count: 16 }, 0, 16],
+      [{ prompt_eval_count: 5 }, 5, 0],
+      [{}, 0, 0],
+    ] as const)("defaults only the missing token counts in %j", (counts, input, generated) => {
+      const output = OutputOllamaChat(JSON.stringify({ done: true, ...counts }));
       expect(output.usage).toEqual({
-        input_tokens: 0,
-        output_tokens: 0,
-        total_tokens: 0,
+        input_tokens: input,
+        output_tokens: generated,
+        total_tokens: input + generated,
       });
       expect(output.options).toEqual([]);
     });

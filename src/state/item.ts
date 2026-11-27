@@ -62,8 +62,8 @@ export abstract class BaseStateItem<T> implements Serializable {
   // deserialize() {}
 }
 
-export class DefaultStateItem extends BaseStateItem<any> {
-  constructor(name: string, defaultValue: any) {
+export class DefaultStateItem<T = any> extends BaseStateItem<T> {
+  constructor(name: string, defaultValue: T) {
     super(name, defaultValue);
   }
   // serialize() { return {}; }

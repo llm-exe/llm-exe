@@ -5,6 +5,7 @@ import {
   Dialogue,
   createState,
   createStateItem,
+  BaseStateItem,
 } from "@/state";
 
 /**
@@ -254,7 +255,19 @@ describe("llm-exe:state/BaseState", () => {
     state.createContextItem(createStateItem("user", value));
     const context = state.getContext<typeof value>("user");
     expect(context).toBeInstanceOf(DefaultStateItem);
-    expect(context.getValue()).toEqual({ name: "Greg" });
+    expect(context?.getValue()).toEqual({ name: "Greg" });
+  });
+
+  it("state.getContext / getContextValue types include undefined for missing keys", () => {
+    const state = new MockState();
+    const item = state.getContext<string>("nope");
+    const value = state.getContextValue<string>("nope");
+    // @ts-expect-error - may be undefined
+    const strictItem: BaseStateItem<string> = item;
+    // @ts-expect-error - may be undefined
+    const strictValue: string = value;
+    expect(strictItem).toBeUndefined();
+    expect(strictValue).toBeUndefined();
   });
 
   it("state.getContext gets context item", () => {

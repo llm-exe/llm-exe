@@ -41,12 +41,12 @@ export abstract class BaseState {
     return this.context[item.getKey()] as any;
   }
 
-  getContext<T>(key: string): BaseStateItem<T> {
-    return this.context[key] as BaseStateItem<T>;
+  getContext<T>(key: string): BaseStateItem<T> | undefined {
+    return this.context[key] as BaseStateItem<T> | undefined;
   }
 
-  getContextValue<T>(key: string): T {
-    return this.context[key]?.getValue();
+  getContextValue<T>(key: string): T | undefined {
+    return this.context[key]?.getValue() as T | undefined;
   }
 
   setAttribute(key: string, value: any) {

@@ -7,6 +7,17 @@ description: "Reference for llm-exe's built-in parsers: JSON, number, boolean, l
 
 [[toc]]
 
+::: tip `match` defaults differ between parsers
+Several parsers take a `match` option, and their defaults are not the same. Check this table before you copy options from one parser to another.
+
+| Parser | Default `match` | Other values | Text around the value, e.g. `"Yes."` or `"The answer is 42."` |
+| --- | --- | --- | --- |
+| [`number`](#number-parser) | `"extract"` | `"exact"` | Accepted by default |
+| [`boolean`](#boolean-parser) | `"exact"` | `"extract"` | Throws by default. Pass `{ match: "extract" }` |
+| [`json`](#json) | `"exact"` | `"extract"` | Throws by default. Pass `{ match: "extract" }` |
+| [`stringExtract`](#string-extractor-parser) | `"word"` | `"substring"`, `"exact"` | Accepted when the enum value appears as a whole word |
+:::
+
 ## String Parser
 
 `string`
@@ -65,7 +76,7 @@ Returns: boolean
 ::: warning Default is `match: "exact"`
 Unlike the number parser (which defaults to `"extract"`), the boolean parser requires the **entire trimmed response** to be one literal by default. A response like `"Yes."` or `"No, it isn't"` throws `No boolean value found in input.` Pass `{ match: "extract" }` to find the boolean inside surrounding text.
 
-In `"extract"` mode, single letters and digits count as tokens too, so `"Yes, I found 0 issues"` contains both a truthy and a falsy token and throws rather than guessing. Ask the model for a bare yes/no answer when you can.
+In `"extract"` mode, single letters and digits count as tokens too, so `"Yes, I found 0 issues"` contains both a truthy and a falsy token and throws rather than guessing. If only one such token is present, it is returned even when it isn't meant as an answer: `"Option 1 is better"` returns `true` and `"Step 0 failed"` returns `false`. Ask the model for a bare yes/no answer when you can, and prefer the default `"exact"` mode for that.
 :::
 
 ```ts

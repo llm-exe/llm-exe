@@ -10,6 +10,7 @@ const openAiChatV1: Config = createOpenAiCompatibleConfiguration({
   provider: "openai.chat",
   endpoint: `https://api.openai.com/v1/chat/completions`,
   apiKeyMapping: ["openAiApiKey", "OPENAI_API_KEY"],
+  requireApiKey: true,
   isReasoningModel: (model) =>
     model.startsWith("gpt-5") ||
     model.startsWith("gpt-6") ||

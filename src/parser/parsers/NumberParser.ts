@@ -82,7 +82,16 @@ export class NumberParser extends BaseParser<number> {
         const tokenCount = Array.from(
           text.matchAll(NUMERIC_TOKEN_PATTERN),
         ).length;
-        throw new LlmExeError(`Input is not an exact numeric value.`, {
+        // Only suggest extract mode when it would find exactly one number.
+        const resolution =
+          tokenCount === 1
+            ? 'The input has text around the number. Use createParser("number", { match: "extract" }) to pull the number out of surrounding text.'
+            : undefined;
+        // Surface the hint in the message too; most users only read e.message.
+        const message = resolution
+          ? `Input is not an exact numeric value. ${resolution}`
+          : `Input is not an exact numeric value.`;
+        throw new LlmExeError(message, {
           code: "parser.parse_failed",
           context: {
             operation: "NumberParser.parse",
@@ -92,13 +101,7 @@ export class NumberParser extends BaseParser<number> {
             match: this.match,
             inputLength: text.length,
             ...(tokenCount > 0 ? { matchCount: tokenCount } : {}),
-            // Only suggest extract mode when it would find exactly one number.
-            ...(tokenCount === 1
-              ? {
-                  resolution:
-                    'The input has text around the number. Use createParser("number", { match: "extract" }) to pull the number out of surrounding text.',
-                }
-              : {}),
+            ...(resolution !== undefined ? { resolution } : {}),
           },
         });
       }

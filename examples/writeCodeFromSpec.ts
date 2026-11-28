@@ -20,7 +20,7 @@ Respond with only the code (no questions or explanation), inside a single ts cod
 // #region function
 export async function writeCodeFromSpec(spec: string) {
   // define the LLM
-  const llm = useLlm("openai.gpt-4o-mini"); // change this if you want
+  const llm = useLlm("openai.gpt-6-luna"); // change this if you want
   // instantiate the prompt
   const prompt = createChatPrompt<{ spec: string }>(PROMPT);
   // define the output parser

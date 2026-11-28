@@ -70,7 +70,8 @@ export class LlmExecutor<
   /**
    * Runs the executor against the configured LLM and prompt.
    *
-   * `null` and `undefined` are rejected with a `TypeError`: the declared
+   * `null` and `undefined` are rejected with `LlmExeError`
+   * (`executor.invalid_input`) from `getHandlerInput`, so hooks fire: the declared
    * input type requires an object, and silently coercing missing input hides a
    * clear contract violation. Use `{}` for prompts that declare no template
    * variables. See issue #410.
@@ -79,16 +80,10 @@ export class LlmExecutor<
     _input: PromptInput<Prompt>,
     _options?: LlmExecutorExecuteOptions
   ): Promise<ParserOutput<Parser>> {
-    if (_input === null || typeof _input === "undefined") {
-      throw new TypeError(
-        `[llm-exe] Executor "${this.name}" received null or undefined as input. ` +
-          `execute() expects an object matching the prompt's input type.`
-      );
-    }
     if (this?.parser instanceof JsonParser && this.parser.schema) {
-      _options = Object.assign(_options || {}, {
-        jsonSchema: this.parser.schema,
-      });
+      // Copy rather than mutate: callers may share one options object
+      // across executors (see #975).
+      _options = { ..._options, jsonSchema: this.parser.schema };
     }
     return super.execute(_input, _options);
   }
@@ -103,6 +98,7 @@ export class LlmExecutor<
   }
 
   async getHandlerInput(_input: PromptInput<Prompt>): Promise<any> {
+    this.assertInputIsDefined(_input);
     if (this.prompt) {
       if (isPromise(this.prompt.formatAsync)) {
         return await this.prompt.formatAsync(_input);

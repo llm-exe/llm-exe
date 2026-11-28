@@ -127,7 +127,7 @@ export abstract class BaseExecutor<
    *
    * Used to filter the input of the handler.
    *
-   * Throws a `TypeError` if `_input` is `null` or `undefined`. The declared
+   * Throws `LlmExeError` (`executor.invalid_input`) if `_input` is `null` or `undefined`. The declared
    * input type is `I extends PlainObject`; omitting input or passing an
    * explicit `null` is a contract violation with no valid coercion, so we
    * surface it loudly rather than silently wrapping it.
@@ -145,13 +145,33 @@ export abstract class BaseExecutor<
     _metadata: ExecutorExecutionMetadata<I, any>,
     _options?: any
   ): Promise<any> {
+    this.assertInputIsDefined(_input);
+    return ensureInputIsObject(_input);
+  }
+
+  /**
+   * Throws `LlmExeError` (`executor.invalid_input`) when `_input` is `null` or
+   * `undefined`. Called from `getHandlerInput` so the error is raised inside
+   * `execute()`'s try/catch and `onError` / `onComplete` hooks fire (#978).
+   */
+  protected assertInputIsDefined(_input: unknown): void {
     if (_input === null || typeof _input === "undefined") {
-      throw new TypeError(
+      throw new LlmExeError(
         `[llm-exe] Executor "${this.name}" received null or undefined as input. ` +
-          `execute() expects an object matching the prompt's input type.`
+          `execute() expects an object matching the prompt's input type.`,
+        {
+          code: "executor.invalid_input",
+          context: {
+            operation: `${this.type}.execute`,
+            executorName: this.name,
+            executorType: this.type,
+            traceId: this.getTraceId() ?? undefined,
+            resolution:
+              "Pass an object matching the prompt's input type. Use {} for prompts with no template variables.",
+          },
+        }
       );
     }
-    return ensureInputIsObject(_input);
   }
 
   /**

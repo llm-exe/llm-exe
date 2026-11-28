@@ -30,7 +30,7 @@ describe("helloWorld", () => {
     "handle this simple instruction",
     [
       "anthropic.claude-sonnet-4-6",
-      "openai.gpt-4o-mini",
+      "openai.gpt-6-luna",
       "google.gemini-2.5-flash",
       "xai.grok-3",
       "deepseek.chat",

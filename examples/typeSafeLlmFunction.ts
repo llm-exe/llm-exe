@@ -45,7 +45,7 @@ Review:
 
 // #region function
 export async function analyzeReview(review: string) {
-  const llm = useLlm("openai.gpt-4o-mini");
+  const llm = useLlm("openai.gpt-6-luna");
   const prompt = createChatPrompt<{
     review: string;
     schema: typeof reviewSchema;

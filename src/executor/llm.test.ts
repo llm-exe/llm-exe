@@ -5,6 +5,7 @@ import { JsonParser } from "@/parser";
 import { createChatPrompt } from "@/prompt";
 import { defineSchema } from "@/utils/modules/defineSchema";
 import { LlmExeError } from "@/errors";
+import type { LlmExecutorExecuteOptions } from "@/interfaces";
 
 /**
  * Tests LlmExecutor
@@ -172,6 +173,42 @@ describe("llm-exe:executor/LlmExecutor", () => {
     expect(executor.getMetadata().name).toEqual(initialMetadata.name);
   });
 
+  it("does not mutate the caller options object when adding jsonSchema (#975)", async () => {
+    const schemaA = defineSchema({
+      type: "object",
+      properties: { a: { type: "string" } },
+      required: ["a"],
+      additionalProperties: false,
+    });
+    const output = BaseLlmOutput({
+      stopReason: "stop",
+      usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+      content: [{ type: "text", text: '{"a":"x"}' }],
+    });
+    const exA = new LlmExecutor({
+      llm,
+      prompt,
+      parser: new JsonParser({ schema: schemaA }),
+    });
+    const exC = new LlmExecutor({ llm, prompt });
+    jest.spyOn(exA, "handler").mockResolvedValue(output);
+    jest.spyOn(exC, "handler").mockResolvedValue(output);
+
+    const shared: LlmExecutorExecuteOptions = { traceId: "t-1" };
+    await exA.execute({}, shared);
+    expect(shared).toEqual({ traceId: "t-1" });
+    expect(exA.handler).toHaveBeenCalledWith(
+      expect.anything(),
+      { traceId: "t-1", jsonSchema: schemaA },
+      expect.anything()
+    );
+
+    await exC.execute({}, shared);
+    const cOptions = (exC.handler as jest.Mock).mock.calls[0][1];
+    expect(cOptions).toEqual({ traceId: "t-1" });
+    expect(cOptions).not.toHaveProperty("jsonSchema");
+  });
+
   it("MockExecutor getHandlerOutput gets correct inputs", async () => {
     const executor = new LlmExecutor({ llm, prompt });
     jest.spyOn(executor, "getHandlerOutput");
@@ -289,20 +326,32 @@ describe("llm-exe:executor/LlmExecutor", () => {
     expect(result).toEqual(["formatted"]);
   });
 
-  it("throws TypeError when execute is called with null (issue #410)", async () => {
-    const executor = new LlmExecutor({ llm, prompt });
-    await expect(executor.execute(null as any)).rejects.toThrow(TypeError);
-    await expect(executor.execute(null as any)).rejects.toThrow(
-      /received null or undefined as input/
-    );
-  });
+  it.each([null, undefined])(
+    "throws LlmExeError executor.invalid_input when execute is called with %p (issues #410, #978)",
+    async (bad) => {
+      const executor = new LlmExecutor({ llm, prompt });
+      const err = (await executor
+        .execute(bad as any)
+        .catch((e: unknown) => e)) as LlmExeError;
+      expect(err).toBeInstanceOf(LlmExeError);
+      expect(err.code).toBe("executor.invalid_input");
+      expect(err.message).toMatch(/received null or undefined as input/);
+    }
+  );
 
-  it("throws TypeError when execute is called with undefined (issue #410)", async () => {
-    const executor = new LlmExecutor({ llm, prompt });
-    await expect(executor.execute(undefined as any)).rejects.toThrow(TypeError);
-    await expect(executor.execute(undefined as any)).rejects.toThrow(
-      /received null or undefined as input/
+  it("fires onError and onComplete when execute is called with null (issue #978)", async () => {
+    const onError = jest.fn();
+    const onComplete = jest.fn();
+    const executor = new LlmExecutor(
+      { llm, prompt },
+      { hooks: { onError, onComplete } }
     );
+    await expect(executor.execute(null as any)).rejects.toMatchObject({
+      code: "executor.invalid_input",
+    });
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0].errorCode).toBe("executor.invalid_input");
   });
 
   it("getHandlerOutput uses getResult when parser target is function_call", async () => {

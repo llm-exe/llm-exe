@@ -22,6 +22,7 @@ describe("configs", () => {
       key: "openai.chat.v1",
       provider: "openai.chat",
       endpoint: `https://api.openai.com/v1/chat/completions`,
+      apiKey: { option: "openAiApiKey", env: "OPENAI_API_KEY" },
       options: {
         prompt: {},
         effort: {},
